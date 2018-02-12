@@ -5,19 +5,39 @@
 #'  extending the method of Abadie (2005).  This method relies on once individuals are treated
 #'  they remain in the treated state for the duration.
 #'
-#' @param first.treat.name Give the column name of the variable that forms groups based on when an observation is first treated
+#' @param formla The formula y ~ d where y is the outcome and d is the
+#'  treatment indicator (d should be binary)
+#' @param xformla A optional one sided formula for additional covariates that
+#'  will be adjusted for.  E.g ~ age + education.  Additional covariates can
+#'  also be passed by name using the x paramater.
+#' @param data The name of the data.frame that contains the data
+#' @param tname The name of the column containing the time periods
+#' @param w A vector of weights for each observation (not implemented)
+#' @param panel Boolean indicating whether the data is panel or repeated cross
+#'  sections
+#' @param idname The individual (cross-sectional unit) id name
+#' @param first.treat.name The name of the variable in \code{data} that contains the first
+#'  period when a particular observation is treated
+#' @param method The method for estimating the propensity score when covariates
+#'  are included
+#' @param se Boolean whether or not to compute standard errors
+#' @param seedvec Optional value to set random seed; can possibly be used
+#'  in conjunction with bootstrapping standard errors#' (not implemented)
+#' @param pl Boolean for whether or not to use parallel processing
+#' @param cores The number of cores to use for parallel processing
+#' @param printdetails Boolean for showing detailed results or not
 #'
-#' @inheritParams spatt
+#' @references Callaway and Sant'Anna (2018)
 #'
-#' @return \code{QTE} object
+#' @return \code{MP} object
 #' 
 #' @export
 mp.spatt <- function(formla, xformla=NULL, data, tname, w=NULL, panel=FALSE,
                      idname=NULL, first.treat.name,
-                     iters=100, alp=0.05, method="logit", plot=FALSE, se=TRUE,
+                     iters=100, method="logit", se=TRUE,
                      bstrap=FALSE, biters=100, clustervars=NULL,
                      cband=FALSE, citers=100,
-                     retEachIter=FALSE, seedvec=NULL, pl=FALSE, cores=2,
+                     seedvec=NULL, pl=FALSE, cores=2,
                      printdetails=TRUE) {
 
 
@@ -67,7 +87,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname, w=NULL, panel=FALSE,
             satt[[t]] <- c(spatt(formla, xformla, t=tlist[t+1], tmin1=tlist[pret],
                       tname=tname, data=disdat, w=w, panel=panel,
                       idname=idname, 
-                      iters=iters, alp=alp, method=method, plot=plot, se=se,
+                      iters=NULL, alp=NULL, method=method, plot=plot, se=se,
                       retEachIter=retEachIter, seedvec=seedvec, pl=pl, cores=cores),
                       group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
             inffunc[f,t,S] <- satt[[t]]$inffunc
@@ -159,12 +179,39 @@ mp.spatt <- function(formla, xformla=NULL, data, tname, w=NULL, panel=FALSE,
         c <- quantile(KSB, 1-alp, type=7)
     }
 
-    return(list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc1))
+    return(MP(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc1))
 }
 
 
+#' @title MP
+#'
+#' @description multi-period object
+#'
+#' @param group which group (defined by period first treated) an group-time average treatment effect is for
+#' @param t which time period a group-time average treatment effect is for
+#' @param att the group-average treatment effect for group \code{group} and time period \code{t}
+#' @param c critical value if one is obtaining uniform confidence bands
+#' @param V the variance matrix for group-time average treatment effects
+#' @param inffunc the influence function for estimating group-time average treatment effects
+#'
+#' @return MP object
+#' @export
+MP <- function(group, t, att, V, c, inffunc) {
+    out <- list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc1)
+    class(out) <- "MP"
+}
+
 ## The idea here is to combine the weighting function with Y and run the previous
 ## code for computing group-time average treatment effects
+#' @title mp.spatt.test
+#'
+#' @description integrated moments test for conditional common trends holding in all pre-treatment time
+#'  periods across all groups
+#'
+#' @inheritParams mp.spatt
+#'
+#' @return list containing test results
+#' @export
 mp.spatt.test <- function(formla, xformla=NULL, data, tname, w=NULL, panel=FALSE,
                      idname=NULL, first.treat.name,
                      iters=100, alp=0.05, method="logit", plot=FALSE, se=TRUE,
