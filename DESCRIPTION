@@ -1,0 +1,16 @@
+Package: did
+Title: Treatment Effects with Multiple Periods and Groups
+Version: 1.0.0
+Authors@R: c(person("Brantly", "Callaway", email = "brantly.callaway@temple.edu", role = c("aut", "cre")), person("Pedro", "Santanna", email="pedro.h.santanna@vanderbilt.edu", role = c("aut")))
+Description: Contains tools for computing average treatment effect parameters in Difference in Differences models with more than two periods and with variation in treatment timing.  The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time.  These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these.  There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.
+Depends: R (>= 2.1.0)
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Imports: qte,
+    BMisc,
+    MASS,
+    expm,
+    formula.tools,
+    pbapply
+RoxygenNote: 6.0.1
