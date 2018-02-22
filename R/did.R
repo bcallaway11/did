@@ -23,22 +23,37 @@
 #' @param method The method for estimating the propensity score when covariates
 #'  are included
 #' @param se Boolean whether or not to compute standard errors
+#' @param bstrap Boolean for whether or not to compute standard errors using
+#'  the multiplier boostrap.  If standard errors are clustered, then one
+#'  must set \code{bstrap=TRUE}.
+#' @param biters The number of boostrap iterations to use.  The default is 100,
+#'  and this is only applicable if \code{bstrap=TRUE}.
+#' @param clustervars A vector of variables to cluster on.  At most, there
+#'  can be two variables (otherwise will throw an error) and one of these
+#'  must be the same as idname which allows for clustering at the individual
+#'  level.
+#' @param cband Boolean for whether or not to compute a uniform confidence
+#'  band that covers all of the group-time average treatment effects
+#'  with fixed probability \code{1-alp}.  The default is \code{FALSE}
+#'  and the resulting standard errors will be pointwise.
+#' @param citers Computing uniform confidence bands requires the bootstrap,
+#'  if \code{cband = TRUE}, then this is the number of boostrap iterations
+#'  to compute the conidence band.  The default is 100.
 #' @param seedvec Optional value to set random seed; can possibly be used
 #'  in conjunction with bootstrapping standard errors#' (not implemented)
 #' @param pl Boolean for whether or not to use parallel processing
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
-#' @param computespatt Boolean for whether or not to compute the group-time average treatment effect,
-#'  default is TRUE (only set to FALSE for testing)
 #'
 #' @references Callaway and Sant'Anna (2018)
 #'
 #' @return \code{MP} object
 #' 
 #' @export
-mp.spatt <- function(formla, xformla=NULL, data, tname, aggte=TRUE, w=NULL, panel=FALSE,
+mp.spatt <- function(formla, xformla=NULL, data, tname,
+                     aggte=TRUE, w=NULL, panel=FALSE,
                      idname=NULL, first.treat.name, alp=0.05,
-                     iters=100, method="logit", se=TRUE,
+                     method="logit", se=TRUE,
                      bstrap=FALSE, biters=100, clustervars=NULL,
                      cband=FALSE, citers=100,
                      seedvec=NULL, pl=FALSE, cores=2,
@@ -182,9 +197,27 @@ mp.spatt <- function(formla, xformla=NULL, data, tname, aggte=TRUE, w=NULL, pane
 
 
       
-## get all the results; importantly this now returns the influence functions
-compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta, first.treat.name, formla, 
-                             xformla, tname, w, panel, idname, method, seedvec, se,
+#' @title compute.mp.spatt
+#'
+#' @description \code{compute.mp.spatt} does the main work for computing
+#'  mutliperiod group-time average treatment effects
+#'
+#' @inheritParams mp.spatt
+#'
+#' @return a list with length equal to the number of groups times the
+#'  number of time periods; each element of the list contains a \code{QTE}
+#'  object that contains group-time average treamtent effect as well
+#'  as which group it is for and which time period it is for and
+#'  the influence function which is used externally to compute
+#'  standard errors.
+#'
+#' @keywords internal
+#'
+#' @export
+compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
+                             first.treat.name, formla, 
+                             xformla, tname, w, panel, idname,
+                             method, seedvec, se,
                              pl, cores, printdetails) {
 
 
@@ -235,6 +268,9 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta, first.treat.na
 #' @param V the variance matrix for group-time average treatment effects
 #' @param inffunc the influence function for estimating group-time average treatment effects
 #' @param n the number of observations
+#' @param W the Wald statistic for pre-testing the common trends assumption
+#' @param Wpval the p-value of the Wald statistic for pre-testing the
+#'  common trends assumption
 #' @param aggte an aggregate treatment effects object
 #'
 #' @return MP object
@@ -245,6 +281,13 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
     out
 }
 
+#' @title summary.MP
+#'
+#' @description prints a summary of a \code{MP} object
+#'
+#' @param mpobj an \code{MP} object
+#'
+#' @export
 summary.MP <- function(mpobj) {
     out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
     colnames(out) <- c("group", "time", "att","se")
@@ -269,7 +312,7 @@ summary.MP <- function(mpobj) {
 #' @export
 mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=FALSE,
                      idname=NULL, first.treat.name,
-                     iters=100, alp=0.05, method="logit", plot=FALSE, se=TRUE,
+                     alp=0.05, method="logit", plot=FALSE, se=TRUE,
                      bstrap=FALSE, biters=100, clustervarlist=NULL,
                      cband=FALSE, citers=100,
                      retEachIter=FALSE, seedvec=NULL, pl=FALSE, cores=2) {
@@ -391,6 +434,18 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
 }
 
 
+#' @title gplot
+#'
+#' @description does the heavy lifting for making a plot of an group-time
+#'  average treatment effect
+#'
+#' @inheritParams ggdid
+#'
+#' @return a \code{ggplot2} object
+#' 
+#' @keywords internal
+#'
+#' @export
 gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1) {
     dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
     p <- ggplot(ssresults,
@@ -409,7 +464,23 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
     p
 }
 
-## Make the plots presented in the paper
+#' @title ggdid
+#'
+#' @description Function to plot \code{MP} objects
+#'
+#' @param mpobj an \code{MP} object
+#' @param ylim optional y limits for the plot; settng here makes the y limits
+#'  the same across different plots
+#' @param xlab optional x-axis label
+#' @param ylab optional y-axis label
+#' @param title optional plot title
+#' @param xgap optional gap between the labels on the x-axis.  For example,
+#'  \code{xgap=3} indicates that the labels should show up for every third
+#'  value on the x-axis.  The default is 1.
+#' @param ncol The number of columns to include in the resulting plot.  The
+#'  default is 1.
+#'
+#' @export
 ggdid <- function(mpobj, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1, ncol=1) {
     G <- length(unique(mpobj$group))
     Y <- length(unique(mpobj$t))## drop 1 period bc DID
@@ -437,6 +508,18 @@ ggdid <- function(mpobj, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
 }
 
 
+#' @title compute.aggte
+#'
+#' @description does the heavy lifting on computing aggregated group-time
+#'  average treatment effects
+#'
+#' @inheritParams mp.spatt
+#'
+#' @return \code{AGGTE} object
+#'
+#' @keywords internal
+#'
+#' @export
 compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters) {
 
     if ( (length(clustervars) > 0) & !bstrap) {
@@ -632,6 +715,43 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
 }
 
 
+#' @title AGGTE
+#'
+#' @description \code{AGGTE} class for aggregate treatment effects
+#'
+#' @param simple.att simple weighted average of group-time average treatment
+#'  effects
+#' @param simple.se the standard error for \code{simple.att}
+#' @param selective.att aggregated group-time average treament effects when
+#'  there is selective treatment timing
+#' @param selective.se the standard error for \code{selective.att}
+#' @param selective.att.g aggregated group-time average treatment effects
+#'  when there is selective treatment timing for each particular group
+#' @param selective.att.g the standard error for \code{selective.att.g}
+#' @param dynamic.att aggregated group-time average treatment effects when
+#'  there are dynamic treatment effects
+#' @param dynamic.se the standard error for \code{dynamic.att}
+#' @param dynamic.att.e aggregated group-time average treatment effects
+#'  when there are dynamic treatment effects for each length of exposure
+#'  to treatment
+#' @param dynamic.se.e the standard error for \code{dynamic.att.e}
+#' @param calendar.att the aggregated group-time average treatment effects
+#'  when there are calendar time effects
+#' @param calendar.se the standard error for \code{calendar.att}
+#' @param calendar.att.t the aggregated group-time average treatment effects
+#'  when there are calendar time effects for each time period
+#' @param calendar.se.t the standard error for \code{calendar.att.t}
+#' @param dynsel.att.e1 aggregated group-time average treatment effects when
+#'  there are dynamic treatment effects and selective treatment timing.
+#'  Here, e1 is the number of periods that a group is required to be treated
+#'  in order to be included in the results.
+#' @param dynsel.se.e1 the standard error for \code{dynsel.att.e1}
+#' @param dynsel.att.ee1 aggregated group-time average treatment effects when
+#'  there are dynamic treatment effects and selective treatment timing.
+#'  Here, e1 is the number of periods that a group is required to be treated
+#'  in order to be included in the results and for each length of exposure
+#'  to treatment
+#' @param dynsel.se.ee1 the standard error for \code{dynsel.att.ee1}
 AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective.se=NULL, selective.att.g=NULL, selective.se.g=NULL, dynamic.att=NULL, dynamic.se=NULL, dynamic.att.e=NULL, dynamic.se.e=NULL, calendar.att=NULL, calendar.se=NULL, calendar.att.t=NULL, calendar.se.t=NULL, dynsel.att.e1=NULL, dynsel.se.e1=NULL, dynsel.att.ee1=NULL, dynsel.se.ee1=NULL) {
     out <- list(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1)
     class(out) <- "AGGTE"

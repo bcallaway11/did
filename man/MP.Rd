@@ -4,7 +4,8 @@
 \alias{MP}
 \title{MP}
 \usage{
-MP(group, t, att, V, c, inffunc)
+MP(group, t, att, V, c, inffunc, n = NULL, W = NULL, Wpval = NULL,
+  aggte = NULL)
 }
 \arguments{
 \item{group}{which group (defined by period first treated) an group-time average treatment effect is for}
@@ -18,6 +19,15 @@ MP(group, t, att, V, c, inffunc)
 \item{c}{critical value if one is obtaining uniform confidence bands}
 
 \item{inffunc}{the influence function for estimating group-time average treatment effects}
+
+\item{n}{the number of observations}
+
+\item{W}{the Wald statistic for pre-testing the common trends assumption}
+
+\item{Wpval}{the p-value of the Wald statistic for pre-testing the
+common trends assumption}
+
+\item{aggte}{an aggregate treatment effects object}
 }
 \value{
 MP object

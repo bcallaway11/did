@@ -12,5 +12,9 @@ Imports: qte,
     MASS,
     expm,
     formula.tools,
-    pbapply
+    pbapply,
+    stats,
+    ggplot2,
+    knitr,
+    utils
 RoxygenNote: 6.0.1

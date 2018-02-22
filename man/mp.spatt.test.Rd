@@ -4,20 +4,15 @@
 \alias{mp.spatt.test}
 \title{mp.spatt.test}
 \usage{
-mp.spatt.test(formla, xformla = NULL, data, tname, w = NULL,
-  panel = FALSE, idname = NULL, first.treat.name, iters = 100,
-  alp = 0.05, method = "logit", plot = FALSE, se = TRUE,
-  bstrap = FALSE, biters = 100, clustervars = NULL, cband = FALSE,
-  citers = 100, retEachIter = FALSE, seedvec = NULL, pl = FALSE,
-  cores = 2)
+mp.spatt.test(formla, xformlalist = NULL, data, tname, w = NULL,
+  panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
+  method = "logit", plot = FALSE, se = TRUE, bstrap = FALSE,
+  biters = 100, clustervarlist = NULL, cband = FALSE, citers = 100,
+  retEachIter = FALSE, seedvec = NULL, pl = FALSE, cores = 2)
 }
 \arguments{
 \item{formla}{The formula y ~ d where y is the outcome and d is the
 treatment indicator (d should be binary)}
-
-\item{xformla}{A optional one sided formula for additional covariates that
-will be adjusted for.  E.g ~ age + education.  Additional covariates can
-also be passed by name using the x paramater.}
 
 \item{data}{The name of the data.frame that contains the data}
 
@@ -33,10 +28,28 @@ sections}
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
 period when a particular observation is treated}
 
+\item{alp}{the significance level, default is 0.05}
+
 \item{method}{The method for estimating the propensity score when covariates
 are included}
 
 \item{se}{Boolean whether or not to compute standard errors}
+
+\item{bstrap}{Boolean for whether or not to compute standard errors using
+the multiplier boostrap.  If standard errors are clustered, then one
+must set \code{bstrap=TRUE}.}
+
+\item{biters}{The number of boostrap iterations to use.  The default is 100,
+and this is only applicable if \code{bstrap=TRUE}.}
+
+\item{cband}{Boolean for whether or not to compute a uniform confidence
+band that covers all of the group-time average treatment effects
+with fixed probability \code{1-alp}.  The default is \code{FALSE}
+and the resulting standard errors will be pointwise.}
+
+\item{citers}{Computing uniform confidence bands requires the bootstrap,
+if \code{cband = TRUE}, then this is the number of boostrap iterations
+to compute the conidence band.  The default is 100.}
 
 \item{seedvec}{Optional value to set random seed; can possibly be used
 in conjunction with bootstrapping standard errors#' (not implemented)}

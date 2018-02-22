@@ -10,3 +10,7 @@
 #' @import expm
 #' @import formula.tools
 #' @import pbapply
+#' @import knitr
+#' @import ggplot2
+#' @import utils
+NULL
