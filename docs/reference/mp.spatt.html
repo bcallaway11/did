@@ -60,6 +60,9 @@
 <li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li>
+  <a href="../news/index.html">News</a>
+</li>
       </ul>
       
       <ul class="nav navbar-nav navbar-right">
@@ -85,11 +88,11 @@
  they remain in the treated state for the duration.</p>
     
 
-    <pre class="usage"><span class='fu'>mp.spatt</span>(<span class='no'>formla</span>, <span class='kw'>xformla</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>data</span>, <span class='no'>tname</span>, <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>first.treat.name</span>, <span class='kw'>iters</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>method</span> <span class='kw'>=</span> <span class='st'>"logit"</span>,
-  <span class='kw'>se</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>, <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>clustervars</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>citers</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>seedvec</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>2</span>,
-  <span class='kw'>printdetails</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>)</pre>
+    <pre class="usage"><span class='fu'>mp.spatt</span>(<span class='no'>formla</span>, <span class='kw'>xformla</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>data</span>, <span class='no'>tname</span>, <span class='kw'>aggte</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>, <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
+  <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>first.treat.name</span>, <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
+  <span class='kw'>method</span> <span class='kw'>=</span> <span class='st'>"logit"</span>, <span class='kw'>se</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>, <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>100</span>,
+  <span class='kw'>clustervars</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>citers</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>seedvec</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
+  <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>2</span>, <span class='kw'>printdetails</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>)</pre>
     
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a> Arguments</h2>
     <table class="ref-arguments">
@@ -114,6 +117,10 @@ also be passed by name using the x paramater.</p></td>
       <td><p>The name of the column containing the time periods</p></td>
     </tr>
     <tr>
+      <th>aggte</th>
+      <td><p>boolean for whether or not to compute aggregate treatment effect parameters, default TRUE</p></td>
+    </tr>
+    <tr>
       <th>w</th>
       <td><p>A vector of weights for each observation (not implemented)</p></td>
     </tr>
@@ -132,6 +139,10 @@ sections</p></td>
 period when a particular observation is treated</p></td>
     </tr>
     <tr>
+      <th>alp</th>
+      <td><p>the significance level, default is 0.05</p></td>
+    </tr>
+    <tr>
       <th>method</th>
       <td><p>The method for estimating the propensity score when covariates
 are included</p></td>
@@ -139,6 +150,37 @@ are included</p></td>
     <tr>
       <th>se</th>
       <td><p>Boolean whether or not to compute standard errors</p></td>
+    </tr>
+    <tr>
+      <th>bstrap</th>
+      <td><p>Boolean for whether or not to compute standard errors using
+the multiplier boostrap.  If standard errors are clustered, then one
+must set <code>bstrap=TRUE</code>.</p></td>
+    </tr>
+    <tr>
+      <th>biters</th>
+      <td><p>The number of boostrap iterations to use.  The default is 100,
+and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
+    </tr>
+    <tr>
+      <th>clustervars</th>
+      <td><p>A vector of variables to cluster on.  At most, there
+can be two variables (otherwise will throw an error) and one of these
+must be the same as idname which allows for clustering at the individual
+level.</p></td>
+    </tr>
+    <tr>
+      <th>cband</th>
+      <td><p>Boolean for whether or not to compute a uniform confidence
+band that covers all of the group-time average treatment effects
+with fixed probability <code>1-alp</code>.  The default is <code>FALSE</code>
+and the resulting standard errors will be pointwise.</p></td>
+    </tr>
+    <tr>
+      <th>citers</th>
+      <td><p>Computing uniform confidence bands requires the bootstrap,
+if <code>cband = TRUE</code>, then this is the number of boostrap iterations
+to compute the conidence band.  The default is 100.</p></td>
     </tr>
     <tr>
       <th>seedvec</th>

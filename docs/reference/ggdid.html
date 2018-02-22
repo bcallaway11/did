@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MP — MP • did</title>
+<title>ggdid — ggdid • did</title>
 
 <!-- jquery -->
 <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
@@ -78,65 +78,52 @@
       <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>MP</h1>
+    <h1>ggdid</h1>
     </div>
 
     
-    <p>multi-period object</p>
+    <p>Function to plot <code>MP</code> objects</p>
     
 
-    <pre class="usage"><span class='fu'>MP</span>(<span class='no'>group</span>, <span class='no'>t</span>, <span class='no'>att</span>, <span class='no'>V</span>, <span class='no'>c</span>, <span class='no'>inffunc</span>, <span class='kw'>n</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>W</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>Wpval</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>aggte</span> <span class='kw'>=</span> <span class='kw'>NULL</span>)</pre>
+    <pre class="usage"><span class='fu'>ggdid</span>(<span class='no'>mpobj</span>, <span class='kw'>ylim</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>xlab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>ylab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>title</span> <span class='kw'>=</span> <span class='st'>"Group"</span>,
+  <span class='kw'>xgap</span> <span class='kw'>=</span> <span class='fl'>1</span>, <span class='kw'>ncol</span> <span class='kw'>=</span> <span class='fl'>1</span>)</pre>
     
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a> Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>group</th>
-      <td><p>which group (defined by period first treated) an group-time average treatment effect is for</p></td>
+      <th>mpobj</th>
+      <td><p>an <code>MP</code> object</p></td>
     </tr>
     <tr>
-      <th>t</th>
-      <td><p>which time period a group-time average treatment effect is for</p></td>
+      <th>ylim</th>
+      <td><p>optional y limits for the plot; settng here makes the y limits
+the same across different plots</p></td>
     </tr>
     <tr>
-      <th>att</th>
-      <td><p>the group-average treatment effect for group <code>group</code> and time period <code>t</code></p></td>
+      <th>xlab</th>
+      <td><p>optional x-axis label</p></td>
     </tr>
     <tr>
-      <th>V</th>
-      <td><p>the variance matrix for group-time average treatment effects</p></td>
+      <th>ylab</th>
+      <td><p>optional y-axis label</p></td>
     </tr>
     <tr>
-      <th>c</th>
-      <td><p>critical value if one is obtaining uniform confidence bands</p></td>
+      <th>title</th>
+      <td><p>optional plot title</p></td>
     </tr>
     <tr>
-      <th>inffunc</th>
-      <td><p>the influence function for estimating group-time average treatment effects</p></td>
+      <th>xgap</th>
+      <td><p>optional gap between the labels on the x-axis.  For example,
+<code>xgap=3</code> indicates that the labels should show up for every third
+value on the x-axis.  The default is 1.</p></td>
     </tr>
     <tr>
-      <th>n</th>
-      <td><p>the number of observations</p></td>
-    </tr>
-    <tr>
-      <th>W</th>
-      <td><p>the Wald statistic for pre-testing the common trends assumption</p></td>
-    </tr>
-    <tr>
-      <th>Wpval</th>
-      <td><p>the p-value of the Wald statistic for pre-testing the
-common trends assumption</p></td>
-    </tr>
-    <tr>
-      <th>aggte</th>
-      <td><p>an aggregate treatment effects object</p></td>
+      <th>ncol</th>
+      <td><p>The number of columns to include in the resulting plot.  The
+default is 1.</p></td>
     </tr>
     </table>
-    
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p>MP object</p>
     
 
   </div>
@@ -144,9 +131,7 @@ common trends assumption</p></td>
     <h2>Contents</h2>
     <ul class="nav nav-pills nav-stacked">
       <li><a href="#arguments">Arguments</a></li>
-      
-      <li><a href="#value">Value</a></li>
-          </ul>
+                </ul>
 
   </div>
 </div>

@@ -80,6 +80,15 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
  extending the method of Abadie (2005).  This method relies on once individuals are treated
  they remain in the treated state for the duration.
 }
+\examples{
+data(mpdta)
+out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+                panel=TRUE, first.treat.name="first.treat",
+                idname="countyreal", tname="year",
+                bstrap=FALSE, se=TRUE, cband=FALSE)
+summary(out)
+
+}
 \references{
 Callaway and Sant'Anna (2018)
 }

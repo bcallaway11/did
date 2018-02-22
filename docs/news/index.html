@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MP — MP • did</title>
+<title>All news • did</title>
 
 <!-- jquery -->
 <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
@@ -37,7 +37,7 @@
   </head>
 
   <body>
-    <div class="container template-reference-topic">
+    <div class="container template-news">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -76,79 +76,32 @@
       </header>
 
       <div class="row">
-  <div class="col-md-9 contents">
+
+  <div class="col-md-9">
     <div class="page-header">
-    <h1>MP</h1>
+      <h1>Change log <small>All releases</small></h1>
     </div>
 
-    
-    <p>multi-period object</p>
-    
-
-    <pre class="usage"><span class='fu'>MP</span>(<span class='no'>group</span>, <span class='no'>t</span>, <span class='no'>att</span>, <span class='no'>V</span>, <span class='no'>c</span>, <span class='no'>inffunc</span>, <span class='kw'>n</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>W</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>Wpval</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>aggte</span> <span class='kw'>=</span> <span class='kw'>NULL</span>)</pre>
-    
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a> Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>group</th>
-      <td><p>which group (defined by period first treated) an group-time average treatment effect is for</p></td>
-    </tr>
-    <tr>
-      <th>t</th>
-      <td><p>which time period a group-time average treatment effect is for</p></td>
-    </tr>
-    <tr>
-      <th>att</th>
-      <td><p>the group-average treatment effect for group <code>group</code> and time period <code>t</code></p></td>
-    </tr>
-    <tr>
-      <th>V</th>
-      <td><p>the variance matrix for group-time average treatment effects</p></td>
-    </tr>
-    <tr>
-      <th>c</th>
-      <td><p>critical value if one is obtaining uniform confidence bands</p></td>
-    </tr>
-    <tr>
-      <th>inffunc</th>
-      <td><p>the influence function for estimating group-time average treatment effects</p></td>
-    </tr>
-    <tr>
-      <th>n</th>
-      <td><p>the number of observations</p></td>
-    </tr>
-    <tr>
-      <th>W</th>
-      <td><p>the Wald statistic for pre-testing the common trends assumption</p></td>
-    </tr>
-    <tr>
-      <th>Wpval</th>
-      <td><p>the p-value of the Wald statistic for pre-testing the
-common trends assumption</p></td>
-    </tr>
-    <tr>
-      <th>aggte</th>
-      <td><p>an aggregate treatment effects object</p></td>
-    </tr>
-    </table>
-    
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p>MP object</p>
-    
-
+    <div class="contents">
+    <div id="did-1-0-0" class="section level1">
+<h1 class="hasAnchor">
+<a href="#did-1-0-0" class="anchor"></a>did 1.0.0</h1>
+<ul>
+<li>first version of package, functions for computing group-time average treatment effects, combining them into a smaller number of parameters, and pre-testing the common trends assumption</li>
+</ul>
+</div>
+    </div>
   </div>
+
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
-    <h2>Contents</h2>
-    <ul class="nav nav-pills nav-stacked">
-      <li><a href="#arguments">Arguments</a></li>
-      
-      <li><a href="#value">Value</a></li>
-          </ul>
-
+    <div id="tocnav">
+      <h2>Contents</h2>
+      <ul class="nav nav-pills nav-stacked">
+        <li><a href="#did-1-0-0">1.0.0</a></li>
+      </ul>
+    </div>
   </div>
+
 </div>
 
       <footer>

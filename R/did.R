@@ -45,6 +45,14 @@
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
 #'
+#' @examples
+#' data(mpdta)
+#' out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+#'                 panel=TRUE, first.treat.name="first.treat",
+#'                 idname="countyreal", tname="year",
+#'                 bstrap=FALSE, se=TRUE, cband=FALSE)
+#' summary(out)
+#'
 #' @references Callaway and Sant'Anna (2018)
 #'
 #' @return \code{MP} object
@@ -58,6 +66,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                      cband=FALSE, citers=100,
                      seedvec=NULL, pl=FALSE, cores=2,
                      printdetails=TRUE) {
+
 
     data$y <- data[,as.character(formula.tools::lhs(formla))]
     ##figure out the dates and make balanced panel
