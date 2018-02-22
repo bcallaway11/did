@@ -285,10 +285,12 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #'
 #' @description prints a summary of a \code{MP} object
 #'
-#' @param mpobj an \code{MP} object
+#' @param object an \code{MP} object
+#' @param ... extra arguments
 #'
 #' @export
-summary.MP <- function(mpobj) {
+summary.MP <- function(object, ...) {
+    mpobj <- object
     out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
     colnames(out) <- c("group", "time", "att","se")
     cat("\n")
@@ -307,15 +309,19 @@ summary.MP <- function(mpobj) {
 #'  periods across all groups
 #'
 #' @inheritParams mp.spatt
+#' @param xformlalist A list of formulas for the X variables.  This allows to
+#'  test using different specifications for X, if desired
+#' @param clustervarlist A list of cluster variables.  This allows to conduct
+#'  the test using different levels of clustering, if desired.
 #'
 #' @return list containing test results
 #' @export
 mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=FALSE,
                      idname=NULL, first.treat.name,
-                     alp=0.05, method="logit", plot=FALSE, se=TRUE,
+                     alp=0.05, method="logit",  se=TRUE,
                      bstrap=FALSE, biters=100, clustervarlist=NULL,
                      cband=FALSE, citers=100,
-                     retEachIter=FALSE, seedvec=NULL, pl=FALSE, cores=2) {
+                     seedvec=NULL, pl=FALSE, cores=2) {
 
 
     data$y <- data[,as.character(formula.tools::lhs(formla))]
@@ -342,6 +348,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
     n <- nrow(dta)
 
     thecount <- 1
+    innercount <- 1
 
     outlist <- lapply(xformlalist, function(xformla) {
 
@@ -359,7 +366,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
             www <- exp(X1%*%X[i,])##plogis(X1%*%X[i,]) ##(1*(apply((X1 <= X[i,]), 1, all)))
             data$lhs <- data$y * www
             formula.tools::lhs(formla) <- as.name("lhs")
-            out1 <- mp.spatt(formla=formla, xformla=xformla, data=data, tname=tname, panel=panel, idname=idname, first.treat.name=first.treat.name, iters=iters, alp=alp, se=TRUE, bstrap=FALSE, printdetails=FALSE, aggte=FALSE, cband=FALSE)
+            out1 <- mp.spatt(formla=formla, xformla=xformla, data=data, tname=tname, panel=panel, idname=idname, first.treat.name=first.treat.name, alp=alp, se=TRUE, bstrap=FALSE, printdetails=FALSE, aggte=FALSE, cband=FALSE)
             out1
         }, cl=8)
 
@@ -378,11 +385,11 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
         J <- t(sapply(out, function(o) o$att))
         KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
 
-        othercount <<- 1
+        innercount <<- 1
         lapply(clustervarlist, function(clustervars) {
 
-            cat("\n >>> Inner Step", othercount, "of", length(clustervarlist), ":.....................\n")
-            othercount <<- othercount+1
+            cat("\n >>> Inner Step", innercount, "of", length(clustervarlist), ":.....................\n")
+            innercount <<- innercount+1
             bout <- pbapply::pblapply(1:biters, cl=8, FUN=function(b) {
                 lapply(outinffunc, function(inffunc1) {
                     sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
@@ -727,7 +734,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
 #' @param selective.se the standard error for \code{selective.att}
 #' @param selective.att.g aggregated group-time average treatment effects
 #'  when there is selective treatment timing for each particular group
-#' @param selective.att.g the standard error for \code{selective.att.g}
+#' @param selective.se.g the standard error for \code{selective.att.g}
 #' @param dynamic.att aggregated group-time average treatment effects when
 #'  there are dynamic treatment effects
 #' @param dynamic.se the standard error for \code{dynamic.att}

@@ -6,13 +6,16 @@
 \usage{
 mp.spatt.test(formla, xformlalist = NULL, data, tname, w = NULL,
   panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
-  method = "logit", plot = FALSE, se = TRUE, bstrap = FALSE,
-  biters = 100, clustervarlist = NULL, cband = FALSE, citers = 100,
-  retEachIter = FALSE, seedvec = NULL, pl = FALSE, cores = 2)
+  method = "logit", se = TRUE, bstrap = FALSE, biters = 100,
+  clustervarlist = NULL, cband = FALSE, citers = 100, seedvec = NULL,
+  pl = FALSE, cores = 2)
 }
 \arguments{
 \item{formla}{The formula y ~ d where y is the outcome and d is the
 treatment indicator (d should be binary)}
+
+\item{xformlalist}{A list of formulas for the X variables.  This allows to
+test using different specifications for X, if desired}
 
 \item{data}{The name of the data.frame that contains the data}
 
@@ -41,6 +44,9 @@ must set \code{bstrap=TRUE}.}
 
 \item{biters}{The number of boostrap iterations to use.  The default is 100,
 and this is only applicable if \code{bstrap=TRUE}.}
+
+\item{clustervarlist}{A list of cluster variables.  This allows to conduct
+the test using different levels of clustering, if desired.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
 band that covers all of the group-time average treatment effects

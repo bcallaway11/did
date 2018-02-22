@@ -1,1 +1,1 @@
-utils::globalVariables(c("year","att","ate.se","post"))
+utils::globalVariables(c("year","att","ate.se","post","group"))

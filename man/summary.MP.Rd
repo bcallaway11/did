@@ -4,10 +4,12 @@
 \alias{summary.MP}
 \title{summary.MP}
 \usage{
-\method{summary}{MP}(mpobj)
+\method{summary}{MP}(object, ...)
 }
 \arguments{
-\item{mpobj}{an \code{MP} object}
+\item{object}{an \code{MP} object}
+
+\item{...}{extra arguments}
 }
 \description{
 prints a summary of a \code{MP} object

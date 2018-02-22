@@ -25,6 +25,8 @@ there is selective treatment timing}
 \item{selective.att.g}{aggregated group-time average treatment effects
 when there is selective treatment timing for each particular group}
 
+\item{selective.se.g}{the standard error for \code{selective.att.g}}
+
 \item{dynamic.att}{aggregated group-time average treatment effects when
 there are dynamic treatment effects}
 
@@ -60,8 +62,6 @@ in order to be included in the results and for each length of exposure
 to treatment}
 
 \item{dynsel.se.ee1}{the standard error for \code{dynsel.att.ee1}}
-
-\item{selective.att.g}{the standard error for \code{selective.att.g}}
 }
 \description{
 \code{AGGTE} class for aggregate treatment effects
