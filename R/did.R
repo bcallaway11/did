@@ -635,8 +635,8 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     selective.weights <- pg[keepers]/(max(t) - group[keepers] + 1)  ## note could just use these directly by mulitiplying att[keepers] and taking sum
     selective.se <- getSE(keepers, selective.weights)
 
-    eseq <- seq(1,max(group-t)-1)
-    ##eseq <- seq(1, length(unique(t[(group-t) <= 0])))
+    ##eseq <- seq(1,max(group-t)-1)
+    eseq <- seq(1,max(t-group)+1)
     dynamic.att.e <- sapply(eseq, function(e) {
         whiche <- which(t - group + 1 == e)
         atte <- att[whiche]
@@ -682,7 +682,8 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$pgt))[order(which.calendar.weights)] / length(unique(tseq))
     calendar.se <- getSE(keepers, calendar.weights)
 
-    eseq <- seq(1,max(group-t)-1)
+    ##eseq <- seq(1,max(group-t)-1)
+    eseq <- seq(1,max(t-group)+1)
     e1seq <- eseq
     dynsel.att.ee1 <- lapply(e1seq, function(e1) {
         list(dte=sapply(eseq, function(e) {
