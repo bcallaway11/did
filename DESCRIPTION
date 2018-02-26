@@ -7,7 +7,8 @@ Depends: R (>= 2.10)
 License: GPL-2
 Encoding: UTF-8
 LazyData: true
-Imports: qte,
+Imports:
+    qte,
     BMisc,
     MASS,
     expm,
@@ -17,4 +18,5 @@ Imports: qte,
     ggplot2,
     knitr,
     utils
+Remotes: github::bcallaway11/qte
 RoxygenNote: 6.0.1

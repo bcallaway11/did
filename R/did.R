@@ -318,6 +318,8 @@ summary.MP <- function(object, ...) {
 #'  periods across all groups
 #'
 #' @inheritParams mp.spatt
+#' @param weightfun A function that takes in two arguments, X and u, to compute
+#'  the weighting function for the test.  The default is \code{1*(X <= u)}
 #' @param xformlalist A list of formulas for the X variables.  This allows to
 #'  test using different specifications for X, if desired
 #' @param clustervarlist A list of cluster variables.  This allows to conduct
@@ -325,12 +327,13 @@ summary.MP <- function(object, ...) {
 #'
 #' @return list containing test results
 #' @export
-mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=FALSE,
-                     idname=NULL, first.treat.name,
-                     alp=0.05, method="logit",  se=TRUE,
-                     bstrap=FALSE, biters=100, clustervarlist=NULL,
-                     cband=FALSE, citers=100,
-                     seedvec=NULL, pl=FALSE, cores=2) {
+mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
+                          weightfun=NULL, w=NULL, panel=FALSE,
+                          idname=NULL, first.treat.name,
+                          alp=0.05, method="logit",  se=TRUE,
+                          bstrap=FALSE, biters=100, clustervarlist=NULL,
+                          cband=FALSE, citers=100,
+                          seedvec=NULL, pl=FALSE, cores=2) {
 
 
     data$y <- data[,as.character(formula.tools::lhs(formla))]
@@ -356,6 +359,10 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
 
     n <- nrow(dta)
 
+    if (is.null(weightfun)) {
+        weightfun <- indicator
+    }
+
     thecount <- 1
     innercount <- 1
 
@@ -372,7 +379,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
         cat("\n Step", thecount, "of", length(xformlalist), ":.....................\n")
         thecount <<- thecount+1
         out <- pbapply::pblapply(1:nrow(X), function(i) {
-            www <- exp(X1%*%X[i,])##plogis(X1%*%X[i,]) ##(1*(apply((X1 <= X[i,]), 1, all)))
+            www <- weightfun(X1, X[i,])##exp(X1%*%X[i,])##plogis(X1%*%X[i,]) ##(1*(apply((X1 <= X[i,]), 1, all)))
             data$lhs <- data$y * www
             formula.tools::lhs(formla) <- as.name("lhs")
             out1 <- mp.spatt(formla=formla, xformla=xformla, data=data, tname=tname, panel=panel, idname=idname, first.treat.name=first.treat.name, alp=alp, se=TRUE, bstrap=FALSE, printdetails=FALSE, aggte=FALSE, cband=FALSE)
@@ -393,7 +400,9 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
 
         J <- t(sapply(out, function(o) o$att))
         KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
+        CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
 
+        
         innercount <<- 1
         lapply(clustervarlist, function(clustervars) {
 
@@ -432,16 +441,20 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname, w=NULL, panel=F
                     
                     ##Ub <- sample(c(-1,1), n, replace=T)
                     mb <- Ub*(inffunc1)
-                    apply(mb,2,mean)
+                    apply(mb,2,mean)  ## this is J_n^*
                 })
             })
             
             bres <- lapply(bout, simplify2array)
+            CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
+            CvMb <- n*apply(CvMb, 2, sum)
+            CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
+            CvMpval <- 1-ecdf(CvMb)(CvM)
             bres <- sapply(bres, function(b) apply(b, 1, function(bb) max(abs(bb))))
             KSb <- sqrt(n)*apply(bres, 2, sum)
-            ocval <- quantile(KSb, probs=(1-alp), type=1)
-            pval=1-ecdf(KSb)(KS)
-            out <- list(KS=KS, KSb=KSb, cval=ocval, pval=pval, clustervar=clustervars, xformla=xformla)
+            KSocval <- quantile(KSb, probs=(1-alp), type=1)
+            KSpval=1-ecdf(KSb)(KS)
+            out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
             out
         })
     })
@@ -773,4 +786,33 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
     out <- list(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1)
     class(out) <- "AGGTE"
     out
+}
+
+
+#' @title expf
+#'
+#' @description exponential weighting function
+#'
+#' @param X matrix of X's from the data
+#' @param u a particular value to multiply times the X's
+#'
+#' @return numeric vector
+#'
+#' @export
+expf <- function(X, u) {
+    exp(X%*%u)
+}
+
+#' @title indicator
+#'
+#' @description indicator weighting function
+#'
+#' @param X matrix of X's from the data
+#' @param u a particular value to compare X's to
+#'
+#' @return numeric vector
+#'
+#' @export
+indicator <- function(X, u) {
+    1*(X <= u)
 }
