@@ -65,15 +65,75 @@
 <div id="installation" class="section level2">
 <h2 class="hasAnchor">
 <a href="#installation" class="anchor"></a>Installation</h2>
-<p>You can install did from github with:</p>
+<p>You can install  from CRAN with:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">install.packages</span>(<span class="st">"did"</span>)</code></pre></div>
+<p>or get the latest version from github with:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># install.packages("devtools")</span>
 devtools::<span class="kw">install_github</span>(<span class="st">"bcallaway11/did"</span>)</code></pre></div>
 </div>
 <div id="example" class="section level2">
 <h2 class="hasAnchor">
 <a href="#example" class="anchor"></a>Example</h2>
-<p>This is a basic example which shows you how to solve a common problem:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">## basic example code</code></pre></div>
+<p>The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant’Anna (2018).</p>
+<p>A subset of the data is available in the package and can be loaded by</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">  <span class="kw">library</span>(did)
+  <span class="kw">data</span>(mpdta)</code></pre></div>
+The dataset contains 500 observations of county-level teen employment rates from 2003-2007. Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for details). We are interested in estimating the group-time average treatment effect (which is the average treatment effect in period <span class="math inline">\(t\)</span> for the group of states first treated in period <span class="math inline">\(g\)</span> and given by <span class="math inline">\(ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]\)</span>) under the common trends assumption:
+\begin{align*}
+  E[\Delta Y_t(0) | X=x, G_g=1] = E[\Delta Y_t(0) | X=x, C=1] a.s. \quad \forall g\leq t
+\end{align*}
+<p>where <span class="math inline">\(Y_t(1)\)</span> and <span class="math inline">\(Y_t(0)\)</span> denote treated and untreated potential outcomes, <span class="math inline">\(G_g=1\)</span> denotes counties first treated in period <span class="math inline">\(g\)</span>, <span class="math inline">\(C=1\)</span> denotes control counties that are never treated.</p>
+<p>To estimate <span class="math inline">\(ATT(g,t)\)</span>, one can use the  method as follows:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">out &lt;-<span class="st"> </span><span class="kw"><a href="reference/mp.spatt.html">mp.spatt</a></span>(lemp ~<span class="st"> </span>treat, <span class="dt">xformla=</span>~lpop, <span class="dt">data=</span>mpdta,
+                 <span class="dt">panel=</span><span class="ot">TRUE</span>, <span class="dt">first.treat.name=</span><span class="st">"first.treat"</span>,
+                 <span class="dt">idname=</span><span class="st">"countyreal"</span>, <span class="dt">tname=</span><span class="st">"year"</span>,
+                 <span class="dt">bstrap=</span><span class="ot">FALSE</span>, <span class="dt">se=</span><span class="ot">TRUE</span>, <span class="dt">cband=</span><span class="ot">FALSE</span>)
+<span class="co">#&gt; current period: 2004 </span>
+<span class="co">#&gt; current group: 2004 </span>
+<span class="co">#&gt; set pretreatment period to be 2003 </span>
+<span class="co">#&gt; current period: 2005 </span>
+<span class="co">#&gt; current group: 2004 </span>
+<span class="co">#&gt; set pretreatment period to be 2003 </span>
+<span class="co">#&gt; current period: 2006 </span>
+<span class="co">#&gt; current group: 2004 </span>
+<span class="co">#&gt; set pretreatment period to be 2003 </span>
+<span class="co">#&gt; current period: 2007 </span>
+<span class="co">#&gt; current group: 2004 </span>
+<span class="co">#&gt; set pretreatment period to be 2003 </span>
+<span class="co">#&gt; current period: 2006 </span>
+<span class="co">#&gt; current group: 2006 </span>
+<span class="co">#&gt; set pretreatment period to be 2005 </span>
+<span class="co">#&gt; current period: 2007 </span>
+<span class="co">#&gt; current group: 2006 </span>
+<span class="co">#&gt; set pretreatment period to be 2005 </span>
+<span class="co">#&gt; current period: 2007 </span>
+<span class="co">#&gt; current group: 2007 </span>
+<span class="co">#&gt; set pretreatment period to be 2006</span>
+<span class="kw">summary</span>(out)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  group   time          att          se</span>
+<span class="co">#&gt; ------  -----  -----------  ----------</span>
+<span class="co">#&gt;   2004   2004   -0.0145484   0.0146508</span>
+<span class="co">#&gt;   2004   2005   -0.0764499   0.0217393</span>
+<span class="co">#&gt;   2004   2006   -0.1404646   0.0306240</span>
+<span class="co">#&gt;   2004   2007   -0.1069326   0.0266771</span>
+<span class="co">#&gt;   2006   2004   -0.0008686   0.0154686</span>
+<span class="co">#&gt;   2006   2005   -0.0063972   0.0129978</span>
+<span class="co">#&gt;   2006   2006    0.0012080   0.0135158</span>
+<span class="co">#&gt;   2006   2007   -0.0413082   0.0145542</span>
+<span class="co">#&gt;   2007   2004    0.0265561   0.0125174</span>
+<span class="co">#&gt;   2007   2005   -0.0046609   0.0136962</span>
+<span class="co">#&gt;   2007   2006   -0.0283403   0.0160904</span>
+<span class="co">#&gt;   2007   2007   -0.0288948   0.0144835</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; P-value for pre-test of DID assumption:</span></code></pre></div>
+<p>and plot the results using the  command:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(gridExtra)
+<span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out)</code></pre></div>
+<p><img src="README-unnamed-chunk-5-1.png" width="672"></p>
 </div>
 </div>
 </div>

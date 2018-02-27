@@ -13,4 +13,5 @@
 #' @import knitr
 #' @import ggplot2
 #' @import utils
+#' @import gridExtra
 NULL

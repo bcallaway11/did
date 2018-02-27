@@ -17,6 +17,7 @@ Imports:
     stats,
     ggplot2,
     knitr,
-    utils
+    utils,
+    gridExtra
 Remotes: github::bcallaway11/qte
 RoxygenNote: 6.0.1

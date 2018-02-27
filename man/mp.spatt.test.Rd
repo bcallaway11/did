@@ -4,8 +4,8 @@
 \alias{mp.spatt.test}
 \title{mp.spatt.test}
 \usage{
-mp.spatt.test(formla, xformlalist = NULL, data, tname, w = NULL,
-  panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
+mp.spatt.test(formla, xformlalist = NULL, data, tname, weightfun = NULL,
+  w = NULL, panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
   method = "logit", se = TRUE, bstrap = FALSE, biters = 100,
   clustervarlist = NULL, cband = FALSE, citers = 100, seedvec = NULL,
   pl = FALSE, cores = 2)
@@ -20,6 +20,9 @@ test using different specifications for X, if desired}
 \item{data}{The name of the data.frame that contains the data}
 
 \item{tname}{The name of the column containing the time periods}
+
+\item{weightfun}{A function that takes in two arguments, X and u, to compute
+the weighting function for the test.  The default is \code{1*(X <= u)}}
 
 \item{w}{A vector of weights for each observation (not implemented)}
 

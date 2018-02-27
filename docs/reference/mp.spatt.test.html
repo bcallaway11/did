@@ -86,8 +86,8 @@
  periods across all groups</p>
     
 
-    <pre class="usage"><span class='fu'>mp.spatt.test</span>(<span class='no'>formla</span>, <span class='kw'>xformlalist</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>data</span>, <span class='no'>tname</span>, <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>first.treat.name</span>, <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
+    <pre class="usage"><span class='fu'>mp.spatt.test</span>(<span class='no'>formla</span>, <span class='kw'>xformlalist</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>data</span>, <span class='no'>tname</span>, <span class='kw'>weightfun</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
+  <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>first.treat.name</span>, <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
   <span class='kw'>method</span> <span class='kw'>=</span> <span class='st'>"logit"</span>, <span class='kw'>se</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>, <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>100</span>,
   <span class='kw'>clustervarlist</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>citers</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>seedvec</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
   <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>2</span>)</pre>
@@ -112,6 +112,11 @@ test using different specifications for X, if desired</p></td>
     <tr>
       <th>tname</th>
       <td><p>The name of the column containing the time periods</p></td>
+    </tr>
+    <tr>
+      <th>weightfun</th>
+      <td><p>A function that takes in two arguments, X and u, to compute
+the weighting function for the test.  The default is <code>1*(X &lt;= u)</code></p></td>
     </tr>
     <tr>
       <th>w</th>

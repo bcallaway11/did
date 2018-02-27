@@ -18,7 +18,13 @@ The \code{did} package contains tools for computing average treatment effect par
 
 ## Installation
 
-You can install did from github with:
+You can install \texttt{did} from CRAN with:
+
+```{r eval=FALSE}
+install.packages("did")
+```
+
+or get the latest version from github with:
 
 ```{r gh-installation, eval = FALSE}
 # install.packages("devtools")
@@ -27,8 +33,38 @@ devtools::install_github("bcallaway11/did")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2018).
 
-```{r example}
-## basic example code
+A subset of the data is available in the package and can be loaded by
+```{r}
+  library(did)
+  data(mpdta)
 ```
+
+The dataset contains 500 observations of county-level teen employment rates from 2003-2007.  Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for details).  We are interested in estimating the group-time average treatment effect, which is the average treatment effect in period $t$ for the group of states first treated in period $g$ and given by
+\begin{align*}
+ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]
+\end{align*}
+under the common trends assumption:
+\begin{align*}
+  E[\Delta Y_t(0) | X=x, G_g=1] = E[\Delta Y_t(0) | X=x, C=1] \ a.s. \quad \forall g\leq t
+\end{align*}
+where $Y_t(1)$ and $Y_t(0)$ denote treated and untreated potential outcomes, $G_g=1$ denotes counties first treated in period $g$, $C=1$ denotes control counties that are never treated.
+
+To estimate $ATT(g,t)$, one can use the \texttt{mp.spatt} method as follows:
+
+```{r}
+out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+                 panel=TRUE, first.treat.name="first.treat",
+                 idname="countyreal", tname="year",
+                 bstrap=FALSE, se=TRUE, cband=FALSE)
+summary(out)
+```
+and plot the results using the \texttt{ggdid} command:
+
+```{r}
+library(gridExtra)
+ggdid(out)
+```
+
+

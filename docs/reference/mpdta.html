@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Function reference • did</title>
+<title>County teen employment — mpdta • did</title>
 
 <!-- jquery -->
 <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
@@ -37,7 +37,7 @@
   </head>
 
   <body>
-    <div class="container template-reference-index">
+    <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -76,101 +76,48 @@
       </header>
 
       <div class="row">
-  <div class="col-md-9">
+  <div class="col-md-9 contents">
     <div class="page-header">
-      <h1>
-        Reference
-        <small>version&nbsp;1.0.0</small>
-      </h1>
+    <h1>County teen employment</h1>
     </div>
 
-    <div class="contents">
-      <table class="ref-index">
+    
+    <p>A dataset containing (the log of) teen employment in 500 counties in the U.S.
+ from 2004 to 2007.  This is a subset of the dataset used in Callaway and
+ Sant'Anna (2018).  See that paper for additional descriptions.</p>
+    
 
-      <colgroup>
-        <col class="alias" />
-        <col class="title" />
-      </colgroup>
+    <pre class="usage"><span class='no'>mpdta</span></pre>
+        
+    <h2 class="hasAnchor" id="format"><a class="anchor" href="#format"></a>Format</h2>
 
-      <tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-all-functions" class="hasAnchor"><a href="#section-all-functions" class="anchor"></a>All functions</h2>
-            <p class="section-desc"></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="AGGTE.html">AGGTE</a></code> </p>
-          </td>
-          <td><p>AGGTE</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="did.html">did</a></code> </p>
-          </td>
-          <td><p>did: Difference in Differences with multiple periods and variation in
- treatment timing</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="expf.html">expf</a></code> </p>
-          </td>
-          <td><p>expf</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="ggdid.html">ggdid</a></code> </p>
-          </td>
-          <td><p>ggdid</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="indicator.html">indicator</a></code> </p>
-          </td>
-          <td><p>indicator</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mpdta.html">mpdta</a></code> </p>
-          </td>
-          <td><p>County teen employment</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="MP.html">MP</a></code> </p>
-          </td>
-          <td><p>MP</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mp.spatt.html">mp.spatt</a></code> </p>
-          </td>
-          <td><p>mp.spatt</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mp.spatt.test.html">mp.spatt.test</a></code> </p>
-          </td>
-          <td><p>mp.spatt.test</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="summary.MP.html">summary</a></code> </p>
-          </td>
-          <td><p>summary.MP</p></td>
-        </tr>
-      </tbody>
-      </table>
-    </div>
+    <p>A data frame with 2000 rows and 5 variables:</p><dl class='dl-horizontal'>
+  <dt>year</dt><dd><p>the year of the observation</p></dd>
+  <dt>countyreal</dt><dd><p>a unique identifier for a particular county</p></dd>
+  <dt>lpop</dt><dd><p>the log of 1000s of population for the county</p></dd>
+  <dt>lemp</dt><dd><p>the log of teen employment in the county</p></dd>
+  <dt>first.treat</dt><dd><p>the year that the state where the county is located
+   raised its minimum wage, it is set equal to 0 for counties that have
+   minimum wages equal to the federal minimum wage over the entire
+   period.</p></dd>
+  <dt>treat</dt><dd><p>whether or not a particular county is treated in that year</p></dd>
+</dl>
+    
+    <h2 class="hasAnchor" id="source"><a class="anchor" href="#source"></a>Source</h2>
+
+    <p>Callaway and Sant'Anna (2018)</p>
+    
+
   </div>
-
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
     <ul class="nav nav-pills nav-stacked">
-      <li><a href="#section-all-functions">All functions</a></li>
-    </ul>
+      
+      <li><a href="#format">Format</a></li>
+
+      <li><a href="#source">Source</a></li>
+          </ul>
+
   </div>
 </div>
 
