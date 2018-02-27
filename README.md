@@ -33,9 +33,13 @@ A subset of the data is available in the package and can be loaded by
   data(mpdta)
 ```
 
-The dataset contains 500 observations of county-level teen employment rates from 2003-2007. Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for details). We are interested in estimating the group-time average treatment effect (which is the average treatment effect in period \(t\) for the group of states first treated in period \(g\) and given by \(ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]\)) under the common trends assumption:
+The dataset contains 500 observations of county-level teen employment rates from 2003-2007. Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for details). We are interested in estimating the group-time average treatment effect, which is the average treatment effect in period \(t\) for the group of states first treated in period \(g\) and given by
 \begin{align*}
-  E[\Delta Y_t(0) | X=x, G_g=1] = E[\Delta Y_t(0) | X=x, C=1] a.s. \quad \forall g\leq t
+ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]
+\end{align*}
+under the common trends assumption:
+\begin{align*}
+  E[\Delta Y_t(0) | X=x, G_g=1] = E[\Delta Y_t(0) | X=x, C=1] \ a.s. \quad \forall g\leq t
 \end{align*}
 where \(Y_t(1)\) and \(Y_t(0)\) denote treated and untreated potential outcomes, \(G_g=1\) denotes counties first treated in period \(g\), \(C=1\) denotes control counties that are never treated.
 

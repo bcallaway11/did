@@ -11,8 +11,8 @@
 <!-- jquery -->
 <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
+<link href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/united/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 
-<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 
 <!-- Font Awesome icons -->
@@ -95,30 +95,39 @@
       <tbody>
         <tr>
           <th colspan="2">
-            <h2 id="section-all-functions" class="hasAnchor"><a href="#section-all-functions" class="anchor"></a>All functions</h2>
-            <p class="section-desc"></p>
+            <h2 id="section-difference-in-differences-methods" class="hasAnchor"><a href="#section-difference-in-differences-methods" class="anchor"></a>Difference in Differences Methods</h2>
+            <p class="section-desc"><p>Tools to compute average treatment effects, particularly in the case with multiple periods and variation in treatment timing</p></p>
           </th>
         </tr>
         <tr>
           <!--  -->
           <td>
-            <p><code><a href="AGGTE.html">AGGTE</a></code> </p>
+            <p><code><a href="mp.spatt.html">mp.spatt</a></code> </p>
           </td>
-          <td><p>AGGTE</p></td>
-        </tr><tr>
+          <td><p>mp.spatt</p></td>
+        </tr>
+      </tbody><tbody>
+        <tr>
+          <th colspan="2">
+            <h2 id="section-pre-testing" class="hasAnchor"><a href="#section-pre-testing" class="anchor"></a>Pre-Testing</h2>
+            <p class="section-desc"><p>Tools to compute “pre-test” the DID assumption in the case where multiple periods are available</p></p>
+          </th>
+        </tr>
+        <tr>
           <!--  -->
           <td>
-            <p><code><a href="did.html">did</a></code> </p>
+            <p><code><a href="mp.spatt.test.html">mp.spatt.test</a></code> </p>
           </td>
-          <td><p>did: Difference in Differences with multiple periods and variation in
- treatment timing</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="expf.html">expf</a></code> </p>
-          </td>
-          <td><p>expf</p></td>
-        </tr><tr>
+          <td><p>mp.spatt.test</p></td>
+        </tr>
+      </tbody><tbody>
+        <tr>
+          <th colspan="2">
+            <h2 id="section-plotting-and-summarizing" class="hasAnchor"><a href="#section-plotting-and-summarizing" class="anchor"></a>Plotting and Summarizing</h2>
+            <p class="section-desc"><p>Tools for plotting and summarizing the results of the \texttt{mp.spatt} method</p></p>
+          </th>
+        </tr>
+        <tr>
           <!--  -->
           <td>
             <p><code><a href="ggdid.html">ggdid</a></code> </p>
@@ -127,16 +136,18 @@
         </tr><tr>
           <!--  -->
           <td>
-            <p><code><a href="indicator.html">indicator</a></code> </p>
+            <p><code><a href="summary.MP.html">summary</a></code> </p>
           </td>
-          <td><p>indicator</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mpdta.html">mpdta</a></code> </p>
-          </td>
-          <td><p>County teen employment</p></td>
-        </tr><tr>
+          <td><p>summary.MP</p></td>
+        </tr>
+      </tbody><tbody>
+        <tr>
+          <th colspan="2">
+            <h2 id="section-classes" class="hasAnchor"><a href="#section-classes" class="anchor"></a>Classes</h2>
+            <p class="section-desc"><p>Classes available in the \texttt{did} package</p></p>
+          </th>
+        </tr>
+        <tr>
           <!--  -->
           <td>
             <p><code><a href="MP.html">MP</a></code> </p>
@@ -145,21 +156,43 @@
         </tr><tr>
           <!--  -->
           <td>
-            <p><code><a href="mp.spatt.html">mp.spatt</a></code> </p>
+            <p><code><a href="AGGTE.html">AGGTE</a></code> </p>
           </td>
-          <td><p>mp.spatt</p></td>
+          <td><p>AGGTE</p></td>
+        </tr>
+      </tbody><tbody>
+        <tr>
+          <th colspan="2">
+            <h2 id="section-weighting-functions" class="hasAnchor"><a href="#section-weighting-functions" class="anchor"></a>Weighting Functions</h2>
+            <p class="section-desc"><p>Available weighting functions for the pre-test</p></p>
+          </th>
+        </tr>
+        <tr>
+          <!--  -->
+          <td>
+            <p><code><a href="indicator.html">indicator</a></code> </p>
+          </td>
+          <td><p>indicator</p></td>
         </tr><tr>
           <!--  -->
           <td>
-            <p><code><a href="mp.spatt.test.html">mp.spatt.test</a></code> </p>
+            <p><code><a href="expf.html">expf</a></code> </p>
           </td>
-          <td><p>mp.spatt.test</p></td>
-        </tr><tr>
+          <td><p>expf</p></td>
+        </tr>
+      </tbody><tbody>
+        <tr>
+          <th colspan="2">
+            <h2 id="section-data" class="hasAnchor"><a href="#section-data" class="anchor"></a>Data</h2>
+            <p class="section-desc"><p>Available datasets in the package</p></p>
+          </th>
+        </tr>
+        <tr>
           <!--  -->
           <td>
-            <p><code><a href="summary.MP.html">summary</a></code> </p>
+            <p><code><a href="mpdta.html">mpdta</a></code> </p>
           </td>
-          <td><p>summary.MP</p></td>
+          <td><p>County teen employment</p></td>
         </tr>
       </tbody>
       </table>
@@ -169,7 +202,12 @@
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
     <ul class="nav nav-pills nav-stacked">
-      <li><a href="#section-all-functions">All functions</a></li>
+      <li><a href="#section-difference-in-differences-methods">Difference in Differences Methods</a></li>
+      <li><a href="#section-pre-testing">Pre-Testing</a></li>
+      <li><a href="#section-plotting-and-summarizing">Plotting and Summarizing</a></li>
+      <li><a href="#section-classes">Classes</a></li>
+      <li><a href="#section-weighting-functions">Weighting Functions</a></li>
+      <li><a href="#section-data">Data</a></li>
     </ul>
   </div>
 </div>
