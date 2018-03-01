@@ -479,7 +479,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             fatt <- list()
             counter <- 1
-            inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
+            inffunc <- array(data=0, dim=c(sum(sapply(flist, function(g) 1*(g>tlist[-1]))), nrow(dta)))
             Jout <- c()
             groupout <- c()
             tout <- c()
@@ -540,7 +540,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     psig <- Jwg*dy*www - A%*%Mg
                     psic <- Jwc*dy*www - A%*%Mc
 
-                    inffunc[f,t,] <- psig - psic
+                    inffunc[counter,] <- psig - psic
                     Jout[counter] <- J
                     groupout[counter] <- flist[f]
                     tout[counter] <- tlist[t+1]
@@ -576,14 +576,14 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         ## }, cl=8)
 
 
-        keepers <- which(out[[1]]$group > out[[1]]$t)
-        out <- lapply(out, function(o) {
-            list(group=o$group[keepers],
-                 t=o$t[keepers],
-                 J=o$J[keepers],
-                 V=o$V[keepers,keepers],
-                 inffunc=o$infunc[,keepers])
-        })
+        ## keepers <- which(out[[1]]$group > out[[1]]$t)
+        ## out <- lapply(out, function(o) {
+        ##     list(group=o$group[keepers],
+        ##          t=o$t[keepers],
+        ##          J=o$J[keepers],
+        ##          V=o$V[keepers,keepers],
+        ##          inffunc=o$infunc[,keepers])
+        ## })
 
         outinffunc <- lapply(out, function(o) o$inffunc)
 
@@ -599,38 +599,60 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             innercount <<- innercount+1
             bout <- pbapply::pblapply(1:biters, cl=8, FUN=function(b) {
                 lapply(outinffunc, function(inffunc1) {
-                    sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+                    ## new version
                     clustervars <- clustervars[-which(clustervars==idname)]
                     if (length(clustervars) > 1) {
                         stop("can't handle that many cluster variables")
                     }
                     if (length(clustervars) > 0) {
                         n1 <- length(unique(dta[,clustervars]))
-                        Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
-                                     nrow=n1)
+                        Vb <- matrix(sample(c(-1,1), n1, replace=T))
                         Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-                        ##colnames(Vb)[1] <- "clvar"
                         Ub <- data.frame(dta[,clustervars])
-                        ##colnames(Ub)[1] <- "clvar"
                         Ub <- Vb[match(Ub[,1], Vb[,1]),]
-                        ##Ub <- merge(Ub, Vb, by="clvar")
                         Ub <- Ub[,-1]
                     } else {
-                        Ub <- matrix(sample(c(-1,1), n*ncol(inffunc1), replace=T),
-                                     nrow=nrow(inffunc1))
+                        Ub <- sample(c(-1,1), n, replace=T)
                     }
-                    ## allow for serial correlation
-                    if (sercor) {
-                        Ub[,-1] <- Ub[,1]
-                    }
-                    ## drop cluster for serial correlation
-                    
-                    ##ift <- do.call(magic::adiag, psiitout)
-                    ##ifunc <- rbind(ift, psiiu)
-                    
                     ##Ub <- sample(c(-1,1), n, replace=T)
-                    mb <- Ub*(inffunc1)
-                    apply(mb,2,mean)  ## this is J_n^*
+                    Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
+                    Rb
+                })
+                bres <- t(simplify2array(bout))
+                V <- cov(bres)
+                
+                    ## sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+                    ## clustervars <- clustervars[-which(clustervars==idname)]
+                    ## if (length(clustervars) > 1) {
+                    ##     stop("can't handle that many cluster variables")
+                    ## }
+                    ## if (length(clustervars) > 0) {
+                    ##     n1 <- length(unique(dta[,clustervars]))
+                    ##     Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
+                    ##                  nrow=n1)
+                    ##     Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+                    ##     ##colnames(Vb)[1] <- "clvar"
+                    ##     Ub <- data.frame(dta[,clustervars])
+                    ##     ##colnames(Ub)[1] <- "clvar"
+                    ##     Ub <- Vb[match(Ub[,1], Vb[,1]),]
+                    ##     ##Ub <- merge(Ub, Vb, by="clvar")
+                    ##     Ub <- Ub[,-1]
+                    ## } else {
+                    ##     Ub <- matrix(sample(c(-1,1), n*ncol(inffunc1), replace=T),
+                    ##                  nrow=nrow(inffunc1))
+                    ## }
+                    ## ## allow for serial correlation
+                    ## if (sercor) {
+                    ##     Ub[,-1] <- Ub[,1]
+                    ## }
+                    ## ## drop cluster for serial correlation
+                    
+                    ## ##ift <- do.call(magic::adiag, psiitout)
+                    ## ##ifunc <- rbind(ift, psiiu)
+                    
+                    ## ##Ub <- sample(c(-1,1), n, replace=T)
+                    ## mb <- Ub*(inffunc1)
+                    ## apply(mb,2,mean)  ## this is J_n^*
                 })
             })
             
