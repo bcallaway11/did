@@ -449,11 +449,10 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         weightfun <- expf
     }
 
+    
+
     thecount <- 1
     innercount <- 1
-
-
-    browser()
     
     outlist <- lapply(xformlalist, function(xformla) {
 
@@ -465,7 +464,9 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             pnorm(col)
         })
 
-        X <- X[1:10,]
+        ## for debugging: X <- as.matrix(X[1:100,])
+
+        
 
         X1 <- apply(model.matrix(xformla, dta), 2, function(col) {
             pnorm(col)
@@ -479,16 +480,16 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             fatt <- list()
             counter <- 1
-            inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
+            inffunc <- array(data=0, dim=c(sum(sapply(flist, function(g) 1*(g>tlist[-1]))), nrow(dta)))
             Jout <- c()
             groupout <- c()
             tout <- c()
             for (f in 1:flen) {
                 for (t in 1:(tlen-1)) {
                     pret <- t
-                    if (flist[f]<=tlist[(t+1)]) {
-                        pret <- tail(which(tlist < flist[f]),1) ## remember, this is just an index
-                    }
+                    ## if (flist[f]<=tlist[(t+1)]) {
+                    ##     pret <- tail(which(tlist < flist[f]),1) ## remember, this is just an index
+                    ## }
 
                     if (flist[f] <= tlist[t+1]) break
 
@@ -540,7 +541,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     psig <- Jwg*dy*www - A%*%Mg
                     psic <- Jwc*dy*www - A%*%Mc
 
-                    inffunc[f,t,] <- psig - psic
+                    inffunc[counter,] <- psig - psic
                     Jout[counter] <- J
                     groupout[counter] <- flist[f]
                     tout[counter] <- tlist[t+1]
@@ -563,11 +564,10 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                 }
                 ##fatt[[f]] <- c(satt, group=flist[f])
             }
+            
             list(J=Jout, group=groupout, t=tout, inffunc=inffunc)
 
         })
-
-        browser()
 
         ##     data$lhs <- data$y * www
         ##     formula.tools::lhs(formla) <- as.name("lhs")
@@ -576,19 +576,19 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         ## }, cl=8)
 
 
-        keepers <- which(out[[1]]$group > out[[1]]$t)
-        out <- lapply(out, function(o) {
-            list(group=o$group[keepers],
-                 t=o$t[keepers],
-                 J=o$J[keepers],
-                 V=o$V[keepers,keepers],
-                 inffunc=o$infunc[,keepers])
-        })
+        ## keepers <- which(out[[1]]$group > out[[1]]$t)
+        ## out <- lapply(out, function(o) {
+        ##     list(group=o$group[keepers],
+        ##          t=o$t[keepers],
+        ##          J=o$J[keepers],
+        ##          V=o$V[keepers,keepers],
+        ##          inffunc=o$infunc[,keepers])
+        ## })
 
-        outinffunc <- lapply(out, function(o) o$inffunc)
+        outinffunc <- lapply(out, function(o) t(o$inffunc))
 
         J <- t(sapply(out, function(o) o$J))
-        KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
+        ##KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
         CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
 
         
@@ -598,52 +598,49 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             cat("\n >>> Inner Step", innercount, "of", length(clustervarlist), ":.....................\n")
             innercount <<- innercount+1
             bout <- pbapply::pblapply(1:biters, cl=8, FUN=function(b) {
-                lapply(outinffunc, function(inffunc1) {
-                    sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+                Jb <- t(sapply(outinffunc, function(inffunc1) {
+                    ## new version
                     clustervars <- clustervars[-which(clustervars==idname)]
                     if (length(clustervars) > 1) {
                         stop("can't handle that many cluster variables")
                     }
                     if (length(clustervars) > 0) {
                         n1 <- length(unique(dta[,clustervars]))
-                        Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
-                                     nrow=n1)
+                        Vb <- matrix(sample(c(-1,1), n1, replace=T))
                         Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-                        ##colnames(Vb)[1] <- "clvar"
                         Ub <- data.frame(dta[,clustervars])
-                        ##colnames(Ub)[1] <- "clvar"
                         Ub <- Vb[match(Ub[,1], Vb[,1]),]
-                        ##Ub <- merge(Ub, Vb, by="clvar")
                         Ub <- Ub[,-1]
                     } else {
-                        Ub <- matrix(sample(c(-1,1), n*ncol(inffunc1), replace=T),
-                                     nrow=nrow(inffunc1))
+                        Ub <- sample(c(-1,1), n, replace=T)
                     }
-                    ## allow for serial correlation
-                    if (sercor) {
-                        Ub[,-1] <- Ub[,1]
-                    }
-                    ## drop cluster for serial correlation
-                    
-                    ##ift <- do.call(magic::adiag, psiitout)
-                    ##ifunc <- rbind(ift, psiiu)
-                    
                     ##Ub <- sample(c(-1,1), n, replace=T)
-                    mb <- Ub*(inffunc1)
-                    apply(mb,2,mean)  ## this is J_n^*
-                })
+                    ##Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
+                    ##Rb
+                    Jb1 <- apply(Ub*inffunc1, 2, mean)
+                    Jb1
+                }))
+
+                ##bres <- t(simplify2array(bout))
+                ##V <- cov(bres)
+                CvMb <- n*sum(apply(Jb, 2, function(j) mean( j^2 )))
+                CvMb
             })
-            
-            bres <- lapply(bout, simplify2array)
-            CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
-            CvMb <- n*apply(CvMb, 2, sum)
+
+            CvMb <- unlist(bout)
             CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
             CvMpval <- 1-ecdf(CvMb)(CvM)
-            bres <- sapply(bres, function(b) apply(b, 1, function(bb) max(abs(bb))))
-            KSb <- sqrt(n)*apply(bres, 2, sum)
-            KSocval <- quantile(KSb, probs=(1-alp), type=1)
-            KSpval=1-ecdf(KSb)(KS)
-            out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
+            
+            ## bres <- lapply(bout, simplify2array)
+            ## CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
+            ## CvMb <- n*apply(CvMb, 2, sum)
+            ## CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
+            ## CvMpval <- 1-ecdf(CvMb)(CvM)
+            ## bres <- sapply(bres, function(b) apply(b, 1, function(bb) max(abs(bb))))
+            ## KSb <- sqrt(n)*apply(bres, 2, sum)
+            ## KSocval <- quantile(KSb, probs=(1-alp), type=1)
+            ## KSpval=1-ecdf(KSb)(KS)
+            out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, clustervar=clustervars, xformla=xformla)
             out
         })
     })
@@ -745,10 +742,19 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     }
 
     
-    
-    getSE <- function(whichones, weights) {
+    ## internal function for computing standarad errors
+    ##  this method is used across different types of 
+    ##  aggregate treatment effect parameters and is just
+    ##  based on using the right influence function and weights
+    ##  -- these are specific to which aggregate treatment
+    ##  effect parameter is being considered.
+    ## @param wif is the influence function for the weights
+    getSE <- function(whichones, weights, wif=NULL) {
         weights <- as.matrix(weights) ## just in case pass vector
         thisinffunc <- inffunc1[,whichones]%*%weights  ##multiplies influence function times weights and sums to get vector of weighted IF (of length n)
+        if (!is.null(wif)) {
+            thisinffunc <- thisinffunc + wif%*%as.matrix(att[whichones])
+        }
         
         if (bstrap) {
             bout <- lapply(1:biters, FUN=function(b) {
@@ -759,7 +765,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
                 }
                 if (length(clustervars) > 0) {
                     n1 <- length(unique(dta[,clustervars]))
-                    Vb <- matrix(sample(c(-1,1), n1, replace=T),
+                    Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
                                  nrow=n1)
                     Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
                     Ub <- data.frame(dta[,clustervars])
@@ -776,7 +782,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
                     ## Ub <- merge(Ub, Vb, by="clvar")
                     ## Ub <- Ub[,-1]
                 } else {
-                    Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=T), ncol=1)
+                    Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
                                  
                 }
                 ## allow for serial correlation
@@ -805,26 +811,43 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     originalgroup <- group
     originalflist <- flist
     uniquet <- seq(1,length(unique(t)))
+    ## function to switch from "new" t values to
+    ##  original t values
     t2orig <- function(t) {
-        unique(originalt)[which(uniquet==t)]
+        unique(c(originalt,0))[which(c(uniquet,0)==t)]
     }
+    ## function to switch between "original"
+    ##  t values and new t values
     orig2t <- function(orig) {
-        uniquet[which(unique(originalt)==orig)]
+        c(uniquet,0)[which(unique(c(originalt,0))==orig)]
     }
     t <- sapply(originalt, orig2t)
     group <- sapply(originalgroup, orig2t)
     flist <- sapply(originalflist, orig2t)
 
-##### aggregated treatment effect parameters
+    ## some variables used throughout
     pg <- sapply(originalflist, function(g) sum(1*(dta[,first.treat.name]==g & dta[,first.treat.name]>0))/ sum(1*(dta[,first.treat.name]>0)))
     pgg <- pg
     pg <- pg[match(group, flist)] ## make it have the same length as att
     attg <- split(att, group)
     tg <- split(t, group)
     keepers <- which(group <= t)
-    simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
-    simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]))
+    G <-  unlist(lapply(dta[,first.treat.name], orig2t))
+    p0 <- mean(1*G==0)
+    pT <- 1-p0
+    T <- 1*(dta[first.treat.name]>0)
 
+
+    browser()
+    ## simple att
+    simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
+    simple.oif1 <- sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[keepers]))
+    simple.oif2 <- sapply(keepers, function(j) mean(1*(G==group[j])) * apply(sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+    simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
+
+    ## Selective Treatment Timing
+    ## Note: for selective.att.g, don't need to adjust standard
+    ##  errors for estimating weights because they are known
     selective.att.g <- sapply(flist, function(g) {
         whichg <- which( (group == g) & (g <= t))
         attg <- att[whichg]
@@ -834,12 +857,17 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
         whichg <- which( (group == g) & (g <= t))
         getSE(whichg, pg[whichg]/sum(pg[whichg]))
     })
+    ## Note: for estimating selective.att do need to adjust
+    ##  standard errors because need to estimate P(G=g)
     selective.att <- sum(selective.att.g * pgg)
     keepers <- which(group <= t)
     selective.weights <- pg[keepers]/(max(t) - group[keepers] + 1)  ## note could just use these directly by mulitiplying att[keepers] and taking sum
-    selective.se <- getSE(keepers, selective.weights)
+    selective.oif1 <- sapply(keepers, function(k) 1*(G==group[k])/p0)##T/p0
+    selective.oif2 <- sapply(keepers, function(k) (1-T)*pg[k]/p0^2 )##(1-T)/p0^2##apply(sapply(pgg, function(p) p*(1-T)),1,sum)
+    selective.se <- getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
 
-    ##eseq <- seq(1,max(group-t)-1)
+
+    ## Dynamic Treatment Effects
     eseq <- seq(1,max(t-group)+1)
     dynamic.att.e <- sapply(eseq, function(e) {
         whiche <- which(t - group + 1 == e)
@@ -850,19 +878,26 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     dynamic.se.e <- sapply(eseq, function(e) {
         whiche <- which(t - group + 1 == e)
         pge <- pg[whiche]/(sum(pg[whiche]))
-        getSE(whiche, pge)
+        dynamic.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+        dynamic.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+        getSE(whiche, pge, dynamic.oif1 - dynamic.oif2)
     })
     dynamic.att <- mean(dynamic.att.e)
     keepers <- which(group <= t)
     dynamic.weights <- lapply(eseq, function(e) {
         whiche <- which(t - group + 1 == e)
         pge <- pg[whiche]/(sum(pg[whiche]))
-        list(whiche=whiche, pge=pge)
+        dynamic.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+        dynamic.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+        list(whiche=whiche, pge=pge, oif=dynamic.oif1-dynamic.oif2)
     })
     which.dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$whiche))
+    dynamic.oif <- do.call(cbind,lapply(dynamic.weights, function(d) d$oif))
     dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$pge))[order(which.dynamic.weights)] / length(unique(eseq))
-    dynamic.se <- getSE(keepers, dynamic.weights)
+    dynamic.se <- getSE(keepers, dynamic.weights, wif=dynamic.oif)
 
+
+    ## Calendar Time Effects
     tseq <- unique(t)[unique(t) >= min(group)]
     calendar.att.t <- sapply(tseq, function(t1) {
         whicht <- which((group <= t1) & (t==t1))
@@ -873,20 +908,26 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     calendar.se.t <- sapply(tseq, function(t1) {
         whicht <- which((group <= t1) & (t==t1))
         pgt <- pg[whicht]/(sum(pg[whicht]))
-        getSE(whicht, pgt)
+        calendar.oif1 <- sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whicht]))
+        calendar.oif2 <- sapply(whicht, function(j) mean(1*(G==group[j])) * apply(sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+        getSE(whicht, pgt, calendar.oif1 - calendar.oif2)
     })
     calendar.att <- mean(calendar.att.t)
     keepers <- which(group <= t)
     calendar.weights <- lapply(tseq, function(t1) {
         whicht <- which((group <= t1) & (t==t1))
         pgt <- pg[whicht]/(sum(pg[whicht]))
-        list(whicht=whicht, pgt=pgt)
+        calendar.oif1 <- sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whicht]))
+        calendar.oif2 <- sapply(whicht, function(j) mean(1*(G==group[j])) * apply(sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+        list(whicht=whicht, pgt=pgt, oif=(calendar.oif1-calendar.oif2))
     })
     which.calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$whicht))
+    calendar.oif <- do.call(cbind,lapply(calendar.weights, function(t1) t1$oif))
     calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$pgt))[order(which.calendar.weights)] / length(unique(tseq))
-    calendar.se <- getSE(keepers, calendar.weights)
+    calendar.se <- getSE(keepers, calendar.weights, calendar.oif)
 
-    ##eseq <- seq(1,max(group-t)-1)
+
+    ## Selective Treatment Timing and Dynamic Treatment Effects
     eseq <- seq(1,max(t-group)+1)
     e1seq <- eseq
     dynsel.att.ee1 <- lapply(e1seq, function(e1) {
@@ -905,7 +946,9 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
                              ( max(t) - group + 1 >= e1) &
                              ( e <= e1 ))
             pge <- pg[whiche]/sum(pg[whiche])
-            getSE(whiche, pge)
+            dynsel.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+            dynsel.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+            getSE(whiche, pge, dynsel.oif1-dynsel.oif2)
         }), e1=e1)
     })
     dynsel.att.e1 <- sapply(dynsel.att.ee1, function(d) sum(d$dte)/d$e1)
@@ -923,6 +966,9 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
             pg[whiche]/sum(pg[whiche])
         })), e1=e1)
     })
+
+    ## TODO:  accounting for estimation of weights (these
+    ##  don't seem to have any effect
     ## kind of hack, but just post-process the weights
     dynsel.weights <- lapply(dynsel.weights, function(d) {
         d$pge <- d$pge/sum(d$pge)
@@ -1005,7 +1051,7 @@ expf <- function(X, u) {
 #'
 #' @export
 indicator <- function(X, u) {
-    1*(X <= u)
+    1*all(X <= u)
 }
 
 
