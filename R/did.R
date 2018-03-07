@@ -620,6 +620,17 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 #'
 #' @description MP.TEST objects
 #'
+#' @param CvM Cramer von Mises test statistic
+#' @param CvMb a vector of boostrapped Cramer von Mises test statistics
+#' @param CvMcval CvM critical value
+#' @param CvMpval p-value for CvM test
+#' @param KS Kolmogorov-Smirnov test statistic
+#' @param KSb a vector of boostrapped KS test statistics
+#' @param KScval KS critical value
+#' @param KSpval p-value for KS test
+#' @param clustervar vector of which variables were clustered on for the test
+#' @param xformla formla for the X variables used in the test
+#'
 #' @export
 MP.TEST <- function(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervar, xformla) {
     out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
