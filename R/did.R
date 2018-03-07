@@ -104,7 +104,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     att <- c()
     i <- 1
 
-    
+
     
     inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) ## note, this might not work in unbalanced case 
     ## for (f in 1:length(fatt)) {
@@ -126,7 +126,6 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         i <- i+1
         }
     }
-
     
     
     n <- nrow(dta)
@@ -137,12 +136,15 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     }
 
     if (bstrap) {
+        if (idname %in% clustervars) {
+            clustervars <- clustervars[-which(clustervars==idname)]
+        }
+        if (length(clustervars) > 1) {
+            stop("can't handle that many cluster variables")
+        }
         ## new version
         bout <- lapply(1:biters, FUN=function(b) {
-            clustervars <- clustervars[-which(clustervars==idname)]
-            if (length(clustervars) > 1) {
-                stop("can't handle that many cluster variables")
-            }
+            
             if (length(clustervars) > 0) {
                 n1 <- length(unique(dta[,clustervars]))
                 Vb <- matrix(sample(c(-1,1), n1, replace=T))
@@ -159,37 +161,6 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         })
         bres <- t(simplify2array(bout))
         V <- cov(bres)
-        ## old version
-        ## bout <- lapply(1:biters, FUN=function(b) {
-        ##     sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
-        ##     clustervars <- clustervars[-which(clustervars==idname)]
-        ##     if (length(clustervars) > 1) {
-        ##         stop("can't handle that many cluster variables")
-        ##     }
-        ##     if (length(clustervars) > 0) {
-        ##         n1 <- length(unique(dta[,clustervars]))
-        ##         Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
-        ##                      nrow=n1)
-        ##         Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-        ##         Ub <- data.frame(dta[,clustervars])
-        ##         Ub <- Vb[match(Ub[,1], Vb[,1]),]
-        ##         Ub <- Ub[,-1]
-        ##     } else {
-        ##         Ub <- matrix(sample(c(-1,1), n*ncol(inffunc1), replace=T),
-        ##                      nrow=nrow(inffunc1))
-        ##     }
-        ##     ## allow for serial correlation
-        ##     if (sercor) {
-        ##         Ub[,-1] <- Ub[,1]
-        ##     }
-        ##     ## drop cluster for serial correlation
-            
-        ##     ##Ub <- sample(c(-1,1), n, replace=T)
-        ##     mb <- Ub*(inffunc1)
-        ##     apply(mb,2,sum)/sqrt(n)
-        ## })
-        ## bres <- t(simplify2array(bout))
-        ## V <- cov(bres)
     }
 
 
@@ -198,29 +169,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     ## get the actual estimates
 
-    ## new code
-    c <- qnorm(1-alp/2)
-    if (cband) {
-        bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1) - quantile(b, .25, type=1))/(qnorm(.75) - qnorm(.25)))
-        bT <- apply(bres, 1, function(b) max( abs(b)*bSigma^(-.5) ))
-        cval <- quantile(bT, 1-alp, type=1)
-        ##bT1 <- apply(bres, 1, function(b) max( abs(b)*diag(V)^(-.5) ))
-        ##cval1 <- quantile(bT1, 1-alp, type=1)
-        
-    }
-
-    ## old code
-    ## ## compute critical value for uniform confidence band
-    ## c <- qnorm(1-alp/2)
-    ## if (cband) {
-    ##     Sig <- matrix(0, nrow=nrow(V), ncol=ncol(V))
-    ##     ##diag(Sig) <- diag(V)^(-0.5)
-    ##     diag(Sig) <- bSigma^(-0.5)
-    ##     ZB <- MASS::mvrnorm(citers, rep(0,nrow(V)), V)
-    ##     KSB <- apply(ZB %*% Sig, 1, max)
-    ##     c <- quantile(KSB, 1-alp, type=1)
-    ## }
-
+    
     
     ## wald test for pre-treatment periods
     pre <- which(t < group)
@@ -232,13 +181,25 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
     Wpval <- round(1-pchisq(W,q),5)
 
+    ## new code
+    cval <- qnorm(1-alp/2)
+    if (cband) {
+        bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1) - quantile(b, .25, type=1))/(qnorm(.75) - qnorm(.25)))
+        bT <- apply(bres, 1, function(b) max( abs(b)*bSigma^(-.5) ))
+        cval <- quantile(bT, 1-alp, type=1)
+        ##bT1 <- apply(bres, 1, function(b) max( abs(b)*diag(V)^(-.5) ))
+        ##cval1 <- quantile(bT1, 1-alp, type=1)
+        V <- diag(bSigma) ## this is the appropriate matrix for
+         ## constructing confidence bands
+    }
+    
     aggeffects <- NULL
     if (aggte) {
         aggeffects <- compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters)
     }
 
     
-    return(MP(group=group, t=t, att=att, V=diag(bSigma), c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects))
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects))
 }
 
 
@@ -461,16 +422,40 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         ##    pnorm(col)
         ##})## for the entire dataset
         X <- apply(model.matrix(xformla, dta), 2, function(col) {
-            pnorm(col)
+            ##pnorm(col)
+            ecdf(col)(col)
         })
-
-        ## for debugging: X <- as.matrix(X[1:100,])
-
         
-
+        ## for debugging: X <- as.matrix(X[1:100,])
+        
+        X <- unique(X)
+        
         X1 <- apply(model.matrix(xformla, dta), 2, function(col) {
-            pnorm(col)
+            ecdf(col)(col)
+            ##pnorm(col)
         })
+
+        thetlist <- list()
+        pscorelist <- list()
+        for (f in 1:flen) {
+
+            disdat <- data[(data[,tname]==tlist[1]),]
+                           
+            disdat$C <- 1*(disdat[,first.treat.name] == 0)
+
+            disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+
+            disdat <- droplevels(disdat)
+
+            pformla <- xformla
+            formula.tools::lhs(pformla) <- as.name("G")
+            pscore.reg <- glm(pformla, family=binomial(link=logit),
+                              data=subset(disdat, C+G==1))
+            thetlist[[f]] <- coef(pscore.reg)
+            pscorelist[[f]] <- predict(pscore.reg, newdata=disdat, type="response")
+        }
+
+            
 
         cat("\n Step", thecount, "of", length(xformlalist), ":.....................\n")
         thecount <<- thecount+1
@@ -502,12 +487,15 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
                     disdat <- droplevels(disdat)
 
-                    pformla <- xformla
-                    formula.tools::lhs(pformla) <- as.name("G")
-                    pscore.reg <- glm(pformla, family=binomial(link=logit),
-                                      data=subset(disdat, C+G==1))
-                    thet <- coef(pscore.reg)
-                    pscore <- predict(pscore.reg, newdata=disdat, type="response")
+                    ## try to do tthis his outside of the loop
+                    ## pformla <- xformla
+                    ## formula.tools::lhs(pformla) <- as.name("G")
+                    ## pscore.reg <- glm(pformla, family=binomial(link=logit),
+                    ##                   data=subset(disdat, C+G==1))
+                    ## thet <- coef(pscore.reg)
+                    ## pscore <- predict(pscore.reg, newdata=disdat, type="response")
+                    thet <-thetlist[[f]]
+                    pscore <- pscorelist[[f]]
 
                     G <- disdat$G
                     C <- disdat$C
@@ -531,7 +519,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     
                     Mg <- as.matrix(apply(as.matrix((G/(pscore))^2 * g(x,thet) * ( (dy*www - Jg) )* x), 2, mean) / mean( G/pscore  ))
 
-                    Mc <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * ( (dy*www - Jc)) * x), 2, mean) / mean( C / (1-pscore) ) )
+                    Mc <- -as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * ( (dy*www - Jc)) * x), 2, mean) / mean( C / (1-pscore) ) )
 
                     A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
                     A1 <- (t(A1*x)%*%x/n)
@@ -546,49 +534,19 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     groupout[counter] <- flist[f]
                     tout[counter] <- tlist[t+1]
 
-                    counter <- counter+1
-                    ## S <- (dta[,first.treat.name]==0 |
-                    ##         dta[,first.treat.name]==flist[f])
-                    ## r <- mean(S)
-                    ## disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]) &
-                    ##                (data[,first.treat.name]==0 | data[,first.treat.name]==flist[f]),]
-                    ## disdat <- droplevels(disdat)
-                    ## satt[[t]] <- c(spatt(formla, xformla, t=tlist[t+1], tmin1=tlist[pret],
-                    ##           tname=tname, data=disdat, w=w, panel=panel,
-                    ##           idname=idname, 
-                    ##           iters=NULL, alp=NULL, method=method, plot=NULL, se=se,
-                    ##           retEachIter=NULL, seedvec=seedvec, pl=pl, cores=cores),
-                    ##           group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
-                    ##inffunc[f,t,S] <- satt[[t]]$inffunc
-                    
+                    counter <- counter+1                    
                 }
-                ##fatt[[f]] <- c(satt, group=flist[f])
             }
             
             list(J=Jout, group=groupout, t=tout, inffunc=inffunc)
 
         })
 
-        ##     data$lhs <- data$y * www
-        ##     formula.tools::lhs(formla) <- as.name("lhs")
-        ##     out1 <- mp.spatt(formla=formla, xformla=xformla, data=data, tname=tname, panel=panel, idname=idname, first.treat.name=first.treat.name, alp=alp, se=TRUE, bstrap=FALSE, printdetails=FALSE, aggte=FALSE, cband=FALSE)
-        ##     out1
-        ## }, cl=8)
-
-
-        ## keepers <- which(out[[1]]$group > out[[1]]$t)
-        ## out <- lapply(out, function(o) {
-        ##     list(group=o$group[keepers],
-        ##          t=o$t[keepers],
-        ##          J=o$J[keepers],
-        ##          V=o$V[keepers,keepers],
-        ##          inffunc=o$infunc[,keepers])
-        ## })
 
         outinffunc <- lapply(out, function(o) t(o$inffunc))
-
+        
         J <- t(sapply(out, function(o) o$J))
-        ##KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
+        KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
         CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
 
         
@@ -600,7 +558,10 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             bout <- pbapply::pblapply(1:biters, cl=8, FUN=function(b) {
                 Jb <- t(sapply(outinffunc, function(inffunc1) {
                     ## new version
-                    clustervars <- clustervars[-which(clustervars==idname)]
+                    if (idname %in% clustervars) {
+                        clustervars <- clustervars[-which(clustervars==idname)]
+                    }
+                    ##clustervars <- clustervars[-which(clustervars==idname)]
                     if (length(clustervars) > 1) {
                         stop("can't handle that many cluster variables")
                     }
@@ -624,12 +585,18 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                 ##bres <- t(simplify2array(bout))
                 ##V <- cov(bres)
                 CvMb <- n*sum(apply(Jb, 2, function(j) mean( j^2 )))
-                CvMb
+                KSb <- sqrt(n) * sum(apply(Jb,2,function(j) max(abs(j))))
+                list(CvMb=CvMb, KSb=KSb)
             })
 
-            CvMb <- unlist(bout)
+            CvMb <- unlist(lapply(bout, function(b1) b1$CvMb))
             CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
             CvMpval <- 1-ecdf(CvMb)(CvM)
+
+            KSb <- unlist(lapply(bout, function(b1) b1$KSb))
+            KSocval <- quantile(KSb, probs=(1-alp), type=1)
+            KSpval <- 1-ecdf(KSb)(KS)
+
             
             ## bres <- lapply(bout, simplify2array)
             ## CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
@@ -640,12 +607,44 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             ## KSb <- sqrt(n)*apply(bres, 2, sum)
             ## KSocval <- quantile(KSb, probs=(1-alp), type=1)
             ## KSpval=1-ecdf(KSb)(KS)
-            out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, clustervar=clustervars, xformla=xformla)
+            out <- MP.TEST(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
             out
         })
     })
     
     return(unlist(outlist, recursive=FALSE))
+}
+
+
+#' @title MP.TEST
+#'
+#' @description MP.TEST objects
+#'
+#' @export
+MP.TEST <- function(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervar, xformla) {
+    out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
+    class(out) <- "MP.TEST"
+    out
+}
+
+#' @title summary.MP.TEST
+#'
+#' @description print a summary of test results
+#'
+#' @param object an MP.TEST object
+#' @param ... other variables
+#'
+#' @export
+summary.MP.TEST <- function(object, ... ) {
+    CvM <- object$CvM
+    CvMcval <- object$CvMcval
+    CvMpval <- object$CvMpval
+    cat("Cramer von Mises: \n")
+    cat("  Test Statistic: ", CvM, "\n")
+    cat("  Critical Value: ", CvMcval, "\n")
+    cat("  P-value       : ", CvMpval, "\n \n")
+    cat("Clustering on   : ", paste0(object$clustervars,sep=","), "\n")
+    cat("X formula       : ", as.character(object$xformla), "\n")
 }
 
 
@@ -838,7 +837,6 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     T <- 1*(dta[first.treat.name]>0)
 
 
-    browser()
     ## simple att
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
     simple.oif1 <- sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[keepers]))
@@ -940,8 +938,9 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
             sum(atte*pge)
         }), e1=e1)
     })
+
     dynsel.se.ee1 <- lapply(e1seq, function(e1) {
-        list(se=sapply(eseq, function(e) {
+        list(se=sapply(eseq[eseq <= e1], function(e) {
             whiche <- which( (t - group + 1 == e) &
                              ( max(t) - group + 1 >= e1) &
                              ( e <= e1 ))
@@ -1026,6 +1025,29 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
 }
 
 
+#' @title summary.AGGTE
+#'
+#' @description print a summary of an AGGTE object
+#'
+#' @param object an AGGTE object
+#' @param ... other variables
+#'
+#' @export
+summary.AGGTE <- function(object, ...) {
+    sep <- "          "
+    cat("Simple ATT    : ", object$simple.att, "\n")
+    cat("  SE          : ", object$simple.se, "\n")
+    cat("Selective ATT : ", object$selective.att, "\n")
+    cat("  SE          : ", object$simple.se, "\n")
+    cat("Dynamic ATT   : ", object$dynamic.att, "\n")
+    cat("  SE          : ", object$dynamic.se, "\n")
+    cat("Calendar ATT  : ", object$calendar.att, "\n")
+    cat("  SE          : ", object$calendar.se, "\n")
+}
+
+
+
+
 #' @title expf
 #'
 #' @description exponential weighting function
@@ -1051,7 +1073,21 @@ expf <- function(X, u) {
 #'
 #' @export
 indicator <- function(X, u) {
-    1*all(X <= u)
+    apply(X <= u, 1, function(b) 1*all(b))
+}
+
+#' @title onefun
+#'
+#' @description just return the value 1
+#'
+#' @param X matrix of X's from the data
+#' @param u a particular value to compare X's to
+#'
+#' @return numeric vector
+#'
+#' @export
+onefun <- function(X, u) {
+    rep(1, nrow(X))
 }
 
 
