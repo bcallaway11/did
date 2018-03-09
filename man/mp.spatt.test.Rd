@@ -6,9 +6,8 @@
 \usage{
 mp.spatt.test(formla, xformlalist = NULL, data, tname, weightfun = NULL,
   w = NULL, panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
-  method = "logit", se = TRUE, bstrap = FALSE, biters = 100,
-  clustervarlist = NULL, cband = FALSE, citers = 100, seedvec = NULL,
-  pl = FALSE, cores = 2)
+  method = "logit", biters = 100, clustervarlist = NULL, pl = FALSE,
+  cores = 2)
 }
 \arguments{
 \item{formla}{The formula y ~ d where y is the outcome and d is the
@@ -39,29 +38,11 @@ period when a particular observation is treated}
 \item{method}{The method for estimating the propensity score when covariates
 are included}
 
-\item{se}{Boolean whether or not to compute standard errors}
-
-\item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}.}
-
 \item{biters}{The number of boostrap iterations to use.  The default is 100,
 and this is only applicable if \code{bstrap=TRUE}.}
 
 \item{clustervarlist}{A list of cluster variables.  This allows to conduct
 the test using different levels of clustering, if desired.}
-
-\item{cband}{Boolean for whether or not to compute a uniform confidence
-band that covers all of the group-time average treatment effects
-with fixed probability \code{1-alp}.  The default is \code{FALSE}
-and the resulting standard errors will be pointwise.}
-
-\item{citers}{Computing uniform confidence bands requires the bootstrap,
-if \code{cband = TRUE}, then this is the number of boostrap iterations
-to compute the conidence band.  The default is 100.}
-
-\item{seedvec}{Optional value to set random seed; can possibly be used
-in conjunction with bootstrapping standard errors#' (not implemented)}
 
 \item{pl}{Boolean for whether or not to use parallel processing}
 
@@ -73,4 +54,14 @@ list containing test results
 \description{
 integrated moments test for conditional common trends holding in all pre-treatment time
  periods across all groups
+}
+\examples{
+\dontrun{
+data(mpdta)
+mptest <- mp.spatt.test(lemp ~ treat, xformla=list(~lpop), data=mpdta,
+                panel=TRUE, first.treat.name="first.treat",
+                idname="countyreal", tname="year", clustervarlist=list(NULL))
+summary(mptest[[1]])
+}
+
 }

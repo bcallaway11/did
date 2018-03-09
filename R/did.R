@@ -372,15 +372,23 @@ summary.MP <- function(object, ...) {
 #' @param clustervarlist A list of cluster variables.  This allows to conduct
 #'  the test using different levels of clustering, if desired.
 #'
+#' @examples
+#' \dontrun{
+#' data(mpdta)
+#' mptest <- mp.spatt.test(lemp ~ treat, xformla=list(~lpop), data=mpdta,
+#'                 panel=TRUE, first.treat.name="first.treat",
+#'                 idname="countyreal", tname="year", clustervarlist=list(NULL))
+#' summary(mptest[[1]])
+#' }
+#'
 #' @return list containing test results
 #' @export
 mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                           weightfun=NULL, w=NULL, panel=FALSE,
                           idname=NULL, first.treat.name,
-                          alp=0.05, method="logit",  se=TRUE,
-                          bstrap=FALSE, biters=100, clustervarlist=NULL,
-                          cband=FALSE, citers=100,
-                          seedvec=NULL, pl=FALSE, cores=2) {
+                          alp=0.05, method="logit", 
+                          biters=100, clustervarlist=NULL,
+                          pl=FALSE, cores=2) {
 
 
     data$y <- data[,as.character(formula.tools::lhs(formla))]
@@ -607,7 +615,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             ## KSb <- sqrt(n)*apply(bres, 2, sum)
             ## KSocval <- quantile(KSb, probs=(1-alp), type=1)
             ## KSpval=1-ecdf(KSb)(KS)
-            out <- MP.TEST(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
+            out <- MP.TEST(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervars=clustervars, xformla=xformla)
             out
         })
     })
@@ -628,12 +636,12 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 #' @param KSb a vector of boostrapped KS test statistics
 #' @param KScval KS critical value
 #' @param KSpval p-value for KS test
-#' @param clustervar vector of which variables were clustered on for the test
+#' @param clustervars vector of which variables were clustered on for the test
 #' @param xformla formla for the X variables used in the test
 #'
 #' @export
-MP.TEST <- function(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervar, xformla) {
-    out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervar=clustervars, xformla=xformla)
+MP.TEST <- function(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervars, xformla) {
+    out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvMcval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KScval, KSpval=KSpval, clustervars=clustervars, xformla=xformla)
     class(out) <- "MP.TEST"
     out
 }
@@ -704,6 +712,16 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
 #'  value on the x-axis.  The default is 1.
 #' @param ncol The number of columns to include in the resulting plot.  The
 #'  default is 1.
+#'
+#' @examples
+#' \dontrun{
+#' data(mpdta)
+#' out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+#'                 panel=TRUE, first.treat.name="first.treat",
+#'                 idname="countyreal", tname="year",
+#'                 bstrap=FALSE, se=TRUE, cband=FALSE)
+#' ggdid(out)
+#' }
 #'
 #' @export
 ggdid <- function(mpobj, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1, ncol=1) {
@@ -1101,6 +1119,22 @@ onefun <- function(X, u) {
     rep(1, nrow(X))
 }
 
+#' @title g
+#'
+#' @description Logit pdf
+#'
+#' @param x nxk data matrix
+#' @param thet kx1 vector of parameters
+#'
+#' @return nx1 vector
+#'
+#' @keywords internal
+g <- function(x,thet) {
+    x <- as.matrix(x)
+    thet <- as.matrix(thet)
+    gval <- 1/((1+exp(x%*%thet))^2)
+    as.numeric(gval)
+}
 
 ## x nxk matrix
 ## thet kx1 vector
@@ -1110,14 +1144,4 @@ G <- function(x,thet) {
     thet <- as.matrix(thet)
     Gval <- exp(x%*%thet)/(1+exp(x%*%thet))
     as.numeric(Gval)
-}
-
-## x nxk matrix
-## thet kx1 vector
-## return nx1 matrix
-g <- function(x,thet) {
-    x <- as.matrix(x)
-    thet <- as.matrix(thet)
-    gval <- 1/((1+exp(x%*%thet))^2)
-    as.numeric(gval)
 }

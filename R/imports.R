@@ -5,9 +5,7 @@
 #' @name did
 #' @import stats
 #' @import BMisc
-#' @import qte
 #' @import MASS
-#' @import expm
 #' @import formula.tools
 #' @import pbapply
 #' @import knitr

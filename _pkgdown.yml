@@ -21,18 +21,22 @@ reference:
     contents:
       - ggdid
       - summary.MP
+      - summary.AGGTE
+      - summary.MP.TEST
   - title: "Classes"
     desc: >
       Classes available in the \texttt{did} package
     contents:
       - MP
       - AGGTE
+      - MP.TEST
   - title: "Weighting Functions"
     desc: >
       Available weighting functions for the pre-test
     contents:
       - indicator
       - expf
+      - onefun
   - title: "Data"
     desc: >
       Available datasets in the package

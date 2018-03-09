@@ -4,7 +4,7 @@
 \alias{MP.TEST}
 \title{MP.TEST}
 \usage{
-MP.TEST(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervar,
+MP.TEST(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervars,
   xformla)
 }
 \arguments{
@@ -24,7 +24,7 @@ MP.TEST(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervar,
 
 \item{KSpval}{p-value for KS test}
 
-\item{clustervar}{vector of which variables were clustered on for the test}
+\item{clustervars}{vector of which variables were clustered on for the test}
 
 \item{xformla}{formla for the X variables used in the test}
 }

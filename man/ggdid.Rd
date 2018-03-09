@@ -29,3 +29,14 @@ default is 1.}
 \description{
 Function to plot \code{MP} objects
 }
+\examples{
+\dontrun{
+data(mpdta)
+out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+                panel=TRUE, first.treat.name="first.treat",
+                idname="countyreal", tname="year",
+                bstrap=FALSE, se=TRUE, cband=FALSE)
+ggdid(out)
+}
+
+}

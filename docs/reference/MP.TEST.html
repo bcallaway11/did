@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>ggdid — ggdid • did</title>
+<title>MP.TEST — MP.TEST • did</title>
 
 <!-- jquery -->
 <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
@@ -78,72 +78,68 @@
       <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>ggdid</h1>
+    <h1>MP.TEST</h1>
     </div>
 
     
-    <p>Function to plot <code>MP</code> objects</p>
+    <p>MP.TEST objects</p>
     
 
-    <pre class="usage"><span class='fu'>ggdid</span>(<span class='no'>mpobj</span>, <span class='kw'>ylim</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>xlab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>ylab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>title</span> <span class='kw'>=</span> <span class='st'>"Group"</span>,
-  <span class='kw'>xgap</span> <span class='kw'>=</span> <span class='fl'>1</span>, <span class='kw'>ncol</span> <span class='kw'>=</span> <span class='fl'>1</span>)</pre>
+    <pre class="usage"><span class='fu'>MP.TEST</span>(<span class='no'>CvM</span>, <span class='no'>CvMb</span>, <span class='no'>CvMcval</span>, <span class='no'>CvMpval</span>, <span class='no'>KS</span>, <span class='no'>KSb</span>, <span class='no'>KScval</span>, <span class='no'>KSpval</span>, <span class='no'>clustervars</span>,
+  <span class='no'>xformla</span>)</pre>
     
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a> Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>mpobj</th>
-      <td><p>an <code>MP</code> object</p></td>
+      <th>CvM</th>
+      <td><p>Cramer von Mises test statistic</p></td>
     </tr>
     <tr>
-      <th>ylim</th>
-      <td><p>optional y limits for the plot; settng here makes the y limits
-the same across different plots</p></td>
+      <th>CvMb</th>
+      <td><p>a vector of boostrapped Cramer von Mises test statistics</p></td>
     </tr>
     <tr>
-      <th>xlab</th>
-      <td><p>optional x-axis label</p></td>
+      <th>CvMcval</th>
+      <td><p>CvM critical value</p></td>
     </tr>
     <tr>
-      <th>ylab</th>
-      <td><p>optional y-axis label</p></td>
+      <th>CvMpval</th>
+      <td><p>p-value for CvM test</p></td>
     </tr>
     <tr>
-      <th>title</th>
-      <td><p>optional plot title</p></td>
+      <th>KS</th>
+      <td><p>Kolmogorov-Smirnov test statistic</p></td>
     </tr>
     <tr>
-      <th>xgap</th>
-      <td><p>optional gap between the labels on the x-axis.  For example,
-<code>xgap=3</code> indicates that the labels should show up for every third
-value on the x-axis.  The default is 1.</p></td>
+      <th>KSb</th>
+      <td><p>a vector of boostrapped KS test statistics</p></td>
     </tr>
     <tr>
-      <th>ncol</th>
-      <td><p>The number of columns to include in the resulting plot.  The
-default is 1.</p></td>
+      <th>KScval</th>
+      <td><p>KS critical value</p></td>
+    </tr>
+    <tr>
+      <th>KSpval</th>
+      <td><p>p-value for KS test</p></td>
+    </tr>
+    <tr>
+      <th>clustervars</th>
+      <td><p>vector of which variables were clustered on for the test</p></td>
+    </tr>
+    <tr>
+      <th>xformla</th>
+      <td><p>formla for the X variables used in the test</p></td>
     </tr>
     </table>
     
 
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><span class='co'># NOT RUN {</span>
-<span class='fu'>data</span>(<span class='no'>mpdta</span>)
-<span class='no'>out</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-                <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-                <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
-                <span class='kw'>bstrap</span><span class='kw'>=</span><span class='fl'>FALSE</span>, <span class='kw'>se</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>cband</span><span class='kw'>=</span><span class='fl'>FALSE</span>)
-<span class='fu'>ggdid</span>(<span class='no'>out</span>)
-<span class='co'># }</span><div class='input'>
-</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
     <ul class="nav nav-pills nav-stacked">
       <li><a href="#arguments">Arguments</a></li>
-            
-      <li><a href="#examples">Examples</a></li>
-    </ul>
+                </ul>
 
   </div>
 </div>
