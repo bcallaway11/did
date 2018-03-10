@@ -84,11 +84,11 @@ ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]
 \end{align*}
 under the common trends assumption:
 \begin{align*}
-  E[\Delta Y_t(0) | X=x, G_g=1] = E[\Delta Y_t(0) | X=x, C=1] \ a.s. \quad \forall g\leq t
+  E[\Delta Y_t(0) | X, G_g=1] = E[\Delta Y_t(0) | X, C=1] \ a.s. \quad \forall g\leq t
 \end{align*}
 <p>where <span class="math inline">\(Y_t(1)\)</span> and <span class="math inline">\(Y_t(0)\)</span> denote treated and untreated potential outcomes, <span class="math inline">\(G_g=1\)</span> denotes counties first treated in period <span class="math inline">\(g\)</span>, <span class="math inline">\(C=1\)</span> denotes control counties that are never treated.</p>
 <p>To estimate <span class="math inline">\(ATT(g,t)\)</span>, one can use the  method as follows:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">out &lt;-<span class="st"> </span><span class="kw">mp.spatt</span>(lemp ~<span class="st"> </span>treat, <span class="dt">xformla=</span>~lpop, <span class="dt">data=</span>mpdta,
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">out &lt;-<span class="st"> </span><span class="kw"><a href="reference/mp.spatt.html">mp.spatt</a></span>(lemp ~<span class="st"> </span>treat, <span class="dt">xformla=</span>~lpop, <span class="dt">data=</span>mpdta,
                  <span class="dt">panel=</span><span class="ot">TRUE</span>, <span class="dt">first.treat.name=</span><span class="st">"first.treat"</span>,
                  <span class="dt">idname=</span><span class="st">"countyreal"</span>, <span class="dt">tname=</span><span class="st">"year"</span>,
                  <span class="dt">bstrap=</span><span class="ot">FALSE</span>, <span class="dt">se=</span><span class="ot">TRUE</span>, <span class="dt">cband=</span><span class="ot">FALSE</span>)
@@ -136,7 +136,7 @@ under the common trends assumption:
 <span class="co">#&gt; P-value for pre-test of DID assumption:  0.23803</span></code></pre></div>
 <p>and plot the results using the  command:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(gridExtra)
-<span class="kw">ggdid</span>(out)</code></pre></div>
+<span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out)</code></pre></div>
 <p><img src="README-unnamed-chunk-5-1.png" width="672"></p>
 </div>
 </div>
@@ -150,7 +150,7 @@ under the common trends assumption:
 <h2>Developers</h2>
 <ul class="list-unstyled">
 <li>Brantly Callaway <br><small class="roles"> Author, maintainer </small> </li>
-<li>Pedro Santanna <br><small class="roles"> Author </small> </li>
+<li>Pedro H.C. Sant'Anna <br><small class="roles"> Author </small> </li>
 </ul>
 </div>
 
@@ -158,7 +158,7 @@ under the common trends assumption:
 
 
       <footer><div class="copyright">
-  <p>Developed by Brantly Callaway, Pedro Santanna.</p>
+  <p>Developed by Brantly Callaway, Pedro H.C. Sant'Anna.</p>
 </div>
 
 <div class="pkgdown">

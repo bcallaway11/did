@@ -39,7 +39,7 @@ ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]
 \end{align*}
 under the common trends assumption:
 \begin{align*}
-  E[\Delta Y_t(0) | X=x, G_g=1] = E[\Delta Y_t(0) | X=x, C=1] \ a.s. \quad \forall g\leq t
+  E[\Delta Y_t(0) | X, G_g=1] = E[\Delta Y_t(0) | X, C=1] \ a.s. \quad \forall g\leq t
 \end{align*}
 where \(Y_t(1)\) and \(Y_t(0)\) denote treated and untreated potential outcomes, \(G_g=1\) denotes counties first treated in period \(g\), \(C=1\) denotes control counties that are never treated.
 
