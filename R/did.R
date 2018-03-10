@@ -56,7 +56,7 @@
 #' @references Callaway and Sant'Anna (2018)
 #'
 #' @return \code{MP} object
-#' 
+#'
 #' @export
 mp.spatt <- function(formla, xformla=NULL, data, tname,
                      aggte=TRUE, w=NULL, panel=FALSE,
@@ -94,7 +94,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                                 formla, xformla, tname, w, panel, idname, method, seedvec, se,
                                 pl, cores, printdetails)
 
-    
+
     fatt <- results$fatt
     inffunc <- results$inffunc
 
@@ -105,8 +105,8 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     i <- 1
 
 
-    
-    inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) ## note, this might not work in unbalanced case 
+
+    inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) ## note, this might not work in unbalanced case
     ## for (f in 1:length(fatt)) {
     ##     for (s in 1:(length(fatt[[f]])-1)) {
     ##         group[i] <- fatt[[f]]$group
@@ -126,8 +126,8 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         i <- i+1
         }
     }
-    
-    
+
+
     n <- nrow(dta)
     V <- t(inffunc1)%*%inffunc1/n
 
@@ -144,7 +144,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         }
         ## new version
         bout <- lapply(1:biters, FUN=function(b) {
-            
+
             if (length(clustervars) > 0) {
                 n1 <- length(unique(dta[,clustervars]))
                 Vb <- matrix(sample(c(-1,1), n1, replace=T))
@@ -169,8 +169,8 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     ## get the actual estimates
 
-    
-    
+
+
     ## wald test for pre-treatment periods
     pre <- which(t < group)
     preatt <- as.matrix(att[pre])
@@ -192,18 +192,18 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         V <- diag(bSigma) ## this is the appropriate matrix for
          ## constructing confidence bands
     }
-    
+
     aggeffects <- NULL
     if (aggte) {
         aggeffects <- compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters)
     }
 
-    
+
     return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects))
 }
 
 
-      
+
 #' @title compute.mp.spatt
 #'
 #' @description \code{compute.mp.spatt} does the main work for computing
@@ -222,7 +222,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 #'
 #' @export
 compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
-                             first.treat.name, formla, 
+                             first.treat.name, formla,
                              xformla, tname, w, panel, idname,
                              method, seedvec, se,
                              pl, cores, printdetails) {
@@ -247,7 +247,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
             disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
             disdat <- panel2cs(disdat, yname, idname, tname)
-            
+
             disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
             disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
@@ -256,7 +256,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
             pformla <- xformla
             formula.tools::lhs(pformla) <- as.name("G")
-            pscore.reg <- glm(pformla, family=binomial(link=logit),
+            pscore.reg <- glm(pformla, family=binomial(link="logit"),
                               data=subset(disdat, C+G==1))
             thet <- coef(pscore.reg)
             pscore <- predict(pscore.reg, newdata=disdat, type="response")
@@ -266,16 +266,16 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
             dy <- disdat$dy
             x <- model.matrix(xformla, data=disdat)
             n <- nrow(disdat)
-            
+
             attw1 <- G/mean(G)
             attw2a <- pscore*C/(1-pscore)
             attw2 <- attw2a/mean(attw2a)
-            att <- mean((attw1 - attw2)*dy) 
+            att <- mean((attw1 - attw2)*dy)
 
             fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
 
             ## get the influence function
-            
+
             wg <- G/mean(G)
             wc1 <- C*pscore / (1-pscore)
             wc <- wc1 / mean(wc1)
@@ -300,12 +300,12 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
             ## disdat <- droplevels(disdat)
             ## satt[[t]] <- c(spatt(formla, xformla, t=tlist[t+1], tmin1=tlist[pret],
             ##           tname=tname, data=disdat, w=w, panel=panel,
-            ##           idname=idname, 
+            ##           idname=idname,
             ##           iters=NULL, alp=NULL, method=method, plot=NULL, se=se,
             ##           retEachIter=NULL, seedvec=seedvec, pl=pl, cores=cores),
             ##           group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
             ##inffunc[f,t,S] <- satt[[t]]$inffunc
-            
+
         }
         ##fatt[[f]] <- c(satt, group=flist[f])
     }
@@ -386,7 +386,7 @@ summary.MP <- function(object, ...) {
 mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                           weightfun=NULL, w=NULL, panel=FALSE,
                           idname=NULL, first.treat.name,
-                          alp=0.05, method="logit", 
+                          alp=0.05, method="logit",
                           biters=100, clustervarlist=NULL,
                           pl=FALSE, cores=2) {
 
@@ -418,14 +418,14 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         weightfun <- expf
     }
 
-    
+
 
     thecount <- 1
     innercount <- 1
-    
+
     outlist <- lapply(xformlalist, function(xformla) {
 
-        ## 
+        ##
         ##X1 <- apply(model.matrix(xformla, data), 2, function(col) {
         ##    pnorm(col)
         ##})## for the entire dataset
@@ -433,11 +433,11 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             ##pnorm(col)
             ecdf(col)(col)
         })
-        
+
         ## for debugging: X <- as.matrix(X[1:100,])
-        
+
         X <- unique(X)
-        
+
         X1 <- apply(model.matrix(xformla, dta), 2, function(col) {
             ecdf(col)(col)
             ##pnorm(col)
@@ -448,7 +448,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         for (f in 1:flen) {
 
             disdat <- data[(data[,tname]==tlist[1]),]
-                           
+
             disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
             disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
@@ -457,13 +457,13 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             pformla <- xformla
             formula.tools::lhs(pformla) <- as.name("G")
-            pscore.reg <- glm(pformla, family=binomial(link=logit),
+            pscore.reg <- glm(pformla, family=binomial(link="logit"),
                               data=subset(disdat, C+G==1))
             thetlist[[f]] <- coef(pscore.reg)
             pscorelist[[f]] <- predict(pscore.reg, newdata=disdat, type="response")
         }
 
-            
+
 
         cat("\n Step", thecount, "of", length(xformlalist), ":.....................\n")
         thecount <<- thecount+1
@@ -488,7 +488,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
                     disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
                     disdat <- panel2cs(disdat, yname, idname, tname)
-                    
+
                     disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
                     disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
@@ -498,7 +498,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     ## try to do tthis his outside of the loop
                     ## pformla <- xformla
                     ## formula.tools::lhs(pformla) <- as.name("G")
-                    ## pscore.reg <- glm(pformla, family=binomial(link=logit),
+                    ## pscore.reg <- glm(pformla, family=binomial(link="logit"),
                     ##                   data=subset(disdat, C+G==1))
                     ## thet <- coef(pscore.reg)
                     ## pscore <- predict(pscore.reg, newdata=disdat, type="response")
@@ -510,7 +510,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     dy <- disdat$dy
                     x <- model.matrix(xformla, data=disdat)
                     n <- nrow(disdat)
-                    
+
                     Jwg1 <- G/pscore
                     Jwg <- Jwg1/mean(Jwg1)
                     Jwc1 <- C/(1-pscore)
@@ -524,7 +524,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
                     Jg <- mean(Jwg*dy*www)
                     Jc <- mean(Jwc*dy*www)
-                    
+
                     Mg <- as.matrix(apply(as.matrix((G/(pscore))^2 * g(x,thet) * ( (dy*www - Jg) )* x), 2, mean) / mean( G/pscore  ))
 
                     Mc <- -as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * ( (dy*www - Jc)) * x), 2, mean) / mean( C / (1-pscore) ) )
@@ -542,22 +542,22 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     groupout[counter] <- flist[f]
                     tout[counter] <- tlist[t+1]
 
-                    counter <- counter+1                    
+                    counter <- counter+1
                 }
             }
-            
+
             list(J=Jout, group=groupout, t=tout, inffunc=inffunc)
 
         })
 
 
         outinffunc <- lapply(out, function(o) t(o$inffunc))
-        
+
         J <- t(sapply(out, function(o) o$J))
         KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
         CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
 
-        
+
         innercount <<- 1
         lapply(clustervarlist, function(clustervars) {
 
@@ -605,7 +605,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             KSocval <- quantile(KSb, probs=(1-alp), type=1)
             KSpval <- 1-ecdf(KSb)(KS)
 
-            
+
             ## bres <- lapply(bout, simplify2array)
             ## CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
             ## CvMb <- n*apply(CvMb, 2, sum)
@@ -619,7 +619,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             out
         })
     })
-    
+
     return(unlist(outlist, recursive=FALSE))
 }
 
@@ -675,7 +675,7 @@ summary.MP.TEST <- function(object, ... ) {
 #' @inheritParams ggdid
 #'
 #' @return a \code{ggplot2} object
-#' 
+#'
 #' @keywords internal
 #'
 #' @export
@@ -683,16 +683,16 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
     dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
     p <- ggplot(ssresults,
                 aes(x=year, y=att, ymin=(att-c*ate.se),
-                    ymax=att+c*ate.se, post=post)) + 
-        geom_point(aes(colour=post), size=1.5) + 
+                    ymax=att+c*ate.se, post=post)) +
+        geom_point(aes(colour=post), size=1.5) +
         geom_errorbar(aes(colour=post), width=0.1) +
         scale_y_continuous(limits=ylim) +
         scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
         ylab("") +
-        xlab("") + 
+        xlab("") +
         ggtitle(paste(title, unique(ssresults$group))) +
         theme_bw() +
-        theme(plot.title = element_text(color="darkgray", face="bold", size=8)) + 
+        theme(plot.title = element_text(color="darkgray", face="bold", size=8)) +
         theme(axis.title = element_text(color="darkgray", face="bold", size=8))
     p
 }
@@ -747,7 +747,7 @@ ggdid <- function(mpobj, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
     })
 
     do.call("grid.arrange", c(mplots))
-    
+
 }
 
 
@@ -769,9 +769,9 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
         warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
     }
 
-    
+
     ## internal function for computing standarad errors
-    ##  this method is used across different types of 
+    ##  this method is used across different types of
     ##  aggregate treatment effect parameters and is just
     ##  based on using the right influence function and weights
     ##  -- these are specific to which aggregate treatment
@@ -783,7 +783,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
         if (!is.null(wif)) {
             thisinffunc <- thisinffunc + wif%*%as.matrix(att[whichones])
         }
-        
+
         if (bstrap) {
             bout <- lapply(1:biters, FUN=function(b) {
                 sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
@@ -811,17 +811,17 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
                     ## Ub <- Ub[,-1]
                 } else {
                     Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-                                 
+
                 }
                 ## allow for serial correlation
                 ##if (sercor) {
                 ##    Ub[,-1] <- Ub[,1]
                 ##} ## this doesn't matter here because there is only one influence function
                 ## drop cluster for serial correlation
-                
+
                 ##ift <- do.call(magic::adiag, psiitout)
                 ##ifunc <- rbind(ift, psiiu)
-                
+
                 ##Ub <- sample(c(-1,1), n, replace=T)
                 mb <- Ub*(thisinffunc)
                 apply(mb,2,sum)/sqrt(nrow(dta))
@@ -981,7 +981,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     })
     dynsel.att.e1 <- sapply(dynsel.att.ee1, function(d) sum(d$dte)/d$e1)
     keepers <- lapply(e1seq, function(e1) { which( (group <= t) & (max(t) - group + 1 >= e1) ) })
-    dynsel.weights <- lapply(e1seq, function(e1) {    
+    dynsel.weights <- lapply(e1seq, function(e1) {
         list(whiche=unlist(lapply(eseq, function(e) {
             whiche <- which( (t - group + 1 == e) &
                              ( max(t) - group + 1 >= e1) &
