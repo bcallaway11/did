@@ -287,7 +287,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
             A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
             A1 <- (t(A1*x)%*%x/n)
             A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
-            A <- A2%*%MASS::ginv(A1)
+            A <- A2%*%solve(A1)
             psic <- wc*(dy - mean(wc*dy)) + A%*%M
 
             inffunc[f,t,] <- psig - psic
@@ -514,10 +514,8 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
                     Jwg1 <- G/pscore
                     Jwg <- Jwg1/mean(Jwg1)
-                    Jwc1 <- pscore*C/(1-pscore)
+                    Jwc1 <- C/(1-pscore)
                     Jwc <- Jwc1/mean(Jwc1)
-                    ##Jwc1 <- C/(1-pscore)
-                    ##Jwc <- Jwc1/mean(Jwc1)
 
                     J <- mean( (Jwg - Jwc)*www*dy )
 
@@ -525,29 +523,20 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
                     ## get the influence function
 
-                    psig <- Jwg*(www*dy - mean(Jwg*www*dy))
+                    Jg <- mean(Jwg*dy*www)
+                    Jc <- mean(Jwc*dy*www)
 
-                    M <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * (www*dy - mean(Jwc*www*dy)) * x), 2, mean) / mean(Jwc1))
+                    Mg <- as.matrix(apply(as.matrix((G/(pscore))^2 * g(x,thet) * ( (dy*www - Jg) )* x), 2, mean) / mean( G/pscore  ))
+
+                    Mc <- -as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * ( (dy*www - Jc)) * x), 2, mean) / mean( C / (1-pscore) ) )
+
                     A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
                     A1 <- (t(A1*x)%*%x/n)
                     A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
-                    A <- A2%*%MASS::ginv(A1)
-                    psic <- Jwc*(www*dy - mean(Jwc*www*dy)) + A%*%M
+                    A <- A2%*%solve(A1)
 
-                    ## Jg <- mean(Jwg*dy*www)
-                    ## Jc <- mean(Jwc*dy*www)
-
-                    ## Mg <- as.matrix(apply(as.matrix((G/(pscore))^2 * g(x,thet) * ( (dy*www - Jg) )* x), 2, mean) / mean( G/pscore  ))
-
-                    ## Mc <- -as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * ( (dy*www - Jc)) * x), 2, mean) / mean( C / (1-pscore) ) )
-
-                    ## A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
-                    ## A1 <- (t(A1*x)%*%x/n)
-                    ## A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
-                    ## A <- A2%*%MASS::ginv(A1)
-
-                    ## psig <- Jwg*dy*www - A%*%Mg
-                    ## psic <- Jwc*dy*www - A%*%Mc
+                    psig <- Jwg*dy*www - A%*%Mg
+                    psic <- Jwc*dy*www - A%*%Mc
 
                     inffunc[counter,] <- psig - psic
                     Jout[counter] <- J
