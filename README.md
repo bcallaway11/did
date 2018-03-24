@@ -101,4 +101,4 @@ library(gridExtra)
 ggdid(out)
 ```
 
-![](README-unnamed-chunk-5-1.png)
+![](man/figures/README-unnamed-chunk-6-1.png)
