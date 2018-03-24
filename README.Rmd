@@ -62,9 +62,8 @@ summary(out)
 ```
 and plot the results using the \texttt{ggdid} command:
 
-```{r}
+```{r eval=FALSE}
 library(gridExtra)
 ggdid(out)
 ```
-
-
+![](man/figures/README-unnamed-chunk-6-1.png)
