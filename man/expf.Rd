@@ -17,3 +17,10 @@ numeric vector
 \description{
 exponential weighting function
 }
+\examples{
+data(mpdta)
+dta <- subset(mpdta, year==2007)
+X <- model.frame(~lpop, data=dta)
+X <- expf(X, X[1,])
+
+}

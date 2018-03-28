@@ -51,7 +51,10 @@
 #'                 panel=TRUE, first.treat.name="first.treat",
 #'                 idname="countyreal", tname="year",
 #'                 bstrap=FALSE, se=TRUE, cband=FALSE)
+#' ## summarize the group-time average treatment effects
 #' summary(out)
+#' ## summarize the aggregated treatment effect parameters
+#' summary(out$aggte)
 #'
 #' @references Callaway and Sant'Anna (2018)
 #'
@@ -1097,6 +1100,11 @@ summary.AGGTE <- function(object, ...) {
 #' @param u a particular value to multiply times the X's
 #'
 #' @return numeric vector
+#' @examples
+#' data(mpdta)
+#' dta <- subset(mpdta, year==2007)
+#' X <- model.frame(~lpop, data=dta)
+#' X <- expf(X, X[1,])
 #'
 #' @export
 expf <- function(X, u) {
@@ -1112,6 +1120,12 @@ expf <- function(X, u) {
 #'
 #' @return numeric vector
 #'
+#' @examples
+#' data(mpdta)
+#' dta <- subset(mpdta, year==2007)
+#' X <- model.frame(~lpop, data=dta)
+#' X <- indicator(X, X[1,])
+#'
 #' @export
 indicator <- function(X, u) {
     apply(X <= u, 1, function(b) 1*all(b))
@@ -1125,6 +1139,12 @@ indicator <- function(X, u) {
 #' @param u a particular value to compare X's to
 #'
 #' @return numeric vector
+#'
+#' @examples
+#' data(mpdta)
+#' dta <- subset(mpdta, year==2007)
+#' X <- model.frame(~lpop, data=dta)
+#' X <- onefun(X, X[1,])
 #'
 #' @export
 onefun <- function(X, u) {

@@ -86,7 +86,10 @@ out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
                 panel=TRUE, first.treat.name="first.treat",
                 idname="countyreal", tname="year",
                 bstrap=FALSE, se=TRUE, cband=FALSE)
+## summarize the group-time average treatment effects
 summary(out)
+## summarize the aggregated treatment effect parameters
+summary(out$aggte)
 
 }
 \references{
