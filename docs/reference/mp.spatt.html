@@ -235,7 +235,8 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; set pretreatment period to be 2005 
 #&gt; current period: 2007 
 #&gt; current group: 2007 
-#&gt; set pretreatment period to be 2006 </div><div class='input'><span class='fu'>summary</span>(<span class='no'>out</span>)</div><div class='output co'>#&gt; 
+#&gt; set pretreatment period to be 2006 </div><div class='input'><span class='co'>## summarize the group-time average treatment effects</span>
+<span class='fu'>summary</span>(<span class='no'>out</span>)</div><div class='output co'>#&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
@@ -255,7 +256,15 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; 
 #&gt; 
 #&gt; P-value for pre-test of DID assumption:  0.23803
-#&gt; </div><div class='input'>
+#&gt; </div><div class='input'><span class='co'>## summarize the aggregated treatment effect parameters</span>
+<span class='fu'>summary</span>(<span class='no'>out</span>$<span class='no'>aggte</span>)</div><div class='output co'>#&gt; Simple ATT    :  -0.04177708 
+#&gt;   SE          :  0.01118622 
+#&gt; Selective ATT :  -0.03287537 
+#&gt;   SE          :  0.01118622 
+#&gt; Dynamic ATT   :  -0.08037689 
+#&gt;   SE          :  0.02076471 
+#&gt; Calendar ATT  :  -0.0441701 
+#&gt;   SE          :  0.01892826 </div><div class='input'>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
