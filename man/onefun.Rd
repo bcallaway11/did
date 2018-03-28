@@ -20,7 +20,7 @@ just return the value 1
 \examples{
 data(mpdta)
 dta <- subset(mpdta, year==2007)
-X <- model.frame(~lpop, data=dta)
+X <- model.matrix(~lpop, data=dta)
 X <- onefun(X, X[1,])
 
 }

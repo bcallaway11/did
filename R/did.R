@@ -1103,7 +1103,7 @@ summary.AGGTE <- function(object, ...) {
 #' @examples
 #' data(mpdta)
 #' dta <- subset(mpdta, year==2007)
-#' X <- model.frame(~lpop, data=dta)
+#' X <- model.matrix(~lpop, data=dta)
 #' X <- expf(X, X[1,])
 #'
 #' @export
@@ -1123,7 +1123,7 @@ expf <- function(X, u) {
 #' @examples
 #' data(mpdta)
 #' dta <- subset(mpdta, year==2007)
-#' X <- model.frame(~lpop, data=dta)
+#' X <- model.matrix(~lpop, data=dta)
 #' X <- indicator(X, X[1,])
 #'
 #' @export
@@ -1143,7 +1143,7 @@ indicator <- function(X, u) {
 #' @examples
 #' data(mpdta)
 #' dta <- subset(mpdta, year==2007)
-#' X <- model.frame(~lpop, data=dta)
+#' X <- model.matrix(~lpop, data=dta)
 #' X <- onefun(X, X[1,])
 #'
 #' @export
