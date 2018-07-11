@@ -82,14 +82,23 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
 }
 \examples{
 data(mpdta)
-out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+
+## with covariates
+out1 <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
                 panel=TRUE, first.treat.name="first.treat",
                 idname="countyreal", tname="year",
                 bstrap=FALSE, se=TRUE, cband=FALSE)
 ## summarize the group-time average treatment effects
-summary(out)
+summary(out1)
 ## summarize the aggregated treatment effect parameters
-summary(out$aggte)
+summary(out1$aggte)
+
+## without any covariates
+out2 <- mp.spatt(lemp ~ treat, xformla=NULL, data=mpdta,
+                panel=TRUE, first.treat.name="first.treat",
+                idname="countyreal", tname="year",
+                bstrap=FALSE, se=TRUE, cband=FALSE)
+summary(out2)
 
 }
 \references{

@@ -47,14 +47,23 @@
 #'
 #' @examples
 #' data(mpdta)
-#' out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
+#'
+#' ## with covariates
+#' out1 <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
 #'                 panel=TRUE, first.treat.name="first.treat",
 #'                 idname="countyreal", tname="year",
 #'                 bstrap=FALSE, se=TRUE, cband=FALSE)
 #' ## summarize the group-time average treatment effects
-#' summary(out)
+#' summary(out1)
 #' ## summarize the aggregated treatment effect parameters
-#' summary(out$aggte)
+#' summary(out1$aggte)
+#'
+#' ## without any covariates
+#' out2 <- mp.spatt(lemp ~ treat, xformla=NULL, data=mpdta,
+#'                 panel=TRUE, first.treat.name="first.treat",
+#'                 idname="countyreal", tname="year",
+#'                 bstrap=FALSE, se=TRUE, cband=FALSE)
+#' summary(out2)
 #'
 #' @references Callaway and Sant'Anna (2018)
 #'
@@ -90,6 +99,10 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         warning("not guaranteed to work correctly for repeated cross sections")
         dta <- data ## this is for repeated cross sections case though
         ## i'm not sure it's working correctly overall
+    }
+
+    if (is.null(xformla)) {
+        xformla <- ~1
     }
 
 
@@ -258,8 +271,12 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
             disdat <- droplevels(disdat)
 
+            if (is.null(xformla)) {
+                xformla <- ~1
+            }
             pformla <- xformla
             formula.tools::lhs(pformla) <- as.name("G")
+          
             pscore.reg <- glm(pformla, family=binomial(link="logit"),
                               data=subset(disdat, C+G==1))
             thet <- coef(pscore.reg)
@@ -459,6 +476,9 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             disdat <- droplevels(disdat)
 
+            if (is.null(xformla)) {
+                xformla <- ~1
+            }
             pformla <- xformla
             formula.tools::lhs(pformla) <- as.name("G")
             pscore.reg <- glm(pformla, family=binomial(link="logit"),

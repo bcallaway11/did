@@ -5,13 +5,7 @@
 
 ## R CMD check results
 
-* This is a new package
-* Local: 0 ERRORs | 0 WARNINGs | 0 NOTES.
-    
-* Win-builder generated 1 NOTE
-
-    * New Submission
-
+0 ERRORs | 0 WARNINGs | 0 NOTES. 
 
 ## Downstream dependencies
 

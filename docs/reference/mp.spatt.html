@@ -212,7 +212,9 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='fu'>data</span>(<span class='no'>mpdta</span>)
-<span class='no'>out</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
+
+<span class='co'>## with covariates</span>
+<span class='no'>out1</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
                 <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
                 <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
                 <span class='kw'>bstrap</span><span class='kw'>=</span><span class='fl'>FALSE</span>, <span class='kw'>se</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>cband</span><span class='kw'>=</span><span class='fl'>FALSE</span>)</div><div class='output co'>#&gt; current period: 2004 
@@ -236,7 +238,7 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; current period: 2007 
 #&gt; current group: 2007 
 #&gt; set pretreatment period to be 2006 </div><div class='input'><span class='co'>## summarize the group-time average treatment effects</span>
-<span class='fu'>summary</span>(<span class='no'>out</span>)</div><div class='output co'>#&gt; 
+<span class='fu'>summary</span>(<span class='no'>out1</span>)</div><div class='output co'>#&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
@@ -257,7 +259,7 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; 
 #&gt; P-value for pre-test of DID assumption:  0.23803
 #&gt; </div><div class='input'><span class='co'>## summarize the aggregated treatment effect parameters</span>
-<span class='fu'>summary</span>(<span class='no'>out</span>$<span class='no'>aggte</span>)</div><div class='output co'>#&gt; Simple ATT    :  -0.04177708 
+<span class='fu'>summary</span>(<span class='no'>out1</span>$<span class='no'>aggte</span>)</div><div class='output co'>#&gt; Simple ATT    :  -0.04177708 
 #&gt;   SE          :  0.01118622 
 #&gt; Selective ATT :  -0.03287537 
 #&gt;   SE          :  0.01118622 
@@ -265,6 +267,51 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt;   SE          :  0.02076471 
 #&gt; Calendar ATT  :  -0.0441701 
 #&gt;   SE          :  0.01892826 </div><div class='input'>
+<span class='co'>## without any covariates</span>
+<span class='no'>out2</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span><span class='kw'>NULL</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
+                <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
+                <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
+                <span class='kw'>bstrap</span><span class='kw'>=</span><span class='fl'>FALSE</span>, <span class='kw'>se</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>cband</span><span class='kw'>=</span><span class='fl'>FALSE</span>)</div><div class='output co'>#&gt; current period: 2004 
+#&gt; current group: 2004 
+#&gt; set pretreatment period to be 2003 
+#&gt; current period: 2005 
+#&gt; current group: 2004 
+#&gt; set pretreatment period to be 2003 
+#&gt; current period: 2006 
+#&gt; current group: 2004 
+#&gt; set pretreatment period to be 2003 
+#&gt; current period: 2007 
+#&gt; current group: 2004 
+#&gt; set pretreatment period to be 2003 
+#&gt; current period: 2006 
+#&gt; current group: 2006 
+#&gt; set pretreatment period to be 2005 
+#&gt; current period: 2007 
+#&gt; current group: 2006 
+#&gt; set pretreatment period to be 2005 
+#&gt; current period: 2007 
+#&gt; current group: 2007 
+#&gt; set pretreatment period to be 2006 </div><div class='input'><span class='fu'>summary</span>(<span class='no'>out2</span>)</div><div class='output co'>#&gt; 
+#&gt; 
+#&gt; 
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |  2004| 2004| -0.0105032| 0.0232510|
+#&gt; |  2004| 2005| -0.0704232| 0.0309848|
+#&gt; |  2004| 2006| -0.1372587| 0.0364357|
+#&gt; |  2004| 2007| -0.1008114| 0.0343592|
+#&gt; |  2006| 2004|  0.0065201| 0.0233268|
+#&gt; |  2006| 2005| -0.0027508| 0.0195586|
+#&gt; |  2006| 2006| -0.0045946| 0.0177552|
+#&gt; |  2006| 2007| -0.0412245| 0.0202292|
+#&gt; |  2007| 2004|  0.0305067| 0.0150336|
+#&gt; |  2007| 2005| -0.0027259| 0.0163958|
+#&gt; |  2007| 2006| -0.0310871| 0.0178775|
+#&gt; |  2007| 2007| -0.0260544| 0.0166554|
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of DID assumption:  0.16812
+#&gt; </div><div class='input'>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
