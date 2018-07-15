@@ -6,7 +6,7 @@
 #' @import stats
 #' @import BMisc
 #' @import MASS
-#' @import formula.tools
+#' @importFrom formula.tools lhs
 #' @import pbapply
 #' @import knitr
 #' @import ggplot2

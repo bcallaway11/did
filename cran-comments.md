@@ -5,7 +5,9 @@
 
 ## R CMD check results
 
-0 ERRORs | 0 WARNINGs | 0 NOTES. 
+0 ERRORs | 0 WARNINGs | 1 NOTES.
+
+* Possibly misspelled words in the DESCRIPTION, but they are correct.
 
 ## Downstream dependencies
 
