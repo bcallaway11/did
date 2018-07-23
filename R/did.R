@@ -78,9 +78,8 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                      cband=FALSE, citers=100,
                      seedvec=NULL, pl=FALSE, cores=2,
                      printdetails=TRUE) {
-
-
-    data$y <- data[,as.character(formula.tools::lhs(formla))]
+    
+    data$y <- data[,BMisc::lhs.vars(formla)] ##data[,as.character(formula.tools::lhs(formla))]
     ##figure out the dates and make balanced panel
     tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
 
@@ -96,7 +95,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         data <- makeBalancedPanel(data, idname, tname)
         dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
     } else {
-        warning("not guaranteed to work correctly for repeated cross sections")
+        
         dta <- data ## this is for repeated cross sections case though
         ## i'm not sure it's working correctly overall
     }
@@ -111,6 +110,12 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                                 pl, cores, printdetails)
 
 
+    if (!panel) { ## if not panel use empirical bootstrap
+        fatt <- results$fatt
+        warning("only reporting point estimates for data with repeated cross sections")
+        return(fatt)
+    }
+    
     fatt <- results$fatt
     inffunc <- results$inffunc
 
@@ -244,13 +249,13 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                              method, seedvec, se,
                              pl, cores, printdetails) {
 
-    yname <- as.character(formula.tools::lhs(formla))
+    yname <- BMisc::lhs.vars(formla) ##as.character(formula.tools::lhs(formla))
 
     fatt <- list()
     counter <- 1
     inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
     for (f in 1:flen) {
-        ##satt <- list()
+            ##satt <- list()
         for (t in 1:(tlen-1)) {
             pret <- t
             if (flist[f]<=tlist[(t+1)]) {
@@ -262,73 +267,93 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 }
             }
 
-            disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-            disdat <- panel2cs(disdat, yname, idname, tname)
+            if (panel) {
+                disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
+                disdat <- panel2cs(disdat, yname, idname, tname)
 
-            disdat$C <- 1*(disdat[,first.treat.name] == 0)
+                disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
-            disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+                disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
 
-            disdat <- droplevels(disdat)
+                disdat <- droplevels(disdat)
 
-            if (is.null(xformla)) {
-                xformla <- ~1
+                if (is.null(xformla)) {
+                    xformla <- ~1
+                }
+                pformla <- xformla
+                ##formula.tools::lhs(pformla) <- as.name("G")
+                pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
+                
+                pscore.reg <- glm(pformla, family=binomial(link="logit"),
+                                  data=subset(disdat, C+G==1))
+                thet <- coef(pscore.reg)
+                pscore <- predict(pscore.reg, newdata=disdat, type="response")
+
+                G <- disdat$G
+                C <- disdat$C
+                dy <- disdat$dy
+                x <- model.matrix(xformla, data=disdat)
+                n <- nrow(disdat)
+
+                attw1 <- G/mean(G)
+                attw2a <- pscore*C/(1-pscore)
+                attw2 <- attw2a/mean(attw2a)
+                att <- mean((attw1 - attw2)*dy)
+
+                fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
+
+                ## get the influence function
+
+                wg <- G/mean(G)
+                wc1 <- C*pscore / (1-pscore)
+                wc <- wc1 / mean(wc1)
+
+                psig <- wg*(dy - mean(wg*dy))
+
+                M <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * (dy - mean(wc*dy)) * x), 2, mean) / mean(wc1))
+                A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
+                A1 <- (t(A1*x)%*%x/n)
+                A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
+                A <- A2%*%MASS::ginv(A1)
+                psic <- wc*(dy - mean(wc*dy)) + A%*%M
+
+                inffunc[f,t,] <- psig - psic
+            } else { ## this is repeated cross sections case
+
+                ## can use entire data set to estimate some things
+                data$C <- 1*(data[,first.treat.name] == 0)
+                data$G <- 1*(data[,first.treat.name] == flist[f])
+                if (is.null(xformla)) {
+                    xformla <- ~1
+                }
+                pformla <- xformla
+                pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
+                
+                pscore.reg <- glm(pformla, family=binomial(link="logit"),
+                                  data=subset(data, C+G==1))
+                thet <- coef(pscore.reg)
+                pscore <- predict(pscore.reg, newdata=data, type="response")
+                data$pscore <- pscore
+                lam <- 1/tlen
+                d1 <- mean(data$G)
+                d2 <- mean(data$pscore*data$C/(1-data$pscore))
+                Tt <- 1*(data[,tname]==tlist[t+1])
+                Tgmin1 <- 1*(data[,tname]==tlist[pret])
+                lamt <- mean(Tt)
+                lamgmin1 <- mean(Tgmin1)
+                w1 <- lam*(Tt/lamt - Tgmin1/lamgmin1)
+                attw1 <- data$G/d1
+                attw2a <- pscore*data$C/(1-pscore)
+                attw2 <- attw2a/d2
+                y <- data$y
+                att <- mean(w1*(attw1 - attw2)*y)
+
+                fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
             }
-            pformla <- xformla
-            formula.tools::lhs(pformla) <- as.name("G")
-          
-            pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                              data=subset(disdat, C+G==1))
-            thet <- coef(pscore.reg)
-            pscore <- predict(pscore.reg, newdata=disdat, type="response")
-
-            G <- disdat$G
-            C <- disdat$C
-            dy <- disdat$dy
-            x <- model.matrix(xformla, data=disdat)
-            n <- nrow(disdat)
-
-            attw1 <- G/mean(G)
-            attw2a <- pscore*C/(1-pscore)
-            attw2 <- attw2a/mean(attw2a)
-            att <- mean((attw1 - attw2)*dy)
-
-            fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
-
-            ## get the influence function
-
-            wg <- G/mean(G)
-            wc1 <- C*pscore / (1-pscore)
-            wc <- wc1 / mean(wc1)
-
-            psig <- wg*(dy - mean(wg*dy))
-
-            M <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * (dy - mean(wc*dy)) * x), 2, mean) / mean(wc1))
-            A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
-            A1 <- (t(A1*x)%*%x/n)
-            A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
-            A <- A2%*%MASS::ginv(A1)
-            psic <- wc*(dy - mean(wc*dy)) + A%*%M
-
-            inffunc[f,t,] <- psig - psic
 
             counter <- counter+1
-            ## S <- (dta[,first.treat.name]==0 |
-            ##         dta[,first.treat.name]==flist[f])
-            ## r <- mean(S)
-            ## disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]) &
-            ##                (data[,first.treat.name]==0 | data[,first.treat.name]==flist[f]),]
-            ## disdat <- droplevels(disdat)
-            ## satt[[t]] <- c(spatt(formla, xformla, t=tlist[t+1], tmin1=tlist[pret],
-            ##           tname=tname, data=disdat, w=w, panel=panel,
-            ##           idname=idname,
-            ##           iters=NULL, alp=NULL, method=method, plot=NULL, se=se,
-            ##           retEachIter=NULL, seedvec=seedvec, pl=pl, cores=cores),
-            ##           group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
-            ##inffunc[f,t,S] <- satt[[t]]$inffunc
-
         }
-        ##fatt[[f]] <- c(satt, group=flist[f])
+
     }
 
     list(fatt=fatt, inffunc=inffunc)
@@ -412,7 +437,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                           pl=FALSE, cores=2) {
 
 
-    data$y <- data[,as.character(formula.tools::lhs(formla))]
+    data$y <- data[,BMisc::lhs.vars(formla)] ##data[,as.character(formula.tools::lhs(formla))]
     ##figure out the dates and make balanced panel
     tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
 
@@ -480,7 +505,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                 xformla <- ~1
             }
             pformla <- xformla
-            formula.tools::lhs(pformla) <- as.name("G")
+            pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
             pscore.reg <- glm(pformla, family=binomial(link="logit"),
                               data=subset(disdat, C+G==1))
             thetlist[[f]] <- coef(pscore.reg)
@@ -493,7 +518,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         thecount <<- thecount+1
         out <- pbapply::pblapply(1:nrow(X), function(i) {
             www <- as.numeric(weightfun(X1, X[i,]))##exp(X1%*%X[i,])##plogis(X1%*%X[i,]) ##(1*(apply((X1 <= X[i,]), 1, all)))
-            yname <- as.character(formula.tools::lhs(formla))
+            yname <- BMisc::lhs.vars(formla) ##as.character(formula.tools::lhs(formla))
 
             fatt <- list()
             counter <- 1

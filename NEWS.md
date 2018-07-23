@@ -1,5 +1,8 @@
 # did 1.1.1
-  * fix issues between BMisc and formula.tools
+
+  * fixed issues between BMisc and formula.tools
+
+  * added point estimates for repeated cross sections data
 
 # did 1.1.0
 
