@@ -86,9 +86,21 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     flist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
     flist <- flist[flist>0]
 
+    ##################################
+    ## do some error checking
     if (!is.numeric(tlist)) {
         warning("not guaranteed to order time periods correclty if they are not numeric")
     }
+
+    ## check that first.treat doesn't change across periods for particular individuals
+    if (!all(sapply( split(data, data[,idname]), function(df) {
+        all.equal(df[,first.treat.name])
+    }))) {
+        stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+    }
+    ####################################
+
+    
     tlen <- length(tlist)
     flen <- length(flist)
     if (panel) {
@@ -260,6 +272,9 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
             pret <- t
             if (flist[f]<=tlist[(t+1)]) {
                 pret <- tail(which(tlist < flist[f]),1) ## remember, this is just an index
+                if (length(pret) == 0) { ## then there are no pre-treatment periods
+                    warning(paste0("There are no pre-treatment periods for the group first treated at ", flist[f]))
+                }
                 if (printdetails) {
                     cat(paste("current period:", tlist[t+1]), "\n")
                     cat(paste("current group:", flist[f]), "\n")
