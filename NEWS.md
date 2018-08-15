@@ -1,3 +1,7 @@
+# did 1.1.2
+
+  * bug fixes for testing without covariates, allowed to pass NULL in addition to ~1
+
 # did 1.1.1
 
   * fixed issues between BMisc and formula.tools

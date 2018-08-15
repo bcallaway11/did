@@ -65,7 +65,7 @@
 #'                 bstrap=FALSE, se=TRUE, cband=FALSE)
 #' summary(out2)
 #'
-#' @references Callaway and Sant'Anna (2018)
+#' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
 #'
 #' @return \code{MP} object
 #'
@@ -394,6 +394,7 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 summary.MP <- function(object, ...) {
     mpobj <- object
     out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
+    citation()
     colnames(out) <- c("group", "time", "att","se")
     cat("\n")
     print(kable(out))
@@ -421,12 +422,20 @@ summary.MP <- function(object, ...) {
 #' @examples
 #' \dontrun{
 #' data(mpdta)
-#' mptest <- mp.spatt.test(lemp ~ treat, xformla=list(~lpop), data=mpdta,
+#' mptest <- mp.spatt.test(lemp ~ treat, xformlalist=list(~lpop), data=mpdta,
 #'                 panel=TRUE, first.treat.name="first.treat",
 #'                 idname="countyreal", tname="year", clustervarlist=list(NULL))
 #' summary(mptest[[1]])
 #' }
 #'
+#' data(mpdta)
+#' mptest <- mp.spatt.test(lemp ~ treat, xformlalist=list(NULL), data=mpdta,
+#'                 panel=TRUE, first.treat.name="first.treat",
+#'                 idname="countyreal", tname="year", clustervarlist=list(NULL))
+#' summary(mptest[[1]])
+#'
+#' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
+#' 
 #' @return list containing test results
 #' @export
 mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
@@ -464,7 +473,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         weightfun <- expf
     }
 
-
+    xformlalist <- lapply(xformlalist, function(ff) if (is.null(ff)) ~1 else ff)
 
     thecount <- 1
     innercount <- 1
@@ -501,9 +510,6 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             disdat <- droplevels(disdat)
 
-            if (is.null(xformla)) {
-                xformla <- ~1
-            }
             pformla <- xformla
             pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
             pscore.reg <- glm(pformla, family=binomial(link="logit"),
@@ -718,6 +724,7 @@ summary.MP.TEST <- function(object, ... ) {
     CvM <- object$CvM
     CvMcval <- object$CvMcval
     CvMpval <- object$CvMpval
+    citation()
     cat("Cramer von Mises: \n")
     cat("  Test Statistic: ", CvM, "\n")
     cat("  Critical Value: ", CvMcval, "\n")
@@ -1123,6 +1130,7 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
 #'
 #' @export
 summary.AGGTE <- function(object, ...) {
+    citation()
     sep <- "          "
     cat("Simple ATT    : ", object$simple.att, "\n")
     cat("  SE          : ", object$simple.se, "\n")

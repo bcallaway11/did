@@ -80,27 +80,6 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
  extending the method of Abadie (2005).  This method relies on once individuals are treated
  they remain in the treated state for the duration.
 }
-\examples{
-data(mpdta)
-
-## with covariates
-out1 <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
-                panel=TRUE, first.treat.name="first.treat",
-                idname="countyreal", tname="year",
-                bstrap=FALSE, se=TRUE, cband=FALSE)
-## summarize the group-time average treatment effects
-summary(out1)
-## summarize the aggregated treatment effect parameters
-summary(out1$aggte)
-
-## without any covariates
-out2 <- mp.spatt(lemp ~ treat, xformla=NULL, data=mpdta,
-                panel=TRUE, first.treat.name="first.treat",
-                idname="countyreal", tname="year",
-                bstrap=FALSE, se=TRUE, cband=FALSE)
-summary(out2)
-
-}
 \references{
-Callaway and Sant'Anna (2018)
+Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
 }
