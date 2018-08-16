@@ -94,7 +94,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     ## check that first.treat doesn't change across periods for particular individuals
     if (!all(sapply( split(data, data[,idname]), function(df) {
-        all.equal(df[,first.treat.name])
+        length(unique(df[,first.treat.name]))==1
     }))) {
         stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
     }
@@ -203,18 +203,6 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     ## get the actual estimates
 
 
-
-    ## wald test for pre-treatment periods
-    pre <- which(t < group)
-    preatt <- as.matrix(att[pre])
-    preV <- V[pre,pre]
-
-    
-    W <- n*t(preatt)%*%solve(preV)%*%preatt
-
-    q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
-    Wpval <- round(1-pchisq(W,q),5)
-
     ## new code
     cval <- qnorm(1-alp/2)
     if (cband) {
@@ -231,6 +219,21 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     if (aggte) {
         aggeffects <- compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters)
     }
+
+    ## wald test for pre-treatment periods
+    pre <- which(t < group)
+    preatt <- as.matrix(att[pre])
+    preV <- V[pre,pre]
+
+
+    if (det(preV) == 0) { ##matrix not invertible
+        warning("Not returning pre-test Wald statistic due to singular covariance matrix")
+        return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    }
+    
+    W <- n*t(preatt)%*%solve(preV)%*%preatt
+    q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
+    Wpval <- round(1-pchisq(W,q),5)
 
 
     return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects))
@@ -468,9 +471,23 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
     flist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
     flist <- flist[flist>0]
 
+    
+    ##################################
+    ## eventually can put this in its own functions as it is duplicate
+    ## code for the estimations
+    ## do some error checking
     if (!is.numeric(tlist)) {
         warning("not guaranteed to order time periods correclty if they are not numeric")
     }
+
+    ## check that first.treat doesn't change across periods for particular individuals
+    if (!all(sapply( split(data, data[,idname]), function(df) {
+        length(unique(df[,first.treat.name]))==1
+    }))) {
+        stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+    }
+    ####################################
+
     tlen <- length(tlist)
     flen <- length(flist)
     if (panel) {
