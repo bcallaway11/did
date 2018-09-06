@@ -5,10 +5,9 @@
 
 ## R CMD check results
 
-0 ERRORs | 0 WARNINGs | 0 NOTES.
+0 ERRORs | 0 WARNINGs | 1 NOTES.
 
-* On win-builder, there are 0 errors, 0 warnings, and 1 note.  The note is
-  "Possibly mis-spelled words in DESCRIPTION", but the spelling is correct.
+* Note: "Possibly mis-spelled words in DESCRIPTION", but the spelling is correct.
 
 ## Downstream dependencies
 
