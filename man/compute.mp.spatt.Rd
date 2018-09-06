@@ -4,8 +4,8 @@
 \alias{compute.mp.spatt}
 \title{compute.mp.spatt}
 \usage{
-compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name, formla,
-  xformla, tname, w, panel, idname, method, seedvec, se, pl, cores,
+compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
+  formla, xformla, tname, w, panel, idname, method, seedvec, se, pl, cores,
   printdetails)
 }
 \arguments{

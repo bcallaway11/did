@@ -18,13 +18,22 @@
 <!-- Font Awesome icons -->
 <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-T8Gy5hrqNKT+hzMclPo118YTQO6cYprQmhrYwIiQ/3axmI1hQomh7Ud2hPOy8SP1" crossorigin="anonymous">
 
+<!-- clipboard.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.7.1/clipboard.min.js" integrity="sha384-cV+rhyOuRHc9Ub/91rihWcGmMmCXDeksTtCihMupQHSsi8GIIRDG0ThDc3HGQFJ3" crossorigin="anonymous"></script>
+
+<!-- sticky kit -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sticky-kit/1.1.3/sticky-kit.min.js" integrity="sha256-c4Rlo1ZozqTPE2RLuvbusY3+SU1pQaJC0TjuhygMipw=" crossorigin="anonymous"></script>
 
 <!-- pkgdown -->
 <link href="../pkgdown.css" rel="stylesheet">
-<script src="../jquery.sticky-kit.min.js"></script>
 <script src="../pkgdown.js"></script>
-  
-  
+
+
+
+<meta property="og:title" content="Function reference" />
+
+
+
 <!-- mathjax -->
 <script src='https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
 
@@ -47,12 +56,16 @@
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="../index.html">did</a>
+      <span class="navbar-brand">
+        <a class="navbar-link" href="../index.html">did</a>
+        <span class="label label-default" data-toggle="tooltip" data-placement="bottom" title="Released package">1.1.2</span>
+      </span>
     </div>
+
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="..//index.html">
+  <a href="../index.html">
     <span class="fa fa-home fa-lg"></span>
      
   </a>
@@ -61,13 +74,14 @@
   <a href="../reference/index.html">Reference</a>
 </li>
 <li>
-  <a href="../news/index.html">News</a>
+  <a href="../news/index.html">Changelog</a>
 </li>
       </ul>
       
       <ul class="nav navbar-nav navbar-right">
         
       </ul>
+      
     </div><!--/.nav-collapse -->
   </div><!--/.container -->
 </div><!--/.navbar -->
@@ -75,152 +89,148 @@
       
       </header>
 
-      <div class="row">
-  <div class="col-md-9">
+<div class="row">
+  <div class="contents col-md-9">
     <div class="page-header">
-      <h1>
-        Reference
-        <small>version&nbsp;1.1.0</small>
-      </h1>
+      <h1>Reference</h1>
     </div>
 
-    <div class="contents">
-      <table class="ref-index">
+    <table class="ref-index">
 
-      <colgroup>
-        <col class="alias" />
-        <col class="title" />
-      </colgroup>
+    <colgroup>
+      
+      <col class="alias" />
+      <col class="title" />
+    </colgroup>
 
-      <tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-difference-in-differences-methods" class="hasAnchor"><a href="#section-difference-in-differences-methods" class="anchor"></a>Difference in Differences Methods</h2>
-            <p class="section-desc"><p>Tools to compute average treatment effects, particularly in the case with multiple periods and variation in treatment timing</p></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mp.spatt.html">mp.spatt</a></code> </p>
-          </td>
-          <td><p>mp.spatt</p></td>
-        </tr>
-      </tbody><tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-pre-testing" class="hasAnchor"><a href="#section-pre-testing" class="anchor"></a>Pre-Testing</h2>
-            <p class="section-desc"><p>Tools to compute “pre-test” the DID assumption in the case where multiple periods are available</p></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mp.spatt.test.html">mp.spatt.test</a></code> </p>
-          </td>
-          <td><p>mp.spatt.test</p></td>
-        </tr>
-      </tbody><tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-plotting-and-summarizing" class="hasAnchor"><a href="#section-plotting-and-summarizing" class="anchor"></a>Plotting and Summarizing</h2>
-            <p class="section-desc"><p>Tools for plotting and summarizing the results of the \texttt{mp.spatt} method</p></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="ggdid.html">ggdid</a></code> </p>
-          </td>
-          <td><p>ggdid</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="summary.MP.html">summary</a></code> </p>
-          </td>
-          <td><p>summary.MP</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="summary.AGGTE.html">summary</a></code> </p>
-          </td>
-          <td><p>summary.AGGTE</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="summary.MP.TEST.html">summary</a></code> </p>
-          </td>
-          <td><p>summary.MP.TEST</p></td>
-        </tr>
-      </tbody><tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-classes" class="hasAnchor"><a href="#section-classes" class="anchor"></a>Classes</h2>
-            <p class="section-desc"><p>Classes available in the \texttt{did} package</p></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="MP.html">MP</a></code> </p>
-          </td>
-          <td><p>MP</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="AGGTE.html">AGGTE</a></code> </p>
-          </td>
-          <td><p>AGGTE</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="MP.TEST.html">MP.TEST</a></code> </p>
-          </td>
-          <td><p>MP.TEST</p></td>
-        </tr>
-      </tbody><tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-weighting-functions" class="hasAnchor"><a href="#section-weighting-functions" class="anchor"></a>Weighting Functions</h2>
-            <p class="section-desc"><p>Available weighting functions for the pre-test</p></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="indicator.html">indicator</a></code> </p>
-          </td>
-          <td><p>indicator</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="expf.html">expf</a></code> </p>
-          </td>
-          <td><p>expf</p></td>
-        </tr><tr>
-          <!--  -->
-          <td>
-            <p><code><a href="onefun.html">onefun</a></code> </p>
-          </td>
-          <td><p>onefun</p></td>
-        </tr>
-      </tbody><tbody>
-        <tr>
-          <th colspan="2">
-            <h2 id="section-data" class="hasAnchor"><a href="#section-data" class="anchor"></a>Data</h2>
-            <p class="section-desc"><p>Available datasets in the package</p></p>
-          </th>
-        </tr>
-        <tr>
-          <!--  -->
-          <td>
-            <p><code><a href="mpdta.html">mpdta</a></code> </p>
-          </td>
-          <td><p>County teen employment</p></td>
-        </tr>
-      </tbody>
-      </table>
-    </div>
+    <tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-difference-in-differences-methods" class="hasAnchor"><a href="#section-difference-in-differences-methods" class="anchor"></a>Difference in Differences Methods</h2>
+          <p class="section-desc"><p>Tools to compute average treatment effects, particularly in the case with multiple periods and variation in treatment timing</p></p>
+        </th>
+      </tr>
+      <tr>
+        
+        <td>
+          <p><code><a href="mp.spatt.html">mp.spatt()</a></code> </p>
+        </td>
+        <td><p>mp.spatt</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-pre-testing" class="hasAnchor"><a href="#section-pre-testing" class="anchor"></a>Pre-Testing</h2>
+          <p class="section-desc"><p>Tools to compute “pre-test” the DID assumption in the case where multiple periods are available</p></p>
+        </th>
+      </tr>
+      <tr>
+        
+        <td>
+          <p><code><a href="mp.spatt.test.html">mp.spatt.test()</a></code> </p>
+        </td>
+        <td><p>mp.spatt.test</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-plotting-and-summarizing" class="hasAnchor"><a href="#section-plotting-and-summarizing" class="anchor"></a>Plotting and Summarizing</h2>
+          <p class="section-desc"><p>Tools for plotting and summarizing the results of the \texttt{mp.spatt} method</p></p>
+        </th>
+      </tr>
+      <tr>
+        
+        <td>
+          <p><code><a href="ggdid.html">ggdid()</a></code> </p>
+        </td>
+        <td><p>ggdid</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="summary.MP.html">summary(<i>&lt;MP&gt;</i>)</a></code> </p>
+        </td>
+        <td><p>summary.MP</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="summary.AGGTE.html">summary(<i>&lt;AGGTE&gt;</i>)</a></code> </p>
+        </td>
+        <td><p>summary.AGGTE</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="summary.MP.TEST.html">summary(<i>&lt;MP.TEST&gt;</i>)</a></code> </p>
+        </td>
+        <td><p>summary.MP.TEST</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-classes" class="hasAnchor"><a href="#section-classes" class="anchor"></a>Classes</h2>
+          <p class="section-desc"><p>Classes available in the \texttt{did} package</p></p>
+        </th>
+      </tr>
+      <tr>
+        
+        <td>
+          <p><code><a href="MP.html">MP()</a></code> </p>
+        </td>
+        <td><p>MP</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="AGGTE.html">AGGTE()</a></code> </p>
+        </td>
+        <td><p>AGGTE</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="MP.TEST.html">MP.TEST()</a></code> </p>
+        </td>
+        <td><p>MP.TEST</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-weighting-functions" class="hasAnchor"><a href="#section-weighting-functions" class="anchor"></a>Weighting Functions</h2>
+          <p class="section-desc"><p>Available weighting functions for the pre-test</p></p>
+        </th>
+      </tr>
+      <tr>
+        
+        <td>
+          <p><code><a href="indicator.html">indicator()</a></code> </p>
+        </td>
+        <td><p>indicator</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="expf.html">expf()</a></code> </p>
+        </td>
+        <td><p>expf</p></td>
+      </tr><tr>
+        
+        <td>
+          <p><code><a href="onefun.html">onefun()</a></code> </p>
+        </td>
+        <td><p>onefun</p></td>
+      </tr>
+    </tbody><tbody>
+      <tr>
+        <th colspan="2">
+          <h2 id="section-data" class="hasAnchor"><a href="#section-data" class="anchor"></a>Data</h2>
+          <p class="section-desc"><p>Available datasets in the package</p></p>
+        </th>
+      </tr>
+      <tr>
+        
+        <td>
+          <p><code><a href="mpdta.html">mpdta</a></code> </p>
+        </td>
+        <td><p>County teen employment</p></td>
+      </tr>
+    </tbody>
+    </table>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
@@ -242,11 +252,14 @@
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="http://hadley.github.io/pkgdown/">pkgdown</a>.</p>
+  <p>Site built with <a href="http://pkgdown.r-lib.org/">pkgdown</a>.</p>
 </div>
 
       </footer>
    </div>
 
+  
+
   </body>
 </html>
+

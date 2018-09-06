@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>compute.aggte — compute.aggte • did</title>
+<title>citation — citation • did</title>
 
 <!-- jquery -->
 <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha384-nrOSfDHtoPMzJHjVTdCopGqIqeYETSXhZDFyniQ8ZHcVy08QesyHcnOUpMpqnmWq" crossorigin="anonymous"></script>
@@ -30,10 +30,9 @@
 
 
 
-<meta property="og:title" content="compute.aggte — compute.aggte" />
+<meta property="og:title" content="citation — citation" />
 
-<meta property="og:description" content="does the heavy lifting on computing aggregated group-time
- average treatment effects" />
+<meta property="og:description" content="print the citation for the relevant paper" />
 <meta name="twitter:card" content="summary" />
 
 
@@ -96,66 +95,25 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>compute.aggte</h1>
+    <h1>citation</h1>
     
-    <div class="hidden name"><code>compute.aggte.Rd</code></div>
+    <div class="hidden name"><code>citation.Rd</code></div>
     </div>
 
     <div class="ref-description">
     
-    <p>does the heavy lifting on computing aggregated group-time
- average treatment effects</p>
+    <p>print the citation for the relevant paper</p>
     
     </div>
 
-    <pre class="usage"><span class='fu'>compute.aggte</span>(<span class='no'>flist</span>, <span class='no'>group</span>, <span class='no'>t</span>, <span class='no'>att</span>, <span class='no'>first.treat.name</span>, <span class='no'>inffunc1</span>, <span class='no'>n</span>,
-  <span class='no'>clustervars</span>, <span class='no'>dta</span>, <span class='no'>idname</span>, <span class='no'>bstrap</span>, <span class='no'>biters</span>)</pre>
-    
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>first.treat.name</th>
-      <td><p>The name of the variable in <code>data</code> that contains the first
-period when a particular observation is treated</p></td>
-    </tr>
-    <tr>
-      <th>clustervars</th>
-      <td><p>A vector of variables to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level.</p></td>
-    </tr>
-    <tr>
-      <th>idname</th>
-      <td><p>The individual (cross-sectional unit) id name</p></td>
-    </tr>
-    <tr>
-      <th>bstrap</th>
-      <td><p>Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
-must set <code>bstrap=TRUE</code>.</p></td>
-    </tr>
-    <tr>
-      <th>biters</th>
-      <td><p>The number of boostrap iterations to use.  The default is 100,
-and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
-    </tr>
-    </table>
-    
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
-
-    <p><code>AGGTE</code> object</p>
-    
+    <pre class="usage"><span class='fu'>citation</span>()</pre>
+        
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
     <h2>Contents</h2>
     <ul class="nav nav-pills nav-stacked">
-      <li><a href="#arguments">Arguments</a></li>
-      
-      <li><a href="#value">Value</a></li>
-          </ul>
+                </ul>
 
   </div>
 </div>

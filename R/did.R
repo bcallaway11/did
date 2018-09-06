@@ -655,13 +655,16 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
         KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
         CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
 
-
+        if (!pl) {
+            cores <- 1
+        }
+        
         innercount <<- 1
         lapply(clustervarlist, function(clustervars) {
 
             cat("\n >>> Inner Step", innercount, "of", length(clustervarlist), ":.....................\n")
             innercount <<- innercount+1
-            bout <- pbapply::pblapply(1:biters, cl=8, FUN=function(b) {
+            bout <- pbapply::pblapply(1:biters, cl=cores, FUN=function(b) {
                 Jb <- t(sapply(outinffunc, function(inffunc1) {
                     ## new version
                     if (idname %in% clustervars) {

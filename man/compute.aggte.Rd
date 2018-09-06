@@ -4,8 +4,8 @@
 \alias{compute.aggte}
 \title{compute.aggte}
 \usage{
-compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n, clustervars,
-  dta, idname, bstrap, biters)
+compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n,
+  clustervars, dta, idname, bstrap, biters)
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
