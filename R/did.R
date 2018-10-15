@@ -122,11 +122,12 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                                 pl, cores, printdetails)
 
 
-    if (!panel) { ## if not panel use empirical bootstrap
-        fatt <- results$fatt
-        warning("only reporting point estimates for data with repeated cross sections")
-        return(fatt)
-    }
+   
+    ## if (!panel) { ## if not panel use empirical bootstrap
+    ##     fatt <- results$fatt
+    ##     warning("only reporting point estimates for data with repeated cross sections")
+    ##     return(fatt)
+    ## }
     
     fatt <- results$fatt
     inffunc <- results$inffunc
@@ -274,10 +275,16 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
         for (t in 1:(tlen-1)) {
             pret <- t
             if (flist[f]<=tlist[(t+1)]) {
-                pret <- tail(which(tlist < flist[f]),1) ## remember, this is just an index
-                if (length(pret) == 0) { ## then there are no pre-treatment periods
+                ## set an index for the pretreatment period
+                pret <- tail(which(tlist < flist[f]),1)
+
+                ## print a warning message if there are no pre-treatment
+                ##  periods
+                if (length(pret) == 0) { 
                     warning(paste0("There are no pre-treatment periods for the group first treated at ", flist[f]))
                 }
+
+                ## print the details of which iteration we are on
                 if (printdetails) {
                     cat(paste("current period:", tlist[t+1]), "\n")
                     cat(paste("current group:", flist[f]), "\n")
@@ -285,49 +292,69 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 }
             }
 
+            ## --------------------------------------------------------
+            ## results for the case with panel data
             if (panel) {
+                ## get dataset with current period and pre-treatment period
                 disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
+                ## transform it into "cross-sectional" data where
+                ## one of the columns contains the change in the outcome
+                ## over time
                 disdat <- panel2cs(disdat, yname, idname, tname)
 
+                ## set up control group
                 disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
+                ## set up for particular treated group
                 disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
 
+                ## drop missing factors
                 disdat <- droplevels(disdat)
 
+                ## set up xformla in no covariates case
                 if (is.null(xformla)) {
                     xformla <- ~1
                 }
+
+                ## set up formula for propensity score, estimate it,
+                ## get coefficients and get propensity score
                 pformla <- xformla
-                ##formula.tools::lhs(pformla) <- as.name("G")
+
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
                 
                 pscore.reg <- glm(pformla, family=binomial(link="logit"),
                                   data=subset(disdat, C+G==1))
                 thet <- coef(pscore.reg)
                 pscore <- predict(pscore.reg, newdata=disdat, type="response")
-
+                
+                ## give short names for data in this iteration
                 G <- disdat$G
                 C <- disdat$C
                 dy <- disdat$dy
                 x <- model.matrix(xformla, data=disdat)
                 n <- nrow(disdat)
 
+                ## set up weights
                 attw1 <- G/mean(G)
                 attw2a <- pscore*C/(1-pscore)
                 attw2 <- attw2a/mean(attw2a)
                 att <- mean((attw1 - attw2)*dy)
 
+                ## save results for this iteration
                 fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
 
+                ## --------------------------------------------
                 ## get the influence function
 
+                ## weigts
                 wg <- G/mean(G)
                 wc1 <- C*pscore / (1-pscore)
                 wc <- wc1 / mean(wc1)
 
+                ## influence function for treated group
                 psig <- wg*(dy - mean(wg*dy))
 
+                ## influence function for control group (see paper)
                 M <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * (dy - mean(wc*dy)) * x), 2, mean) / mean(wc1))
                 A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
                 A1 <- (t(A1*x)%*%x/n)
@@ -335,38 +362,84 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 A <- A2%*%MASS::ginv(A1)
                 psic <- wc*(dy - mean(wc*dy)) + A%*%M
 
+                ## save the influnce function as the difference between
+                ## the treated and control influence functions;
+                ## we save this as a 3-dimensional array
+                ## and then process afterwards
                 inffunc[f,t,] <- psig - psic
-            } else { ## this is repeated cross sections case
+            } else {
+                ## --------------------------------------------
+                ## this is repeated cross sections case
+                ## unlike the panel data case, here we calculate averages
+                ## over the entire data set to estimate some things
 
-                ## can use entire data set to estimate some things
+                ## set up short variables for the control group and
+                ## treated groups, and a dummy variable for an
+                ## observation in the current period
                 data$C <- 1*(data[,first.treat.name] == 0)
                 data$G <- 1*(data[,first.treat.name] == flist[f])
+                data$T <- 1*(data[,tname]==tlist[t+1])
+                data$preT <- 1*(data[,tname]==tlist[pret])
+
+                ## estimate the propensity score
+                ## unlike the panel case, here we can use all time periods
+                ## though we drop observations that are not in group G
+                ## or the control group
                 if (is.null(xformla)) {
                     xformla <- ~1
                 }
                 pformla <- xformla
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
-                
                 pscore.reg <- glm(pformla, family=binomial(link="logit"),
                                   data=subset(data, C+G==1))
                 thet <- coef(pscore.reg)
                 pscore <- predict(pscore.reg, newdata=data, type="response")
                 data$pscore <- pscore
-                lam <- 1/tlen
-                d1 <- mean(data$G)
-                d2 <- mean(data$pscore*data$C/(1-data$pscore))
-                Tt <- 1*(data[,tname]==tlist[t+1])
-                Tgmin1 <- 1*(data[,tname]==tlist[pret])
-                lamt <- mean(Tt)
-                lamgmin1 <- mean(Tgmin1)
-                w1 <- lam*(Tt/lamt - Tgmin1/lamgmin1)
-                attw1 <- data$G/d1
-                attw2a <- pscore*data$C/(1-pscore)
-                attw2 <- attw2a/d2
-                y <- data$y
-                att <- mean(w1*(attw1 - attw2)*y)
 
+                ## set up the weights
+
+                ## first set of weights for group G in period T
+                wt1 <- data$G * data$T
+                nwt1 <- wt1/mean(wt1)
+
+                ## weights for group G in period G-1
+                wt2 <- data$G * data$preT
+                nwt2 <- wt2/mean(wt2)
+
+                ## weights for group C in period T
+                wc1 <- data$T * pscore * data$C / (1-pscore)
+                nwc1 <- wc1/mean(wc1)
+
+                ## weights for group C in period G-1
+                wc2 <- data$preT * pscore * data$C / (1-pscore)
+                nwc2 <- wc2/mean(wc2)
+                
+                ## average treatment effect
+                att <- mean( ((nwt1 - nwt2) - (nwc1 - nwc2))*data$y)
+
+                ## save results
                 fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
+
+                ## ------------------------------------------
+                ## get the influence function
+
+                ## for the treated group
+                y <- data$y
+                psit1 <- nwt1*(y - mean(nwt1*y))
+                psit2 <- nwt2*(y - mean(nwt2*y))
+
+                ## for the untreated group
+                x <- model.matrix(xformla, data=data)
+                M1 <- as.matrix(apply( (data$T * data$C/(1-pscore))^2 * g(x,thet)*(y - mean(nwc1*y))*x, 2, mean) / mean(wc1))
+                M2 <- as.matrix(apply( (data$preT * data$C/(1-pscore))^2 * g(x,thet)*(y - mean(nwc2*y))*x, 2, mean) / mean(wc2))
+                A1 <- ((data$G + data$C)*g(x,thet)^2 / (pscore*(1-pscore)))*x
+                A1 <- t(A1)%*%x
+                A2 <- (((data$G + data$C)*(data$G - pscore)*g(x,thet))/(pscore*(1-pscore)))*x
+                xi <- t(solve(A1)%*%t(A2))
+                psic1 <- nwc1*(y - mean(nwc1*y)) + xi%*%M1
+                psic2 <- nwc2*(y - mean(nwc2*y)) + xi%*%M2
+
+                inffunc[f,t,] <- psit1 - psit2 - (psic1 - psic2)
             }
 
             counter <- counter+1
@@ -872,7 +945,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     }
 
 
-    ## internal function for computing standarad errors
+    ## internal function for computing standard errors
     ##  this method is used across different types of
     ##  aggregate treatment effect parameters and is just
     ##  based on using the right influence function and weights
