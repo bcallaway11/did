@@ -122,7 +122,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                                 pl, cores, printdetails)
 
 
-   
+    
     ## if (!panel) { ## if not panel use empirical bootstrap
     ##     fatt <- results$fatt
     ##     warning("only reporting point estimates for data with repeated cross sections")
@@ -226,6 +226,10 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     preatt <- as.matrix(att[pre])
     preV <- V[pre,pre]
 
+    if (length(preV) == 0) {
+        message("No pre-treatment periods to test")
+        return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    }
 
     if (det(preV) == 0) { ##matrix not invertible
         warning("Not returning pre-test Wald statistic due to singular covariance matrix")
@@ -326,7 +330,8 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                                   data=subset(disdat, C+G==1))
                 thet <- coef(pscore.reg)
                 pscore <- predict(pscore.reg, newdata=disdat, type="response")
-                
+
+                                
                 ## give short names for data in this iteration
                 G <- disdat$G
                 C <- disdat$C
