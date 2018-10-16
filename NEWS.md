@@ -1,3 +1,7 @@
+# did 1.2.0
+
+  * Updates for handling repeated cross sections data, both estimation and inference
+
 # did 1.1.2
 
   * bug fixes for testing without covariates, allowed to pass NULL in addition to ~1
