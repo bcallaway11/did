@@ -10,7 +10,6 @@ LazyData: true
 Imports:
     BMisc,
     MASS,
-    formula.tools,
     pbapply,
     stats,
     ggplot2,
