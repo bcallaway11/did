@@ -18,7 +18,9 @@
 #'  sections
 #' @param idname The individual (cross-sectional unit) id name
 #' @param first.treat.name The name of the variable in \code{data} that contains the first
-#'  period when a particular observation is treated
+#'  period when a particular observation is treated.  This should be a positive
+#'  number for all observations in treated groups.  It should be 0 for observations
+#'  in the untreated group.
 #' @param alp the significance level, default is 0.05
 #' @param method The method for estimating the propensity score when covariates
 #'  are included
@@ -84,6 +86,9 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
 
     flist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
+    if ( length(flist[flist==0]) == 0) {
+        warning("dataset does not have any observations in the control group.  make sure to set data[,first.treat.name] = 0 for observations in the control group.")
+    }
     flist <- flist[flist>0]
 
     ##################################
