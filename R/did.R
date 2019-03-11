@@ -334,6 +334,13 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 pscore.reg <- glm(pformla, family=binomial(link="logit"),
                                   data=subset(disdat, C+G==1))
                 thet <- coef(pscore.reg)
+
+                ## error handling for too many covariates
+                if (any(is.na(thet)) {
+                    warning(paste0("Problems estimating propensity score...likely perfectly predicting treatment for group: ", flist[f], " at time period: ", tlist[t+1]))
+                }
+
+                ## estimate propensity score
                 pscore <- predict(pscore.reg, newdata=disdat, type="response")
 
                                 
@@ -402,7 +409,12 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
                 pscore.reg <- glm(pformla, family=binomial(link="logit"),
                                   data=subset(data, C+G==1))
+                
                 thet <- coef(pscore.reg)
+                ## error handling for too many covariates
+                if (any(is.na(thet)) {
+                    warning(paste0("Problems estimating propensity score...likely perfectly predicting treatment for group: ", flist[f], " at time period: ", tlist[t+1]))
+                }
                 pscore <- predict(pscore.reg, newdata=data, type="response")
                 data$pscore <- pscore
 
