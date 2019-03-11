@@ -1,4 +1,7 @@
-# did 1.2.0
+# did 1.2.1 (this is current version)
+  * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages
+
+# did 1.2.0 (on CRAN)
 
   * Updates for handling repeated cross sections data, both estimation and inference
 
