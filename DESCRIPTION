@@ -17,3 +17,6 @@ Imports:
     utils,
     gridExtra
 RoxygenNote: 6.1.0
+VignetteBuilder: knitr
+Suggests: 
+    rmarkdown

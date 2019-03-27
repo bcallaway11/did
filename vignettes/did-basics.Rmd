@@ -1,0 +1,51 @@
+---
+title: "DID Basics"
+author: "Brantly Callaway and Pedro H.C. Sant\'Anna"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{DID Basics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette discusses the basics of using Difference-in-Differences (DID) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the `did` package.
+
+# A Running Example
+
+Throughout the vignette, we use a subset of data that comes from Callaway and Sant'Anna (2019).  This is a dataset that contains county-level teen employment rates from 2001-2007.  The data can be loaded by
+```{r}
+library(did)
+##data(mpdata)
+```
+And the dataset looks like
+```{r}
+##head(mpdata)
+```
+
+## Some Comments about the Format of the Data for using the 'did` Package
+
+
+
+# Identification
+
+First, we provide a brief overview of how identification works as well as parameters of interest in DID designs.
+
+The main identifying assumption
+
+# Estimation
+
+## Two-Groups / Two Periods
+
+## Multiple Groups and Periods
+
+# Common Issues using the `did` package
+
+# References 
