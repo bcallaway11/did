@@ -1370,9 +1370,18 @@ g <- function(x,thet) {
     as.numeric(gval)
 }
 
-## x nxk matrix
-## thet kx1 vector
-## return nx1 vector
+## ## x nxk matrix
+## ## thet kx1 vector
+## ## return nx1 vector
+## #' @title G
+## #'
+## #' @description Logit cdf
+## #'
+## #' @param x nxk data matrix
+## #' @param thet kx1 vector of parameters
+## #'
+## #' @return nx1 vector
+## #' @keywords internal
 G <- function(x,thet) {
     x <- as.matrix(x)
     thet <- as.matrix(thet)
