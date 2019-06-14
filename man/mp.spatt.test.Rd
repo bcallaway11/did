@@ -31,7 +31,9 @@ sections}
 \item{idname}{The individual (cross-sectional unit) id name}
 
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
-period when a particular observation is treated}
+period when a particular observation is treated.  This should be a positive
+number for all observations in treated groups.  It should be 0 for observations
+in the untreated group.}
 
 \item{alp}{the significance level, default is 0.05}
 

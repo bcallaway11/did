@@ -1,4 +1,4 @@
-utils::globalVariables(c("year","att","ate.se","post","group"))
+utils::globalVariables(c("year","att","ate.se","post","group","x"))
 
 #' @title citation
 #'

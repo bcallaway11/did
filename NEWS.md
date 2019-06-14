@@ -1,6 +1,10 @@
 # did 1.2.1 (this is current version)
   * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages
 
+  * Fixes handling for data being in format besides "data.frame" (e.g. "tibble")
+
+  * Add warnings about small group sizes which are a very common source of trouble
+
 # did 1.2.0 (on CRAN)
 
   * Updates for handling repeated cross sections data, both estimation and inference

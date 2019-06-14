@@ -9,7 +9,9 @@ compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n,
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
-period when a particular observation is treated}
+period when a particular observation is treated.  This should be a positive
+number for all observations in treated groups.  It should be 0 for observations
+in the untreated group.}
 
 \item{clustervars}{A vector of variables to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these

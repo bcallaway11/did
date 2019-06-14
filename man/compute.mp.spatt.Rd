@@ -12,7 +12,9 @@ compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
 \item{data}{The name of the data.frame that contains the data}
 
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
-period when a particular observation is treated}
+period when a particular observation is treated.  This should be a positive
+number for all observations in treated groups.  It should be 0 for observations
+in the untreated group.}
 
 \item{formla}{The formula y ~ d where y is the outcome and d is the
 treatment indicator (d should be binary)}
