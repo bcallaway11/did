@@ -1279,7 +1279,7 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
 #' @param ... other variables
 #'
 #' @export
-summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynsel", el=1,...) {
+summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynsel"), el=1, ...) {
     citation()
     sep <- "          "
     cat("Overall Summary Measures", "\n")
