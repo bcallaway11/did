@@ -64,12 +64,12 @@ and plot the results using the \texttt{ggdid} command:
 
 ```{r}
 library(gridExtra)
-ggdid(out)
+ggdid(out, ylim=c(-.5,.2))
 ```
 
 Another common use for the `did` package is reporting "event-study" type results.  To get these directly, one can use
 ```{r}
-summary(out$aggte, type="dynamic")
+summary(out$aggte, type="dynamic", ylim=c(-.5,.2))
 ```
 
 and to plot the same results

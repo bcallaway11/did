@@ -100,7 +100,7 @@ and plot the results using the command:
 
 ``` r
 library(gridExtra)
-ggdid(out)
+ggdid(out, ylim=c(-.5,.2))
 ```
 
 ![](README-unnamed-chunk-5-1.png)
@@ -108,7 +108,7 @@ ggdid(out)
 Another common use for the `did` package is reporting "event-study" type results. To get these directly, one can use
 
 ``` r
-summary(out$aggte, type="dynamic")
+summary(out$aggte, type="dynamic", ylim=c(-.5,.2))
 #> 
 #> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2019. 
 #> Overall Summary Measures 
