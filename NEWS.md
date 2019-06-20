@@ -1,18 +1,20 @@
-# did 1.2.2 
+# did 1.2.2 (not released)
+
   * Improved ways to summarize aggregated treatment effect parameters
 
   * Fixed bug related to needing new version of BMisc
 
   * Fixed bug related to plotting with no pre-treatment periods
 
-# did 1.2.1 
+# did 1.2.1 (on CRAN)
+
   * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages
 
   * Fixes handling for data being in format besides "data.frame" (e.g. "tibble")
 
   * Add warnings about small group sizes which are a very common source of trouble
 
-# did 1.2.0 (on CRAN)
+# did 1.2.0
 
   * Updates for handling repeated cross sections data, both estimation and inference
 

@@ -121,7 +121,8 @@
     </div>
 
     <pre class="usage"><span class='co'># S3 method for AGGTE</span>
-<span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>object</span>, <span class='no'>...</span>)</pre>
+<span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>object</span>, <span class='kw'>type</span> <span class='kw'>=</span> <span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/c'>c</a></span>(<span class='st'>"dynamic"</span>, <span class='st'>"selective"</span>,
+  <span class='st'>"calendar"</span>, <span class='st'>"dynsel"</span>), <span class='kw'>e1</span> <span class='kw'>=</span> <span class='fl'>1</span>, <span class='no'>...</span>)</pre>
     
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -129,6 +130,14 @@
     <tr>
       <th>object</th>
       <td><p>an AGGTE object</p></td>
+    </tr>
+    <tr>
+      <th>type</th>
+      <td><p>which type of summary to print, options are "dynamic", "selective", "calendar", and "dynsel"</p></td>
+    </tr>
+    <tr>
+      <th>e1</th>
+      <td><p>if the type is "dynsel", this is the number of post-treatment periods required in order for a group to be used to construct aggregated parameters with selective treatment timing and dynamic effects; otherwise not used</p></td>
     </tr>
     <tr>
       <th>...</th>

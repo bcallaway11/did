@@ -120,8 +120,9 @@
     
     </div>
 
-    <pre class="usage"><span class='fu'>ggdid</span>(<span class='no'>mpobj</span>, <span class='kw'>ylim</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>xlab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>ylab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>title</span> <span class='kw'>=</span> <span class='st'>"Group"</span>, <span class='kw'>xgap</span> <span class='kw'>=</span> <span class='fl'>1</span>, <span class='kw'>ncol</span> <span class='kw'>=</span> <span class='fl'>1</span>)</pre>
+    <pre class="usage"><span class='fu'>ggdid</span>(<span class='no'>mpobj</span>, <span class='kw'>type</span> <span class='kw'>=</span> <span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/c'>c</a></span>(<span class='st'>"attgt"</span>, <span class='st'>"dynamic"</span>, <span class='st'>"selective"</span>, <span class='st'>"calendar"</span>,
+  <span class='st'>"dynsel"</span>), <span class='kw'>ylim</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>xlab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>ylab</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
+  <span class='kw'>title</span> <span class='kw'>=</span> <span class='st'>"Group"</span>, <span class='kw'>xgap</span> <span class='kw'>=</span> <span class='fl'>1</span>, <span class='kw'>ncol</span> <span class='kw'>=</span> <span class='fl'>1</span>, <span class='kw'>e1</span> <span class='kw'>=</span> <span class='fl'>1</span>)</pre>
     
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -129,6 +130,18 @@
     <tr>
       <th>mpobj</th>
       <td><p>an <code>MP</code> object</p></td>
+    </tr>
+    <tr>
+      <th>type</th>
+      <td><p>the type of plot, should be one of "attgt", "dynamic",
+"selective", "calendar", "dynsel".  "attgt" is the default and plots
+all group-time average treatment effects separately by group (including
+pre-treatment time periods); "dynamic" plots dynamic treatment effects --
+these are the same as event studies; "selective" plots average effects
+of the treatment separately by group (which allows for selective treatment
+timing); "calendar" plots average treatment effects by time period; and
+"dynsel" plots dynamic effects allowing for selective treatment timing
+(this also requires setting the additional paramater e1)</p></td>
     </tr>
     <tr>
       <th>ylim</th>
@@ -157,6 +170,13 @@ value on the x-axis.  The default is 1.</p></td>
       <th>ncol</th>
       <td><p>The number of columns to include in the resulting plot.  The
 default is 1.</p></td>
+    </tr>
+    <tr>
+      <th>e1</th>
+      <td><p>only used when plot type is "dynsel", this specifies the number
+of post-treatment periods that need to be available for particular groups
+to be included in the resulting plot when there are dynamic treatment
+effects and selective treatment timing</p></td>
     </tr>
     </table>
     
