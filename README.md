@@ -103,7 +103,7 @@ library(gridExtra)
 ggdid(out, ylim=c(-.25,.1))
 ```
 
-![](README-unnamed-chunk-5-1.png)
+![](man/figures/README-unnamed-chunk-5-1.png)
 
 Another common use for the `did` package is reporting "event-study" type results. To get these directly, one can use
 
@@ -139,7 +139,7 @@ and to plot the same results
 ggdid(out, type="dynamic", ylim=c(-.25,.1))
 ```
 
-![](README-unnamed-chunk-7-1.png)
+![](man/figures/README-unnamed-chunk-7-1.png)
 
 Other options for both `summary` and `ggdid` are:
 
