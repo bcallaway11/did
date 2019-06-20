@@ -1223,7 +1223,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
         getSE(d$whiche, d$pge)
     })
 
-    AGGTE(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1,groups=flist,times=tlist)
+    AGGTE(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1,groups=originalflist,times=originaltlist)
 }
 
 
@@ -1298,7 +1298,7 @@ summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynse
     type <- type[1]
     if (type == "dynamic") {
         cat("Dynamic Treatment Effects", "\n")
-        cat("-------------------------", "\n")
+        cat("-------------------------")
         elen <- length(object$dynamic.att.e)
         printmat <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.se.e)
         colnames(printmat) <- c("e","att","se")
@@ -1307,7 +1307,6 @@ summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynse
 
     ## issue is that groups and times are a bit off..., they are getting set though
     if (type=="selective") {
-        stop("not implemented yet...")
         cat("Selective Treatment Timing", "\n")
         cat("--------------------------", "\n")
         printmat <- cbind(object$groups, object$selective.att.g, object$selective.se.g)
@@ -1316,21 +1315,19 @@ summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynse
     }
 
     if (type=="calendar") {
-        stop("not implemented yet...")
         cat("Calendar Time Effects", "\n")
-        cat("---------------------", "\n")
-        printmat <- cbind(object$times, object$calendar.att.t, object$calendar.se.t)
+        cat("---------------------")
+        printmat <- cbind(object$times[object$times >= min(object$groups)], object$calendar.att.t, object$calendar.se.t)
         colnames(printmat) <- c("t","att","se")
         print(kable(printmat))
     }
 
     if (type=="dynsel") {
-        stop("not implemented yet...")
         if (is.null(e1)) {
             stop("must provide value of e1 for reporting dynamic effects with selective treatment timing")
         }
         cat("Selective Treatment Timing and Dynamic Effects with e=", e1, "\n")
-        cat("-------------------------------------------------------", "\n")
+        cat("-------------------------------------------------------")
         printmat <- cbind(seq(1:e1), object$dynsel.att.ee1[[e1]]$dte[1:e1],
                           object$dynsel.se.ee1[[e1]]$se[1:e1])
         colnames(printmat) <- c("e","att","se")
