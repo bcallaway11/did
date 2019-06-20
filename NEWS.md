@@ -1,4 +1,7 @@
-# did 1.2.1 (this is current version)
+# did 1.2.2 (current version)
+  * Improved ways to summarize aggregated treatment effect parameters
+
+# did 1.2.1 (on CRAN)
   * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages
 
   * Fixes handling for data being in format besides "data.frame" (e.g. "tibble")
