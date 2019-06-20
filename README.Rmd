@@ -62,7 +62,7 @@ summary(out)
 ```
 and plot the results using the \texttt{ggdid} command:
 
-```{r eval=FALSE}
+```{r}
 library(gridExtra)
 ggdid(out)
 ```
