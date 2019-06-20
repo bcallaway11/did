@@ -242,7 +242,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     aggeffects <- NULL
     if (aggte) {
-        aggeffects <- compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters)
+        aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters)
     }
 
     ## wald test for pre-treatment periods
@@ -979,7 +979,7 @@ ggdid <- function(mpobj, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
 #' @keywords internal
 #'
 #' @export
-compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters) {
+compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters) {
 
     if ( (length(clustervars) > 0) & !bstrap) {
         warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
@@ -1054,6 +1054,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
     originalt <- t
     originalgroup <- group
     originalflist <- flist
+    originaltlist <- tlist
     uniquet <- seq(1,length(unique(t)))
     ## function to switch from "new" t values to
     ##  original t values
@@ -1222,7 +1223,7 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
         getSE(d$whiche, d$pge)
     })
 
-    AGGTE(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1)
+    AGGTE(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1,groups=flist,times=tlist)
 }
 
 
@@ -1263,8 +1264,10 @@ compute.aggte <- function(flist, group, t, att, first.treat.name, inffunc1, n, c
 #'  in order to be included in the results and for each length of exposure
 #'  to treatment
 #' @param dynsel.se.ee1 the standard error for \code{dynsel.att.ee1}
-AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective.se=NULL, selective.att.g=NULL, selective.se.g=NULL, dynamic.att=NULL, dynamic.se=NULL, dynamic.att.e=NULL, dynamic.se.e=NULL, calendar.att=NULL, calendar.se=NULL, calendar.att.t=NULL, calendar.se.t=NULL, dynsel.att.e1=NULL, dynsel.se.e1=NULL, dynsel.att.ee1=NULL, dynsel.se.ee1=NULL) {
-    out <- list(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1)
+#' @param groups vector of all groups
+#' @param times vector of all times
+AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective.se=NULL, selective.att.g=NULL, selective.se.g=NULL, dynamic.att=NULL, dynamic.se=NULL, dynamic.att.e=NULL, dynamic.se.e=NULL, calendar.att=NULL, calendar.se=NULL, calendar.att.t=NULL, calendar.se.t=NULL, dynsel.att.e1=NULL, dynsel.se.e1=NULL, dynsel.att.ee1=NULL, dynsel.se.ee1=NULL, groups=NULL, times=NULL) {
+    out <- list(simple.att=simple.att, simple.se=simple.se, selective.att=selective.att, selective.se=selective.se, selective.att.g=selective.att.g, selective.se.g=selective.se.g, dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, calendar.att=calendar.att, calendar.se=calendar.se, calendar.att.t=calendar.att.t, calendar.se.t=calendar.se.t, dynsel.att.e1=dynsel.att.e1, dynsel.se.e1=dynsel.se.e1, dynsel.att.ee1=dynsel.att.ee1, dynsel.se.ee1=dynsel.se.ee1,groups=groups,times=times)
     class(out) <- "AGGTE"
     out
 }
@@ -1279,7 +1282,7 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
 #' @param ... other variables
 #'
 #' @export
-summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynsel"), el=1, ...) {
+summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynsel"), e1=1, ...) {
     citation()
     sep <- "          "
     cat("Overall Summary Measures", "\n")
@@ -1297,9 +1300,41 @@ summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynse
         cat("Dynamic Treatment Effects", "\n")
         cat("-------------------------", "\n")
         elen <- length(object$dynamic.att.e)
-        out <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.att.se)
-        colnames(out) <- c("e","att","se")
-        print(kable(out))
+        printmat <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.se.e)
+        colnames(printmat) <- c("e","att","se")
+        print(kable(printmat))
+    }
+
+    ## issue is that groups and times are a bit off..., they are getting set though
+    if (type=="selective") {
+        stop("not implemented yet...")
+        cat("Selective Treatment Timing", "\n")
+        cat("--------------------------", "\n")
+        printmat <- cbind(object$groups, object$selective.att.g, object$selective.se.g)
+        colnames(printmat) <- c("g","att","se")
+        print(kable(printmat))
+    }
+
+    if (type=="calendar") {
+        stop("not implemented yet...")
+        cat("Calendar Time Effects", "\n")
+        cat("---------------------", "\n")
+        printmat <- cbind(object$times, object$calendar.att.t, object$calendar.se.t)
+        colnames(printmat) <- c("t","att","se")
+        print(kable(printmat))
+    }
+
+    if (type=="dynsel") {
+        stop("not implemented yet...")
+        if (is.null(e1)) {
+            stop("must provide value of e1 for reporting dynamic effects with selective treatment timing")
+        }
+        cat("Selective Treatment Timing and Dynamic Effects with e=", e1, "\n")
+        cat("-------------------------------------------------------", "\n")
+        printmat <- cbind(seq(1:e1), object$dynsel.att.ee1[[e1]]$dte[1:e1],
+                          object$dynsel.se.ee1[[e1]]$se[1:e1])
+        colnames(printmat) <- c("e","att","se")
+        print(kable(printmat))
     }
 }
 
