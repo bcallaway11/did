@@ -33,7 +33,7 @@ devtools::install_github("bcallaway11/did")
 
 ## Example
 
-The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2018).
+The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2019).
 
 A subset of the data is available in the package and can be loaded by
 ```{r}
@@ -64,7 +64,7 @@ and plot the results using the \texttt{ggdid} command:
 
 ```{r}
 library(gridExtra)
-ggdid(out, ylim=c(-.5,.2))
+ggdid(out, ylim=c(-.25,.1))
 ```
 
 Another common use for the `did` package is reporting "event-study" type results.  To get these directly, one can use
@@ -74,7 +74,7 @@ summary(out$aggte, type="dynamic")
 
 and to plot the same results
 ```{r}
-ggdid(out, type="dynamic", ylim=c(-.5,.2))
+ggdid(out, type="dynamic", ylim=c(-.25,.1))
 ```
 
 Other options for both `summary` and `ggdid` are:

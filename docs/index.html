@@ -93,7 +93,7 @@ devtools::<span class="kw">install_github</span>(<span class="st">"bcallaway11/d
 <div id="example" class="section level2">
 <h2 class="hasAnchor">
 <a href="#example" class="anchor"></a>Example</h2>
-<p>The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant’Anna (2018).</p>
+<p>The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant’Anna (2019).</p>
 <p>A subset of the data is available in the package and can be loaded by</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">  <span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/library">library</a></span>(did)
   <span class="kw"><a href="https://www.rdocumentation.org/packages/utils/topics/data">data</a></span>(mpdta)</code></pre></div>
@@ -157,7 +157,7 @@ under the common trends assumption:
 <span class="co">#&gt; P-value for pre-test of DID assumption:  0.23803</span></code></pre></div>
 <p>and plot the results using the  command:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/library">library</a></span>(gridExtra)
-<span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out)</code></pre></div>
+<span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out, <span class="dt">ylim=</span><span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/c">c</a></span>(-.<span class="dv">25</span>,.<span class="dv">1</span>))</code></pre></div>
 <p><img src="README-unnamed-chunk-5-1.png" width="700"></p>
 <p>Another common use for the <code>did</code> package is reporting “event-study” type results. To get these directly, one can use</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/summary">summary</a></span>(out$aggte, <span class="dt">type=</span><span class="st">"dynamic"</span>)
@@ -184,7 +184,7 @@ under the common trends assumption:
 <span class="co">#&gt;   3   -0.1404646   0.0370100</span>
 <span class="co">#&gt;   4   -0.1069326   0.0342974</span></code></pre></div>
 <p>and to plot the same results</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out, <span class="dt">type=</span><span class="st">"dynamic"</span>)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out, <span class="dt">type=</span><span class="st">"dynamic"</span>, <span class="dt">ylim=</span><span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/c">c</a></span>(-.<span class="dv">25</span>,.<span class="dv">1</span>))</code></pre></div>
 <p><img src="README-unnamed-chunk-7-1.png" width="700"></p>
 <p>Other options for both <code>summary</code> and <code>ggdid</code> are:</p>
 <ul>

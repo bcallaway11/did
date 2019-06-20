@@ -24,7 +24,7 @@ devtools::install_github("bcallaway11/did")
 Example
 -------
 
-The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2018).
+The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2019).
 
 A subset of the data is available in the package and can be loaded by
 
@@ -100,7 +100,7 @@ and plot the results using the command:
 
 ``` r
 library(gridExtra)
-ggdid(out, ylim=c(-.5,.2))
+ggdid(out, ylim=c(-.25,.1))
 ```
 
 ![](README-unnamed-chunk-5-1.png)
@@ -136,7 +136,7 @@ summary(out$aggte, type="dynamic")
 and to plot the same results
 
 ``` r
-ggdid(out, type="dynamic", ylim=c(-.5,.2))
+ggdid(out, type="dynamic", ylim=c(-.25,.1))
 ```
 
 ![](README-unnamed-chunk-7-1.png)
