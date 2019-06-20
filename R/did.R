@@ -1275,12 +1275,15 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
 #' @description print a summary of an AGGTE object
 #'
 #' @param object an AGGTE object
+#' @param type which type of summary to print
 #' @param ... other variables
 #'
 #' @export
-summary.AGGTE <- function(object, ...) {
+summary.AGGTE <- function(object, type=c("dynamic","selective","calendar","dynsel", el=1,...) {
     citation()
     sep <- "          "
+    cat("Overall Summary Measures", "\n")
+    cat("------------------------", "\n")
     cat("Simple ATT    : ", object$simple.att, "\n")
     cat("  SE          : ", object$simple.se, "\n")
     cat("Selective ATT : ", object$selective.att, "\n")
@@ -1288,9 +1291,17 @@ summary.AGGTE <- function(object, ...) {
     cat("Dynamic ATT   : ", object$dynamic.att, "\n")
     cat("  SE          : ", object$dynamic.se, "\n")
     cat("Calendar ATT  : ", object$calendar.att, "\n")
-    cat("  SE          : ", object$calendar.se, "\n")
+    cat("  SE          : ", object$calendar.se, "\n\n")
+    type <- type[1]
+    if (type == "dynamic") {
+        cat("Dynamic Treatment Effects", "\n")
+        cat("-------------------------", "\n")
+        elen <- length(object$dynamic.att.e)
+        out <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.att.se)
+        colnames(out) <- c("e","att","se")
+        print(kable(out))
+    }
 }
-
 
 
 
