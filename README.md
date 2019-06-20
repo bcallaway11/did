@@ -108,7 +108,7 @@ ggdid(out, ylim=c(-.5,.2))
 Another common use for the `did` package is reporting "event-study" type results. To get these directly, one can use
 
 ``` r
-summary(out$aggte, type="dynamic", ylim=c(-.5,.2))
+summary(out$aggte, type="dynamic")
 #> 
 #> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2019. 
 #> Overall Summary Measures 
@@ -136,7 +136,7 @@ summary(out$aggte, type="dynamic", ylim=c(-.5,.2))
 and to plot the same results
 
 ``` r
-ggdid(out, type="dynamic")
+ggdid(out, type="dynamic", ylim=c(-.5,.2))
 ```
 
 ![](README-unnamed-chunk-7-1.png)

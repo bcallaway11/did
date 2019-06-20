@@ -69,12 +69,12 @@ ggdid(out, ylim=c(-.5,.2))
 
 Another common use for the `did` package is reporting "event-study" type results.  To get these directly, one can use
 ```{r}
-summary(out$aggte, type="dynamic", ylim=c(-.5,.2))
+summary(out$aggte, type="dynamic")
 ```
 
 and to plot the same results
 ```{r}
-ggdid(out, type="dynamic")
+ggdid(out, type="dynamic", ylim=c(-.5,.2))
 ```
 
 Other options for both `summary` and `ggdid` are:
