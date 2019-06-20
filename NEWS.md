@@ -6,6 +6,8 @@
 
   * Fixed bug related to plotting with no pre-treatment periods
 
+  * Improved ways to easily plot aggregated treatment effect parameters
+  
 # did 1.2.1 (on CRAN)
 
   * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages

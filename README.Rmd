@@ -69,7 +69,7 @@ ggdid(out)
 
 Another common use for the `did` package is reporting "event-study" type results.  To get these directly, one can use
 ```{r}
-summary(out, type="dynamic")
+summary(out$aggte, type="dynamic")
 ```
 
 and to plot the same results
@@ -78,16 +78,21 @@ ggdid(out, type="dynamic")
 ```
 
 Other options for both `summary` and `ggdid` are:
+
 * "selective" -- results when there is selective treatment timing
+
 * "calendar" -- results when there are calendar time effects
+
 * "dynsel" -- results when there is selective treatment timing and dynamic treatment effects; this also requires specifying the additional parameter `e1` which is the required number of post-treatment periods that a group needs to experience before they are included in the sample
 
-See the discussion in our paper for many more details
-```{r}
-citation()
-```
+See the discussion in our paper for many more details:
+
+ Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2019.
 
 Finally, a few things that we are working on:
+
 * improving the vignette that goes along with the package
+
 * event-study plots that include pre-treatment periods as well
+
 * uniform confidence bands for event-studies (as well as other aggregated parameters)

@@ -158,9 +158,47 @@ under the common trends assumption:
 <p>and plot the results using the  command:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/library">library</a></span>(gridExtra)
 <span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out)</code></pre></div>
-<div class="figure">
-<img src="reference/figures/README-unnamed-chunk-6-1.png">
-</div>
+<p>Another common use for the <code>did</code> package is reporting “event-study” type results. To get these directly, one can use</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="https://www.rdocumentation.org/packages/base/topics/summary">summary</a></span>(out$aggte, <span class="dt">type=</span><span class="st">"dynamic"</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; Overall Summary Measures </span>
+<span class="co">#&gt; ------------------------ </span>
+<span class="co">#&gt; Simple ATT    :  -0.04177708 </span>
+<span class="co">#&gt;   SE          :  0.01118622 </span>
+<span class="co">#&gt; Selective ATT :  -0.03287537 </span>
+<span class="co">#&gt;   SE          :  0.01118622 </span>
+<span class="co">#&gt; Dynamic ATT   :  -0.08037689 </span>
+<span class="co">#&gt;   SE          :  0.02076471 </span>
+<span class="co">#&gt; Calendar ATT  :  -0.0441701 </span>
+<span class="co">#&gt;   SE          :  0.01892826 </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Dynamic Treatment Effects </span>
+<span class="co">#&gt; -------------------------</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;   e          att          se</span>
+<span class="co">#&gt; ---  -----------  ----------</span>
+<span class="co">#&gt;   1   -0.0210883   0.0114816</span>
+<span class="co">#&gt;   2   -0.0530221   0.0163636</span>
+<span class="co">#&gt;   3   -0.1404646   0.0370100</span>
+<span class="co">#&gt;   4   -0.1069326   0.0342974</span></code></pre></div>
+<p>and to plot the same results</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw"><a href="reference/ggdid.html">ggdid</a></span>(out, <span class="dt">type=</span><span class="st">"dynamic"</span>)</code></pre></div>
+<p><img src="README-unnamed-chunk-7-1.png" width="700"></p>
+<p>Other options for both <code>summary</code> and <code>ggdid</code> are:</p>
+<ul>
+<li><p>“selective” – results when there is selective treatment timing</p></li>
+<li><p>“calendar” – results when there are calendar time effects</p></li>
+<li><p>“dynsel” – results when there is selective treatment timing and dynamic treatment effects; this also requires specifying the additional parameter <code>e1</code> which is the required number of post-treatment periods that a group needs to experience before they are included in the sample</p></li>
+</ul>
+<p>See the discussion in our paper for many more details:</p>
+<p>Callaway, Brantly and Sant’Anna, Pedro. “Difference-in-Differences with Multiple Time Periods.” Working Paper <a href="https://ssrn.com/abstract=3148250" class="uri">https://ssrn.com/abstract=3148250</a>, 2019.</p>
+<p>Finally, a few things that we are working on:</p>
+<ul>
+<li><p>improving the vignette that goes along with the package</p></li>
+<li><p>event-study plots that include pre-treatment periods as well</p></li>
+<li><p>uniform confidence bands for event-studies (as well as other aggregated parameters)</p></li>
+</ul>
 </div>
 </div>
   </div>
