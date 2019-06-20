@@ -904,6 +904,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
         geom_errorbar(aes(colour=post), width=0.1) +
         scale_y_continuous(limits=ylim) +
         scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
+        scale_colour_hue(drop=FALSE) + 
         ylab("") +
         xlab("") +
         ggtitle(paste(title, unique(ssresults$group))) +
@@ -1278,7 +1279,8 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL, selective.att=NULL, selective
 #' @description print a summary of an AGGTE object
 #'
 #' @param object an AGGTE object
-#' @param type which type of summary to print
+#' @param type which type of summary to print, options are "dynamic", "selective", "calendar", and "dynsel"
+#' @param e1 if the type is "dynsel", this is the number of post-treatment periods required in order for a group to be used to construct aggregated parameters with selective treatment timing and dynamic effects; otherwise not used
 #' @param ... other variables
 #'
 #' @export

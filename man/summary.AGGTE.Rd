@@ -10,7 +10,9 @@
 \arguments{
 \item{object}{an AGGTE object}
 
-\item{type}{which type of summary to print}
+\item{type}{which type of summary to print, options are "dynamic", "selective", "calendar", and "dynsel"}
+
+\item{e1}{if the type is "dynsel", this is the number of post-treatment periods required in order for a group to be used to construct aggregated parameters with selective treatment timing and dynamic effects; otherwise not used}
 
 \item{...}{other variables}
 }

@@ -3,6 +3,8 @@
 
   * Fixed bug related to needing new version of BMisc
 
+  * Fixed bug related to plotting with no pre-treatment periods
+
 # did 1.2.1 
   * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages
 
