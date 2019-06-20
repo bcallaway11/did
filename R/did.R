@@ -1006,7 +1006,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic", "selective", "calendar", "dy
             stop("must provide value of e1 for reporting dynamic effects with selective treatment timing")
         }
         aggte <- mpobj$aggte
-        if (mpobj$c > 2) warning("uniform bands not implemented yet for this plot...")o
+        if (mpobj$c > 2) warning("uniform bands not implemented yet for this plot...")
         results <- cbind.data.frame(year=as.factor(1:e1), att=aggte$dynsel.att.ee1[[e1]]$dte[1:e1], ate.se=aggte$dynsel.se.ee1[[e1]]$se[1:e1], post=as.factor(1), c=qnorm(.975))
         p <- gplot(results, ylim, xlab, ylab, title, xgap)
         p
