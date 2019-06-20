@@ -4,7 +4,7 @@
 \alias{compute.aggte}
 \title{compute.aggte}
 \usage{
-compute.aggte(flist, group, t, att, first.treat.name, inffunc1, n,
+compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
   clustervars, dta, idname, bstrap, biters)
 }
 \arguments{

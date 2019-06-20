@@ -66,7 +66,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.2.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.2.2</span>
       </span>
     </div>
 
@@ -279,7 +279,7 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; current group: 2007 
 #&gt; set pretreatment period to be 2006 </div><div class='input'><span class='co'>## summarize the group-time average treatment effects</span>
 <span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>out1</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2018. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
 #&gt; 
 #&gt; 
 #&gt; 
@@ -302,7 +302,9 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; P-value for pre-test of DID assumption:  0.23803
 #&gt; </div><div class='input'><span class='co'>## summarize the aggregated treatment effect parameters</span>
 <span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>out1</span>$<span class='no'>aggte</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2018. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Overall Summary Measures 
+#&gt; ------------------------ 
 #&gt; Simple ATT    :  -0.04177708 
 #&gt;   SE          :  0.01118622 
 #&gt; Selective ATT :  -0.03287537 
@@ -310,7 +312,17 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; Dynamic ATT   :  -0.08037689 
 #&gt;   SE          :  0.02076471 
 #&gt; Calendar ATT  :  -0.0441701 
-#&gt;   SE          :  0.01892826 </div><div class='input'>
+#&gt;   SE          :  0.01892826 
+#&gt; 
+#&gt; Dynamic Treatment Effects 
+#&gt; -------------------------
+#&gt; 
+#&gt; |  e|        att|        se|
+#&gt; |--:|----------:|---------:|
+#&gt; |  1| -0.0210883| 0.0114816|
+#&gt; |  2| -0.0530221| 0.0163636|
+#&gt; |  3| -0.1404646| 0.0370100|
+#&gt; |  4| -0.1069326| 0.0342974|</div><div class='input'>
 <span class='co'>## without any covariates</span>
 <span class='no'>out2</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span><span class='kw'>NULL</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
                 <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
@@ -336,7 +348,7 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 #&gt; current period: 2007 
 #&gt; current group: 2007 
 #&gt; set pretreatment period to be 2006 </div><div class='input'><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>out2</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2018. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
 #&gt; 
 #&gt; 
 #&gt; 

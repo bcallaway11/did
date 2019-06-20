@@ -9,7 +9,8 @@ AGGTE(simple.att = NULL, simple.se = NULL, selective.att = NULL,
   dynamic.att = NULL, dynamic.se = NULL, dynamic.att.e = NULL,
   dynamic.se.e = NULL, calendar.att = NULL, calendar.se = NULL,
   calendar.att.t = NULL, calendar.se.t = NULL, dynsel.att.e1 = NULL,
-  dynsel.se.e1 = NULL, dynsel.att.ee1 = NULL, dynsel.se.ee1 = NULL)
+  dynsel.se.e1 = NULL, dynsel.att.ee1 = NULL, dynsel.se.ee1 = NULL,
+  groups = NULL, times = NULL)
 }
 \arguments{
 \item{simple.att}{simple weighted average of group-time average treatment
@@ -62,6 +63,10 @@ in order to be included in the results and for each length of exposure
 to treatment}
 
 \item{dynsel.se.ee1}{the standard error for \code{dynsel.att.ee1}}
+
+\item{groups}{vector of all groups}
+
+\item{times}{vector of all times}
 }
 \description{
 \code{AGGTE} class for aggregate treatment effects
