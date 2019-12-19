@@ -128,7 +128,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         xformla <- ~1
     }
 
-
+  
     #################################################################
     ## more error handling after we have balanced the panel
     gsize <- aggregate(data[,first.treat.name], by=list(data[,first.treat.name]), function(x) length(x)/length(tlist))
@@ -138,7 +138,10 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         gpaste <-  paste(gsize[,1], collapse=",")
         warning(paste0("There are some very small groups in your dataset...\n  This is a very common source of bugs...\n  Check groups: ", gpaste, "\n  and consider dropping these..."))
     }
-
+    
+    #################################################################
+    # if weights w is null, make it a vector of 1's                    
+    if(is.null(w)) w <- rep(1, nrow(dta))
     #################################################################
 
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
@@ -350,8 +353,9 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
 
-                pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                                  data=subset(disdat, C+G==1))
+                pscore.reg <- suppressWarnings(glm(pformla, family=binomial(link="logit"),
+                                  weights = w,
+                                  data=subset(disdat, C+G==1)))
                 thet <- coef(pscore.reg)
 
                 ## error handling for too many covariates
@@ -371,8 +375,8 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 n <- nrow(disdat)
 
                 ## set up weights
-                attw1 <- G/mean(G)
-                attw2a <- pscore*C/(1-pscore)
+                attw1 <- w * G/mean(w * G)
+                attw2a <- w * pscore*C/(1-pscore)
                 attw2 <- attw2a/mean(attw2a)
                 att <- mean((attw1 - attw2)*dy)
 
@@ -383,8 +387,8 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 ## get the influence function
 
                 ## weigts
-                wg <- G/mean(G)
-                wc1 <- C*pscore / (1-pscore)
+                wg <- w *G/mean(w *G)
+                wc1 <- w *C*pscore / (1-pscore)
                 wc <- wc1 / mean(wc1)
 
                 ## influence function for treated group
@@ -426,8 +430,9 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 }
                 pformla <- xformla
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
-                pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                                  data=subset(data, C+G==1))
+                pscore.reg <- suppressWarnings(glm(pformla, family=binomial(link="logit"),
+                                                   weights = w,
+                                  data=subset(data, C+G==1)))
 
                 thet <- coef(pscore.reg)
                 ## error handling for too many covariates
@@ -440,19 +445,19 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 ## set up the weights
 
                 ## first set of weights for group G in period T
-                wt1 <- data$G * data$T
+                wt1 <- w *data$G * data$T
                 nwt1 <- wt1/mean(wt1)
 
                 ## weights for group G in period G-1
-                wt2 <- data$G * data$preT
+                wt2 <- w *data$G * data$preT
                 nwt2 <- wt2/mean(wt2)
 
                 ## weights for group C in period T
-                wc1 <- data$T * pscore * data$C / (1-pscore)
+                wc1 <- w *data$T * pscore * data$C / (1-pscore)
                 nwc1 <- wc1/mean(wc1)
 
                 ## weights for group C in period G-1
-                wc2 <- data$preT * pscore * data$C / (1-pscore)
+                wc2 <- w *data$preT * pscore * data$C / (1-pscore)
                 nwc2 <- wc2/mean(wc2)
 
                 ## average treatment effect
@@ -618,7 +623,10 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
     if (is.null(weightfun)) {
         weightfun <- expf
     }
-
+    #################################################################
+    # if weights w is null, make it a vector of 1's                    
+    if(is.null(w)) w <- rep(1, nrow(dta))
+    #################################################################  
     xformlalist <- lapply(xformlalist, function(ff) if (is.null(ff)) ~1 else ff)
 
     thecount <- 1
@@ -646,6 +654,8 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
         thetlist <- list()
         pscorelist <- list()
+      
+      
         for (f in 1:flen) {
 
             disdat <- data[(data[,tname]==tlist[1]),]
@@ -658,8 +668,9 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             pformla <- xformla
             pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
-            pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                              data=subset(disdat, C+G==1))
+            pscore.reg <- suppressWarnings(glm(pformla, family=binomial(link="logit"),
+                              weights = w,
+                              data=subset(disdat, C+G==1)))
             thetlist[[f]] <- coef(pscore.reg)
             pscorelist[[f]] <- predict(pscore.reg, newdata=disdat, type="response")
         }
@@ -712,9 +723,9 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     x <- model.matrix(xformla, data=disdat)
                     n <- nrow(disdat)
 
-                    Jwg1 <- G/pscore
+                    Jwg1 <- w * G/pscore
                     Jwg <- Jwg1/mean(Jwg1)
-                    Jwc1 <- pscore*C/(1-pscore)
+                    Jwc1 <- w * pscore*C/(1-pscore)
                     Jwc <- Jwc1/mean(Jwc1)
                     ##Jwc1 <- C/(1-pscore)
                     ##Jwc <- Jwc1/mean(Jwc1)
