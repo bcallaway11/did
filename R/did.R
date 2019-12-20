@@ -148,7 +148,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     #################################################################
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-                                formla, xformla, tname, w, panel, idname, method, seedvec, se,
+                                formla, xformla, tname, dta$w, panel, idname, method, seedvec, se,
                                 pl, cores, printdetails)
 
 
@@ -248,7 +248,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     aggeffects <- NULL
     if (aggte) {
-        aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters,w)
+        aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters,dta$w)
     }
 
     ## wald test for pre-treatment periods
