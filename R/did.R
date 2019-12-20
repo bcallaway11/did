@@ -484,7 +484,7 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #' @export
 summary.MP <- function(object, ...) {
     mpobj <- object
-    out <- cbind(mpobj$group, mpobj$t, mpobj$att))
+    out <- cbind(mpobj$group, mpobj$t, mpobj$att)
     citation()
     colnames(out) <- c("group", "time", "att")
     cat("\n")
