@@ -111,16 +111,21 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
     }
     ####################################
-
+    # weights if null
+    if(is.null(w)) {
+      w <- as.vector(rep(1, nrow(data)))
+    } else if(min(w) < 0) stop("'w' must be non-negative")
 
     tlen <- length(tlist)
     flen <- length(flist)
     if (panel) {
         data <- makeBalancedPanel(data, idname, tname)
+        data$w <- w
         dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
     } else {
 
         dta <- data ## this is for repeated cross sections case though
+        dta$w <- w
         ## i'm not sure it's working correctly overall
     }
 
@@ -140,15 +145,10 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     }
 
     #################################################################
-    # weights if null
-    if(is.null(w)) {
-      w <- as.vector(rep(1, nrow(data)))
-    } else if(min(w) < 0) stop("'w' must be non-negative")
 
-    dta$w <- w
     #################################################################
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-                                formla, xformla, tname, w, panel, idname, method, seedvec, se,
+                                formla, xformla, tname, dta$w, panel, idname, method, seedvec, se,
                                 pl, cores, printdetails)
 
 
