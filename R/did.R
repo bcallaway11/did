@@ -144,8 +144,9 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     if(is.null(w)) {
       w <- as.vector(rep(1, nrow(data)))
     } else if(min(w) < 0) stop("'w' must be non-negative")
-    #dta$w <- w 
-    #################################################################  
+
+    #dta$w <- w
+    #################################################################
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
                                 formla, xformla, tname, w, panel, idname, method, seedvec, se,
                                 pl, cores, printdetails)
@@ -303,13 +304,13 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
     fatt <- list()
     counter <- 1
     inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
-    
+
     # weights if null
     if(is.null(w)) {
       w <- as.vector(rep(1, nrow(data)))
     } else if(min(w) < 0) stop("'w' must be non-negative")
-    #dta$w <- w  
-         
+    dta$w <- w
+
     for (f in 1:flen) {
             ##satt <- list()
         for (t in 1:(tlen-1)) {
@@ -331,7 +332,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                     cat(paste("set pretreatment period to be", tlist[pret]), "\n")
                 }
             }
-            
+
             ## --------------------------------------------------------
             ## results for the case with panel data
             if (panel) {
@@ -350,6 +351,9 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
                 ## drop missing factors
                 disdat <- droplevels(disdat)
+
+                ## select w's
+                w <- disdat$w
 
                 ## set up xformla in no covariates case
                 if (is.null(xformla)) {
@@ -382,6 +386,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 dy <- disdat$dy
                 x <- model.matrix(xformla, data=disdat)
                 n <- nrow(disdat)
+                #w <- disdat$w
 
                 ## set up weights
                 attw1 <- w * G/mean(w * G)
@@ -496,15 +501,15 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 #scores
                 A2 <- w * (((data$G + data$C)*(data$G - pscore)*g(x,thet))/(pscore*(1-pscore)))*x
                 xi <- A2%*% A1
-              
+
                 #A1 <- w * ((data$G + data$C)*g(x,thet)^2 / (pscore*(1-pscore)))*x
                 #A1 <- t(A1)%*%x
                 #A2 <- (((data$G + data$C)*(data$G - pscore)*g(x,thet))/(pscore*(1-pscore)))*x
                 #xi <- t(solve(A1)%*%t(A2))
                 psic1 <- nwc1*(y - mean(nwc1*y)) + xi%*%M1
                 psic2 <- nwc2*(y - mean(nwc2*y)) + xi%*%M2
-              
-               
+
+
                 inffunc[f,t,] <- psit1 - psit2 - (psic1 - psic2)
             }
 
@@ -646,8 +651,8 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
     # weights if null
     if(is.null(w)) {
       w <- as.vector(rep(1, nrow(data)))
-    } else if(min(w) < 0) stop("'w' must be non-negative")    
-      
+    } else if(min(w) < 0) stop("'w' must be non-negative")
+
     xformlalist <- lapply(xformlalist, function(ff) if (is.null(ff)) ~1 else ff)
 
     thecount <- 1
@@ -684,6 +689,8 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
             disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
 
             disdat <- droplevels(disdat)
+
+            w <- disdat$w
 
             pformla <- xformla
             pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
@@ -741,6 +748,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     dy <- disdat$dy
                     x <- model.matrix(xformla, data=disdat)
                     n <- nrow(disdat)
+                    w <- disdat$w
 
                     Jwg1 <- w * G/pscore
                     Jwg <- Jwg1/mean(Jwg1)
@@ -937,7 +945,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
         geom_errorbar(aes(colour=post), width=0.1) +
         scale_y_continuous(limits=ylim) +
         scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
-        scale_colour_hue(drop=FALSE) + 
+        scale_colour_hue(drop=FALSE) +
         ylab("") +
         xlab("") +
         ggtitle(paste(title, unique(ssresults$group))) +
@@ -996,7 +1004,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic", "selective", "calendar", "dy
     g <- unique(mpobj$group)[order(unique(mpobj$group))] ## -1 to drop control group
     y <- unique(mpobj$t)
 
-    if (type=="attgt") {        
+    if (type=="attgt") {
         results <- data.frame(year=rep(y,G))
         results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))##c(rep(2004,G),rep(2006,G),rep(2007,G))
         results$att <- mpobj$att
@@ -1043,7 +1051,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic", "selective", "calendar", "dy
         results <- cbind.data.frame(year=as.factor(1:e1), att=aggte$dynsel.att.ee1[[e1]]$dte[1:e1], ate.se=aggte$dynsel.se.ee1[[e1]]$se[1:e1], post=as.factor(1), c=qnorm(.975))
         p <- gplot(results, ylim, xlab, ylab, title, xgap)
         p
-    }    
+    }
 }
 
 
