@@ -145,7 +145,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
       w <- as.vector(rep(1, nrow(data)))
     } else if(min(w) < 0) stop("'w' must be non-negative")
 
-    #dta$w <- w
+    dta$w <- w
     #################################################################
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
                                 formla, xformla, tname, w, panel, idname, method, seedvec, se,
