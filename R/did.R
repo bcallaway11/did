@@ -354,7 +354,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 disdat <- droplevels(disdat)
 
                 ## select w's
-                w1 <- disdat$w
+                w <- disdat$w
 
                 ## set up xformla in no covariates case
                 if (is.null(xformla)) {
@@ -368,7 +368,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
 
                 pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                                  weights = w1,
+                                  weights = w,
                                   data=subset(disdat, C+G==1))
                 thet <- coef(pscore.reg)
 
@@ -390,10 +390,10 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 #w <- disdat$w
 
                 ## set up weights
-                attw1 <- w1 * G/mean(w1 * G)
-                attw2a <- w1 * pscore*C/(1-pscore)
+                attw <- w * G/mean(w * G)
+                attw2a <- w * pscore*C/(1-pscore)
                 attw2 <- attw2a/mean(attw2a)
-                att <- mean((attw1 - attw2)*dy)
+                att <- mean((attw - attw2)*dy)
 
                 ## save results for this iteration
                 fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
@@ -402,21 +402,21 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 ## get the influence function
 
                 ## weigts
-                wg <- w1 * G/mean(w1 * G)
-                wc1 <- w1 * C*pscore / (1-pscore)
+                wg <- w * G/mean(w * G)
+                wc1 <- w * C*pscore / (1-pscore)
                 wc <- wc1 / mean(wc1)
 
                 ## influence function for treated group
                 psig <- wg*(dy - mean(wg*dy))
 
                 ## influence function for control group (see paper)
-                M <- as.matrix(apply(as.matrix(w1 * (C/(1-pscore))^2 * g(x,thet) * (dy - mean(wc*dy)) * x), 2, mean) / mean(wc1))
+                M <- as.matrix(apply(as.matrix(w * (C/(1-pscore))^2 * g(x,thet) * (dy - mean(wc*dy)) * x), 2, mean) / mean(wc1))
                 #A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
                 #A1 <- (t(A1*x)%*%x/n)
                 #Hessian
                 A1 <- stats::vcov(pscore.reg) * length(pscore)
                 #scores
-                A2 <- w1 * ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
+                A2 <- w * ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
                 A <- A2%*% A1
                 #A <- A2%*%MASS::ginv(A1)
                 psic <- wc*(dy - mean(wc*dy)) + A%*%M
@@ -563,10 +563,7 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
     if (is.null(weightfun)) {
         weightfun <- expf
     }
-    # weights if null
-    if(is.null(w)) {
-      w <- as.vector(rep(1, nrow(data)))
-    } else if(min(w) < 0) stop("'w' must be non-negative")
+
 
     xformlalist <- lapply(xformlalist, function(ff) if (is.null(ff)) ~1 else ff)
 
@@ -605,12 +602,12 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
             disdat <- droplevels(disdat)
 
-            w1 <- disdat$w
+            w <- disdat$w
 
             pformla <- xformla
             pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
             pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                              weights = w1,
+                              weights = w,
                               data=subset(disdat, C+G==1))
             thetlist[[f]] <- coef(pscore.reg)
             pscorelist[[f]] <- predict(pscore.reg, newdata=disdat, type="response")
@@ -663,11 +660,11 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
                     dy <- disdat$dy
                     x <- model.matrix(xformla, data=disdat)
                     n <- nrow(disdat)
-                    w1<- disdat$w
+                    w<- disdat$w
 
-                    Jwg1 <- w1 * G/pscore
+                    Jwg1 <- w * G/pscore
                     Jwg <- Jwg1/mean(Jwg1)
-                    Jwc1 <- w1 * pscore*C/(1-pscore)
+                    Jwc1 <- w * pscore*C/(1-pscore)
                     Jwc <- Jwc1/mean(Jwc1)
                     ##Jwc1 <- C/(1-pscore)
                     ##Jwc <- Jwc1/mean(Jwc1)
@@ -680,13 +677,13 @@ mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
 
                     psig <- Jwg*(www*dy - mean(Jwg*www*dy))
 
-                    M <- as.matrix(apply(as.matrix(w1 * (C/(1-pscore))^2 * g(x,thet) * (www*dy - mean(Jwc*www*dy)) * x), 2, mean) / mean(Jwc1))
+                    M <- as.matrix(apply(as.matrix(w * (C/(1-pscore))^2 * g(x,thet) * (www*dy - mean(Jwc*www*dy)) * x), 2, mean) / mean(Jwc1))
                     #Hessian
-                    A1 <- w1 * (G + C)*g(x,thet)^2/(pscore*(1-pscore))
+                    A1 <- w * (G + C)*g(x,thet)^2/(pscore*(1-pscore))
                     A1 <- (t(A1*x)%*%x/n)
                     A1 <- MASS::ginv(A1)
                     #scores
-                    A2 <- w1 * ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
+                    A2 <- w * ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
                     A <- A2%*% A1
                     psic <- Jwc*(www*dy - mean(Jwc*www*dy)) + A%*%M
 
