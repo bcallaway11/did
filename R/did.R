@@ -1082,59 +1082,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     ##  effect parameter is being considered.
     ## @param wif is the influence function for the weights
     getSE <- function(whichones, weights, wif=NULL) {
-        weights <- as.matrix(weights) ## just in case pass vector
-        thisinffunc <- inffunc1[,whichones]%*%weights  ##multiplies influence function times weights and sums to get vector of weighted IF (of length n)
-        if (!is.null(wif)) {
-            thisinffunc <- thisinffunc + wif%*%as.matrix(att[whichones])
-        }
-
-        if (bstrap) {
-            bout <- lapply(1:biters, FUN=function(b) {
-                sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
-                clustervars <- clustervars[-which(clustervars==idname)]
-                if (length(clustervars) > 1) {
-                    stop("can't handle that many cluster variables")
-                }
-                if (length(clustervars) > 0) {
-                    n1 <- length(unique(dta[,clustervars]))
-                    Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
-                                 nrow=n1)
-                    Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-                    Ub <- data.frame(dta[,clustervars])
-                    Ub <- Vb[match(Ub[,1], Vb[,1]),]
-                    Ub <- Ub[,-1]
-                    Ub <- as.matrix(Ub)
-                    ## n1 <- length(unique(dta[,clustervars]))
-                    ## Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
-                    ##              nrow=n1)
-                    ## Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-                    ## colnames(Vb)[1] <- "clvar"
-                    ## Ub <- data.frame(dta[,clustervars])
-                    ## colnames(Ub)[1] <- "clvar"
-                    ## Ub <- merge(Ub, Vb, by="clvar")
-                    ## Ub <- Ub[,-1]
-                } else {
-                    Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-
-                }
-                ## allow for serial correlation
-                ##if (sercor) {
-                ##    Ub[,-1] <- Ub[,1]
-                ##} ## this doesn't matter here because there is only one influence function
-                ## drop cluster for serial correlation
-
-                ##ift <- do.call(magic::adiag, psiitout)
-                ##ifunc <- rbind(ift, psiiu)
-
-                ##Ub <- sample(c(-1,1), n, replace=T)
-                mb <- Ub*(thisinffunc)
-                apply(mb,2,sum)/sqrt(nrow(dta))
-            })
-            bres <- simplify2array(bout)
-            return(sqrt( mean( bres^2)) /sqrt(n))
-        } else {
-            return(sqrt( mean( (thisinffunc)^2 ) ) / sqrt(n))
-        }
+        NULL
     }
 
     ## do some recoding to make sure time periods are 1 unit apart
