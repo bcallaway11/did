@@ -1159,22 +1159,22 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     flist <- sapply(originalflist, orig2t)
 
     ## some variables used throughout
-    pg <- sapply(originalflist, function(g) sum(w*(dta[,first.treat.name]==g & dta[,first.treat.name]>0))/ sum(w*(dta[,first.treat.name]>0)))
+    pg <- sapply(originalflist, function(g) sum(1*(dta[,first.treat.name]==g & dta[,first.treat.name]>0))/ sum(1*(dta[,first.treat.name]>0)))
     pgg <- pg
     pg <- pg[match(group, flist)] ## make it have the same length as att
     attg <- split(att, group)
     tg <- split(t, group)
     keepers <- which(group <= t)
     G <-  unlist(lapply(dta[,first.treat.name], orig2t))
-    p0 <- mean(w*G==0)
+    p0 <- mean(1*G==0)
     pT <- 1-p0
     T <- 1*(dta[first.treat.name]>0)
 
 
     ## simple att
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
-    simple.oif1 <- sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[keepers]))
-    simple.oif2 <- sapply(keepers, function(j) mean(w*(G==group[j])) * apply(sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
+    simple.oif1 <- sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[keepers]))
+    simple.oif2 <- sapply(keepers, function(j) mean(1*(G==group[j])) * apply(sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
     simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
 
     ## Selective Treatment Timing
@@ -1194,7 +1194,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     selective.att <- sum(selective.att.g * pgg)
     keepers <- which(group <= t)
     selective.weights <- pg[keepers]/(max(t) - group[keepers] + 1)  ## note could just use these directly by mulitiplying att[keepers] and taking sum
-    selective.oif1 <- sapply(keepers, function(k) w*(G==group[k])/p0)##T/p0
+    selective.oif1 <- sapply(keepers, function(k) 1*(G==group[k])/p0)##T/p0
     selective.oif2 <- sapply(keepers, function(k) (1-T)*pg[k]/p0^2 )##(1-T)/p0^2##apply(sapply(pgg, function(p) p*(1-T)),1,sum)
     selective.se <- getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
 
@@ -1210,8 +1210,8 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     dynamic.se.e <- sapply(eseq, function(e) {
         whiche <- which(t - group + 1 == e)
         pge <- pg[whiche]/(sum(pg[whiche]))
-        dynamic.oif1 <- sapply(whiche, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[whiche]))
-        dynamic.oif2 <- sapply(whiche, function(j) mean(w*(G==group[j])) * apply(sapply(whiche, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
+        dynamic.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+        dynamic.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
         getSE(whiche, pge, dynamic.oif1 - dynamic.oif2)
     })
     dynamic.att <- mean(dynamic.att.e)
@@ -1219,8 +1219,8 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     dynamic.weights <- lapply(eseq, function(e) {
         whiche <- which(t - group + 1 == e)
         pge <- pg[whiche]/(sum(pg[whiche]))
-        dynamic.oif1 <- sapply(whiche, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[whiche]))
-        dynamic.oif2 <- sapply(whiche, function(j) mean(w*(G==group[j])) * apply(sapply(whiche, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
+        dynamic.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+        dynamic.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
         list(whiche=whiche, pge=pge, oif=dynamic.oif1-dynamic.oif2)
     })
     which.dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$whiche))
@@ -1240,8 +1240,8 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     calendar.se.t <- sapply(tseq, function(t1) {
         whicht <- which((group <= t1) & (t==t1))
         pgt <- pg[whicht]/(sum(pg[whicht]))
-        calendar.oif1 <- sapply(whicht, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[whicht]))
-        calendar.oif2 <- sapply(whicht, function(j) mean(w*(G==group[j])) * apply(sapply(whicht, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
+        calendar.oif1 <- sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whicht]))
+        calendar.oif2 <- sapply(whicht, function(j) mean(1*(G==group[j])) * apply(sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
         getSE(whicht, pgt, calendar.oif1 - calendar.oif2)
     })
     calendar.att <- mean(calendar.att.t)
@@ -1249,8 +1249,8 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     calendar.weights <- lapply(tseq, function(t1) {
         whicht <- which((group <= t1) & (t==t1))
         pgt <- pg[whicht]/(sum(pg[whicht]))
-        calendar.oif1 <- sapply(whicht, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[whicht]))
-        calendar.oif2 <- sapply(whicht, function(j) mean(w*(G==group[j])) * apply(sapply(whicht, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
+        calendar.oif1 <- sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whicht]))
+        calendar.oif2 <- sapply(whicht, function(j) mean(1*(G==group[j])) * apply(sapply(whicht, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
         list(whicht=whicht, pgt=pgt, oif=(calendar.oif1-calendar.oif2))
     })
     which.calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$whicht))
@@ -1279,8 +1279,8 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
                              ( max(t) - group + 1 >= e1) &
                              ( e <= e1 ))
             pge <- pg[whiche]/sum(pg[whiche])
-            dynsel.oif1 <- sapply(whiche, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[whiche]))
-            dynsel.oif2 <- sapply(whiche, function(j) mean(w*(G==group[j])) * apply(sapply(whiche, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
+            dynsel.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+            dynsel.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
             getSE(whiche, pge, dynsel.oif1-dynsel.oif2)
         }), e1=e1)
     })
