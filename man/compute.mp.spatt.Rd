@@ -5,8 +5,7 @@
 \title{compute.mp.spatt}
 \usage{
 compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-  outcome, tname, w, panel, idname, method, seedvec, se, pl, cores,
-  printdetails)
+  outcome, tname, w, idname, method, seedvec, se, pl, cores, printdetails)
 }
 \arguments{
 \item{data}{The name of the data.frame that contains the data}
@@ -21,9 +20,6 @@ in the untreated group.}
 \item{tname}{The name of the column containing the time periods}
 
 \item{w}{A vector of weights for each observation (not implemented)}
-
-\item{panel}{Boolean indicating whether the data is panel or repeated cross
-sections}
 
 \item{idname}{The individual (cross-sectional unit) id name}
 

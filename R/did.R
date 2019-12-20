@@ -10,8 +10,6 @@
 #' @param tname The name of the column containing the time periods
 #' @param aggte boolean for whether or not to compute aggregate treatment effect parameters, default TRUE
 #' @param w A vector of weights for each observation (not implemented)
-#' @param panel Boolean indicating whether the data is panel or repeated cross
-#'  sections
 #' @param idname The individual (cross-sectional unit) id name
 #' @param first.treat.name The name of the variable in \code{data} that contains the first
 #'  period when a particular observation is treated.  This should be a positive
@@ -118,11 +116,11 @@ mp.spatt <- function(outcome, data, tname,
   tlen <- length(tlist)
   # How many treated groups
   flen <- length(flist)
-  if (panel) {
+
     data <- BMisc::makeBalancedPanel(data, idname, tname)
     #dta is used to get a matrix of size n (like in cross sectional data)
     dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
-  }
+
 
 
   #################################################################
@@ -146,7 +144,7 @@ mp.spatt <- function(outcome, data, tname,
 
   #################################################################
   results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-                              outcome, tname, w, panel, idname, method, seedvec, se,
+                              outcome, tname, w, idname, method, seedvec, se,
                               pl, cores, printdetails)
 
 
@@ -256,8 +254,8 @@ mp.spatt <- function(outcome, data, tname,
   }
 
   if (det(preV) == 0) { ##matrix not invertible
-  warning("Not returning pre-test Wald statistic due to singular covariance matrix")
-  return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    warning("Not returning pre-test Wald statistic due to singular covariance matrix")
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
   }
 
   W <- n*t(preatt)%*%solve(preV)%*%preatt
@@ -288,7 +286,7 @@ mp.spatt <- function(outcome, data, tname,
 #'
 #' @export
 compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
-                             first.treat.name, outcome, tname, w, panel, idname,
+                             first.treat.name, outcome, tname, w, idname,
                              method, seedvec, se,
                              pl, cores, printdetails) {
 
@@ -323,65 +321,65 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
       ## --------------------------------------------------------
       ## results for the case with panel data
-      if (panel) {
-        ## get dataset with current period and pre-treatment period
-        disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-        ## transform it into "cross-sectional" data where
-        ## one of the columns contains the change in the outcome
-        ## over time
-        ########################## TOASK
-        # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
-        disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
+
+      ## get dataset with current period and pre-treatment period
+      disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
+      ## transform it into "cross-sectional" data where
+      ## one of the columns contains the change in the outcome
+      ## over time
+      ########################## TOASK
+      # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
+      disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
 
 
-        #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
-        ## set up control group
-        disdat$C <- 1*(disdat[,first.treat.name] == 0)
+      #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
+      ## set up control group
+      disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
-        ## set up for particular treated group
-        disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+      ## set up for particular treated group
+      disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
 
-        ## drop missing factors
-        disdat <- droplevels(disdat)
+      ## drop missing factors
+      disdat <- droplevels(disdat)
 
-        ## give short names for data in this iteration
-        G <- disdat$G
-        C <- disdat$C
-        dy <- disdat$dy
-        n <- nrow(disdat)
-        w <- disdat$w
+      ## give short names for data in this iteration
+      G <- disdat$G
+      C <- disdat$C
+      dy <- disdat$dy
+      n <- nrow(disdat)
+      w <- disdat$w
 
-        ## set up weights
-        attw <- w * G/mean(w * G)
-        attw2a <- w * C
-        attw2 <- attw2a/mean(attw2a)
-        att <- mean((attw - attw2)*dy)
+      ## set up weights
+      attw <- w * G/mean(w * G)
+      attw2a <- w * C
+      attw2 <- attw2a/mean(attw2a)
+      att <- mean((attw - attw2)*dy)
 
-        ## save results for this iteration
-        fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
+      ## save results for this iteration
+      fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
 
-        ## --------------------------------------------
-        ## get the influence function
+      ## --------------------------------------------
+      ## get the influence function
 
-        ## weigts
-        wg <- w * G/mean(w * G)
-        wc1 <- w * C
-        wc <- wc1 / mean(wc1)
+      ## weigts
+      wg <- w * G/mean(w * G)
+      wc1 <- w * C
+      wc <- wc1 / mean(wc1)
 
-        ## influence function for treated group
-        psig <- wg*(dy - mean(wg*dy))
-        # influence function for the control group
-        psic <- wc*(dy - mean(wc*dy))
+      ## influence function for treated group
+      psig <- wg*(dy - mean(wg*dy))
+      # influence function for the control group
+      psic <- wc*(dy - mean(wc*dy))
 
-        ## save the influnce function as the difference between
-        ## the treated and control influence functions;
-        ## we save this as a 3-dimensional array
-        ## and then process afterwards
-        inffunc[f,t,] <- psig - psic
-      }
-
-      counter <- counter+1
+      ## save the influnce function as the difference between
+      ## the treated and control influence functions;
+      ## we save this as a 3-dimensional array
+      ## and then process afterwards
+      inffunc[f,t,] <- psig - psic
     }
+
+    counter <- counter+1
+
 
   }
 

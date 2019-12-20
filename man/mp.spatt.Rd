@@ -64,9 +64,6 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
 \item{cores}{The number of cores to use for parallel processing}
 
 \item{printdetails}{Boolean for showing detailed results or not}
-
-\item{panel}{Boolean indicating whether the data is panel or repeated cross
-sections}
 }
 \value{
 \code{MP} object
