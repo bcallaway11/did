@@ -470,9 +470,9 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #' @export
 summary.MP <- function(object, ...) {
     mpobj <- object
-    out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
+    out <- cbind(mpobj$group, mpobj$t, mpobj$att)#, sqrt(diag(mpobj$V)/mpobj$n))
     citation()
-    colnames(out) <- c("group", "time", "att","se")
+    colnames(out) <- c("group", "time", "att")#,"se")
     cat("\n")
     print(kable(out))
     cat("\n\n")
@@ -921,11 +921,11 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic", "selective", "calendar", "dy
         results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))##c(rep(2004,G),rep(2006,G),rep(2007,G))
         results$att <- mpobj$att
         n <- mpobj$n
-        results$ate.se <- sqrt(diag(mpobj$V)/n)
+        results$ate.se <- NULL #sqrt(diag(mpobj$V)/n)
         results$post <- as.factor(1*(results$year >= results$group))
         results$year <- as.factor(results$year)
         results$c <- mpobj$c
-        vcovatt <- mpobj$V/n
+        vcovatt <- NULL #mpobj$V/n
 
         ##results <- mp2ATT(results, vcovatt)
 
