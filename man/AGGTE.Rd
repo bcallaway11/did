@@ -4,12 +4,8 @@
 \alias{AGGTE}
 \title{AGGTE}
 \usage{
-AGGTE(simple.att = NULL, simple.se = NULL, selective.att = NULL,
-  selective.se = NULL, selective.att.g = NULL, selective.se.g = NULL,
-  dynamic.att = NULL, dynamic.se = NULL, dynamic.att.e = NULL,
-  dynamic.se.e = NULL, calendar.att = NULL, calendar.se = NULL,
-  calendar.att.t = NULL, calendar.se.t = NULL, dynsel.att.e1 = NULL,
-  dynsel.se.e1 = NULL, dynsel.att.ee1 = NULL, dynsel.se.ee1 = NULL,
+AGGTE(simple.att = NULL, simple.se = NULL, dynamic.att = NULL,
+  dynamic.se = NULL, dynamic.att.e = NULL, dynamic.se.e = NULL,
   groups = NULL, times = NULL)
 }
 \arguments{
@@ -17,16 +13,6 @@ AGGTE(simple.att = NULL, simple.se = NULL, selective.att = NULL,
 effects}
 
 \item{simple.se}{the standard error for \code{simple.att}}
-
-\item{selective.att}{aggregated group-time average treament effects when
-there is selective treatment timing}
-
-\item{selective.se}{the standard error for \code{selective.att}}
-
-\item{selective.att.g}{aggregated group-time average treatment effects
-when there is selective treatment timing for each particular group}
-
-\item{selective.se.g}{the standard error for \code{selective.att.g}}
 
 \item{dynamic.att}{aggregated group-time average treatment effects when
 there are dynamic treatment effects}
@@ -38,31 +24,6 @@ when there are dynamic treatment effects for each length of exposure
 to treatment}
 
 \item{dynamic.se.e}{the standard error for \code{dynamic.att.e}}
-
-\item{calendar.att}{the aggregated group-time average treatment effects
-when there are calendar time effects}
-
-\item{calendar.se}{the standard error for \code{calendar.att}}
-
-\item{calendar.att.t}{the aggregated group-time average treatment effects
-when there are calendar time effects for each time period}
-
-\item{calendar.se.t}{the standard error for \code{calendar.att.t}}
-
-\item{dynsel.att.e1}{aggregated group-time average treatment effects when
-there are dynamic treatment effects and selective treatment timing.
-Here, e1 is the number of periods that a group is required to be treated
-in order to be included in the results.}
-
-\item{dynsel.se.e1}{the standard error for \code{dynsel.att.e1}}
-
-\item{dynsel.att.ee1}{aggregated group-time average treatment effects when
-there are dynamic treatment effects and selective treatment timing.
-Here, e1 is the number of periods that a group is required to be treated
-in order to be included in the results and for each length of exposure
-to treatment}
-
-\item{dynsel.se.ee1}{the standard error for \code{dynsel.att.ee1}}
 
 \item{groups}{vector of all groups}
 

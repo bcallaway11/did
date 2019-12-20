@@ -16,7 +16,7 @@ Imports:
     knitr,
     utils,
     gridExtra
-RoxygenNote: 6.1.1
+RoxygenNote: 6.1.1.9000
 VignetteBuilder: knitr
 Suggests: 
     rmarkdown

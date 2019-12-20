@@ -5,7 +5,7 @@
 \title{compute.mp.spatt}
 \usage{
 compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-  formla, xformla, tname, w, panel, idname, method, seedvec, se, pl, cores,
+  outcome, tname, w, panel, idname, method, seedvec, se, pl, cores,
   printdetails)
 }
 \arguments{
@@ -16,12 +16,7 @@ period when a particular observation is treated.  This should be a positive
 number for all observations in treated groups.  It should be 0 for observations
 in the untreated group.}
 
-\item{formla}{The formula y ~ d where y is the outcome and d is the
-treatment indicator (d should be binary)}
-
-\item{xformla}{A optional one sided formula for additional covariates that
-will be adjusted for.  E.g ~ age + education.  Additional covariates can
-also be passed by name using the x paramater.}
+\item{outcome}{The outcome y (in quotations, always!)}
 
 \item{tname}{The name of the column containing the time periods}
 

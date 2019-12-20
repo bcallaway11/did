@@ -4,19 +4,14 @@
 \alias{mp.spatt}
 \title{mp.spatt}
 \usage{
-mp.spatt(formla, xformla = NULL, data, tname, aggte = TRUE, w = NULL,
-  panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
-  method = "logit", se = TRUE, bstrap = FALSE, biters = 100,
-  clustervars = NULL, cband = FALSE, citers = 100, seedvec = NULL,
-  pl = FALSE, cores = 2, printdetails = TRUE)
+mp.spatt(outcome, data, tname, aggte = TRUE, w = NULL, idname = NULL,
+  first.treat.name, alp = 0.05, method = "logit", se = TRUE,
+  bstrap = FALSE, biters = 100, clustervars = NULL, cband = FALSE,
+  citers = 100, seedvec = NULL, pl = FALSE, cores = 2,
+  printdetails = TRUE)
 }
 \arguments{
-\item{formla}{The formula y ~ d where y is the outcome and d is the
-treatment indicator (d should be binary)}
-
-\item{xformla}{A optional one sided formula for additional covariates that
-will be adjusted for.  E.g ~ age + education.  Additional covariates can
-also be passed by name using the x paramater.}
+\item{outcome}{The outcome y (in quotations, always!)}
 
 \item{data}{The name of the data.frame that contains the data}
 
@@ -25,9 +20,6 @@ also be passed by name using the x paramater.}
 \item{aggte}{boolean for whether or not to compute aggregate treatment effect parameters, default TRUE}
 
 \item{w}{A vector of weights for each observation (not implemented)}
-
-\item{panel}{Boolean indicating whether the data is panel or repeated cross
-sections}
 
 \item{idname}{The individual (cross-sectional unit) id name}
 
@@ -72,6 +64,9 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
 \item{cores}{The number of cores to use for parallel processing}
 
 \item{printdetails}{Boolean for showing detailed results or not}
+
+\item{panel}{Boolean indicating whether the data is panel or repeated cross
+sections}
 }
 \value{
 \code{MP} object
