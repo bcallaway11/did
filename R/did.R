@@ -148,7 +148,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     #################################################################
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-                                formla, xformla, tname, dta$w, panel, idname, method, seedvec, se,
+                                formla, xformla, tname, w, panel, idname, method, seedvec, se,
                                 pl, cores, printdetails)
 
 
@@ -1082,7 +1082,59 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     ##  effect parameter is being considered.
     ## @param wif is the influence function for the weights
     getSE <- function(whichones, weights, wif=NULL) {
-        NULL
+        weights <- as.matrix(weights) ## just in case pass vector
+        thisinffunc <- inffunc1[,whichones]%*%weights  ##multiplies influence function times weights and sums to get vector of weighted IF (of length n)
+        if (!is.null(wif)) {
+            thisinffunc <- thisinffunc + wif%*%as.matrix(att[whichones])
+        }
+
+        if (bstrap) {
+            bout <- lapply(1:biters, FUN=function(b) {
+                sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+                clustervars <- clustervars[-which(clustervars==idname)]
+                if (length(clustervars) > 1) {
+                    stop("can't handle that many cluster variables")
+                }
+                if (length(clustervars) > 0) {
+                    n1 <- length(unique(dta[,clustervars]))
+                    Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
+                                 nrow=n1)
+                    Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+                    Ub <- data.frame(dta[,clustervars])
+                    Ub <- Vb[match(Ub[,1], Vb[,1]),]
+                    Ub <- Ub[,-1]
+                    Ub <- as.matrix(Ub)
+                    ## n1 <- length(unique(dta[,clustervars]))
+                    ## Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
+                    ##              nrow=n1)
+                    ## Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+                    ## colnames(Vb)[1] <- "clvar"
+                    ## Ub <- data.frame(dta[,clustervars])
+                    ## colnames(Ub)[1] <- "clvar"
+                    ## Ub <- merge(Ub, Vb, by="clvar")
+                    ## Ub <- Ub[,-1]
+                } else {
+                    Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
+
+                }
+                ## allow for serial correlation
+                ##if (sercor) {
+                ##    Ub[,-1] <- Ub[,1]
+                ##} ## this doesn't matter here because there is only one influence function
+                ## drop cluster for serial correlation
+
+                ##ift <- do.call(magic::adiag, psiitout)
+                ##ifunc <- rbind(ift, psiiu)
+
+                ##Ub <- sample(c(-1,1), n, replace=T)
+                mb <- Ub*(thisinffunc)
+                apply(mb,2,sum)/sqrt(nrow(dta))
+            })
+            bres <- simplify2array(bout)
+            return(sqrt( mean( bres^2)) /sqrt(n))
+        } else {
+            return(sqrt( mean( (thisinffunc)^2 ) ) / sqrt(n))
+        }
     }
 
     ## do some recoding to make sure time periods are 1 unit apart
@@ -1123,7 +1175,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
     simple.oif1 <- sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[keepers]))
     simple.oif2 <- sapply(keepers, function(j) mean(w*(G==group[j])) * apply(sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
-    simple.se <- NULL#getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
+    simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
 
     ## Selective Treatment Timing
     ## Note: for selective.att.g, don't need to adjust standard
@@ -1144,7 +1196,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     selective.weights <- pg[keepers]/(max(t) - group[keepers] + 1)  ## note could just use these directly by mulitiplying att[keepers] and taking sum
     selective.oif1 <- sapply(keepers, function(k) w*(G==group[k])/p0)##T/p0
     selective.oif2 <- sapply(keepers, function(k) (1-T)*pg[k]/p0^2 )##(1-T)/p0^2##apply(sapply(pgg, function(p) p*(1-T)),1,sum)
-    selective.se <- NULL#getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
+    selective.se <- getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
 
 
     ## Dynamic Treatment Effects
@@ -1174,7 +1226,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     which.dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$whiche))
     dynamic.oif <- do.call(cbind,lapply(dynamic.weights, function(d) d$oif))
     dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$pge))[order(which.dynamic.weights)] / length(unique(eseq))
-    dynamic.se <- NULL#getSE(keepers, dynamic.weights, wif=dynamic.oif)
+    dynamic.se <- getSE(keepers, dynamic.weights, wif=dynamic.oif)
 
 
     ## Calendar Time Effects
@@ -1204,7 +1256,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     which.calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$whicht))
     calendar.oif <- do.call(cbind,lapply(calendar.weights, function(t1) t1$oif))
     calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$pgt))[order(which.calendar.weights)] / length(unique(tseq))
-    calendar.se <- NULL#getSE(keepers, calendar.weights, calendar.oif)
+    calendar.se <- getSE(keepers, calendar.weights, calendar.oif)
 
 
     ## Selective Treatment Timing and Dynamic Treatment Effects
