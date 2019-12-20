@@ -41,25 +41,6 @@
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
 #'
-#' @examples
-#' data(mpdta)
-#'
-#' ## with covariates
-#' out1 <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
-#'                 panel=TRUE, first.treat.name="first.treat",
-#'                 idname="countyreal", tname="year",
-#'                 bstrap=FALSE, se=TRUE, cband=FALSE)
-#' ## summarize the group-time average treatment effects
-#' summary(out1)
-#' ## summarize the aggregated treatment effect parameters
-#' summary(out1$aggte)
-#'
-#' ## without any covariates
-#' out2 <- mp.spatt(lemp ~ treat, xformla=NULL, data=mpdta,
-#'                 panel=TRUE, first.treat.name="first.treat",
-#'                 idname="countyreal", tname="year",
-#'                 bstrap=FALSE, se=TRUE, cband=FALSE)
-#' summary(out2)
 #'
 #' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
 #'
@@ -117,9 +98,9 @@ mp.spatt <- function(outcome, data, tname,
   # How many treated groups
   flen <- length(flist)
 
-    data <- BMisc::makeBalancedPanel(data, idname, tname)
-    #dta is used to get a matrix of size n (like in cross sectional data)
-    dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
+  data <- BMisc::makeBalancedPanel(data, idname, tname)
+  #dta is used to get a matrix of size n (like in cross sectional data)
+  dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
 
 
 
@@ -132,13 +113,6 @@ mp.spatt <- function(outcome, data, tname,
   gsize <- aggregate(data[,"w"], by=list(data[,first.treat.name]),
                      function(x) sum(x)/length(tlist))
 
-
-  reqsize <- 10 ## 10 is just to give a buffer, could increase or decrease
-  #gsize <- subset(gsize, x < reqsize) ## x is name of column from aggregate
-  if (any(gsize[,2]<reqsize)) {
-    #gpaste <-  paste(gsize[,1], collapse=",")
-    warning(paste0("There are some very small groups in your dataset...\n  This is a very common source of bugs...\n  Check groups: ", gpaste, "\n  and consider dropping these..."))
-  }
 
   #################################################################
 
@@ -321,7 +295,6 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
       ## --------------------------------------------------------
       ## results for the case with panel data
-
       ## get dataset with current period and pre-treatment period
       disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
       ## transform it into "cross-sectional" data where
@@ -330,7 +303,6 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
       ########################## TOASK
       # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
       disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
-
 
       #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
       ## set up control group
@@ -354,7 +326,6 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
       attw2a <- w * C
       attw2 <- attw2a/mean(attw2a)
       att <- mean((attw - attw2)*dy)
-
       ## save results for this iteration
       fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
 
@@ -376,10 +347,9 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
       ## we save this as a 3-dimensional array
       ## and then process afterwards
       inffunc[f,t,] <- psig - psic
+
+      counter <- counter+1
     }
-
-    counter <- counter+1
-
 
   }
 
@@ -492,15 +462,6 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
 #'  to be included in the resulting plot when there are dynamic treatment
 #'  effects and selective treatment timing
 #'
-#' @examples
-#' \dontrun{
-#' data(mpdta)
-#' out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
-#'                 panel=TRUE, first.treat.name="first.treat",
-#'                 idname="countyreal", tname="year",
-#'                 bstrap=FALSE, se=TRUE, cband=FALSE)
-#' ggdid(out)
-#' }
 #'
 #' @export
 ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1, ncol=1, e1=1) {
