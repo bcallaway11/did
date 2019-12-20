@@ -490,9 +490,9 @@ summary.MP <- function(object, ...) {
     cat("\n")
     print(kable(out))
     cat("\n\n")
-    cat("P-value for pre-test of DID assumption:  ")
-    cat(as.character(mpobj$Wpval))
-    cat("\n\n")
+    #cat("P-value for pre-test of DID assumption:  ")
+    #cat(as.character(mpobj$Wpval))
+    #cat("\n\n")
 }
 
 ## The idea here is to combine the weighting function with Y and run the previous
