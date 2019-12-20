@@ -921,7 +921,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic", "selective", "calendar", "dy
         results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))##c(rep(2004,G),rep(2006,G),rep(2007,G))
         results$att <- mpobj$att
         n <- mpobj$n
-        results$ate.se <- NULL #sqrt(diag(mpobj$V)/n)
+        results$ate.se <- 0 #sqrt(diag(mpobj$V)/n)
         results$post <- as.factor(1*(results$year >= results$group))
         results$year <- as.factor(results$year)
         results$c <- mpobj$c
