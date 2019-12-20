@@ -484,9 +484,9 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #' @export
 summary.MP <- function(object, ...) {
     mpobj <- object
-    out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
+    out <- cbind(mpobj$group, mpobj$t, mpobj$att))
     citation()
-    colnames(out) <- c("group", "time", "att","se")
+    colnames(out) <- c("group", "time", "att")
     cat("\n")
     print(kable(out))
     cat("\n\n")
