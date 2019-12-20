@@ -194,7 +194,7 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
     n <- nrow(dta)
     V <- NULL
-    if(se==T) V <- t(inffunc1)%*%inffunc1/n
+    if(se) V <- t(inffunc1)%*%inffunc1/n
 
     if ( (length(clustervars) > 0) & !bstrap) {
         warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
