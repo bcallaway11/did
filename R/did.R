@@ -1175,7 +1175,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
     simple.oif1 <- sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[keepers]))
     simple.oif2 <- sapply(keepers, function(j) mean(w*(G==group[j])) * apply(sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
-    simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
+    simple.se <- NULL#getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
 
     ## Selective Treatment Timing
     ## Note: for selective.att.g, don't need to adjust standard
@@ -1196,7 +1196,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     selective.weights <- pg[keepers]/(max(t) - group[keepers] + 1)  ## note could just use these directly by mulitiplying att[keepers] and taking sum
     selective.oif1 <- sapply(keepers, function(k) w*(G==group[k])/p0)##T/p0
     selective.oif2 <- sapply(keepers, function(k) (1-T)*pg[k]/p0^2 )##(1-T)/p0^2##apply(sapply(pgg, function(p) p*(1-T)),1,sum)
-    selective.se <- getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
+    selective.se <- NULL#getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
 
 
     ## Dynamic Treatment Effects
@@ -1226,7 +1226,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     which.dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$whiche))
     dynamic.oif <- do.call(cbind,lapply(dynamic.weights, function(d) d$oif))
     dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$pge))[order(which.dynamic.weights)] / length(unique(eseq))
-    dynamic.se <- getSE(keepers, dynamic.weights, wif=dynamic.oif)
+    dynamic.se <- NULL#getSE(keepers, dynamic.weights, wif=dynamic.oif)
 
 
     ## Calendar Time Effects
@@ -1256,7 +1256,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     which.calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$whicht))
     calendar.oif <- do.call(cbind,lapply(calendar.weights, function(t1) t1$oif))
     calendar.weights <- unlist(lapply(calendar.weights, function(t1) t1$pgt))[order(which.calendar.weights)] / length(unique(tseq))
-    calendar.se <- getSE(keepers, calendar.weights, calendar.oif)
+    calendar.se <- NULL#getSE(keepers, calendar.weights, calendar.oif)
 
 
     ## Selective Treatment Timing and Dynamic Treatment Effects
