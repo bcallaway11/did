@@ -984,7 +984,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
         warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
     }
 
-
+    dta$w <- w
     ## internal function for computing standard errors
     ##  this method is used across different types of
     ##  aggregate treatment effect parameters and is just
@@ -1070,22 +1070,22 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     flist <- sapply(originalflist, orig2t)
 
     ## some variables used throughout
-    pg <- sapply(originalflist, function(g) sum(1*(dta[,first.treat.name]==g & dta[,first.treat.name]>0))/ sum(1*(dta[,first.treat.name]>0)))
+    pg <- sapply(originalflist, function(g) sum(w*(dta[,first.treat.name]==g & dta[,first.treat.name]>0))/ sum(w*(dta[,first.treat.name]>0)))
     pgg <- pg
     pg <- pg[match(group, flist)] ## make it have the same length as att
     attg <- split(att, group)
     tg <- split(t, group)
     keepers <- which(group <= t)
     G <-  unlist(lapply(dta[,first.treat.name], orig2t))
-    p0 <- mean(1*G==0)
+    p0 <- mean(w*G==0)/mean(w)
     pT <- 1-p0
-    T <- 1*(dta[first.treat.name]>0)
+    TT <- 1*(dta[first.treat.name]>0)
 
 
     ## simple att
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
-    simple.oif1 <- sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[keepers]))
-    simple.oif2 <- sapply(keepers, function(j) mean(1*(G==group[j])) * apply(sapply(keepers, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+    simple.oif1 <- sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k]))) / sum(pg[keepers]))
+    simple.oif2 <- sapply(keepers, function(j) mean(w*(G==group[j])) * apply(sapply(keepers, function(k) (w*(G==group[k]) - mean(w*(G==group[k])))),1,sum))
     simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1-simple.oif2)
 
     ## Selective Treatment Timing
@@ -1106,7 +1106,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     keepers <- which(group <= t)
     selective.weights <- pg[keepers]/(max(t) - group[keepers] + 1)  ## note could just use these directly by mulitiplying att[keepers] and taking sum
     selective.oif1 <- sapply(keepers, function(k) 1*(G==group[k])/p0)##T/p0
-    selective.oif2 <- sapply(keepers, function(k) (1-T)*pg[k]/p0^2 )##(1-T)/p0^2##apply(sapply(pgg, function(p) p*(1-T)),1,sum)
+    selective.oif2 <- sapply(keepers, function(k) (1-TT)*pg[k]/p0^2 )##(1-T)/p0^2##apply(sapply(pgg, function(p) p*(1-T)),1,sum)
     selective.se <- getSE(keepers, selective.weights, selective.oif1 - selective.oif2)
 
 
