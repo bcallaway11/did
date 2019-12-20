@@ -193,14 +193,85 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
 
 
     n <- nrow(dta)
+    V <- t(inffunc1)%*%inffunc1/n
+
+    if ( (length(clustervars) > 0) & !bstrap) {
+        warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
+    }
+
+    if (bstrap) {
+        if (idname %in% clustervars) {
+            clustervars <- clustervars[-which(clustervars==idname)]
+        }
+        if (length(clustervars) > 1) {
+            stop("can't handle that many cluster variables")
+        }
+        ## new version
+        bout <- lapply(1:biters, FUN=function(b) {
+
+            if (length(clustervars) > 0) {
+                n1 <- length(unique(dta[,clustervars]))
+                Vb <- matrix(sample(c(-1,1), n1, replace=T))
+                Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+                Ub <- data.frame(dta[,clustervars])
+                Ub <- Vb[match(Ub[,1], Vb[,1]),]
+                Ub <- Ub[,-1]
+            } else {
+                Ub <- sample(c(-1,1), n, replace=T)
+            }
+            ##Ub <- sample(c(-1,1), n, replace=T)
+            Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
+            Rb
+        })
+        bres <- t(simplify2array(bout))
+        V <- cov(bres)
+    }
+
+
+    ## TODO: handle case with repeated cross sections; this part is conceptually easier because many
+    ##  off-diagonal (though not all) will be 0.
+
+    ## get the actual estimates
+
+
+    ## new code
+    cval <- qnorm(1-alp/2)
+    if (cband) {
+        bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1) - quantile(b, .25, type=1))/(qnorm(.75) - qnorm(.25)))
+        bT <- apply(bres, 1, function(b) max( abs(b)*bSigma^(-.5) ))
+        cval <- quantile(bT, 1-alp, type=1)
+        ##bT1 <- apply(bres, 1, function(b) max( abs(b)*diag(V)^(-.5) ))
+        ##cval1 <- quantile(bT1, 1-alp, type=1)
+        V <- diag(bSigma) ## this is the appropriate matrix for
+         ## constructing confidence bands
+    }
 
     aggeffects <- NULL
     if (aggte) {
         aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n, clustervars, dta, idname, bstrap, biters,w)
     }
 
+    ## wald test for pre-treatment periods
+    pre <- which(t < group)
+    preatt <- as.matrix(att[pre])
+    preV <- V[pre,pre]
 
-    return(MP(group=group, t=t, att=att, V=NULL, c=NULL, inffunc=inffunc1, n=n, W=NULL, Wpval=NULL, aggte=aggeffects))
+    if (length(preV) == 0) {
+        message("No pre-treatment periods to test")
+        return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    }
+
+    if (det(preV) == 0) { ##matrix not invertible
+        warning("Not returning pre-test Wald statistic due to singular covariance matrix")
+        return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    }
+
+    W <- n*t(preatt)%*%solve(preV)%*%preatt
+    q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
+    Wpval <- round(1-pchisq(W,q),5)
+
+
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects))
 }
 
 
@@ -484,15 +555,15 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #' @export
 summary.MP <- function(object, ...) {
     mpobj <- object
-    out <- cbind(mpobj$group, mpobj$t, mpobj$att)
+    out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
     citation()
-    colnames(out) <- c("group", "time", "att")
+    colnames(out) <- c("group", "time", "att","se")
     cat("\n")
     print(kable(out))
     cat("\n\n")
-    #cat("P-value for pre-test of DID assumption:  ")
-    #cat(as.character(mpobj$Wpval))
-    #cat("\n\n")
+    cat("P-value for pre-test of DID assumption:  ")
+    cat(as.character(mpobj$Wpval))
+    cat("\n\n")
 }
 
 ## The idea here is to combine the weighting function with Y and run the previous
