@@ -261,10 +261,10 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
     }
 
-    if (det(preV) == 0) { ##matrix not invertible
+    #if (det(preV) == 0) { ##matrix not invertible
         warning("Not returning pre-test Wald statistic due to singular covariance matrix")
         return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
-    }
+    #}
 
     W <- n*t(preatt)%*%solve(preV)%*%preatt
     q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
