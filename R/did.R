@@ -606,11 +606,16 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   group <- sapply(originalgroup, orig2t)
   flist <- sapply(originalflist, orig2t)
 
+  weights.agg = dta$w
+  #weights.agg = 1
   ## some variables used throughout
+  ever.treated <- 1 * (dta[,first.treat.name]>0)
+  mean.w.ever.treated <- mean(weights.agg * ever.treated)
+
   # Probability of being in group g (among ever-treated only!)
   pg <- sapply(originalflist,
-               function(g) sum(dta$w * (dta[,first.treat.name]==g & dta[,first.treat.name]>0))/
-                 sum(dta$w * (dta[,first.treat.name]>0)))
+               function(g) mean(weights.agg * ever.treated * (dta[,first.treat.name]==g))/
+                 mean(weights.agg * ever.treated))
   pgg <- pg
   pg <- pg[match(group, flist)] ## make it have the same length as att
   attg <- split(att, group)
@@ -620,14 +625,35 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 
   ## simple att
   simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
+  # Estimation effect coming from P(G=g| Ever treated)
+  # Part 1: est effect from P(G=g) treating P(ever treated) as known
+  simple.oif1 <- sapply(keepers,
+                        function(k) ( (weights.agg *(G==group[k]) - mean(weights.agg * (G==group[k]))) /
+                                        mean.w.ever.treated
+                        )
+  )
 
-  simple.oif1 <- sapply(keepers, function(k) (dta$w *(G==group[k]) - mean(dta$w * (G==group[k]))) / sum(pg[keepers]))
-  simple.oif2 <- sapply(keepers, function(j) mean(dta$w * (G==group[j])) *
-                          apply(sapply(keepers, function(k) (dta$w*(G==group[k]) - mean(dta$w*(G==group[k])))),1,sum))
+  # Part 2: est effect from  P(ever treated) treating P(G=g) as known
+  #simple.oif2 <- sapply(keepers,
+  #                      function(j) mean(weights.agg * (G==group[j])) *
+  #                        apply(sapply(keepers, function(k) (weights.agg*(G==group[k]) - mean(weights.agg*(G==group[k])))),1,sum))
+  simple.oif2 <- sapply(keepers,
+                        function(j) ((mean(weights.agg * (G==group[j]))/(mean.w.ever.treated^2)) *
+                                       (weights.agg * ever.treated - mean.w.ever.treated)
+                        )
+  )
+  # Estimation effect from numerator
+  simple.oif <- (simple.oif1 - simple.oif2)/(sum(pg[keepers]))
+  #Estimation effect from denominator of the weights (normalization)
+  simple.oif3 <- rowSums(simple.oif) %*%  t(matrix(pg[keepers]/sum(pg[keepers])))
+  #Estimation effect from estimated weights (in total)
+  simple.oif <- simple.oif - simple.oif3
 
-  simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif1 - simple.oif2)
+  simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif)
 
-
+  ######################
+  # IF WE WANT TO PLOT PRE-TREATMENT, JUST NEED TO START eseq FROM NEGATIVE NUMBERS!
+  ###################
   ## Dynamic Treatment Effects
   eseq <- seq(1,max(t-group)+1)
   dynamic.att.e <- sapply(eseq, function(e) {
@@ -637,30 +663,54 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     sum(atte*pge)
   })
 
+  # Create variable with number of time periods a unit is treated
+  time.treated <- ((max(originalt)) - dta[,first.treat.name] +1) * (dta[,first.treat.name]>0)
+
   dynamic.se.e <- sapply(eseq, function(e) {
     whiche <- which(t - group + 1 == e)
-    pge <- pg[whiche]/(sum(pg[whiche]))
+    pge <- pg[whiche]/sum(pg[whiche])
+
+    ## some variables used
+    atleast.e.treated <- 1 * (time.treated >=e)
+    mean.w.atleast.e.treated <- mean(weights.agg * atleast.e.treated)
+
+    # Estimation effect coming from P(G=g| treated for at least e periods)
+    # Part 1: est effect from P(G=g and treated>= e) treating P(treated for at least e periods) as known
     dynamic.oif1 <- sapply(whiche,
-                           function(k) (dta$w * (G==group[k]) - mean(dta$w * (G==group[k]))) / sum(pg[whiche]))
+                           function(k) ( (weights.agg *(G==group[k]) - mean(weights.agg * (G==group[k]))) /
+                                           mean.w.atleast.e.treated
+                           )
+    )
+
+    # Part 2: est effect from  P(treated for at least e periods) treating P(G=g and treated>= e) as known
     dynamic.oif2 <- sapply(whiche,
-                           function(j) mean(dta$w * (G==group[j])) * apply(sapply(whiche,
-                                                                                  function(k) (dta$w*(G==group[k]) - mean(dta$w * (G==group[k])))),1,sum))
-    getSE(whiche, pge, dynamic.oif1 - dynamic.oif2)
+                           function(j) ((mean(weights.agg * (G==group[j]))/(mean.w.atleast.e.treated^2)) *
+                                          (weights.agg * atleast.e.treated - mean.w.atleast.e.treated)
+                           )
+    )
+    dynamic.oif <- (dynamic.oif1 - dynamic.oif2)#/(sum(pg[whiche]))
+    getSE(whiche, pge, dynamic.oif )
   })
+
+
+
+  # THIS IS WHERE I STOPPED!!!!
 
   dynamic.att <- mean(dynamic.att.e)
   keepers <- which(group <= t)
   dynamic.weights <- lapply(eseq, function(e) {
     whiche <- which(t - group + 1 == e)
     pge <- pg[whiche]/(sum(pg[whiche]))
-    dynamic.oif1 <- sapply(whiche, function(k) (dta$w * (G==group[k]) - mean(dta$w * (G==group[k]))) / sum(pg[whiche]))
-    dynamic.oif2 <- sapply(whiche, function(j) mean(dta$w * (G==group[j])) * apply(sapply(whiche, function(k) (dta$w * (G==group[k]) - mean(dta$w * (G==group[k])))),1,sum))
+    dynamic.oif1 <- sapply(whiche, function(k) (weights.agg * (G==group[k]) - mean(weights.agg * (G==group[k]))) / sum(pg[whiche]))
+    dynamic.oif2 <- sapply(whiche, function(j) mean(weights.agg * (G==group[j])) * apply(sapply(whiche, function(k) (weights.agg * (G==group[k]) - mean(weights.agg * (G==group[k])))),1,sum))
     list(whiche=whiche, pge=pge, oif=dynamic.oif1-dynamic.oif2)
   })
   which.dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$whiche))
   dynamic.oif <- do.call(cbind,lapply(dynamic.weights, function(d) d$oif))
   dynamic.weights <- unlist(lapply(dynamic.weights, function(d) d$pge))[order(which.dynamic.weights)] / length(unique(eseq))
   dynamic.se <- getSE(keepers, dynamic.weights, wif=dynamic.oif)
+
+
 
   AGGTE(simple.att=simple.att, simple.se=simple.se,
         dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e,
