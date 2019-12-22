@@ -5,7 +5,7 @@
 \title{compute.aggte}
 \usage{
 compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-  clustervars, dta, idname, bstrap, biters, alp, cband)
+  clustervars, dta, idname, bstrap, biters, alp, cband, maxe)
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
@@ -33,6 +33,8 @@ and this is only applicable if \code{bstrap=TRUE}.}
 band that covers all of the group-time average treatment effects
 with fixed probability \code{1-alp}.  The default is \code{FALSE}
 and the resulting standard errors will be pointwise.}
+
+\item{maxe}{maximum values of periods ahead to be computed in event study}
 }
 \value{
 \code{AGGTE} object

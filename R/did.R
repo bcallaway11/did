@@ -40,6 +40,7 @@
 #' @param pl Boolean for whether or not to use parallel processing
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
+#' @param maxe maximum values of periods ahead to be computed in event study
 #'
 #'
 #' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
@@ -54,7 +55,8 @@ mp.spatt <- function(outcome, data, tname,
                      bstrap=FALSE, biters=1000, clustervars=NULL,
                      cband=FALSE, citers=1000,
                      seedvec=NULL, pl=FALSE, cores=2,
-                     printdetails=TRUE) {
+                     printdetails=TRUE,
+                     maxe = NULL) {
 
   ## make sure that data is a data.frame
   ## this gets around RStudio's default of reading data as tibble
@@ -215,7 +217,7 @@ mp.spatt <- function(outcome, data, tname,
   aggeffects <- NULL
   if (aggte) {
     aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1,
-                                n, clustervars, dta, idname, bstrap, biters, alp, cband)
+                                n, clustervars, dta, idname, bstrap, biters, alp, cband, maxe)
   }
 
 
@@ -519,7 +521,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
 #'
 #' @export
 compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-                          clustervars, dta, idname, bstrap, biters, alp, cband) {
+                          clustervars, dta, idname, bstrap, biters, alp, cband, maxe) {
 
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
@@ -658,7 +660,10 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   ###################
   ###################
   ## Dynamic Treatment Effects
-  eseq <- seq(1,max(t-group)+1)
+  if(in.null(maxe)) maxe <- max(t-group)+1
+  if (maxe > (max(t-group)+1)) maxe <- max(t-group)+1
+
+  eseq <- seq(1,maxe)
   dynamic.att.e <- sapply(eseq, function(e) {
     whiche <- which(t - group + 1 == e)
     atte <- att[whiche]

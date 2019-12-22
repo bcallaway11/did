@@ -8,7 +8,7 @@ mp.spatt(outcome, data, tname, aggte = TRUE, w = NULL, idname = NULL,
   first.treat.name, alp = 0.05, method = "logit", se = TRUE,
   bstrap = FALSE, biters = 1000, clustervars = NULL, cband = FALSE,
   citers = 1000, seedvec = NULL, pl = FALSE, cores = 2,
-  printdetails = TRUE)
+  printdetails = TRUE, maxe = NULL)
 }
 \arguments{
 \item{outcome}{The outcome y (in quotations, always!)}
@@ -64,6 +64,8 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
 \item{cores}{The number of cores to use for parallel processing}
 
 \item{printdetails}{Boolean for showing detailed results or not}
+
+\item{maxe}{maximum values of periods ahead to be computed in event study}
 }
 \value{
 \code{MP} object
