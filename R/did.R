@@ -41,7 +41,7 @@
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
 #' @param maxe maximum values of periods ahead to be computed in event study
-#'
+#' @param nevertreated Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.
 #'
 #' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
 #'
@@ -56,7 +56,8 @@ mp.spatt <- function(outcome, data, tname,
                      cband=FALSE, citers=1000,
                      seedvec=NULL, pl=FALSE, cores=2,
                      printdetails=TRUE,
-                     maxe = NULL) {
+                     maxe = NULL,
+                     nevertreated = T) {
 
   ## make sure that data is a data.frame
   ## this gets around RStudio's default of reading data as tibble
@@ -121,7 +122,7 @@ mp.spatt <- function(outcome, data, tname,
   #################################################################
   results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
                               outcome, tname, w, idname, method, seedvec, se,
-                              pl, cores, printdetails)
+                              pl, cores, printdetails, nevertreated)
 
   fatt <- results$fatt
   inffunc <- results$inffunc
@@ -261,7 +262,7 @@ mp.spatt <- function(outcome, data, tname,
 compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                              first.treat.name, outcome, tname, w, idname,
                              method, seedvec, se,
-                             pl, cores, printdetails) {
+                             pl, cores, printdetails, nevertreated) {
 
   yname <- outcome ##as.character(formula.tools::lhs(formla))
 
@@ -305,7 +306,14 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 
       #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
       ## set up control group
+      if(nevertreated ==T){
       disdat$C <- 1*(disdat[,first.treat.name] == 0)
+      }
+
+      if(nevertreated ==F){
+        disdat$C <- 1*( (disdat[,first.treat.name] == 0) +
+                          (disdat[,first.treat.name] > max(disdat[, tname])) )
+      }
 
       ## set up for particular treated group
       disdat$G <- 1*(disdat[,first.treat.name] == flist[f])

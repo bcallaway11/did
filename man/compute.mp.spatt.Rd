@@ -5,7 +5,8 @@
 \title{compute.mp.spatt}
 \usage{
 compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-  outcome, tname, w, idname, method, seedvec, se, pl, cores, printdetails)
+  outcome, tname, w, idname, method, seedvec, se, pl, cores, printdetails,
+  nevertreated)
 }
 \arguments{
 \item{data}{The name of the data.frame that contains the data}
@@ -36,6 +37,8 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
 \item{cores}{The number of cores to use for parallel processing}
 
 \item{printdetails}{Boolean for showing detailed results or not}
+
+\item{nevertreated}{Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.}
 }
 \value{
 a list with length equal to the number of groups times the
