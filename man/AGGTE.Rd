@@ -6,7 +6,7 @@
 \usage{
 AGGTE(simple.att = NULL, simple.se = NULL, dynamic.att = NULL,
   dynamic.se = NULL, dynamic.att.e = NULL, dynamic.se.e = NULL,
-  groups = NULL, times = NULL)
+  c.dynamic = NULL, groups = NULL, times = NULL)
 }
 \arguments{
 \item{simple.att}{simple weighted average of group-time average treatment
@@ -24,6 +24,8 @@ when there are dynamic treatment effects for each length of exposure
 to treatment}
 
 \item{dynamic.se.e}{the standard error for \code{dynamic.att.e}}
+
+\item{c.dynamic}{the (simultaneous) critical value \code{dynamic.att.e}}
 
 \item{groups}{vector of all groups}
 

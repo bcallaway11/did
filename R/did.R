@@ -51,8 +51,8 @@ mp.spatt <- function(outcome, data, tname,
                      aggte=TRUE, w=NULL,
                      idname=NULL, first.treat.name, alp=0.05,
                      method="logit", se=TRUE,
-                     bstrap=FALSE, biters=100, clustervars=NULL,
-                     cband=FALSE, citers=100,
+                     bstrap=FALSE, biters=1000, clustervars=NULL,
+                     cband=FALSE, citers=1000,
                      seedvec=NULL, pl=FALSE, cores=2,
                      printdetails=TRUE) {
 
@@ -121,9 +121,6 @@ mp.spatt <- function(outcome, data, tname,
                               outcome, tname, w, idname, method, seedvec, se,
                               pl, cores, printdetails)
 
-
-
-
   fatt <- results$fatt
   inffunc <- results$inffunc
 
@@ -132,8 +129,6 @@ mp.spatt <- function(outcome, data, tname,
   t    <- c()
   att <- c()
   i <- 1
-
-
 
   inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) ## note, this might not work in unbalanced case
   ## for (f in 1:length(fatt)) {
@@ -156,7 +151,7 @@ mp.spatt <- function(outcome, data, tname,
     }
   }
 
-  # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS
+  # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS (in our specific setup)
   n <- nrow(dta)
   V <- t(inffunc1)%*%inffunc1/n
 
@@ -198,29 +193,31 @@ mp.spatt <- function(outcome, data, tname,
 
   ## get the actual estimates
 
+  ## wald test for pre-treatment periods:
+  #THIS NEED TO COME BEFORE THE OTHER CODE OF THE CONFIDENCE BANDS!!
+  pre <- which(t < group)
+  preatt <- as.matrix(att[pre])
+  preV <- V[pre,pre]
+
 
   ## new code
   cval <- qnorm(1-alp/2)
   if (cband) {
-    bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1) - quantile(b, .25, type=1))/(qnorm(.75) - qnorm(.25)))
-    bT <- apply(bres, 1, function(b) max( abs(b)*bSigma^(-.5) ))
-    cval <- quantile(bT, 1-alp, type=1)
+    bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1, na.rm = T) - quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+    bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
+    cval <- quantile(bT, 1-alp, type=1, na.rm = T)
     ##bT1 <- apply(bres, 1, function(b) max( abs(b)*diag(V)^(-.5) ))
     ##cval1 <- quantile(bT1, 1-alp, type=1)
-    V <- diag(bSigma) ## this is the appropriate matrix for
-    ## constructing confidence bands
+    V <- diag(bSigma^2) ## this is the appropriate matrix for
+    ## constructing confidence bands - BUT NOT FOR WALD TEST!!!
   }
 
   aggeffects <- NULL
   if (aggte) {
     aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1,
-                                n, clustervars, dta, idname, bstrap, biters)
+                                n, clustervars, dta, idname, bstrap, biters, alp, cband)
   }
 
-  ## wald test for pre-treatment periods
-  pre <- which(t < group)
-  preatt <- as.matrix(att[pre])
-  preV <- V[pre,pre]
 
   if (length(preV) == 0) {
     message("No pre-treatment periods to test")
@@ -464,7 +461,8 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
 #'
 #'
 #' @export
-ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1, ncol=1, e1=1) {
+ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
+                  xlab=NULL, ylab=NULL, title="Group", xgap=1, ncol=1, e1=1) {
 
   type <- type[1]
 
@@ -494,9 +492,14 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL, xlab=NULL, ylab=
     do.call("grid.arrange", c(mplots))
   } else if (type=="dynamic") {
     aggte <- mpobj$aggte
-    if (mpobj$c > 2) warning("uniform bands not implemented yet for this plot...")
+    #if (mpobj$c > 2) warning("uniform bands not implemented yet for this plot...")
     elen <- length(aggte$dynamic.att.e)
-    results <- cbind.data.frame(year=as.factor(seq(1:elen)), att=aggte$dynamic.att.e, ate.se=aggte$dynamic.se.e, post=as.factor(1), c=qnorm(.975))
+    results <- cbind.data.frame(year=as.factor(seq(1:elen)),
+                                att=aggte$dynamic.att.e,
+                                ate.se=aggte$dynamic.se.e,
+                                post=as.factor(1),
+                                c=aggte$c.dynamic)
+                                  #qnorm(.975))
     p <- gplot(results, ylim, xlab, ylab, title, xgap)
     p
   }
@@ -516,7 +519,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL, xlab=NULL, ylab=
 #'
 #' @export
 compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-                          clustervars, dta, idname, bstrap, biters) {
+                          clustervars, dta, idname, bstrap, biters, alp, cband) {
 
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
@@ -581,7 +584,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
       bres <- simplify2array(bout)
       return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
-      return(sqrt( mean( (thisinffunc)^2 ) ) / sqrt(n))
+      return(sqrt( mean( (thisinffunc)^2 ) /n ))
     }
   }
 
@@ -694,7 +697,6 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 
     #getSE(whiche, pge, dynamic.oif )
 
-
   })
 
   dynamic.se.e <- sqrt(base::colMeans(dynamic.e.inf.f^2)/n)
@@ -706,9 +708,52 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   # std. error
   dynamic.se <- sqrt((mean(dynamic.if^2)/n))
 
+  # Bootstrap for simulatanerous Conf. Int for the event study
+  if (bstrap) {
+    if (idname %in% clustervars) {
+      clustervars <- clustervars[-which(clustervars==idname)]
+    }
+    if (length(clustervars) > 1) {
+      stop("can't handle that many cluster variables")
+    }
+    ## new version
+    bout <- lapply(1:biters, FUN=function(b) {
+
+      if (length(clustervars) > 0) {
+        n1 <- length(unique(dta[,clustervars]))
+        Vb <- matrix(sample(c(-1,1), n1, replace=T))
+        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+        Ub <- data.frame(dta[,clustervars])
+        Ub <- Vb[match(Ub[,1], Vb[,1]),]
+        Ub <- Ub[,-1]
+      } else {
+        Ub <- sample(c(-1,1), n, replace=T)
+      }
+      ##Ub <- sample(c(-1,1), n, replace=T)
+      Rb <- sqrt(n)*(base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
+      Rb
+    })
+    bres <- t(simplify2array(bout))
+    #V.dynamic <- cov(bres)
+  }
+
+
+  ## new code
+  c.dynamic <- qnorm(1 - alp/2)
+
+  if (cband) {
+    bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1,na.rm = T) - quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
+    bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
+    c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
+    ##bT1 <- apply(bres, 1, function(b) max( abs(b)*diag(V)^(-.5) ))
+    ##cval1 <- quantile(bT1, 1-alp, type=1)
+    dynamic.se.e <- bSigma/sqrt(n)
+    ## constructing confidence bands
+  }
 
   AGGTE(simple.att=simple.att, simple.se=simple.se,
-        dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e,
+        dynamic.att=dynamic.att, dynamic.se=dynamic.se,
+        dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e,  c.dynamic=c.dynamic,
         groups=originalflist,times=originaltlist)
 }
 
@@ -727,13 +772,17 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 #'  when there are dynamic treatment effects for each length of exposure
 #'  to treatment
 #' @param dynamic.se.e the standard error for \code{dynamic.att.e}
+#' @param c.dynamic the (simultaneous) critical value \code{dynamic.att.e}
 #' @param groups vector of all groups
 #' @param times vector of all times
 AGGTE <- function(simple.att=NULL, simple.se=NULL,
-                  dynamic.att=NULL, dynamic.se=NULL, dynamic.att.e=NULL, dynamic.se.e=NULL,
+                  dynamic.att=NULL, dynamic.se=NULL,
+                  dynamic.att.e=NULL, dynamic.se.e=NULL, c.dynamic=NULL,
                   groups=NULL, times=NULL) {
+
   out <- list(simple.att=simple.att, simple.se=simple.se,
-              dynamic.att=dynamic.att, dynamic.se=dynamic.se, dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e,
+              dynamic.att=dynamic.att, dynamic.se=dynamic.se,
+              dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e, c.dynamic=c.dynamic,
               groups=groups,times=times)
   class(out) <- "AGGTE"
   out

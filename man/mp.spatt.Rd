@@ -6,8 +6,8 @@
 \usage{
 mp.spatt(outcome, data, tname, aggte = TRUE, w = NULL, idname = NULL,
   first.treat.name, alp = 0.05, method = "logit", se = TRUE,
-  bstrap = FALSE, biters = 100, clustervars = NULL, cband = FALSE,
-  citers = 100, seedvec = NULL, pl = FALSE, cores = 2,
+  bstrap = FALSE, biters = 1000, clustervars = NULL, cband = FALSE,
+  citers = 1000, seedvec = NULL, pl = FALSE, cores = 2,
   printdetails = TRUE)
 }
 \arguments{

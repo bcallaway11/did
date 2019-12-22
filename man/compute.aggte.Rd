@@ -5,7 +5,7 @@
 \title{compute.aggte}
 \usage{
 compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-  clustervars, dta, idname, bstrap, biters)
+  clustervars, dta, idname, bstrap, biters, alp, cband)
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
@@ -26,6 +26,13 @@ must set \code{bstrap=TRUE}.}
 
 \item{biters}{The number of boostrap iterations to use.  The default is 100,
 and this is only applicable if \code{bstrap=TRUE}.}
+
+\item{alp}{the significance level, default is 0.05}
+
+\item{cband}{Boolean for whether or not to compute a uniform confidence
+band that covers all of the group-time average treatment effects
+with fixed probability \code{1-alp}.  The default is \code{FALSE}
+and the resulting standard errors will be pointwise.}
 }
 \value{
 \code{AGGTE} object
