@@ -660,7 +660,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   ###################
   ###################
   ## Dynamic Treatment Effects
-  if(in.null(maxe)) maxe <- max(t-group)+1
+  if(is.null(maxe)) maxe <- max(t-group)+1
   if (maxe > (max(t-group)+1)) maxe <- max(t-group)+1
 
   eseq <- seq(1,maxe)
