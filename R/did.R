@@ -228,8 +228,8 @@ mp.spatt <- function(outcome, data, tname,
   }
 
   if (det(preV) == 0) { ##matrix not invertible
-    warning("Covariance matrix close to singular. We use the generalized inverse")
-    Vinv <- MASS::ginv(preV)
+    warning("Covariance matrix is singular. We do not report pre-test Wald statistic for pre-trends.")
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
   } else Vinv <- solve(preV)
 
   W <- n*t(preatt)%*%Vinv%*%preatt
