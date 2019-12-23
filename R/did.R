@@ -224,12 +224,12 @@ mp.spatt <- function(outcome, data, tname,
 
   if (length(preV) == 0) {
     message("No pre-treatment periods to test")
-    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects, alp = alp))
   }
 
   if (det(preV) == 0) { ##matrix not invertible
     warning("Covariance matrix is singular. We do not report pre-test Wald statistic for pre-trends.")
-    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects, alp = alp))
   } else Vinv <- solve(preV)
 
   W <- n*t(preatt)%*%Vinv%*%preatt
@@ -237,7 +237,8 @@ mp.spatt <- function(outcome, data, tname,
   Wpval <- round(1-pchisq(W,q),5)
 
 
-  return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects))
+  return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects,
+            alp = alp))
 }
 
 
@@ -307,7 +308,7 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
       #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
       ## set up control group
       if(nevertreated ==T){
-      disdat$C <- 1*(disdat[,first.treat.name] == 0)
+        disdat$C <- 1*(disdat[,first.treat.name] == 0)
       }
 
       if(nevertreated ==F){
@@ -378,11 +379,12 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
 #' @param Wpval the p-value of the Wald statistic for pre-testing the
 #'  common trends assumption
 #' @param aggte an aggregate treatment effects object
+#' @param alp the significance level, default is 0.05
 #'
 #' @return MP object
 #' @export
-MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL) {
-  out <- list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte)
+MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05) {
+  out <- list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp)
   class(out) <- "MP"
   out
 }
@@ -423,11 +425,18 @@ summary.MP <- function(object, ...) {
 #' @export
 gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1) {
   dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
+
+  c.point <-  stats::qnorm(1 - ssresults$alp/2)
+
   p <- ggplot(ssresults,
               aes(x=year, y=att, ymin=(att-c*ate.se),
                   ymax=att+c*ate.se, post=post)) +
+
     geom_point(aes(colour=post), size=1.5) +
     geom_errorbar(aes(colour=post), width=0.1) +
+    #geom_ribbon(aes(ymin= (att-c.point*ate.se), ymax=  (att+c.point*ate.se), alpha=0.35))+
+    #geom_ribbon(aes(ymin=  (att-c*ate.se), ymax =  (att+c*ate.se), alpha=0.25))+
+
     scale_y_continuous(limits=ylim) +
     scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
     scale_colour_hue(drop=FALSE) +
@@ -491,6 +500,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
     results$year <- as.factor(results$year)
     results$c <- mpobj$c
     vcovatt <- mpobj$V/n
+    alp <- mpobj$alp
 
     ##results <- mp2ATT(results, vcovatt)
 
@@ -508,8 +518,9 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
                                 att=aggte$dynamic.att.e,
                                 ate.se=aggte$dynamic.se.e,
                                 post=as.factor(1),
-                                c=aggte$c.dynamic)
-                                  #qnorm(.975))
+                                c=aggte$c.dynamic,
+                                alp = mpobj$alp)
+    #qnorm(.975))
     p <- gplot(results, ylim, xlab, ylab, title, xgap)
     p
   }
