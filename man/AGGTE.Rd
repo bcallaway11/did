@@ -6,7 +6,9 @@
 \usage{
 AGGTE(simple.att = NULL, simple.se = NULL, dynamic.att = NULL,
   dynamic.se = NULL, dynamic.att.e = NULL, dynamic.se.e = NULL,
-  c.dynamic = NULL, groups = NULL, times = NULL)
+  c.dynamic = NULL, dyn.inf.func.e = NULL,
+  simple.att.inf.func = NULL, dynamic.att.inf.func = NULL,
+  group = NULL, times = NULL)
 }
 \arguments{
 \item{simple.att}{simple weighted average of group-time average treatment
@@ -27,7 +29,13 @@ to treatment}
 
 \item{c.dynamic}{the (simultaneous) critical value \code{dynamic.att.e}}
 
-\item{groups}{vector of all groups}
+\item{dyn.inf.func.e}{influence function for event studies}
+
+\item{simple.att.inf.func}{influence function for simple average of ATT(g,t)}
+
+\item{dynamic.att.inf.func}{influence function for time-average of event-study}
+
+\item{group}{vector of all groups}
 
 \item{times}{vector of all times}
 }
