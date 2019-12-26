@@ -1165,7 +1165,7 @@ att_gt_het <- function(outcome, data, tname,
               inffunc_het1=inffunc_het1, inffunc_het0=inffunc_het0,
               n=n,
               aggte_het1=aggeffects_het1, aggte_het0=aggeffects_het0,
-              aggeffects = aggeffects,
+              aggte = aggeffects,
               alp = alp)
 
   return(out)
