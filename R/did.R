@@ -429,13 +429,13 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
   c.point <-  stats::qnorm(1 - ssresults$alp/2)
 
   p <- ggplot(ssresults,
-              aes(x=year, y=att, ymin=(att-c*ate.se),
-                  ymax=att+c*ate.se, post=post)) +
+              aes(x=year, y=att, ymin=(att-c*att.se),
+                  ymax=att+c*att.se, post=post)) +
 
     geom_point(aes(colour=post), size=1.5) +
     geom_errorbar(aes(colour=post), width=0.1) +
-    #geom_ribbon(aes(ymin= (att-c.point*ate.se), ymax=  (att+c.point*ate.se), alpha=0.35))+
-    #geom_ribbon(aes(ymin=  (att-c*ate.se), ymax =  (att+c*ate.se), alpha=0.25))+
+    #geom_ribbon(aes(ymin= (att-c.point*att.se), ymax=  (att+c.point*att.se), alpha=0.35))+
+    #geom_ribbon(aes(ymin=  (att-c*att.se), ymax =  (att+c*att.se), alpha=0.25))+
 
     scale_y_continuous(limits=ylim) +
     scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
@@ -495,7 +495,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
     results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))##c(rep(2004,G),rep(2006,G),rep(2007,G))
     results$att <- mpobj$att
     n <- mpobj$n
-    results$ate.se <- sqrt(diag(mpobj$V)/n)
+    results$att.se <- sqrt(diag(mpobj$V)/n)
     results$post <- as.factor(1*(results$year >= results$group))
     results$year <- as.factor(results$year)
     results$c <- mpobj$c
@@ -516,7 +516,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
     elen <- length(aggte$dynamic.att.e)
     results <- cbind.data.frame(year=as.factor(seq(1:elen)),
                                 att=aggte$dynamic.att.e,
-                                ate.se=aggte$dynamic.se.e,
+                                att.se=aggte$dynamic.se.e,
                                 post=as.factor(1),
                                 c=aggte$c.dynamic,
                                 alp = mpobj$alp, row.names = NULL)
@@ -1113,7 +1113,7 @@ att_gt_het <- function(outcome, data, tname,
     aggeffects$simple.att.se <- getSE_inf(as.matrix(aggeffects$simple.att.inf.func))
     aggeffects$dynamic.att.se <- getSE_inf(as.matrix(aggeffects$dynamic.att.inf.func))
 
-    aggeffects$dynamic.att.e.se <- sqrt(colMeans((aggeffects$dyn.inf.func.e)^2)/n)
+    aggeffects$dynamic.se.e <- sqrt(colMeans((aggeffects$dyn.inf.func.e)^2)/n)
     aggeffects$c.dynamic <- qnorm(1 - alp/2)
 
     # Bootstrap for simulatanerous Conf. Int for the event study
@@ -1146,7 +1146,7 @@ att_gt_het <- function(outcome, data, tname,
       bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1,na.rm = T) - quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
       bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
       aggeffects$c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-      aggeffects$dynamic.att.e.se <- bSigma/sqrt(n)
+      aggeffects$dynamic.se.e <- bSigma/sqrt(n)
     }
 
 
