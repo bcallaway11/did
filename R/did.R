@@ -150,8 +150,12 @@ att_gt <- function(outcome, data, tname,
     }
   }
 
-  # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS (in our specific setup)
+  # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS (in our specific setup with state data)
   n <- nrow(dta)
+  if(length(clustervars) > 0) {
+    n <- length(unique(dta[,clustervars]))
+  }
+
   V <- t(inffunc1)%*%inffunc1/n
 
   if ( (length(clustervars) > 0) & !bstrap) {
@@ -175,17 +179,17 @@ att_gt <- function(outcome, data, tname,
         Ub <- data.frame(dta[,clustervars], row.names = NULL)
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
+        n <- n1
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
       ##Ub <- sample(c(-1,1), n, replace=T)
       Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
+      #Rb <- (apply(Ub*(inffunc1), 2, mean))
       Rb
     })
     bres <- t(simplify2array(bout))
     V <- cov(bres)
-
-
   }
 
 
@@ -326,7 +330,7 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
       G <- disdat$G
       C <- disdat$C
       dy <- disdat$dy
-      n <- nrow(disdat)
+      #n <- nrow(disdat)
       w <- disdat$w
 
       ## set up weights
@@ -546,6 +550,9 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
   }
 
+  if(length(clustervars) > 0) {
+    n <- length(unique(dta[,clustervars]))
+  }
   ## internal function for computing standard errors
   ##  this method is used across different types of
   ##  aggregate treatment effect parameters and is just
@@ -576,13 +583,14 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
+          n <- n1
 
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
+          Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
         mb <- Ub*(thisinffunc)
-        apply(mb,2,sum)/sqrt(nrow(dta))
+        sqrt(n) * apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
 
@@ -613,19 +621,20 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
+          n <- n1
 
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
+          Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
 
         mb <- Ub*(thisinffunc)
-        apply(mb,2,sum) / sqrt(nrow(thisinffunc))
+        sqrt(n) * apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
       b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
                            quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-      b.se <- b.sd/sqrt( nrow(thisinffunc))
+      b.se <- b.sd/sqrt(n)
       return(b.se)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
@@ -777,6 +786,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
         Ub <- data.frame(dta[,clustervars], row.names = NULL)
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
+        n <- n1
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
@@ -929,7 +939,6 @@ att_gt_het <- function(outcome, data, tname,
                        idname=NULL, first.treat.name, alp=0.05,
                        method="logit",
                        bstrap=FALSE, biters=1000, clustervars=NULL,
-
                        seedvec=NULL, pl=FALSE, cores=2,
                        printdetails=TRUE,
                        maxe = NULL,
@@ -1046,6 +1055,9 @@ att_gt_het <- function(outcome, data, tname,
 
   # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS (in our specific setup)
   n <- nrow(dta)
+  if(length(clustervars) > 0) {
+    n <- length(unique(dta[,clustervars]))
+  }
   V <- NULL
 
   aggeffects <- NULL
@@ -1088,19 +1100,20 @@ att_gt_het <- function(outcome, data, tname,
             Ub <- Vb[match(Ub[,1], Vb[,1]),]
             Ub <- Ub[,-1]
             Ub <- as.matrix(Ub)
+            n <- n1
 
           } else {
-            Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
+            Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
           }
 
           mb <- Ub*(thisinffunc)
-          apply(mb,2,sum) / sqrt(nrow(thisinffunc))
+          sqrt(n) * apply(mb,2,mean)
         })
         bres <- simplify2array(bout)
         b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
                              quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-        b.se <- b.sd/sqrt( nrow(thisinffunc))
+        b.se <- b.sd/sqrt( n)
         return(b.se)
         #return(sqrt( mean( bres^2)) /sqrt(n))
       } else {
@@ -1134,6 +1147,7 @@ att_gt_het <- function(outcome, data, tname,
           Ub <- data.frame(dta[,clustervars], row.names = NULL)
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
+          n <- n1
         } else {
           Ub <- sample(c(-1,1), n, replace=T)
         }
@@ -1257,7 +1271,7 @@ compute.att_gt_het <- function(flen, tlen, flist, tlist, data, dta,
       G <- disdat$G
       C <- disdat$C
       dy <- disdat$dy
-      n <- nrow(disdat)
+      #n <- nrow(disdat)
       w <- (disdat$w1) * het.val + (disdat$w0) * (1 - het.val)
 
 
@@ -1325,6 +1339,10 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
   }
+  if(length(clustervars) > 0) {
+    n <- length(unique(dta[,clustervars]))
+  }
+
   getSE <- function(whichones, weights, wif=NULL) {
     weights <- as.matrix(weights) ## just in case pass vector
     thisinffunc <- inffunc1[,whichones]%*%weights  ##multiplies influence function times weights and sums to get vector of weighted IF (of length n)
@@ -1348,6 +1366,7 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
+          n <- n1
           ## n1 <- length(unique(dta[,clustervars]))
           ## Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
           ##              nrow=n1)
@@ -1358,7 +1377,7 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
           ## Ub <- merge(Ub, Vb, by="clvar")
           ## Ub <- Ub[,-1]
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
+          Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
         ## allow for serial correlation
@@ -1372,7 +1391,7 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
 
         ##Ub <- sample(c(-1,1), n, replace=T)
         mb <- Ub*(thisinffunc)
-        apply(mb,2,sum)/sqrt(nrow(dta))
+        sqrt(n) * apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
 
@@ -1405,19 +1424,20 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
+          n <- n1
 
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
+          Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
 
         mb <- Ub*(thisinffunc)
-        apply(mb,2,sum) / sqrt(nrow(thisinffunc))
+        sqrt(n) * apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
       b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
                            quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-      b.se <- b.sd/sqrt( nrow(thisinffunc))
+      b.se <- b.sd/sqrt(n)
       return(b.se)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
@@ -1573,6 +1593,7 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
         Ub <- data.frame(dta[,clustervars], row.names = NULL)
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
+        n <- n1
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
