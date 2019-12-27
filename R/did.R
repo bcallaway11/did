@@ -171,8 +171,8 @@ att_gt <- function(outcome, data, tname,
       if (length(clustervars) > 0) {
         n1 <- length(unique(dta[,clustervars]))
         Vb <- matrix(sample(c(-1,1), n1, replace=T))
-        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-        Ub <- data.frame(dta[,clustervars], row.names = NULL)
+        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+        Ub <- data.frame(dta[,clustervars])
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
       } else {
@@ -205,7 +205,9 @@ att_gt <- function(outcome, data, tname,
   cval <- qnorm(1-alp/2)
   if (bstrap){
     if (cband) {
-      bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1, na.rm = T) - quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+      bSigma <- apply(bres, 2,
+                      function(b) (quantile(b, .75, type=1, na.rm = T) -
+                                     quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
       bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
       cval <- quantile(bT, 1-alp, type=1, na.rm = T)
       ##bT1 <- apply(bres, 1, function(b) max( abs(b)*diag(V)^(-.5) ))
@@ -399,7 +401,7 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #' @export
 summary.MP <- function(object, ...) {
   mpobj <- object
-  out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n), row.names = NULL)
+  out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
   citation()
   colnames(out) <- c("group", "time", "att","se")
   cat("\n")
@@ -491,7 +493,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
   y <- unique(mpobj$t)
 
   if (type=="attgt") {
-    results <- data.frame(year=rep(y,G), row.names = NULL)
+    results <- data.frame(year=rep(y,G))
     results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))##c(rep(2004,G),rep(2006,G),rep(2007,G))
     results$att <- mpobj$att
     n <- mpobj$n
@@ -519,7 +521,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
                                 att.se=aggte$dynamic.se.e,
                                 post=as.factor(1),
                                 c=aggte$c.dynamic,
-                                alp = mpobj$alp, row.names = NULL)
+                                alp = mpobj$alp)
     #qnorm(.975))
     p <- gplot(results, ylim, xlab, ylab, title, xgap)
     p
@@ -561,32 +563,30 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     }
 
     if (bstrap) {
-      bout <- lapply(1:biters, FUN=function(b) {
-        sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+      if (idname %in% clustervars) {
         clustervars <- clustervars[-which(clustervars==idname)]
-        if (length(clustervars) > 1) {
-          stop("can't handle that many cluster variables")
-        }
+      }
+      if (length(clustervars) > 1) {
+        stop("can't handle that many cluster variables")
+      }
+
+      bout <- lapply(1:biters, FUN=function(b) {
         if (length(clustervars) > 0) {
           n1 <- length(unique(dta[,clustervars]))
-          Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
-                       nrow=n1)
-          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-          Ub <- data.frame(dta[,clustervars], row.names = NULL)
+          Vb <- matrix(sample(c(-1,1), n1, replace=T))
+          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+          Ub <- data.frame(dta[,clustervars])
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
-          Ub <- as.matrix(Ub)
-
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-
+          Ub <- sample(c(-1,1), n, replace=T)
         }
-        mb <- Ub*(thisinffunc)
-        apply(mb,2,mean)
+        Rb <- base::mean(Ub*(thisinffunc), na.rm = T)
+        Rb
       })
-      bres <- simplify2array(bout)
+      bres <- as.vector(simplify2array(bout))
 
-      bSigma <- (quantile(bres, .75, type=1,na.rm = T) - quantile(bres, .25, type=1,na.rm = T)) /
+      bSigma <- (quantile(bres, .75, type=1, na.rm = T) - quantile(bres, .25, type=1, na.rm = T)) /
         (qnorm(.75) - qnorm(.25))
       #bT <- abs(bres/bSigma))
       return(bSigma)
@@ -598,35 +598,33 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 
   getSE_inf <- function(thisinffunc) {
     if (bstrap) {
-      bout <- lapply(1:biters, FUN=function(b) {
-        sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+      if (idname %in% clustervars) {
         clustervars <- clustervars[-which(clustervars==idname)]
-        if (length(clustervars) > 1) {
-          stop("can't handle that many cluster variables")
-        }
+      }
+      if (length(clustervars) > 1) {
+        stop("can't handle that many cluster variables")
+      }
+
+      bout <- lapply(1:biters, FUN=function(b) {
         if (length(clustervars) > 0) {
           n1 <- length(unique(dta[,clustervars]))
-          Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
-                       nrow=n1)
-          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-          Ub <- data.frame(dta[,clustervars], row.names = NULL)
+          Vb <- matrix(sample(c(-1,1), n1, replace=T))
+          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+          Ub <- data.frame(dta[,clustervars])
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
-          Ub <- as.matrix(Ub)
-
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-
+          Ub <- sample(c(-1,1), n, replace=T)
         }
-
-        mb <- Ub*(thisinffunc)
-        apply(mb,2,mean)
+        Rb <- base::mean(Ub*(thisinffunc), na.rm = T)
+        Rb
       })
-      bres <- simplify2array(bout)
-      b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
-                           quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-      b.se <- b.sd
-      return(b.se)
+      bres <- as.vector(simplify2array(bout))
+
+      bSigma <- (quantile(bres, .75, type=1, na.rm = T) - quantile(bres, .25, type=1, na.rm = T)) /
+        (qnorm(.75) - qnorm(.25))
+      #bT <- abs(bres/bSigma))
+      return(bSigma)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
       return(sqrt( mean( (thisinffunc)^2 ) /n ))
@@ -773,8 +771,8 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
       if (length(clustervars) > 0) {
         n1 <- length(unique(dta[,clustervars]))
         Vb <- matrix(sample(c(-1,1), n1, replace=T))
-        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-        Ub <- data.frame(dta[,clustervars], row.names = NULL)
+        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+        Ub <- data.frame(dta[,clustervars])
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
       } else {
@@ -868,7 +866,7 @@ summary.AGGTE <- function(object, type=c("dynamic"), e1=1, ...) {
     cat("Dynamic Treatment Effects", "\n")
     cat("-------------------------")
     elen <- length(object$dynamic.att.e)
-    printmat <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.se.e, row.names = NULL)
+    printmat <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.se.e)
     colnames(printmat) <- c("e","att","se")
     print(kable(printmat))
   }
@@ -1073,35 +1071,33 @@ att_gt_het <- function(outcome, data, tname,
 
     getSE_inf <- function(thisinffunc) {
       if (bstrap) {
-        bout <- lapply(1:biters, FUN=function(b) {
-          sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+        if (idname %in% clustervars) {
           clustervars <- clustervars[-which(clustervars==idname)]
-          if (length(clustervars) > 1) {
-            stop("can't handle that many cluster variables")
-          }
+        }
+        if (length(clustervars) > 1) {
+          stop("can't handle that many cluster variables")
+        }
+
+        bout <- lapply(1:biters, FUN=function(b) {
           if (length(clustervars) > 0) {
             n1 <- length(unique(dta[,clustervars]))
-            Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
-                         nrow=n1)
-            Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-            Ub <- data.frame(dta[,clustervars], row.names = NULL)
+            Vb <- matrix(sample(c(-1,1), n1, replace=T))
+            Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+            Ub <- data.frame(dta[,clustervars])
             Ub <- Vb[match(Ub[,1], Vb[,1]),]
             Ub <- Ub[,-1]
-            Ub <- as.matrix(Ub)
-
           } else {
-            Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-
+            Ub <- sample(c(-1,1), n, replace=T)
           }
-
-          mb <- Ub*(thisinffunc)
-          apply(mb,2,mean)
+          Rb <- base::mean(Ub*(thisinffunc), na.rm = T)
+          Rb
         })
-        bres <- simplify2array(bout)
-        b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
-                             quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-        b.se <- b.sd
-        return(b.se)
+        bres <- as.vector(simplify2array(bout))
+
+        bSigma <- (quantile(bres, .75, type=1, na.rm = T) - quantile(bres, .25, type=1, na.rm = T)) /
+          (qnorm(.75) - qnorm(.25))
+        #bT <- abs(bres/bSigma))
+        return(bSigma)
         #return(sqrt( mean( bres^2)) /sqrt(n))
       } else {
         return(sqrt( mean( (thisinffunc)^2 ) /n ))
@@ -1130,8 +1126,8 @@ att_gt_het <- function(outcome, data, tname,
         if (length(clustervars) > 0) {
           n1 <- length(unique(dta[,clustervars]))
           Vb <- matrix(sample(c(-1,1), n1, replace=T))
-          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-          Ub <- data.frame(dta[,clustervars], row.names = NULL)
+          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+          Ub <- data.frame(dta[,clustervars])
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
         } else {
@@ -1333,50 +1329,30 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
     }
 
     if (bstrap) {
-      bout <- lapply(1:biters, FUN=function(b) {
-        sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+      if (idname %in% clustervars) {
         clustervars <- clustervars[-which(clustervars==idname)]
-        if (length(clustervars) > 1) {
-          stop("can't handle that many cluster variables")
-        }
+      }
+      if (length(clustervars) > 1) {
+        stop("can't handle that many cluster variables")
+      }
+
+      bout <- lapply(1:biters, FUN=function(b) {
         if (length(clustervars) > 0) {
           n1 <- length(unique(dta[,clustervars]))
-          Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
-                       nrow=n1)
-          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-          Ub <- data.frame(dta[,clustervars], row.names = NULL)
+          Vb <- matrix(sample(c(-1,1), n1, replace=T))
+          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+          Ub <- data.frame(dta[,clustervars])
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
-          Ub <- as.matrix(Ub)
-          ## n1 <- length(unique(dta[,clustervars]))
-          ## Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
-          ##              nrow=n1)
-          ## Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-          ## colnames(Vb)[1] <- "clvar"
-          ## Ub <- data.frame(dta[,clustervars])
-          ## colnames(Ub)[1] <- "clvar"
-          ## Ub <- merge(Ub, Vb, by="clvar")
-          ## Ub <- Ub[,-1]
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-
+          Ub <- sample(c(-1,1), n, replace=T)
         }
-        ## allow for serial correlation
-        ##if (sercor) {
-        ##    Ub[,-1] <- Ub[,1]
-        ##} ## this doesn't matter here because there is only one influence function
-        ## drop cluster for serial correlation
-
-        ##ift <- do.call(magic::adiag, psiitout)
-        ##ifunc <- rbind(ift, psiiu)
-
-        ##Ub <- sample(c(-1,1), n, replace=T)
-        mb <- Ub*(thisinffunc)
-        apply(mb,2,mean)
+        Rb <- base::mean(Ub*(thisinffunc), na.rm = T)
+        Rb
       })
-      bres <- simplify2array(bout)
+      bres <- as.vector(simplify2array(bout))
 
-      bSigma <- (quantile(bres, .75, type=1,na.rm = T) - quantile(bres, .25, type=1,na.rm = T)) /
+      bSigma <- (quantile(bres, .75, type=1, na.rm = T) - quantile(bres, .25, type=1, na.rm = T)) /
         (qnorm(.75) - qnorm(.25))
       #bT <- abs(bres/bSigma))
       return(bSigma)
@@ -1390,35 +1366,33 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
 
   getSE_inf <- function(thisinffunc) {
     if (bstrap) {
-      bout <- lapply(1:biters, FUN=function(b) {
-        sercor <- idname %in% clustervars ## boolean for whether or not to account for serial correlation
+      if (idname %in% clustervars) {
         clustervars <- clustervars[-which(clustervars==idname)]
-        if (length(clustervars) > 1) {
-          stop("can't handle that many cluster variables")
-        }
+      }
+      if (length(clustervars) > 1) {
+        stop("can't handle that many cluster variables")
+      }
+
+      bout <- lapply(1:biters, FUN=function(b) {
         if (length(clustervars) > 0) {
           n1 <- length(unique(dta[,clustervars]))
-          Vb <- matrix(sample(c(-1,1), n1, replace=TRUE),
-                       nrow=n1)
-          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-          Ub <- data.frame(dta[,clustervars], row.names = NULL)
+          Vb <- matrix(sample(c(-1,1), n1, replace=T))
+          Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+          Ub <- data.frame(dta[,clustervars])
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
-          Ub <- as.matrix(Ub)
-
         } else {
-          Ub <- matrix(sample(c(-1,1), nrow(thisinffunc), replace=TRUE), ncol=1)
-
+          Ub <- sample(c(-1,1), n, replace=T)
         }
-
-        mb <- Ub*(thisinffunc)
-        apply(mb,2,mean)
+        Rb <- base::mean(Ub*(thisinffunc), na.rm = T)
+        Rb
       })
-      bres <- simplify2array(bout)
-      b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
-                           quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-      b.se <- b.sd
-      return(b.se)
+      bres <- as.vector(simplify2array(bout))
+
+      bSigma <- (quantile(bres, .75, type=1, na.rm = T) - quantile(bres, .25, type=1, na.rm = T)) /
+        (qnorm(.75) - qnorm(.25))
+      #bT <- abs(bres/bSigma))
+      return(bSigma)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
       return(sqrt( mean( (thisinffunc)^2 ) /n ))
@@ -1569,8 +1543,8 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
       if (length(clustervars) > 0) {
         n1 <- length(unique(dta[,clustervars]))
         Vb <- matrix(sample(c(-1,1), n1, replace=T))
-        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb, row.names = NULL)
-        Ub <- data.frame(dta[,clustervars], row.names = NULL)
+        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+        Ub <- data.frame(dta[,clustervars])
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
       } else {
@@ -1584,8 +1558,6 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
 
 
     # Part of the code for simulataneous confidence bands for event studies
-
-
     bSigma <- apply(bres, 2,
                     function(b) (quantile(b, .75, type=1,na.rm = T) -
                                    quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
