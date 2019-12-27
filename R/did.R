@@ -1110,8 +1110,8 @@ att_gt_het <- function(outcome, data, tname,
 
 
 
-    aggeffects$simple.att.se <- getSE_inf(as.matrix(aggeffects$simple.att.inf.func))
-    aggeffects$dynamic.att.se <- getSE_inf(as.matrix(aggeffects$dynamic.att.inf.func))
+    aggeffects$simple.se <- getSE_inf(as.matrix(aggeffects$simple.att.inf.func))
+    aggeffects$dynamic.se <- getSE_inf(as.matrix(aggeffects$dynamic.att.inf.func))
 
     aggeffects$dynamic.se.e <- sqrt(colMeans((aggeffects$dyn.inf.func.e)^2)/n)
     aggeffects$c.dynamic <- qnorm(1 - alp/2)
