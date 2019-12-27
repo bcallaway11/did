@@ -429,8 +429,8 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
   c.point <-  stats::qnorm(1 - ssresults$alp/2)
 
   p <- ggplot(ssresults,
-              aes(x=year, y=att, ymin=(att-c*att.se),
-                  ymax=att+c*att.se, post=post)) +
+              aes(x=year, y=att, ymin=(att-c*ssresults$att.se),
+                  ymax=(att+c*ssresults$att.se), post=post)) +
 
     geom_point(aes(colour=post), size=1.5) +
     geom_errorbar(aes(colour=post), width=0.1) +
@@ -620,7 +620,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
         }
 
         mb <- Ub*(thisinffunc)
-        apply(mb,2,sum) / nrow(thisinffunc)
+        apply(mb,2,sum) / sqrt(nrow(thisinffunc))
       })
       bres <- simplify2array(bout)
       b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
@@ -1095,7 +1095,7 @@ att_gt_het <- function(outcome, data, tname,
           }
 
           mb <- Ub*(thisinffunc)
-          apply(mb,2,sum) / nrow(thisinffunc)
+          apply(mb,2,sum) / sqrt(nrow(thisinffunc))
         })
         bres <- simplify2array(bout)
         b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
@@ -1412,7 +1412,7 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
         }
 
         mb <- Ub*(thisinffunc)
-        apply(mb,2,sum) / nrow(thisinffunc)
+        apply(mb,2,sum) / sqrt(nrow(thisinffunc))
       })
       bres <- simplify2array(bout)
       b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
