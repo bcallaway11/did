@@ -152,6 +152,8 @@ att_gt <- function(outcome, data, tname,
 
   # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS (in our specific setup with state data)
   n <- nrow(dta)
+
+
   if(length(clustervars) > 0) {
     n <- length(unique(dta[,clustervars]))
   }
@@ -179,7 +181,7 @@ att_gt <- function(outcome, data, tname,
         Ub <- data.frame(dta[,clustervars], row.names = NULL)
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
-        n <- n1
+        #n <- n1
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
@@ -583,21 +585,21 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
-          n <- n1
+          #n <- n1
 
         } else {
           Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
-        mb <- Ub*(thisinffunc)
-        sqrt(n) * apply(mb,2,mean)
+        mb <- Ub * (thisinffunc)
+       apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
 
       bSigma <- (quantile(bres, .75, type=1,na.rm = T) - quantile(bres, .25, type=1,na.rm = T)) /
         (qnorm(.75) - qnorm(.25))
       #bT <- abs(bres/bSigma))
-      return(bSigma/sqrt(n))
+      return(bSigma)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
       return(sqrt( mean( (thisinffunc)^2 ) /n ))
@@ -621,20 +623,20 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
-          n <- n1
+          #n <- n1
 
         } else {
           Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
 
-        mb <- Ub*(thisinffunc)
-        sqrt(n) * apply(mb,2,mean)
+        mb <- Ub * (thisinffunc)
+        apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
       b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
                            quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-      b.se <- b.sd/sqrt(n)
+      b.se <- b.sd
       return(b.se)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
@@ -703,7 +705,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   #Estimation effect from denominator of the weights (normalization)
   simple.oif3 <- rowSums(simple.oif) %*%  t(matrix(pg[keepers]/sum(pg[keepers])))
   #Estimation effect from estimated weights (in total)
-  simple.oif <- simple.oif - simple.oif3
+  simple.oif <- as.matrix(simple.oif - simple.oif3)
 
   simple.se <- getSE(keepers, pg[keepers]/sum(pg[keepers]), simple.oif)
 
@@ -786,12 +788,12 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
         Ub <- data.frame(dta[,clustervars], row.names = NULL)
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
-        n <- n1
+        #n <- n1
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
       ##Ub <- sample(c(-1,1), n, replace=T)
-      Rb <- sqrt(n)*(base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
+      Rb <- (base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
       Rb
     })
     bres <- t(simplify2array(bout))
@@ -800,7 +802,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1,na.rm = T) - quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
     bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
     c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-    dynamic.se.e <- bSigma/sqrt(n)
+    dynamic.se.e <- bSigma
   }
 
 
@@ -1100,20 +1102,20 @@ att_gt_het <- function(outcome, data, tname,
             Ub <- Vb[match(Ub[,1], Vb[,1]),]
             Ub <- Ub[,-1]
             Ub <- as.matrix(Ub)
-            n <- n1
+            #n <- n1
 
           } else {
             Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
           }
 
-          mb <- Ub*(thisinffunc)
-          sqrt(n) * apply(mb,2,mean)
+          mb <- Ub * (thisinffunc)
+          apply(mb,2,mean)
         })
         bres <- simplify2array(bout)
         b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
                              quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-        b.se <- b.sd/sqrt( n)
+        b.se <- b.sd#/sqrt( n)
         return(b.se)
         #return(sqrt( mean( bres^2)) /sqrt(n))
       } else {
@@ -1147,12 +1149,12 @@ att_gt_het <- function(outcome, data, tname,
           Ub <- data.frame(dta[,clustervars], row.names = NULL)
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
-          n <- n1
+          #n <- n1
         } else {
           Ub <- sample(c(-1,1), n, replace=T)
         }
         ##Ub <- sample(c(-1,1), n, replace=T)
-        Rb <- sqrt(n)*(base::colMeans(Ub*(aggeffects$dyn.inf.func.e), na.rm = T))
+        Rb <- (base::colMeans(Ub*(aggeffects$dyn.inf.func.e), na.rm = T))
         Rb
       })
       bres <- t(simplify2array(bout))
@@ -1160,7 +1162,7 @@ att_gt_het <- function(outcome, data, tname,
       bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1,na.rm = T) - quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
       bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
       aggeffects$c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-      aggeffects$dynamic.se.e <- bSigma/sqrt(n)
+      aggeffects$dynamic.se.e <- bSigma
     }
 
 
@@ -1366,39 +1368,22 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
-          n <- n1
-          ## n1 <- length(unique(dta[,clustervars]))
-          ## Vb <- matrix(sample(c(-1,1), n1*ncol(inffunc1), replace=T),
-          ##              nrow=n1)
-          ## Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-          ## colnames(Vb)[1] <- "clvar"
-          ## Ub <- data.frame(dta[,clustervars])
-          ## colnames(Ub)[1] <- "clvar"
-          ## Ub <- merge(Ub, Vb, by="clvar")
-          ## Ub <- Ub[,-1]
+          #n <- n1
+
         } else {
           Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
-        ## allow for serial correlation
-        ##if (sercor) {
-        ##    Ub[,-1] <- Ub[,1]
-        ##} ## this doesn't matter here because there is only one influence function
-        ## drop cluster for serial correlation
 
-        ##ift <- do.call(magic::adiag, psiitout)
-        ##ifunc <- rbind(ift, psiiu)
-
-        ##Ub <- sample(c(-1,1), n, replace=T)
-        mb <- Ub*(thisinffunc)
-        sqrt(n) * apply(mb,2,mean)
+        mb <- Ub * (thisinffunc)
+        apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
 
       bSigma <- (quantile(bres, .75, type=1,na.rm = T) - quantile(bres, .25, type=1,na.rm = T)) /
         (qnorm(.75) - qnorm(.25))
       #bT <- abs(bres/bSigma))
-      return(bSigma/sqrt(n))
+      return(bSigma)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
       return(sqrt( mean( (thisinffunc)^2 ) /n ))
@@ -1424,20 +1409,20 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
           Ub <- Vb[match(Ub[,1], Vb[,1]),]
           Ub <- Ub[,-1]
           Ub <- as.matrix(Ub)
-          n <- n1
+          #n <- n1
 
         } else {
           Ub <- matrix(sample(c(-1,1), n, replace=TRUE), ncol=1)
 
         }
 
-        mb <- Ub*(thisinffunc)
-        sqrt(n) * apply(mb,2,mean)
+        mb <- Ub * (thisinffunc)
+        apply(mb,2,mean)
       })
       bres <- simplify2array(bout)
       b.sd <- as.vector((quantile(bres, .75, type=1,na.rm = T) -
                            quantile(bres, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
-      b.se <- b.sd/sqrt(n)
+      b.se <- b.sd
       return(b.se)
       #return(sqrt( mean( bres^2)) /sqrt(n))
     } else {
@@ -1593,12 +1578,12 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
         Ub <- data.frame(dta[,clustervars], row.names = NULL)
         Ub <- Vb[match(Ub[,1], Vb[,1]),]
         Ub <- Ub[,-1]
-        n <- n1
+        #n <- n1
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
       ##Ub <- sample(c(-1,1), n, replace=T)
-      Rb <- sqrt(n)*(base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
+      Rb <- (base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
       Rb
     })
     bres <- t(simplify2array(bout))
@@ -1612,7 +1597,7 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
                                    quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
     bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
     c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-    dynamic.se.e <- bSigma/sqrt(n)
+    dynamic.se.e <- bSigma
   }
 
 
