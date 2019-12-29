@@ -8,7 +8,7 @@ att_gt_het(outcome, data, tname, aggte = TRUE, w = NULL,
   idname = NULL, first.treat.name, alp = 0.05, method = "logit",
   bstrap = FALSE, biters = 1000, clustervars = NULL,
   seedvec = NULL, pl = FALSE, cores = 2, printdetails = TRUE,
-  maxe = NULL, nevertreated = T, het)
+  maxe = NULL, mine = NULL, nevertreated = T, het)
 }
 \arguments{
 \item{outcome}{The outcome y (in quotations, always!)}
@@ -55,6 +55,8 @@ in conjunction with bootstrapping standard errors#' (not implemented)}
 \item{printdetails}{Boolean for showing detailed results or not}
 
 \item{maxe}{maximum values of periods ahead to be computed in event study}
+
+\item{mine}{minimum values of periods ahead to be computed in event study}
 
 \item{nevertreated}{Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.}
 

@@ -777,7 +777,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 
   # Pre-treatment periods
   pre.treat <- which(group > t)
-  if(is.null(mine)) mine <- min(t-group)+1
+  if(is.null(mine)) mine <- 0
   if (mine < (min(t-group))) mine <- min(t-group)+1
 
   eseq.pre <- seq(mine, 0)
@@ -1000,6 +1000,7 @@ summary.AGGTE <- function(object, type=c("dynamic"), e1=1, ...) {
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
 #' @param maxe maximum values of periods ahead to be computed in event study
+#' @param mine minimum values of periods ahead to be computed in event study
 #' @param nevertreated Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.
 #' @param het The name of the column containing the (binary) categories for heterogeneity
 #'
@@ -1016,6 +1017,7 @@ att_gt_het <- function(outcome, data, tname,
                        seedvec=NULL, pl=FALSE, cores=2,
                        printdetails=TRUE,
                        maxe = NULL,
+                       mine = NULL,
                        nevertreated = T,
                        het) {
 
@@ -1108,12 +1110,12 @@ att_gt_het <- function(outcome, data, tname,
   att_het0 <- c()
   i <- 1
 
-  inffunc1_het1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) ## note, this might not work in unbalanced case
-  inffunc1_het0 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta))
+  inffunc1_het1 <- matrix(0, ncol=flen*(tlen), nrow=nrow(dta)) ## note, this might not work in unbalanced case
+  inffunc1_het0 <- matrix(0, ncol=flen*(tlen), nrow=nrow(dta))
 
 
   for (f in 1:length(flist)) {
-    for (s in 1:(length(tlist)-1)) {
+    for (s in 1:(length(tlist))) {
       group[i] <- fatt_het1[[i]]$group
       t[i] <- fatt_het1[[i]]$year
 
@@ -1137,10 +1139,10 @@ att_gt_het <- function(outcome, data, tname,
 
   if (aggte) {
     aggeffects_het1 <- compute.aggte_het(flist, tlist, group, t, att_het1, first.treat.name, inffunc1_het1,
-                                         n, clustervars, dta, idname, bstrap, biters, alp, maxe, het=1)
+                                         n, clustervars, dta, idname, bstrap, biters, alp, maxe, mine, het=1)
 
     aggeffects_het0 <- compute.aggte_het(flist, tlist, group, t, att_het0, first.treat.name, inffunc1_het0,
-                                         n, clustervars, dta, idname, bstrap, biters, alp, maxe, het=0)
+                                         n, clustervars, dta, idname, bstrap, biters, alp, maxe, mine, het=0)
 
 
     aggeffects <- list(simple.att = aggeffects_het1$simple.att - aggeffects_het0$simple.att,
@@ -1150,7 +1152,8 @@ att_gt_het <- function(outcome, data, tname,
                        dynamic.att.inf.func = aggeffects_het1$dynamic.att.inf.func - aggeffects_het0$dynamic.att.inf.func,
 
                        dynamic.att.e = aggeffects_het1$dynamic.att.e - aggeffects_het0$dynamic.att.e,
-                       dyn.inf.func.e = aggeffects_het1$dyn.inf.func.e - aggeffects_het0$dyn.inf.func.e
+                       dyn.inf.func.e = aggeffects_het1$dyn.inf.func.e - aggeffects_het0$dyn.inf.func.e,
+                       e = aggeffects_het1$e
     )
 
 
@@ -1195,6 +1198,7 @@ att_gt_het <- function(outcome, data, tname,
     aggeffects$dynamic.se <- getSE_inf(as.matrix(aggeffects$dynamic.att.inf.func))
 
     aggeffects$dynamic.se.e <- sqrt(colMeans((aggeffects$dyn.inf.func.e)^2)/n)
+
     aggeffects$c.dynamic <- qnorm(1 - alp/2)
 
     # Bootstrap for simulatanerous Conf. Int for the event study
@@ -1223,22 +1227,21 @@ att_gt_het <- function(outcome, data, tname,
         Rb
       })
       bres <- t(simplify2array(bout))
+      # Non-degenerate dimensions
+      ndg.dim <- base::colSums(bres)!=0
+      bres <- bres[,ndg.dim]
+
       #V.dynamic <- cov(bres)
       bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1,na.rm = T) - quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
       bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
       aggeffects$c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-      aggeffects$dynamic.se.e <- bSigma
+      #aggeffects$dynamic.se.e <- bSigma
+      aggeffects$dynamic.se.e <- rep(0,length(ndg.dim))
+      aggeffects$dynamic.se.e[ndg.dim] <- bSigma
     }
 
 
-
-
-
-
-
-
   }
-
 
   out <- list(group=group,
               t=t,
@@ -1286,11 +1289,12 @@ compute.att_gt_het <- function(flen, tlen, flist, tlist, data, dta,
 
   for (f in 1:flen) {
     ##satt <- list()
-    for (t in 1:(tlen-1)) {
-      pret <- t
-      if (flist[f]<=tlist[(t+1)]) {
+    for (t in 1:(tlen)) {
+      #pret <- t
+      pret <- utils::tail(which(tlist < flist[f]),1)
+      if (flist[f]<=tlist[(t)]) {
         ## set an index for the pretreatment period
-        pret <- utils::tail(which(tlist < flist[f]),1)
+        #pret <- utils::tail(which(tlist < flist[f]),1)
 
         ## print a warning message if there are no pre-treatment
         ##  periods
@@ -1300,80 +1304,87 @@ compute.att_gt_het <- function(flen, tlen, flist, tlist, data, dta,
 
         ## print the details of which iteration we are on
         if (printdetails) {
-          cat(paste("current period:", tlist[t+1]), "\n")
+          cat(paste("current period:", tlist[t]), "\n")
           cat(paste("current group:", flist[f]), "\n")
           cat(paste("set pretreatment period to be", tlist[pret]), "\n")
         }
       }
 
       ## --------------------------------------------------------
-      ## results for the case with panel data
-      ## get dataset with current period and pre-treatment period
-      disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-      ## transform it into "cross-sectional" data where
-      ## one of the columns contains the change in the outcome
-      ## over time
-      ########################## TOASK
-      # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
-      disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
+      post.treat <- 1*(flist[f]<=tlist[(t)])
 
-      #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
-      ## set up control group
-      if(nevertreated ==T){
-        disdat$C <- 1*(disdat[,first.treat.name] == 0)
+      if (tlist[pret] == tlist[t]){
+        fatt[[counter]] <- list(att=0, group=flist[f], year=tlist[(t)], post=post.treat)
+        inffunc[f,t,] <- 0
+      } else {
+        ## results for the case with panel data
+        ## get dataset with current period and pre-treatment period
+        disdat <- data[(data[,tname]==tlist[t] | data[,tname]==tlist[pret]),]
+        ## transform it into "cross-sectional" data where
+        ## one of the columns contains the change in the outcome
+        ## over time
+        ########################## TOASK
+        # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
+        disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
+
+        #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
+        ## set up control group
+        if(nevertreated ==T){
+          disdat$C <- 1*(disdat[,first.treat.name] == 0)
+        }
+
+        if(nevertreated ==F){
+          disdat$C <- 1*( (disdat[,first.treat.name] == 0) +
+                            (disdat[,first.treat.name] > max(disdat[, tname])) )
+        }
+
+        ## set up for particular treated group
+        disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+
+        ## drop missing factors
+        disdat <- droplevels(disdat)
+
+        ## give short names for data in this iteration
+        G <- disdat$G
+        C <- disdat$C
+        dy <- disdat$dy * ((-1)^(1+post.treat))
+        #n <- nrow(disdat)
+        w <- (disdat$w1) * het.val + (disdat$w0) * (1 - het.val)
+
+
+        ## set up weights
+        attw <- w * G/mean(w * G)
+        attw2a <- w * C
+        attw2 <- attw2a/mean(attw2a)
+        att <- mean((attw - attw2)*dy)
+
+        if(is.na(att)) att <- 0
+
+        ## save results for this iteration
+        fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t)], post=post.treat)
+
+        ## --------------------------------------------
+        ## get the influence function
+
+        ## weigts for het==1
+        wg <- w * G/mean(w * G)
+        wc1 <- w * C
+        wc <- wc1 / mean(wc1)
+
+        ## influence function for treated group
+        psig <- wg*(dy - mean(wg*dy))
+        # influence function for the control group
+        psic <- wc*(dy - mean(wc*dy))
+
+        ## save the influnce function as the difference between
+        ## the treated and control influence functions;
+        ## we save this as a 3-dimensional array
+        ## and then process afterwards
+        infl.att <- (psig - psic)
+        if(base::anyNA(infl.att)) infl.att <- 0
+
+        inffunc[f,t,] <- infl.att
       }
-
-      if(nevertreated ==F){
-        disdat$C <- 1*( (disdat[,first.treat.name] == 0) +
-                          (disdat[,first.treat.name] > max(disdat[, tname])) )
-      }
-
-      ## set up for particular treated group
-      disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
-
-      ## drop missing factors
-      disdat <- droplevels(disdat)
-
-      ## give short names for data in this iteration
-      G <- disdat$G
-      C <- disdat$C
-      dy <- disdat$dy
-      n <- nrow(disdat)
-      w <- (disdat$w1) * het.val + (disdat$w0) * (1 - het.val)
-
-
-      ## set up weights
-      attw <- w * G/mean(w * G)
-      attw2a <- w * C
-      attw2 <- attw2a/mean(attw2a)
-      att <- mean((attw - attw2)*dy)
-
-      if(is.na(att)) att <- 0
-
-      ## save results for this iteration
-      fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
-
-      ## --------------------------------------------
-      ## get the influence function
-
-      ## weigts for het==1
-      wg <- w * G/mean(w * G)
-      wc1 <- w * C
-      wc <- wc1 / mean(wc1)
-
-      ## influence function for treated group
-      psig <- wg*(dy - mean(wg*dy))
-      # influence function for the control group
-      psic <- wc*(dy - mean(wc*dy))
-
-      ## save the influnce function as the difference between
-      ## the treated and control influence functions;
-      ## we save this as a 3-dimensional array
-      ## and then process afterwards
-      infl.att <- (psig - psic)
-      if(base::anyNA(infl.att)) infl.att <- 0
-
-      inffunc[f,t,] <- infl.att
 
       counter <- counter+1
     }
@@ -1401,7 +1412,7 @@ compute.att_gt_het <- function(flen, tlen, flist, tlist, data, dta,
 #'
 #' @export
 compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-                              clustervars, dta, idname, bstrap, biters, alp, maxe, het) {
+                              clustervars, dta, idname, bstrap, biters, alp, maxe, mine, het) {
 
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
@@ -1603,12 +1614,59 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
   })
 
 
-  dynamic.se.e <- sqrt(base::colMeans(dynamic.e.inf.f^2)/n)
+  # Pre-treatment periods
+  pre.treat <- which(group > t)
+  if(is.null(mine)) mine <- 0
+  if (mine < (min(t-group))) mine <- min(t-group)+1
 
-  # Average over all dynamic att(e)
+  eseq.pre <- seq(mine, 0)
+
+
+  dynamic.att.pre.e <- sapply(eseq.pre, function(e) {
+    whiche <- which(t - group + 1 == e)
+    atte <- att[whiche]
+    pge <- pg[whiche]/(sum(pg[whiche]))
+    sum(atte*pge)
+  })
+
+
+  n.pre.treat <- (time.treated - max(t)+1) * (dta[,first.treat.name]>0)
+  dynamic.pre.e.inf.f <- sapply(eseq.pre, function(e) {
+    whiche <- which(t - group + 1 == e)
+    pge <- pg[whiche]/sum(pg[whiche])
+
+    ## some variables used
+    atleast.e.pre.treated <- 1 * (n.pre.treat <=e) * (dta[,first.treat.name]>0)
+    mean.w.atleast.e.pre.treated <- mean(weights.agg * atleast.e.pre.treated)
+
+    # Estimation effect coming from P(G=g| treated for at least e periods)
+    # Part 1: est effect from P(G=g) treating P(treated for at least e periods) as known
+    dynamic.oif1 <- sapply(whiche,
+                           function(k) ( (weights.agg *(G==group[k]) - mean(weights.agg * (G==group[k]))) /
+                                           mean.w.atleast.e.pre.treated
+                           )
+    )
+
+    # Part 2: est effect from  P(treated for at least e periods) treating P(G=g) as known
+    dynamic.oif2 <- sapply(whiche,
+                           function(j) ((mean(weights.agg * (G==group[j]))/(mean.w.atleast.e.pre.treated^2)) *
+                                          (weights.agg * atleast.e.pre.treated - mean.w.atleast.e.pre.treated)
+                           )
+    )
+    dynamic.oif <- (dynamic.oif1 - dynamic.oif2)
+
+    inffunc1[,whiche] %*% as.matrix(pge) + dynamic.oif %*% as.matrix(att[whiche])
+  })
+
+
+
+  dynamic.se.e <- sqrt(base::colMeans(cbind(dynamic.pre.e.inf.f, dynamic.e.inf.f)^2)/n)
+
+  # Average over all dynamic att(e), e>=1
   dynamic.att <- mean(dynamic.att.e)
-  # Influence function of the average over all dynamic att(e)
+  # Influence function of the average over all dynamic att(e), e>=1
   dynamic.if <- rowMeans(dynamic.e.inf.f)
+
   # std. error
   #dynamic.se <- sqrt((mean(dynamic.if^2)/n))
   dynamic.se <- getSE_inf(as.matrix(dynamic.if))
@@ -1636,10 +1694,14 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
         Ub <- sample(c(-1,1), n, replace=T)
       }
       ##Ub <- sample(c(-1,1), n, replace=T)
-      Rb <- (base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
+      Rb <- (base::colMeans(Ub*(cbind(dynamic.pre.e.inf.f, dynamic.e.inf.f)), na.rm = T))
       Rb
     })
     bres <- t(simplify2array(bout))
+    # Non-degenerate dimensions
+    ndg.dim <- base::colSums(bres)!=0
+    #V.dynamic <- cov(bres)
+    bres <- bres[,ndg.dim]
 
 
     # Part of the code for simulataneous confidence bands for event studies
@@ -1648,20 +1710,22 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
                                    quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
     bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
     c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-    dynamic.se.e <- bSigma
+    dynamic.se.e <- rep(0,length(ndg.dim))
+    dynamic.se.e[ndg.dim] <- bSigma
   }
 
 
 
   AGGTE(simple.att=simple.att, simple.se=simple.se,
         dynamic.att=dynamic.att, dynamic.se=dynamic.se,
-        dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e,  c.dynamic=c.dynamic,
+        dynamic.att.e=c(dynamic.att.pre.e, dynamic.att.e), dynamic.se.e=dynamic.se.e,  c.dynamic=c.dynamic,
         # Influence functions
-        dyn.inf.func.e = dynamic.e.inf.f,
+        dyn.inf.func.e = cbind(dynamic.pre.e.inf.f, dynamic.e.inf.f),
         simple.att.inf.func = simple.att.inf.func,
         dynamic.att.inf.func = dynamic.if,
 
-        group=originalflist, times=originaltlist)
+        group=originalflist, times=originaltlist,
+        e = c(eseq.pre, eseq))
 }
 
 
@@ -1718,16 +1782,16 @@ compute.aggte_het <- function(flist, tlist, group, t, att, first.treat.name, inf
 #'
 #' @export
 att_gt_het2 <- function(outcome, data, tname,
-                       aggte=TRUE, w=NULL,
-                       idname=NULL, first.treat.name, alp=0.05,
-                       method="logit",
-                       bstrap=FALSE, biters=1000, clustervars=NULL,
+                        aggte=TRUE, w=NULL,
+                        idname=NULL, first.treat.name, alp=0.05,
+                        method="logit",
+                        bstrap=FALSE, biters=1000, clustervars=NULL,
 
-                       seedvec=NULL, pl=FALSE, cores=2,
-                       printdetails=TRUE,
-                       maxe = NULL,
-                       nevertreated = T,
-                       het) {
+                        seedvec=NULL, pl=FALSE, cores=2,
+                        printdetails=TRUE,
+                        maxe = NULL,
+                        nevertreated = T,
+                        het) {
 
   ## make sure that data is a data.frame
   ## this gets around RStudio's default of reading data as tibble
@@ -1797,16 +1861,16 @@ att_gt_het2 <- function(outcome, data, tname,
   # Results for het==1
   #----------------------------------------------------------------------------
   results_het1 <- compute.att_gt_het2(flen, tlen, flist, tlist, data, dta, first.treat.name,
-                                     outcome, tname, idname, method, seedvec,
-                                     pl, cores, printdetails, nevertreated, het=1)
+                                      outcome, tname, idname, method, seedvec,
+                                      pl, cores, printdetails, nevertreated, het=1)
   fatt_het1 <- results_het1$fatt
   inffunc_het1 <- results_het1$inffunc
   #----------------------------------------------------------------------------
   # Results for het==0
   #----------------------------------------------------------------------------
   results_het0 <- compute.att_gt_het2(flen, tlen, flist, tlist, data, dta, first.treat.name,
-                                     outcome, tname, idname, method, seedvec,
-                                     pl, cores, printdetails, nevertreated, het=0)
+                                      outcome, tname, idname, method, seedvec,
+                                      pl, cores, printdetails, nevertreated, het=0)
   fatt_het0 <- results_het0$fatt
   inffunc_het0 <- results_het0$inffunc
   #----------------------------------------------------------------------------
@@ -1977,9 +2041,9 @@ att_gt_het2 <- function(outcome, data, tname,
 #'
 #' @export
 compute.att_gt_het2 <- function(flen, tlen, flist, tlist, data, dta,
-                               first.treat.name, outcome, tname, idname,
-                               method, seedvec,
-                               pl, cores, printdetails, nevertreated, het) {
+                                first.treat.name, outcome, tname, idname,
+                                method, seedvec,
+                                pl, cores, printdetails, nevertreated, het) {
 
   yname <- outcome ##as.character(formula.tools::lhs(formla))
 

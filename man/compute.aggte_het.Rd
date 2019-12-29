@@ -5,7 +5,7 @@
 \title{compute.aggte_het}
 \usage{
 compute.aggte_het(flist, tlist, group, t, att, first.treat.name, inffunc1,
-  n, clustervars, dta, idname, bstrap, biters, alp, maxe, het)
+  n, clustervars, dta, idname, bstrap, biters, alp, maxe, mine, het)
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
@@ -30,6 +30,8 @@ and this is only applicable if \code{bstrap=TRUE}.}
 \item{alp}{the significance level, default is 0.05}
 
 \item{maxe}{maximum values of periods ahead to be computed in event study}
+
+\item{mine}{minimum values of periods ahead to be computed in event study}
 
 \item{het}{The name of the column containing the (binary) categories for heterogeneity}
 }
