@@ -5,7 +5,7 @@
 \title{compute.aggte}
 \usage{
 compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-  clustervars, dta, idname, bstrap, biters, alp, cband, maxe)
+  clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine)
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first
@@ -35,6 +35,8 @@ with fixed probability \code{1-alp}.  The default is \code{FALSE}
 and the resulting standard errors will be pointwise.}
 
 \item{maxe}{maximum values of periods ahead to be computed in event study}
+
+\item{mine}{minimum values of periods ahead to be computed in event study}
 }
 \value{
 \code{AGGTE} object

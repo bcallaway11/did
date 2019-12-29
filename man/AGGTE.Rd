@@ -8,7 +8,7 @@ AGGTE(simple.att = NULL, simple.se = NULL, dynamic.att = NULL,
   dynamic.se = NULL, dynamic.att.e = NULL, dynamic.se.e = NULL,
   c.dynamic = NULL, dyn.inf.func.e = NULL,
   simple.att.inf.func = NULL, dynamic.att.inf.func = NULL,
-  group = NULL, times = NULL)
+  group = NULL, times = NULL, e = NULL)
 }
 \arguments{
 \item{simple.att}{simple weighted average of group-time average treatment
@@ -38,6 +38,8 @@ to treatment}
 \item{group}{vector of all groups}
 
 \item{times}{vector of all times}
+
+\item{e}{the relative times used in the event-study}
 }
 \description{
 \code{AGGTE} class for aggregate treatment effects

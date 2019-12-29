@@ -37,6 +37,7 @@
 #' @param cores The number of cores to use for parallel processing
 #' @param printdetails Boolean for showing detailed results or not
 #' @param maxe maximum values of periods ahead to be computed in event study
+#' @param mine minimum values of periods ahead to be computed in event study
 #' @param nevertreated Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.
 #'
 #' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
@@ -53,6 +54,7 @@ att_gt <- function(outcome, data, tname,
                    seedvec=NULL, pl=FALSE, cores=2,
                    printdetails=TRUE,
                    maxe = NULL,
+                   mine = NULL,
                    nevertreated = T) {
 
   ## make sure that data is a data.frame
@@ -129,7 +131,7 @@ att_gt <- function(outcome, data, tname,
   att <- c()
   i <- 1
 
-  inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) ## note, this might not work in unbalanced case
+  inffunc1 <- matrix(0, ncol=flen*(tlen), nrow=nrow(dta)) ## note, this might not work in unbalanced case
   ## for (f in 1:length(fatt)) {
   ##     for (s in 1:(length(fatt[[f]])-1)) {
   ##         group[i] <- fatt[[f]]$group
@@ -141,7 +143,7 @@ att_gt <- function(outcome, data, tname,
   ## }
 
   for (f in 1:length(flist)) {
-    for (s in 1:(length(tlist)-1)) {
+    for (s in 1:(length(tlist))) {
       group[i] <- fatt[[i]]$group
       t[i] <- fatt[[i]]$year
       att[i] <- fatt[[i]]$att
@@ -196,7 +198,7 @@ att_gt <- function(outcome, data, tname,
 
   ## wald test for pre-treatment periods:
   #THIS NEED TO COME BEFORE THE OTHER CODE OF THE CONFIDENCE BANDS!!
-  pre <- which(t < group)
+  pre <- which(t < (group-1))
   preatt <- as.matrix(att[pre])
   preV <- V[pre,pre]
 
@@ -220,7 +222,7 @@ att_gt <- function(outcome, data, tname,
   aggeffects <- NULL
   if (aggte) {
     aggeffects <- compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1,
-                                n, clustervars, dta, idname, bstrap, biters, alp, cband, maxe)
+                                n, clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine)
   }
 
 
@@ -271,16 +273,21 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
 
   fatt <- list()
   counter <- 1
+  tlist.length <- length(tlist)
   inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
+
 
 
   for (f in 1:flen) {
     ##satt <- list()
-    for (t in 1:(tlen-1)) {
-      pret <- t
-      if (flist[f]<=tlist[(t+1)]) {
+    #for (t in 1:(tlen-1)) {
+    for (t in 1:tlist.length) {
+      #pret <- t
+      pret <- utils::tail(which(tlist < flist[f]),1)
+      #if (flist[f]<=tlist[(t+1)]) {
+      if (flist[f]<=tlist[(t)]) {
         ## set an index for the pretreatment period
-        pret <- utils::tail(which(tlist < flist[f]),1)
+        #pret <- utils::tail(which(tlist < flist[f]),1)
 
         ## print a warning message if there are no pre-treatment
         ##  periods
@@ -290,73 +297,94 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
 
         ## print the details of which iteration we are on
         if (printdetails) {
-          cat(paste("current period:", tlist[t+1]), "\n")
+          cat(paste("current period:", tlist[t]), "\n")
           cat(paste("current group:", flist[f]), "\n")
           cat(paste("set pretreatment period to be", tlist[pret]), "\n")
         }
       }
 
+
       ## --------------------------------------------------------
       ## results for the case with panel data
-      ## get dataset with current period and pre-treatment period
-      disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-      ## transform it into "cross-sectional" data where
-      ## one of the columns contains the change in the outcome
-      ## over time
-      ########################## TOASK
-      # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
-      disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
+      #post.treat <- 1*(flist[f]<=tlist[(t+1)])
+      post.treat <- 1*(flist[f]<=tlist[(t)])
 
-      #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
-      ## set up control group
-      if(nevertreated ==T){
-        disdat$C <- 1*(disdat[,first.treat.name] == 0)
+      if (tlist[pret] == tlist[t]){
+        fatt[[counter]] <- list(att=0, group=flist[f], year=tlist[(t)], post=post.treat)
+        inffunc[f,t,] <- 0
       }
+      else {
+        ## get dataset with current period and pre-treatment period
+        disdat <- data[(data[,tname]==tlist[t] | data[,tname]==tlist[pret]),]
+        #disdat$pre.treat <- tlist[pret]
+        ## transform it into "cross-sectional" data where
+        ## one of the columns contains the change in the outcome
+        ## over time
+        ########################## TOASK
+        # SHOULD we keep the data on t=t_pre or t=t_post? right now, it is t=t_pre
+        disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
 
-      if(nevertreated ==F){
-        disdat$C <- 1*( (disdat[,first.treat.name] == 0) +
-                          (disdat[,first.treat.name] > max(disdat[, tname])) )
+        #THIS IS THE PART WE CAN CHANGE FOR THE NOT YET TREATED!!
+        ## set up control group
+        if(nevertreated ==T){
+          disdat$C <- 1*(disdat[,first.treat.name] == 0)
+        }
+
+        if(nevertreated ==F){
+          disdat$C <- 1*( (disdat[,first.treat.name] == 0) +
+                            (disdat[,first.treat.name] > max(disdat[, tname])) )
+        }
+
+        ## set up for particular treated group
+        disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+
+        ## drop missing factors
+        disdat <- droplevels(disdat)
+
+        ## give short names for data in this iteration
+
+
+        G <- disdat$G
+        C <- disdat$C
+        dy <- disdat$dy * ((-1)^(1+post.treat))
+        n <- nrow(disdat)
+        w <- disdat$w
+
+        # The adjustment above in dy is necessary to ensure that the dy has the right sign if post.tread=0
+        # since disdat compute Y_last_date - Y_early_date as dy,
+        # but with pre-treat it should be Y_early_date - Y_last_date,
+        # as last_date is the "pre-treatment period" g-1
+
+        ## set up weights
+        attw <- w * G/mean(w * G)
+        attw2a <- w * C
+        attw2 <- attw2a/mean(attw2a)
+        att <- mean((attw - attw2)*dy)
+
+
+
+        ## save results for this iteration
+        fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t)], post=1*(flist[f]<=tlist[(t)]))
+
+        ## --------------------------------------------
+        ## get the influence function
+
+        ## weigts
+        wg <- w * G/mean(w * G)
+        wc1 <- w * C
+        wc <- wc1 / mean(wc1)
+
+        ## influence function for treated group
+        psig <- wg*(dy - mean(wg*dy))
+        # influence function for the control group
+        psic <- wc*(dy - mean(wc*dy))
+
+        ## save the influnce function as the difference between
+        ## the treated and control influence functions;
+        ## we save this as a 3-dimensional array
+        ## and then process afterwards
+        inffunc[f,t,] <- psig - psic
       }
-
-      ## set up for particular treated group
-      disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
-
-      ## drop missing factors
-      disdat <- droplevels(disdat)
-
-      ## give short names for data in this iteration
-      G <- disdat$G
-      C <- disdat$C
-      dy <- disdat$dy
-      n <- nrow(disdat)
-      w <- disdat$w
-
-      ## set up weights
-      attw <- w * G/mean(w * G)
-      attw2a <- w * C
-      attw2 <- attw2a/mean(attw2a)
-      att <- mean((attw - attw2)*dy)
-      ## save results for this iteration
-      fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
-
-      ## --------------------------------------------
-      ## get the influence function
-
-      ## weigts
-      wg <- w * G/mean(w * G)
-      wc1 <- w * C
-      wc <- wc1 / mean(wc1)
-
-      ## influence function for treated group
-      psig <- wg*(dy - mean(wg*dy))
-      # influence function for the control group
-      psic <- wc*(dy - mean(wc*dy))
-
-      ## save the influnce function as the difference between
-      ## the treated and control influence functions;
-      ## we save this as a 3-dimensional array
-      ## and then process afterwards
-      inffunc[f,t,] <- psig - psic
 
       counter <- counter+1
     }
@@ -542,7 +570,7 @@ ggdid <- function(mpobj, type=c("attgt", "dynamic"), ylim=NULL,
 #'
 #' @export
 compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-                          clustervars, dta, idname, bstrap, biters, alp, cband, maxe) {
+                          clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine) {
 
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
@@ -669,6 +697,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   keepers <- which(group <= t)
   G <-  unlist(lapply(dta[,first.treat.name], orig2t))
 
+
   ## simple att
   simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
   # Estimation effect coming from P(G=g| Ever treated)
@@ -715,6 +744,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 
   time.treated <- ((max(originalt)) - dta[,first.treat.name] +1) * (dta[,first.treat.name]>0)
 
+
   dynamic.e.inf.f <- sapply(eseq, function(e) {
     whiche <- which(t - group + 1 == e)
     pge <- pg[whiche]/sum(pg[whiche])
@@ -745,11 +775,55 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 
   })
 
-  dynamic.se.e <- sqrt(base::colMeans(dynamic.e.inf.f^2)/n)
+  # Pre-treatment periods
+  pre.treat <- which(group > t)
+  if(is.null(mine)) mine <- min(t-group)+1
+  if (mine < (min(t-group))) mine <- min(t-group)+1
 
-  # Average over all dynamic att(e)
+  eseq.pre <- seq(mine, 0)
+
+
+  dynamic.att.pre.e <- sapply(eseq.pre, function(e) {
+    whiche <- which(t - group + 1 == e)
+    atte <- att[whiche]
+    pge <- pg[whiche]/(sum(pg[whiche]))
+    sum(atte*pge)
+  })
+
+
+  n.pre.treat <- (time.treated - max(t)+1) * (dta[,first.treat.name]>0)
+  dynamic.pre.e.inf.f <- sapply(eseq.pre, function(e) {
+    whiche <- which(t - group + 1 == e)
+    pge <- pg[whiche]/sum(pg[whiche])
+
+    ## some variables used
+    atleast.e.pre.treated <- 1 * (n.pre.treat <=e) * (dta[,first.treat.name]>0)
+    mean.w.atleast.e.pre.treated <- mean(weights.agg * atleast.e.pre.treated)
+
+    # Estimation effect coming from P(G=g| treated for at least e periods)
+    # Part 1: est effect from P(G=g) treating P(treated for at least e periods) as known
+    dynamic.oif1 <- sapply(whiche,
+                           function(k) ( (weights.agg *(G==group[k]) - mean(weights.agg * (G==group[k]))) /
+                                           mean.w.atleast.e.pre.treated
+                           )
+    )
+
+    # Part 2: est effect from  P(treated for at least e periods) treating P(G=g) as known
+    dynamic.oif2 <- sapply(whiche,
+                           function(j) ((mean(weights.agg * (G==group[j]))/(mean.w.atleast.e.pre.treated^2)) *
+                                          (weights.agg * atleast.e.pre.treated - mean.w.atleast.e.pre.treated)
+                           )
+    )
+    dynamic.oif <- (dynamic.oif1 - dynamic.oif2)
+
+    inffunc1[,whiche] %*% as.matrix(pge) + dynamic.oif %*% as.matrix(att[whiche])
+  })
+
+  dynamic.se.e <- sqrt(base::colMeans(cbind(dynamic.pre.e.inf.f, dynamic.e.inf.f)^2)/n)
+
+  # Average over all dynamic att(e), e>=1
   dynamic.att <- mean(dynamic.att.e)
-  # Influence function of the average over all dynamic att(e)
+  # Influence function of the average over all dynamic att(e), e>=1
   dynamic.if <- rowMeans(dynamic.e.inf.f)
 
   # std. error
@@ -757,6 +831,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   dynamic.se <- getSE_inf(as.matrix(dynamic.if))
 
   c.dynamic <- qnorm(1 - alp/2)
+
   # Bootstrap for simulatanerous Conf. Int for the event study
   if (bstrap) {
     if (idname %in% clustervars) {
@@ -779,23 +854,31 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
         Ub <- sample(c(-1,1), n, replace=T)
       }
       ##Ub <- sample(c(-1,1), n, replace=T)
-      Rb <- (base::colMeans(Ub*(dynamic.e.inf.f), na.rm = T))
+      Rb <- (base::colMeans(Ub * cbind(dynamic.pre.e.inf.f, dynamic.e.inf.f), na.rm = T))
       Rb
     })
     bres <- t(simplify2array(bout))
+    # Non-degenerate dimensions
+    ndg.dim <- base::colSums(bres)!=0
     #V.dynamic <- cov(bres)
+    bres <- bres[,ndg.dim]
 
-    bSigma <- apply(bres, 2, function(b) (quantile(b, .75, type=1,na.rm = T) - quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
+    bSigma <- apply(bres, 2,
+                    function(b) (quantile(b, .75, type=1,na.rm = T) -
+                                   quantile(b, .25, type=1,na.rm = T))/(qnorm(.75) - qnorm(.25)))
+
     bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
     c.dynamic <- quantile(bT, 1-alp, type=1,na.rm = T)
-    dynamic.se.e <- bSigma
+    dynamic.se.e <- rep(0,length(ndg.dim))
+    dynamic.se.e[ndg.dim] <- bSigma
   }
 
 
   AGGTE(simple.att=simple.att, simple.se=simple.se,
         dynamic.att=dynamic.att, dynamic.se=dynamic.se,
-        dynamic.att.e=dynamic.att.e, dynamic.se.e=dynamic.se.e,  c.dynamic=c.dynamic,
-        group=originalflist,times=originaltlist)
+        dynamic.att.e = c(dynamic.att.pre.e, dynamic.att.e), dynamic.se.e=dynamic.se.e,  c.dynamic=c.dynamic,
+        group=originalflist,times=originaltlist,
+        e = c(eseq.pre, eseq))
 }
 
 
@@ -819,6 +902,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
 #' @param dyn.inf.func.e influence function for event studies
 #' @param simple.att.inf.func influence function for simple average of ATT(g,t)
 #' @param dynamic.att.inf.func influence function for time-average of event-study
+#' @param e the relative times used in the event-study
 
 AGGTE <- function(simple.att=NULL, simple.se=NULL,
                   dynamic.att=NULL, dynamic.se=NULL,
@@ -826,7 +910,8 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL,
                   dyn.inf.func.e = NULL,
                   simple.att.inf.func = NULL,
                   dynamic.att.inf.func = NULL,
-                  group=NULL, times=NULL) {
+                  group=NULL, times=NULL,
+                  e = NULL) {
 
   out <- list(simple.att=simple.att, simple.se=simple.se,
               dynamic.att=dynamic.att, dynamic.se=dynamic.se,
@@ -836,7 +921,7 @@ AGGTE <- function(simple.att=NULL, simple.se=NULL,
               simple.att.inf.func = simple.att.inf.func,
               dynamic.att.inf.func = dynamic.att.inf.func,
 
-              group=group,times=times)
+              group=group,times=times, e = e)
   class(out) <- "AGGTE"
   out
 }
@@ -866,7 +951,7 @@ summary.AGGTE <- function(object, type=c("dynamic"), e1=1, ...) {
     cat("Dynamic Treatment Effects", "\n")
     cat("-------------------------")
     elen <- length(object$dynamic.att.e)
-    printmat <- cbind(seq(1:elen), object$dynamic.att.e, object$dynamic.se.e)
+    printmat <- cbind(object$dynamic.att.e, object$dynamic.att.e, object$dynamic.se.e)
     colnames(printmat) <- c("e","att","se")
     print(kable(printmat))
   }
