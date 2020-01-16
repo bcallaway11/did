@@ -1,9 +1,8 @@
 #' @title att_gt
 #'
-#' @description \code{att_gt} computes the ATT in the case where there are more
-#'  than two periods of data and allowing for treatment to occur at different points in time
-#'  extending the method of Abadie (2005).  This method relies on once individuals are treated
-#'  they remain in the treated state for the duration.
+#' @description \code{att_gt} computes average treatment effects in DID setups  where there are more
+#'  than two periods of data and allowing for treatment to occur at different points in time.
+#'  See Callaway ans Sant'Anna (2019) for a detailed description.
 #'
 #' @param outcome The outcome y (in quotations, always!)
 #' @param data The name of the data.frame that contains the data

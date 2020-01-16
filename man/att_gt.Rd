@@ -69,10 +69,9 @@ are included (not implemented)}
 \code{MP} object
 }
 \description{
-\code{att_gt} computes the ATT in the case where there are more
- than two periods of data and allowing for treatment to occur at different points in time
- extending the method of Abadie (2005).  This method relies on once individuals are treated
- they remain in the treated state for the duration.
+\code{att_gt} computes average treatment effects in DID setups  where there are more
+ than two periods of data and allowing for treatment to occur at different points in time.
+ See Callaway ans Sant'Anna (2019) for a detailed description.
 }
 \references{
 Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
