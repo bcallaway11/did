@@ -1,6 +1,6 @@
 ---
 title: "DID Basics"
-author: "Brantly Callaway and Pedro H.C. Sant\'Anna"
+author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
