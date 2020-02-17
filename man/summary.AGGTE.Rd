@@ -4,8 +4,12 @@
 \alias{summary.AGGTE}
 \title{summary.AGGTE}
 \usage{
-\method{summary}{AGGTE}(object, type = c("dynamic", "selective",
-  "calendar", "dynsel"), e1 = 1, ...)
+\method{summary}{AGGTE}(
+  object,
+  type = c("dynamic", "selective", "calendar", "dynsel"),
+  e1 = 1,
+  ...
+)
 }
 \arguments{
 \item{object}{an AGGTE object}

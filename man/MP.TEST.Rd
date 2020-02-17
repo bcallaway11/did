@@ -4,8 +4,18 @@
 \alias{MP.TEST}
 \title{MP.TEST}
 \usage{
-MP.TEST(CvM, CvMb, CvMcval, CvMpval, KS, KSb, KScval, KSpval, clustervars,
-  xformla)
+MP.TEST(
+  CvM,
+  CvMb,
+  CvMcval,
+  CvMpval,
+  KS,
+  KSb,
+  KScval,
+  KSpval,
+  clustervars,
+  xformla
+)
 }
 \arguments{
 \item{CvM}{Cramer von Mises test statistic}

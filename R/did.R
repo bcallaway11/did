@@ -104,12 +104,6 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         warning("not guaranteed to order time periods correclty if they are not numeric")
     }
 
-    ## check that first.treat doesn't change across periods for particular individuals
-    if (!all(sapply( split(data, data[,idname]), function(df) {
-        length(unique(df[,first.treat.name]))==1
-    }))) {
-        stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
-    }
     ####################################
 
 
@@ -118,6 +112,13 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
     if (panel) {
         data <- makeBalancedPanel(data, idname, tname)
         dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
+        
+        ## check that first.treat doesn't change across periods for particular individuals
+        if (!all(sapply( split(data, data[,idname]), function(df) {
+            length(unique(df[,first.treat.name]))==1
+        }))) {
+            stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+        }
     } else {
 
         dta <- data ## this is for repeated cross sections case though

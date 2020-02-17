@@ -4,11 +4,29 @@
 \alias{mp.spatt}
 \title{mp.spatt}
 \usage{
-mp.spatt(formla, xformla = NULL, data, tname, aggte = TRUE, w = NULL,
-  panel = FALSE, idname = NULL, first.treat.name, alp = 0.05,
-  method = "logit", se = TRUE, bstrap = FALSE, biters = 100,
-  clustervars = NULL, cband = FALSE, citers = 100, seedvec = NULL,
-  pl = FALSE, cores = 2, printdetails = TRUE)
+mp.spatt(
+  formla,
+  xformla = NULL,
+  data,
+  tname,
+  aggte = TRUE,
+  w = NULL,
+  panel = FALSE,
+  idname = NULL,
+  first.treat.name,
+  alp = 0.05,
+  method = "logit",
+  se = TRUE,
+  bstrap = FALSE,
+  biters = 100,
+  clustervars = NULL,
+  cband = FALSE,
+  citers = 100,
+  seedvec = NULL,
+  pl = FALSE,
+  cores = 2,
+  printdetails = TRUE
+)
 }
 \arguments{
 \item{formla}{The formula y ~ d where y is the outcome and d is the

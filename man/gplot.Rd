@@ -4,8 +4,14 @@
 \alias{gplot}
 \title{gplot}
 \usage{
-gplot(ssresults, ylim = NULL, xlab = NULL, ylab = NULL,
-  title = "Group", xgap = 1)
+gplot(
+  ssresults,
+  ylim = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  title = "Group",
+  xgap = 1
+)
 }
 \arguments{
 \item{ylim}{optional y limits for the plot; settng here makes the y limits

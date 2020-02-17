@@ -3,7 +3,6 @@
 \docType{package}
 \name{did}
 \alias{did}
-\alias{did-package}
 \title{did: Difference in Differences with multiple periods and variation in
  treatment timing}
 \description{

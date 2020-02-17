@@ -4,10 +4,23 @@
 \alias{mp.spatt.test}
 \title{mp.spatt.test}
 \usage{
-mp.spatt.test(formla, xformlalist = NULL, data, tname,
-  weightfun = NULL, w = NULL, panel = FALSE, idname = NULL,
-  first.treat.name, alp = 0.05, method = "logit", biters = 100,
-  clustervarlist = NULL, pl = FALSE, cores = 2)
+mp.spatt.test(
+  formla,
+  xformlalist = NULL,
+  data,
+  tname,
+  weightfun = NULL,
+  w = NULL,
+  panel = FALSE,
+  idname = NULL,
+  first.treat.name,
+  alp = 0.05,
+  method = "logit",
+  biters = 100,
+  clustervarlist = NULL,
+  pl = FALSE,
+  cores = 2
+)
 }
 \arguments{
 \item{formla}{The formula y ~ d where y is the outcome and d is the

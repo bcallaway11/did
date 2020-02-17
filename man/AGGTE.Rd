@@ -4,13 +4,28 @@
 \alias{AGGTE}
 \title{AGGTE}
 \usage{
-AGGTE(simple.att = NULL, simple.se = NULL, selective.att = NULL,
-  selective.se = NULL, selective.att.g = NULL, selective.se.g = NULL,
-  dynamic.att = NULL, dynamic.se = NULL, dynamic.att.e = NULL,
-  dynamic.se.e = NULL, calendar.att = NULL, calendar.se = NULL,
-  calendar.att.t = NULL, calendar.se.t = NULL, dynsel.att.e1 = NULL,
-  dynsel.se.e1 = NULL, dynsel.att.ee1 = NULL, dynsel.se.ee1 = NULL,
-  groups = NULL, times = NULL)
+AGGTE(
+  simple.att = NULL,
+  simple.se = NULL,
+  selective.att = NULL,
+  selective.se = NULL,
+  selective.att.g = NULL,
+  selective.se.g = NULL,
+  dynamic.att = NULL,
+  dynamic.se = NULL,
+  dynamic.att.e = NULL,
+  dynamic.se.e = NULL,
+  calendar.att = NULL,
+  calendar.se = NULL,
+  calendar.att.t = NULL,
+  calendar.se.t = NULL,
+  dynsel.att.e1 = NULL,
+  dynsel.se.e1 = NULL,
+  dynsel.att.ee1 = NULL,
+  dynsel.se.ee1 = NULL,
+  groups = NULL,
+  times = NULL
+)
 }
 \arguments{
 \item{simple.att}{simple weighted average of group-time average treatment
