@@ -81,39 +81,58 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
                      seedvec=NULL, pl=FALSE, cores=2,
                      printdetails=TRUE) {
 
-    ## make sure that data is a data.frame
-    ## this gets around RStudio's default of reading data as tibble
+    # make sure that data is a data.frame
+    # this gets around RStudio's default of reading data as tibble
     if (!all( class(data) == "data.frame")) {
         warning("class of data object was not data.frame; converting...")
         data <- as.data.frame(data)
     }
 
-    data$y <- data[,BMisc::lhs.vars(formla)] ##data[,as.character(formula.tools::lhs(formla))]
-    ##figure out the dates and make balanced panel
-    tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
+    # hold the outcome in `y`
+    data$y <- data[,BMisc::lhs.vars(formla)]
+    
+    # list of all time periods in the dataset
+    # from smallest to largest
+    tlist <- unique(data[,tname])[order(unique(data[,tname]))]
 
+    # list of all groups
     flist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
+
+    # make sure that there is an available control group
     if ( length(flist[flist==0]) == 0) {
         warning("dataset does not have any observations in the control group.  make sure to set data[,first.treat.name] = 0 for observations in the control group.")
     }
+
+    # drop control group
     flist <- flist[flist>0]
 
-    ##################################
-    ## do some error checking
+
+    #-----------------------------------------------------------------------------
+    # do some error checking
+
+    # make sure time periods are numeric
     if (!is.numeric(tlist)) {
         warning("not guaranteed to order time periods correclty if they are not numeric")
     }
+    #-----------------------------------------------------------------------------
 
-    ####################################
+    
 
-
+    # holds number of time periods
     tlen <- length(tlist)
+
+    # holds number of groups
     flen <- length(flist)
+
+    # setup data in panel case
     if (panel) {
+        # make it a balanced data set
         data <- makeBalancedPanel(data, idname, tname)
-        dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
+
+        # create an n-row data.frame to hold the influence function later
+        dta <- data[ data[,tname]==tlist[1], ]  
         
-        ## check that first.treat doesn't change across periods for particular individuals
+        # check that first.treat doesn't change across periods for particular individuals
         if (!all(sapply( split(data, data[,idname]), function(df) {
             length(unique(df[,first.treat.name]))==1
         }))) {
@@ -121,30 +140,46 @@ mp.spatt <- function(formla, xformla=NULL, data, tname,
         }
     } else {
 
-        dta <- data ## this is for repeated cross sections case though
-        ## i'm not sure it's working correctly overall
+        # n-row data.frame to hold the influence function
+        dta <- data 
     }
 
+    # put in blank xformla if no covariates
     if (is.null(xformla)) {
         xformla <- ~1
     }
 
 
-    #################################################################
-    ## more error handling after we have balanced the panel
+    #-----------------------------------------------------------------------------
+    # more error handling after we have balanced the panel
+
+    # check against very small groups
     gsize <- aggregate(data[,first.treat.name], by=list(data[,first.treat.name]), function(x) length(x)/length(tlist))
-    reqsize <- length(rhs.vars(xformla)) + 5 ## 5 is just to give a buffer, could increase or decrease
-    gsize <- subset(gsize, x < reqsize) ## x is name of column from aggregate
+
+    # how many in each group before give warning
+    # 5 is just a buffer, could pick something else, but seems to work fine
+    reqsize <- length(rhs.vars(xformla)) + 5
+
+    # which groups to warn about
+    gsize <- subset(gsize, x < reqsize) # x is name of column from aggregate
+
+    # warn if some groups are small
     if (nrow(gsize) > 0) {
         gpaste <-  paste(gsize[,1], collapse=",")
         warning(paste0("There are some very small groups in your dataset...\n  This is a very common source of bugs...\n  Check groups: ", gpaste, "\n  and consider dropping these..."))
     }
+    #-----------------------------------------------------------------------------
 
-    #################################################################
+    
 
+
+    #-----------------------------------------------------------------------------
+    # main results
+    # compute.mp.spatt does the heavy-lifting
     results <- compute.mp.spatt(flen, tlen, flist, tlist, data, dta, first.treat.name,
                                 formla, xformla, tname, w, panel, idname, method, seedvec, se,
                                 pl, cores, printdetails)
+    #-----------------------------------------------------------------------------
 
 
 
@@ -294,26 +329,40 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                              method, seedvec, se,
                              pl, cores, printdetails) {
 
-    yname <- BMisc::lhs.vars(formla) ##as.character(formula.tools::lhs(formla))
+    # name of outcome
+    yname <- BMisc::lhs.vars(formla) 
 
+    # list to hold results
     fatt <- list()
+
+    # counter just holds position in the list
     counter <- 1
+
+    # array to hold influence function
     inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
+
+    # loop over groups first
     for (f in 1:flen) {
-            ##satt <- list()
+
+        # loop over time periods
         for (t in 1:(tlen-1)) {
+
+            # set current period as pre-treatment period (update later)
             pret <- t
+
+            # set the correct pre-treatment period
             if (flist[f]<=tlist[(t+1)]) {
-                ## set an index for the pretreatment period
+                # set an index for the pretreatment period
+                # this recovers the right pre-treatment period for this group
                 pret <- tail(which(tlist < flist[f]),1)
 
-                ## print a warning message if there are no pre-treatment
-                ##  periods
+                # print a warning message if there are no pre-treatment
+                # periods
                 if (length(pret) == 0) {
                     warning(paste0("There are no pre-treatment periods for the group first treated at ", flist[f]))
                 }
 
-                ## print the details of which iteration we are on
+                # print the details of which iteration we are on
                 if (printdetails) {
                     cat(paste("current period:", tlist[t+1]), "\n")
                     cat(paste("current group:", flist[f]), "\n")
@@ -321,32 +370,33 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 }
             }
 
-            ## --------------------------------------------------------
-            ## results for the case with panel data
+            
+            # results for the case with panel data
             if (panel) {
-                ## get dataset with current period and pre-treatment period
+                # get dataset with current period and pre-treatment period
                 disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-                ## transform it into "cross-sectional" data where
-                ## one of the columns contains the change in the outcome
-                ## over time
+
+                # transform it into "cross-sectional" data where
+                # one of the columns contains the change in the outcome
+                # over time
                 disdat <- panel2cs(disdat, yname, idname, tname)
 
-                ## set up control group
+                # set up control group
                 disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
-                ## set up for particular treated group
+                # set up for particular treated group
                 disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
 
-                ## drop missing factors
+                # drop missing factors
                 disdat <- droplevels(disdat)
 
-                ## set up xformla in no covariates case
-                if (is.null(xformla)) {
-                    xformla <- ~1
-                }
+                ## # set up xformla in no covariates case
+                ## if (is.null(xformla)) {
+                ##     xformla <- ~1
+                ## }
 
-                ## set up formula for propensity score, estimate it,
-                ## get coefficients and get propensity score
+                # set up formula for propensity score, estimate it,
+                # get coefficients and get propensity score
                 pformla <- xformla
 
                 pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))
@@ -355,43 +405,43 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                                   data=subset(disdat, C+G==1))
                 thet <- coef(pscore.reg)
 
-                ## error handling for too many covariates
+                # error handling for too many covariates
                 if (any(is.na(thet))) {
                     warning(paste0("Problems estimating propensity score...likely perfectly predicting treatment for group: ", flist[f], " at time period: ", tlist[t+1]))
                 }
 
-                ## estimate propensity score
+                # estimate propensity score
                 pscore <- predict(pscore.reg, newdata=disdat, type="response")
 
 
-                ## give short names for data in this iteration
+                # give short names for data in this iteration
                 G <- disdat$G
                 C <- disdat$C
                 dy <- disdat$dy
                 x <- model.matrix(xformla, data=disdat)
                 n <- nrow(disdat)
 
-                ## set up weights
+                # set up weights
                 attw1 <- G/mean(G)
                 attw2a <- pscore*C/(1-pscore)
                 attw2 <- attw2a/mean(attw2a)
                 att <- mean((attw1 - attw2)*dy)
 
-                ## save results for this iteration
+                # save results for this iteration
                 fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
 
                 ## --------------------------------------------
                 ## get the influence function
 
-                ## weigts
+                # weigts
                 wg <- G/mean(G)
                 wc1 <- C*pscore / (1-pscore)
                 wc <- wc1 / mean(wc1)
 
-                ## influence function for treated group
+                # influence function for treated group
                 psig <- wg*(dy - mean(wg*dy))
 
-                ## influence function for control group (see paper)
+                # influence function for control group (see paper)
                 M <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * (dy - mean(wc*dy)) * x), 2, mean) / mean(wc1))
                 A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
                 A1 <- (t(A1*x)%*%x/n)
@@ -399,10 +449,10 @@ compute.mp.spatt <- function(flen, tlen, flist, tlist, data, dta,
                 A <- A2%*%MASS::ginv(A1)
                 psic <- wc*(dy - mean(wc*dy)) + A%*%M
 
-                ## save the influnce function as the difference between
-                ## the treated and control influence functions;
-                ## we save this as a 3-dimensional array
-                ## and then process afterwards
+                # save the influnce function as the difference between
+                # the treated and control influence functions;
+                # we save this as a 3-dimensional array
+                # and then process afterwards
                 inffunc[f,t,] <- psig - psic
             } else {
                 ## --------------------------------------------
