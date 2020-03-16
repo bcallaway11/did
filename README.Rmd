@@ -12,87 +12,15 @@ knitr::opts_chunk$set(
 )
 ```
 
-# did
+# did2
 
-The \code{did} package contains tools for computing average treatment effect parameters in Difference in Differences models with more than two periods, with variation in treatment timing across individuals, and where the DID assumption possibly holds conditional on covariates.  The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time.  These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these.  There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.
+The \code{did2} package contains tools for computing average treatment effect parameters in Difference in Differences models with more than two periods, with variation in treatment timing across individuals, and where the DID assumption possibly holds conditional on covariates.  The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time.  These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these.  There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.
 
 ## Installation
 
-You can install \texttt{did} from CRAN with:
-
-```{r eval=FALSE}
-install.packages("did")
-```
-
-or get the latest version from github with:
+You can install \texttt{did2} from github with:
 
 ```{r gh-installation, eval = FALSE}
 # install.packages("devtools")
-devtools::install_github("bcallaway11/did")
+devtools::install_github("pedrohcgs/did2")
 ```
-
-## Example
-
-The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2019).
-
-A subset of the data is available in the package and can be loaded by
-```{r}
-  library(did)
-  data(mpdta)
-```
-
-The dataset contains 500 observations of county-level teen employment rates from 2003-2007.  Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for details).  We are interested in estimating the group-time average treatment effect, which is the average treatment effect in period $t$ for the group of states first treated in period $g$ and given by
-\begin{align*}
-ATT(g,t)=E[Y_t(1) - Y_t(0)|G_g=1]
-\end{align*}
-under the common trends assumption:
-\begin{align*}
-  E[\Delta Y_t(0) | X, G_g=1] = E[\Delta Y_t(0) | X, C=1] \ a.s. \quad \forall g\leq t
-\end{align*}
-where $Y_t(1)$ and $Y_t(0)$ denote treated and untreated potential outcomes, $G_g=1$ denotes counties first treated in period $g$, $C=1$ denotes control counties that are never treated.
-
-To estimate $ATT(g,t)$, one can use the \texttt{mp.spatt} method as follows:
-
-```{r}
-out <- mp.spatt(lemp ~ treat, xformla=~lpop, data=mpdta,
-                 panel=TRUE, first.treat.name="first.treat",
-                 idname="countyreal", tname="year",
-                 bstrap=FALSE, se=TRUE, cband=FALSE)
-summary(out)
-```
-and plot the results using the \texttt{ggdid} command:
-
-```{r}
-library(gridExtra)
-ggdid(out, ylim=c(-.25,.1))
-```
-
-Another common use for the `did` package is reporting "event-study" type results.  To get these directly, one can use
-```{r}
-summary(out$aggte, type="dynamic")
-```
-
-and to plot the same results
-```{r}
-ggdid(out, type="dynamic", ylim=c(-.25,.1))
-```
-
-Other options for both `summary` and `ggdid` are:
-
-* "selective" -- results when there is selective treatment timing
-
-* "calendar" -- results when there are calendar time effects
-
-* "dynsel" -- results when there is selective treatment timing and dynamic treatment effects; this also requires specifying the additional parameter `e1` which is the required number of post-treatment periods that a group needs to experience before they are included in the sample
-
-See the discussion in our paper for many more details:
-
- Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2019.
-
-Finally, a few things that we are working on:
-
-* improving the vignette that goes along with the package
-
-* event-study plots that include pre-treatment periods as well
-
-* uniform confidence bands for event-studies (as well as other aggregated parameters)
