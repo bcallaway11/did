@@ -4,11 +4,28 @@
 \alias{att_gt}
 \title{att_gt}
 \usage{
-att_gt(outcome, data, tname, idname = NULL, first.treat.name,
-  nevertreated = T, aggte = TRUE, maxe = NULL, mine = NULL,
-  w = NULL, alp = 0.05, bstrap = T, biters = 1000,
-  clustervars = NULL, cband = T, printdetails = TRUE,
-  seedvec = NULL, pl = FALSE, cores = 2, method = "logit")
+att_gt(
+  outcome,
+  data,
+  tname,
+  idname = NULL,
+  first.treat.name,
+  nevertreated = T,
+  aggte = TRUE,
+  maxe = NULL,
+  mine = NULL,
+  w = NULL,
+  alp = 0.05,
+  bstrap = T,
+  biters = 1000,
+  clustervars = NULL,
+  cband = T,
+  printdetails = TRUE,
+  seedvec = NULL,
+  pl = FALSE,
+  cores = 2,
+  method = "logit"
+)
 }
 \arguments{
 \item{outcome}{The outcome y (in quotations, always!)}

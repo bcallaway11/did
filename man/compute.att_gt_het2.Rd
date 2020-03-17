@@ -4,9 +4,25 @@
 \alias{compute.att_gt_het2}
 \title{compute.att_gt_het2}
 \usage{
-compute.att_gt_het2(flen, tlen, flist, tlist, data, dta, first.treat.name,
-  outcome, tname, idname, method, seedvec, pl, cores, printdetails,
-  nevertreated, het)
+compute.att_gt_het2(
+  flen,
+  tlen,
+  flist,
+  tlist,
+  data,
+  dta,
+  first.treat.name,
+  outcome,
+  tname,
+  idname,
+  method,
+  seedvec,
+  pl,
+  cores,
+  printdetails,
+  nevertreated,
+  het
+)
 }
 \arguments{
 \item{data}{The name of the data.frame that contains the data}

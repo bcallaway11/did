@@ -4,8 +4,25 @@
 \alias{compute.aggte}
 \title{compute.aggte}
 \usage{
-compute.aggte(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
-  clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine)
+compute.aggte(
+  flist,
+  tlist,
+  group,
+  t,
+  att,
+  first.treat.name,
+  inffunc1,
+  n,
+  clustervars,
+  dta,
+  idname,
+  bstrap,
+  biters,
+  alp,
+  cband,
+  maxe,
+  mine
+)
 }
 \arguments{
 \item{first.treat.name}{The name of the variable in \code{data} that contains the first

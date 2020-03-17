@@ -4,9 +4,25 @@
 \alias{compute.att_gt}
 \title{compute.att_gt}
 \usage{
-compute.att_gt(flen, tlen, flist, tlist, data, dta, first.treat.name,
-  outcome, tname, w, idname, method, seedvec, pl, cores, printdetails,
-  nevertreated)
+compute.att_gt(
+  flen,
+  tlen,
+  flist,
+  tlist,
+  data,
+  dta,
+  first.treat.name,
+  outcome,
+  tname,
+  w,
+  idname,
+  method,
+  seedvec,
+  pl,
+  cores,
+  printdetails,
+  nevertreated
+)
 }
 \arguments{
 \item{data}{The name of the data.frame that contains the data}

@@ -4,7 +4,8 @@
 \name{mpdta}
 \alias{mpdta}
 \title{County teen employment}
-\format{A data frame with 2000 rows and 5 variables:
+\format{
+A data frame with 2000 rows and 5 variables:
 \describe{
   \item{year}{the year of the observation}
   \item{countyreal}{a unique identifier for a particular county}
@@ -15,7 +16,8 @@
    minimum wages equal to the federal minimum wage over the entire
    period.}
   \item{treat}{whether or not a particular county is treated in that year}
-}}
+}
+}
 \source{
 Callaway and Sant'Anna (2018)
 }

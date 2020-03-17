@@ -4,11 +4,29 @@
 \alias{att_gt_het2}
 \title{att_gt_het2}
 \usage{
-att_gt_het2(outcome, data, tname, idname = NULL, first.treat.name,
-  nevertreated = T, het, aggte = TRUE, maxe = NULL, mine = NULL,
-  w = NULL, alp = 0.05, bstrap = T, biters = 1000,
-  clustervars = NULL, cband = T, printdetails = TRUE,
-  seedvec = NULL, pl = FALSE, cores = 2, method = "logit")
+att_gt_het2(
+  outcome,
+  data,
+  tname,
+  idname = NULL,
+  first.treat.name,
+  nevertreated = T,
+  het,
+  aggte = TRUE,
+  maxe = NULL,
+  mine = NULL,
+  w = NULL,
+  alp = 0.05,
+  bstrap = T,
+  biters = 1000,
+  clustervars = NULL,
+  cband = T,
+  printdetails = TRUE,
+  seedvec = NULL,
+  pl = FALSE,
+  cores = 2,
+  method = "logit"
+)
 }
 \arguments{
 \item{outcome}{The outcome y (in quotations, always!)}

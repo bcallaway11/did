@@ -4,8 +4,19 @@
 \alias{MP}
 \title{MP}
 \usage{
-MP(group, t, att, V, c, inffunc, n = NULL, W = NULL, Wpval = NULL,
-  aggte = NULL, alp = 0.05)
+MP(
+  group,
+  t,
+  att,
+  V,
+  c,
+  inffunc,
+  n = NULL,
+  W = NULL,
+  Wpval = NULL,
+  aggte = NULL,
+  alp = 0.05
+)
 }
 \arguments{
 \item{group}{which group (defined by period first treated) an group-time average treatment effect is for}

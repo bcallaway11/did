@@ -5,7 +5,3 @@
 \alias{did}
 \title{did: Difference in Differences with multiple periods and variation in
  treatment timing}
-\description{
-did: Difference in Differences with multiple periods and variation in
- treatment timing
-}

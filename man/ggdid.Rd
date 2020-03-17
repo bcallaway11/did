@@ -4,8 +4,17 @@
 \alias{ggdid}
 \title{ggdid}
 \usage{
-ggdid(mpobj, type = c("attgt", "dynamic"), ylim = NULL, xlab = NULL,
-  ylab = NULL, title = "Group", xgap = 1, ncol = 1, e1 = 1)
+ggdid(
+  mpobj,
+  type = c("attgt", "dynamic"),
+  ylim = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  title = "Group",
+  xgap = 1,
+  ncol = 1,
+  e1 = 1
+)
 }
 \arguments{
 \item{mpobj}{an \code{MP} object}
