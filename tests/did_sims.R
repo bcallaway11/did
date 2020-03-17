@@ -3,6 +3,8 @@
 # load did code
 fldr <- "~/Dropbox/did/R/"
 sapply(paste0(fldr,list.files(fldr)), source)
+# remotes::install_github("bcallaway11/did", ref="pedro")
+remotes::install_github("bcallaway11/DRDID")
 
 #-----------------------------------------------------------------------------
 # build treated groups
@@ -33,7 +35,7 @@ thet <- seq(1:T)
 Ynames <- paste0("Y",1:T)
 Ynames <- paste0(1:T)
 Y0tmat <- sapply(1:T, function(t) {
-    thet[t] + Ct + rnorm(nt) + Xt*bett[t]
+  thet[t] + Ct + rnorm(nt) + Xt*bett[t]
 })
 Y0tdf <- as.data.frame(Y0tmat)
 
@@ -46,7 +48,7 @@ Y1tdf <- Y0tdf + te
 
 # generate observed data
 Ytdf <- sapply(1:T, function(t) {
-    (G<=t)*Y1tdf[,t] + (G>t)*Y0tdf[,t]
+  (G<=t)*Y1tdf[,t] + (G>t)*Y0tdf[,t]
 })
 colnames(Ytdf) <- Ynames
 
@@ -74,7 +76,7 @@ betu <- bett # changing this creates violations of conditional parallel trends
 
 # generate untreated potential outcomes
 Y0umat <- sapply(1:T, function(t) {
-    theu[t] + Cu + rnorm(nu) + Xu*betu[t]
+  theu[t] + Cu + rnorm(nu) + Xu*betu[t]
 })
 Y0udf <- as.data.frame(Y0umat)
 colnames(Y0udf) <- Ynames

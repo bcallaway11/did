@@ -18,7 +18,8 @@
 compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
                            first.treat.name, outcome, tname, w, idname,
                            method, seedvec,
-                           pl, cores, printdetails, nevertreated) {
+                           pl, cores, printdetails, nevertreated,
+                           estMethod) {
 
   yname <- outcome ##as.character(formula.tools::lhs(formla))
 
@@ -64,7 +65,7 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         if(nevertreated ==F){
           disdat$C <- 1*((disdat[,first.treat.name] == 0) +
                            (disdat[,first.treat.name] > max(disdat[, tname]))) *
-                            (disdat[,first.treat.name] != flist[f])
+            (disdat[,first.treat.name] != flist[f])
         }
 
         ## set up dummy for particular treated group
@@ -72,6 +73,7 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
 
         # transform  disdat it into "cross-sectional" data where one of the columns contains the change in the outcome
         ## over time. dy is computed as latest year - earliest year. We then keep the y of earliest year
+        
         disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
 
         ## drop missing factors
@@ -80,8 +82,11 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         ## give short names for data in this iteration
         G <- disdat$G
         C <- disdat$C
+        Ypre <- disdat$Y
+        Ypost <- disdat$yt1
+        ## TODO: CHECK HERE AGAIN
         dy <- disdat$dy * ((-1)^(1+post.treat))
-        #n <- nrow(disdat)
+        n <- nrow(disdat)
         w <- disdat$w
 
         # The adjustment above in dy is necessary to ensure that the dy has the right sign if post.tread=0
@@ -89,33 +94,49 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         # but with pre-treat it should be Y_early_date - Y_last_date,
         # as last_date is the "pre-treatment period" g-1
 
-        ## set up weights
-        attw <- w * G/mean(w * G)
-        attw2a <- w * C
-        attw2 <- attw2a/mean(attw2a)
-        att <- mean((attw - attw2)*dy)
+        if (estMethod == "ipw") {
+          attgt <- DRDID::ipw_did_panel(Ypost, Ypre, G,
+                                        covariates=as.matrix(rep(1,n)),
+                                        boot=FALSE)
+        } else if (estMethod == "reg") {
+          attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
+                                        covariates=as.matrix(rep(1,n)),
+                                        boot=FALSE)
+        } else {
+          attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
+                                        covariates=as.matrix(rep(1,n)),
+                                        boot=FALSE)
+        }
+        
+        ## ## set up weights
+        ## attw <- w * G/mean(w * G)
+        ## attw2a <- w * C
+        ## attw2 <- attw2a/mean(attw2a)
+        ## att <- mean((attw - attw2)*dy)
 
         ## save results for this iteration
-        fatt[[counter]] <- list(att=att, group=flist[f], year=tlist[(t)], post=post.treat)
+        fatt[[counter]] <- list(att=attgt$ATT, group=flist[f], year=tlist[(t)], post=post.treat)
 
+        inffunc[f,t,] <- attgt$inf.func
         ## --------------------------------------------
         ## get the influence function
 
         ## weigts
-        wg <- w * G/mean(w * G)
-        wc1 <- w * C
-        wc <- wc1 / mean(wc1)
+        ## wg <- w * G/mean(w * G)
+        ## wc1 <- w * C
+        ## wc <- wc1 / mean(wc1)
 
-        ## influence function for treated group
-        psig <- wg*(dy - mean(wg*dy))
-        # influence function for the control group
-        psic <- wc*(dy - mean(wc*dy))
+        ## ## influence function for treated group
+        ## psig <- wg*(dy - mean(wg*dy))
+        ## # influence function for the control group
+        ## psic <- wc*(dy - mean(wc*dy))
+
 
         ## save the influnce function as the difference between
         ## the treated and control influence functions;
         ## we save this as a 3-dimensional array
         ## and then process afterwards
-        inffunc[f,t,] <- psig - psic
+        ##inffunc[f,t,] <- psig - psic
       }
 
       counter <- counter+1

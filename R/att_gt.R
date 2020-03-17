@@ -56,7 +56,8 @@ att_gt <- function(outcome, data,
                    bstrap=T, biters=1000, clustervars=NULL,
                    cband=T,
                    printdetails=TRUE,
-                   seedvec=NULL, pl=FALSE, cores=2,method="logit")
+                   seedvec=NULL, pl=FALSE, cores=2,method="logit",
+                   estMethod="dr")
 {
   #-------------------------------------------------------------------------------------------
   #-------------------------------------------------------------------------------------------
@@ -143,7 +144,7 @@ att_gt <- function(outcome, data,
   # Compute all ATT(g,t)
   results <- compute.att_gt(flen, tlen, flist, tlist, df, dta, first.treat.name,
                             outcome, tname, w, idname, method, seedvec,
-                            pl, cores, printdetails, nevertreated)
+                            pl, cores, printdetails, nevertreated, estMethod)
 
   # extract ATT(g,t) and influence functions
   fatt <- results$fatt
