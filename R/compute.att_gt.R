@@ -94,7 +94,15 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         # but with pre-treat it should be Y_early_date - Y_last_date,
         # as last_date is the "pre-treatment period" g-1
 
-        if (estMethod == "ipw") {
+        # if pass a function for the estimation method,
+        # call it here;
+        # otherwise, use one of the methods that is available
+        # in DRDID package
+        if (class(estMethod) == "function") {
+          attgt <- estMethod(Y1=Ypost, Y0=Ypre,
+                             treat=G,
+                             covariates=covariates)
+        } else if (estMethod == "ipw") {
           attgt <- DRDID::ipw_did_panel(Ypost, Ypre, G,
                                         covariates=as.matrix(rep(1,n)),
                                         boot=FALSE)

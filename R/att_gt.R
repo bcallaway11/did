@@ -39,6 +39,24 @@
 #'  in conjunction with bootstrapping standard errors#' (not implemented)
 #' @param pl Boolean for whether or not to use parallel processing (not implemented)
 #' @param cores The number of cores to use for parallel processing (not implemented)
+#' @param estMethod the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
+#' approach in the \code{DRDID} package.  Other built-in methods
+#' include "ipw" for inverse probability weighting and "reg" for
+#' first step regression estimators.  The user can also pass their
+#' own function for estimating group time average treatment
+#' effects.  This should be a function
+#' \code{f(Y1,Y0,treat,covariates)} where \code{Y1} is an
+#' \code{n} x \code{1} vector of outcomes in the post-treatment
+#' outcomes, \code{Y0} is an \code{n} x \code{1} vector of
+#' pre-treatment outcomes, \code{treat} is a vector indicating
+#' whether or not an individual participates in the treatment,
+#' and \code{covariates} is an \code{n} x \code{k} matrix of
+#' covariates.  The function should return a list that includes
+#' \code{ATT} (an estimated average treatment effect), and
+#' \code{inf.func} (an \code{n} x \code{1} influence function).
+#' The function can return other things as well, but these are
+#' the only two that are required. \code{estMethod} is only used
+#' if covariates are included.
 
 #' @references Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2018).
 #'
