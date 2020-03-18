@@ -15,45 +15,58 @@
 #' @keywords internal
 #'
 #' @export
-compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
-                           first.treat.name, outcome, tname, w, idname,
-                           method, seedvec,
-                           pl, cores, printdetails, nevertreated,
+compute.att_gt <- function(nG,
+                           nT,
+                           glist,
+                           tlist,
+                           data,
+                           dta,
+                           first.treat.name,
+                           yname,
+                           tname,
+                           w,
+                           idname,
+                           xformla,
+                           method,
+                           seedvec,
+                           pl,
+                           cores,
+                           printdetails,
+                           nevertreated,
                            estMethod) {
 
-  yname <- outcome ##as.character(formula.tools::lhs(formla))
-
-  fatt <- list()
+  
+  attgt.list <- list()
   counter <- 1
   tlist.length <- length(tlist)
-  inffunc <- array(data=0, dim=c(flen,tlen,nrow(dta)))
+  inffunc <- array(data=0, dim=c(nG,nT,nrow(dta)))
 
 
 
-  for (f in 1:flen) {
+  for (g in 1:nG) {
     for (t in 1:tlist.length) {
       ## set an index for the largest pre-treatment period
-      pret <- utils::tail(which(tlist < flist[f]),1)
-      if (flist[f]<=tlist[(t)]) {
+      pret <- utils::tail(which(tlist < glist[g]),1)
+      if (glist[g]<=tlist[(t)]) {
         ## print a warning message if there are no pre-treatment period
         if (length(pret) == 0) {
-          warning(paste0("There are no pre-treatment periods for the group first treated at ", flist[f]))
+          warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g]))
         }
         ## print the details of which iteration we are on
         if (printdetails) {
           cat(paste("current period:", tlist[t]), "\n")
-          cat(paste("current group:", flist[f]), "\n")
+          cat(paste("current group:", glist[g]), "\n")
           cat(paste("set pretreatment period to be", tlist[pret]), "\n")
         }
       }
 
       ## --------------------------------------------------------
       ## results for the case with panel data
-      post.treat <- 1*(flist[f]<=tlist[(t)])
+      post.treat <- 1*(glist[g]<=tlist[(t)])
 
       if (tlist[pret] == tlist[t]){
-        fatt[[counter]] <- list(att=0, group=flist[f], year=tlist[(t)], post=post.treat)
-        inffunc[f,t,] <- 0
+        attgt.list[[counter]] <- list(att=0, group=glist[g], year=tlist[(t)], post=post.treat)
+        inffunc[g,t,] <- 0
       }
       else {
         ## get dataset with current period and pre-treatment period
@@ -65,16 +78,21 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         if(nevertreated ==F){
           disdat$C <- 1*((disdat[,first.treat.name] == 0) +
                            (disdat[,first.treat.name] > max(disdat[, tname]))) *
-            (disdat[,first.treat.name] != flist[f])
+            (disdat[,first.treat.name] != glist[g])
         }
 
         ## set up dummy for particular treated group
-        disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+        disdat$G <- 1*(disdat[,first.treat.name] == glist[g])
 
         # transform  disdat it into "cross-sectional" data where one of the columns contains the change in the outcome
         ## over time. dy is computed as latest year - earliest year. We then keep the y of earliest year
         
         disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
+        n <- nrow(disdat)
+
+        disidx <- disdat$G==1 | disdat$C==1
+
+        disdat <- disdat[disidx,]
 
         ## drop missing factors
         disdat <- base::droplevels(disdat)
@@ -86,7 +104,7 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         Ypost <- disdat$yt1
         ## TODO: CHECK HERE AGAIN
         dy <- disdat$dy * ((-1)^(1+post.treat))
-        n <- nrow(disdat)
+        #n <- nrow(disdat)
         w <- disdat$w
 
         # The adjustment above in dy is necessary to ensure that the dy has the right sign if post.tread=0
@@ -94,25 +112,33 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         # but with pre-treat it should be Y_early_date - Y_last_date,
         # as last_date is the "pre-treatment period" g-1
 
+
+
+        # if there are no covariates, just manually compute
+        # att_gt
         # if pass a function for the estimation method,
         # call it here;
         # otherwise, use one of the methods that is available
         # in DRDID package
+
+
+        covariates <- model.matrix(xformla, data=disdat)
+        
         if (class(estMethod) == "function") {
           attgt <- estMethod(Y1=Ypost, Y0=Ypre,
                              treat=G,
                              covariates=covariates)
         } else if (estMethod == "ipw") {
           attgt <- DRDID::ipw_did_panel(Ypost, Ypre, G,
-                                        covariates=as.matrix(rep(1,n)),
+                                        covariates=covariates,
                                         boot=FALSE)
         } else if (estMethod == "reg") {
           attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
-                                        covariates=as.matrix(rep(1,n)),
+                                        covariates=covariates,
                                         boot=FALSE)
         } else {
           attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
-                                        covariates=as.matrix(rep(1,n)),
+                                        covariates=covariates,
                                         boot=FALSE)
         }
         
@@ -123,9 +149,13 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
         ## att <- mean((attw - attw2)*dy)
 
         ## save results for this iteration
-        fatt[[counter]] <- list(att=attgt$ATT, group=flist[f], year=tlist[(t)], post=post.treat)
+        attgt.list[[counter]] <- list(att=attgt$ATT, group=glist[g], year=tlist[(t)], post=post.treat)
 
-        inffunc[f,t,] <- attgt$inf.func
+        # recover the influence function
+        inf.func <- rep(0, n)
+        inf.func[disidx] <- attgt$inf.func
+        
+        inffunc[g,t,] <- inf.func
         ## --------------------------------------------
         ## get the influence function
 
@@ -152,5 +182,5 @@ compute.att_gt <- function(flen, tlen, flist, tlist, data, dta,
 
   }
 
-  list(fatt=fatt, inffunc=inffunc)
+  list(attgt.list=attgt.list, inffunc=inffunc)
 }

@@ -63,8 +63,12 @@
 #' @return \code{MP} object
 #'
 #' @export
-att_gt <- function(outcome, data,
-                   tname, idname=NULL,first.treat.name,
+att_gt <- function(yname, 
+                   tname,
+                   idname=NULL,
+                   first.treat.name,
+                   xformla,
+                   data,
                    nevertreated = T,
                    aggte=TRUE,
                    maxe = NULL,
@@ -98,7 +102,7 @@ att_gt <- function(outcome, data,
   df$w <- w
 
   # Outcome variable will be denoted by y
-  df$y <- df[, as.character(outcome)] ##df[,as.character(formula.tools::lhs(formla))]
+  df$y <- df[, yname] ##df[,as.character(formula.tools::lhs(formla))]
   ##figure out the dates
   tlist <- unique(df[,tname])[order(unique(df[,tname]))] ## this is going to be from smallest to largest
   # Figure out treatment groups
@@ -161,11 +165,11 @@ att_gt <- function(outcome, data,
   #-------------------------------------------------------------------------------------------
   # Compute all ATT(g,t)
   results <- compute.att_gt(flen, tlen, flist, tlist, df, dta, first.treat.name,
-                            outcome, tname, w, idname, method, seedvec,
+                            yname, tname, w, idname, xformla, method, seedvec,
                             pl, cores, printdetails, nevertreated, estMethod)
 
   # extract ATT(g,t) and influence functions
-  fatt <- results$fatt
+  attgt.list <- results$attgt.list
   inffunc <- results$inffunc
 
   ## process the results from computing the summary measures
@@ -178,14 +182,15 @@ att_gt <- function(outcome, data,
 
   for (f in 1:length(flist)) {
     for (s in 1:(length(tlist))) {
-      group[i] <- fatt[[i]]$group
-      tt[i] <- fatt[[i]]$year
-      att[i] <- fatt[[i]]$att
+      group[i] <- attgt.list[[i]]$group
+      tt[i] <- attgt.list[[i]]$year
+      att[i] <- attgt.list[[i]]$att
       inffunc1[,i] <- inffunc[f,s,]
       i <- i+1
     }
   }
 
+  browser()
   # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS clustered at the unit level
   n <- nrow(dta)
   V <- t(inffunc1)%*%inffunc1/n
