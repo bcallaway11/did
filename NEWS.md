@@ -1,5 +1,7 @@
 # did 1.3.0
-
+  * Deprecated \code{mp.spatt} function and replaced it with \code{att_gt} function
+  * Calling \code{att_gt} is similar to calling \code{mp.spatt}; instead of formula for outcome of the form \code{y~treat}, now just pass the name of the outcome variable
+  
 # did 1.2.3
   * Corrected check problems
 

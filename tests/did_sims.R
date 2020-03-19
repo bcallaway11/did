@@ -11,10 +11,10 @@ remotes::install_github("bcallaway11/DRDID")
 #-----------------------------------------------------------------------------
 
 # number of time periods
-T <- 10
+T <- 5
 
 # number of treated units
-nt <- 1000
+nt <- 5000
 
 # randomly assign treated units to groups
 G <- sample(1:T, size=nt, replace=TRUE)
@@ -92,7 +92,7 @@ df$id <- 1:nrow(df)
 
 # convert data from wide to long format
 library(tidyr)
-ddf <- gather(df, period, Y, as.character(1:10))
+ddf <- gather(df, period, Y, -G, -X, -id)
 ddf$period <- as.numeric(ddf$period)
 ddf$treat <- 1*(ddf$G > 0)
 ddf <- subset(ddf, G != 1) ## not dropping this group causes code to fail
@@ -102,8 +102,8 @@ ddf <- ddf[order(ddf$id, ddf$period),]
 ##res <- mp.spatt(Y ~ treat, xformla=~X, data=ddf, tname="period",
 ##                first.treat.name="G")
 
-res <- att_gt(outcome="Y", data=ddf, tname="period", idname="id",
-              first.treat.name="G")
+res <- att_gt(yname="Y", xformla=~X, data=ddf, tname="period", idname="id",
+              first.treat.name="G", estMethod="reg")
 
 library(ggplot2)
 library(gridExtra)

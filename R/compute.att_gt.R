@@ -104,15 +104,13 @@ compute.att_gt <- function(nG,
         Ypost <- disdat$yt1
         ## TODO: CHECK HERE AGAIN
         dy <- disdat$dy * ((-1)^(1+post.treat))
-        #n <- nrow(disdat)
+        n1 <- nrow(disdat)
         w <- disdat$w
 
         # The adjustment above in dy is necessary to ensure that the dy has the right sign if post.tread=0
         # since disdat compute Y_last_date - Y_early_date as dy,
         # but with pre-treat it should be Y_early_date - Y_last_date,
         # as last_date is the "pre-treatment period" g-1
-
-
 
         # if there are no covariates, just manually compute
         # att_gt
@@ -153,7 +151,11 @@ compute.att_gt <- function(nG,
 
         # recover the influence function
         inf.func <- rep(0, n)
-        inf.func[disidx] <- attgt$inf.func
+
+        # sqrt(n)/sqrt(n1) adjusts for estimating the
+        # att_gt only using observations from groups
+        # G and C
+        inf.func[disidx] <- (sqrt(n)/sqrt(n1))*attgt$inf.func
         
         inffunc[g,t,] <- inf.func
         ## --------------------------------------------
