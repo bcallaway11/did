@@ -79,13 +79,11 @@ att_gt <- function(yname,
                    cband=T,
                    printdetails=TRUE,
                    seedvec=NULL, pl=FALSE, cores=2,method="logit",
-                   estMethod="dr", panel=TRUE)
-{
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #                             Data pre-processing and error checking
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
+                   estMethod="dr", panel=TRUE) {
+
+  #-----------------------------------------------------------------------------
+  # Data pre-processing and error checking
+  #-----------------------------------------------------------------------------
 
   ## make sure that data is a data.frame
   df <- data
@@ -102,10 +100,12 @@ att_gt <- function(yname,
   df$w <- w
 
   # Outcome variable will be denoted by y
-  df$y <- df[, yname] ##df[,as.character(formula.tools::lhs(formla))]
-  ##figure out the dates
-  tlist <- unique(df[,tname])[order(unique(df[,tname]))] ## this is going to be from smallest to largest
-  # Figure out treatment groups
+  df$y <- df[, yname]
+  
+  # figure out the dates
+  # list of dates from smallest to largest
+  tlist <- unique(df[,tname])[order(unique(df[,tname]))] 
+  # list of treated groups (by time) from smallest to largest
   flist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
 
   # Check if there is a never treated grup
@@ -129,6 +129,15 @@ att_gt <- function(yname,
 
   # Only the treated groups
   flist <- flist[flist>0]
+  
+  # check for groups treated in the first period and drop these
+  mint <- tlist[1]
+  nfirstperiod <- nrow( df[ df[,first.treat.name] == mint, ] )
+  if ( nfirstperiod > 0 ) {
+    warning(paste0("dropping ", nfirstperiod, " units that were already treated in the first period...this is normal"))
+    df <- df[ df[,first.treat.name] != mint, ]
+  }
+    
 
   ##################################
   ## do some error checking

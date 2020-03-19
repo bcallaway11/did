@@ -193,6 +193,7 @@ compute.att_gt <- function(nG,
         # sqrt(n)/sqrt(n1) adjusts for estimating the
         # att_gt only using observations from groups
         # G and C
+        
         inf.func[disidx] <- (sqrt(n)/sqrt(n1))*attgt$inf.func
 
         # save it in influence function matrix
