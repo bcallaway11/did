@@ -265,32 +265,37 @@ att_gt <- function(yname,
   }
 
 
-  browser()
+  
   #-----------------------------------------------------------------------------
   # compute Wald pre-test
   #-----------------------------------------------------------------------------
 
   # select which periods are pre-treatment
-  pre <- which(t < group)
+  pre <- which(group > tt)
+
+  # pseudo-atts in pre-treatment periods
   preatt <- as.matrix(att[pre])
+
+  # covariance matrix of pre-treatment atts
   preV <- V[pre,pre]
 
+  # check if there are actually any pre-treatment periods
   if (length(preV) == 0) {
     message("No pre-treatment periods to test")
-    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
-  }
-
-  if (det(preV) == 0) { ##matrix not invertible
+    W  <- NULL
+    Wpval <- NULL
+  } else if (det(preV) == 0) {
+    # singluar covariance matrix for pre-treatment periods
     warning("Not returning pre-test Wald statistic due to singular covariance matrix")
-    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+    W <- NULL
+    Wpval <- NULL
+  } else {
+    # everything is working...
+    W <- n*t(preatt)%*%solve(preV)%*%preatt
+    q <- length(pre) # number of restrictions
+    Wpval <- round(1-pchisq(W,q),5)
   }
 
-  W <- n*t(preatt)%*%solve(preV)%*%preatt
-  q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
-  Wpval <- round(1-pchisq(W,q),5)
-
-
-  
 
   #-----------------------------------------------------------------------------
   # compute confidence intervals / bands
@@ -326,6 +331,6 @@ att_gt <- function(yname,
   }
 
   # Return this list
-  return(MP(group=group, t=tt, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects, alp = alp))
+  return(MP(group=group, t=tt, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, aggte=aggeffects, alp = alp))
 
 }
