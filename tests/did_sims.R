@@ -135,6 +135,7 @@ mean( bout )
 
 
 
+
 res <- sim()
 library(ggplot2)
 library(gridExtra)
