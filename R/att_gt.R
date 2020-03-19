@@ -79,7 +79,7 @@ att_gt <- function(yname,
                    cband=T,
                    printdetails=TRUE,
                    seedvec=NULL, pl=FALSE, cores=2,method="logit",
-                   estMethod="dr")
+                   estMethod="dr", panel=TRUE)
 {
   #-------------------------------------------------------------------------------------------
   #-------------------------------------------------------------------------------------------
@@ -158,30 +158,48 @@ att_gt <- function(yname,
   #                   function(x) sum(x)/length(tlist))
   #################################################################
 
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #                         Compute all ATT(g,t)
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
+  #-----------------------------------------------------------------------------
   # Compute all ATT(g,t)
-  results <- compute.att_gt(flen, tlen, flist, tlist, df, dta, first.treat.name,
-                            yname, tname, w, idname, xformla, method, seedvec,
-                            pl, cores, printdetails, nevertreated, estMethod)
+  #-----------------------------------------------------------------------------
+  results <- compute.att_gt(nG=flen,
+                            nT=tlen,
+                            glist=flist,
+                            tlist=tlist,
+                            data=df,
+                            dta=dta,
+                            first.treat.name=first.treat.name,
+                            yname=yname,
+                            tname=tname,
+                            w=w,
+                            idname=idname,
+                            xformla=xformla,
+                            method=method,
+                            seedvec=seedvec,
+                            pl=pl,
+                            cores=cores,
+                            printdetails=printdetails,
+                            nevertreated=nevertreated,
+                            estMethod=estMethod,
+                            panel=panel)
 
   # extract ATT(g,t) and influence functions
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc
 
-  ## process the results from computing the summary measures
+  # create vectors to hold the results
   group <- c()
   att <- c()
   tt <- c()
   i <- 1
 
-  inffunc1 <- matrix(0, ncol=flen*(tlen), nrow=nrow(dta)) ## note, this might not work in unbalanced case
+  # matrix to hold influence function
+  # (note: this is relying on having a balanced panel,
+  # which we do currently enforce)
+  inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) 
 
+  # populate result vectors and matrices
   for (f in 1:length(flist)) {
-    for (s in 1:(length(tlist))) {
+    for (s in 1:(length(tlist)-1)) {
       group[i] <- attgt.list[[i]]$group
       tt[i] <- attgt.list[[i]]$year
       att[i] <- attgt.list[[i]]$att
@@ -190,25 +208,42 @@ att_gt <- function(yname,
     }
   }
 
-  browser()
-  # THIS IS ANALOGOUS TO CLUSTER ROBUST STD ERRORS clustered at the unit level
+
+  # estimate variance
+  # this is analogous to cluster robust standard errors that
+  # are clustered at the unit level
   n <- nrow(dta)
   V <- t(inffunc1)%*%inffunc1/n
 
+  # if clustering along another dimension...we require using the
+  # bootstrap (in principle, could come up with analytical standard
+  # errors here though)
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
   }
 
+
+  # bootstrap variance matrix
   if (bstrap) {
+
+    # if include id as variable to cluster on
+    # drop it as we do this automatically
     if (idname %in% clustervars) {
       clustervars <- clustervars[-which(clustervars==idname)]
     }
+
+    # we can only handle up to 2-way clustering
+    # (in principle could do more, but not high priority now)
     if (length(clustervars) > 1) {
       stop("can't handle that many cluster variables")
     }
-    ## new version
+    
+    # bootstrap
     bout <- lapply(1:biters, FUN=function(b) {
       if (length(clustervars) > 0) {
+        # draw Rademachar weights
+        # these are the same within clusters
+        # see paper for details
         n1 <- length(unique(dta[,clustervars]))
         Vb <- matrix(sample(c(-1,1), n1, replace=T))
         Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
@@ -218,17 +253,59 @@ att_gt <- function(yname,
       } else {
         Ub <- sample(c(-1,1), n, replace=T)
       }
+      # multiply weights onto influence function
       Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
+      # return bootstrap draw
       Rb
     })
+    # bootstrap results
     bres <- t(simplify2array(bout))
+    # bootstrap variance matrix 
     V <- cov(bres)
   }
 
-  ## new code
+
+  browser()
+  #-----------------------------------------------------------------------------
+  # compute Wald pre-test
+  #-----------------------------------------------------------------------------
+
+  # select which periods are pre-treatment
+  pre <- which(t < group)
+  preatt <- as.matrix(att[pre])
+  preV <- V[pre,pre]
+
+  if (length(preV) == 0) {
+    message("No pre-treatment periods to test")
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+  }
+
+  if (det(preV) == 0) { ##matrix not invertible
+    warning("Not returning pre-test Wald statistic due to singular covariance matrix")
+    return(MP(group=group, t=t, att=att, V=V, c=cval, inffunc=inffunc1, n=n, aggte=aggeffects))
+  }
+
+  W <- n*t(preatt)%*%solve(preV)%*%preatt
+  q <- length(pre)##sum(1-as.numeric(as.character(results$post))) ## number of restrictions
+  Wpval <- round(1-pchisq(W,q),5)
+
+
+  
+
+  #-----------------------------------------------------------------------------
+  # compute confidence intervals / bands
+  #-----------------------------------------------------------------------------
+
+  # critical value from N(0,1), for pointwise
   cval <- qnorm(1-alp/2)
+
+  # in order to get uniform confidencs bands
+  # HAVE to use the bootstrap
   if (bstrap){
     if (cband) {
+      # for uniform confidence band
+      # compute new critical value
+      # see paper for details
       bSigma <- apply(bres, 2,
                       function(b) (quantile(b, .75, type=1, na.rm = T) -
                                      quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
@@ -239,12 +316,9 @@ att_gt <- function(yname,
     }
   }
 
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #                         Compute all summaries of the ATT(g,t)
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-
+  #-----------------------------------------------------------------------------
+  # Compute all summaries of the ATT(g,t)
+  #-----------------------------------------------------------------------------
   aggeffects <- NULL
   if (aggte) {
     aggeffects <- compute.aggte(flist, tlist, group, tt, att, first.treat.name, inffunc1,
