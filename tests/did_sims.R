@@ -10,7 +10,7 @@ remotes::install_github("bcallaway11/DRDID")
 # set parameters
 #-----------------------------------------------------------------------------
 # number of time periods
-T <- 5
+T <- 2
 # number of treated units
 nt <- 5000
 # coefficient on X 
@@ -36,9 +36,9 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
   
   # randomly assign treated units to groups
   # random groups
-  # G <- sample(1:T, size=nt, replace=TRUE)
+  G <- sample(1:T, size=nt, replace=TRUE)
   # fixed groups
-  G <- unlist(lapply(1:T, function(g) rep(g, nt/T)))
+  # G <- unlist(lapply(1:T, function(g) rep(g, nt/T)))
   
   # draw a single covariate
   Xt <- rnorm(nt)
@@ -103,7 +103,7 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
   # get results
   res <- att_gt(yname="Y", xformla=~X, data=ddf, tname="period", idname="id",
                 first.treat.name="G", estMethod="reg", printdetails=FALSE,
-                bstrap=bstrap, cband=cband, aggte=FALSE)
+                bstrap=bstrap, cband=cband)
 
 
   if (is.null(ret)) {
@@ -124,7 +124,7 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
 
 
 # check if Wald pre-tests are working
-biters <- 100
+biters <- 1000
 bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="Wpval"), cl=3)
 mean( bout )
 
@@ -135,11 +135,9 @@ bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband", bstrap=TRUE, cb
 mean( bout )
 
 
-
-
-
-
 res <- sim()
+
+
 library(ggplot2)
 library(gridExtra)
 ggdid(res)

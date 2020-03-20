@@ -106,29 +106,29 @@ att_gt <- function(yname,
   # list of dates from smallest to largest
   tlist <- unique(df[,tname])[order(unique(df[,tname]))] 
   # list of treated groups (by time) from smallest to largest
-  flist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
+  glist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
 
   # Check if there is a never treated grup
-  if ( length(flist[flist==0]) == 0) {
+  if ( length(glist[glist==0]) == 0) {
     if(nevertreated){
       stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select nevertreated = F so you can use the not-yet treated units as a comparison group.")
     } else {
       warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated las, nor any ATT(g,t) for t higher than or equal to the largest g.\n \nIf you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
       # Drop all time periods with time periods >= latest treated
-      df <- base::subset(df,(df[,tname] < max(flist)))
+      df <- base::subset(df,(df[,tname] < max(glist)))
       # Replace last treated time with zero
-      lines.gmax = df[,first.treat.name]==max(flist)
+      lines.gmax = df[,first.treat.name]==max(glist)
       df[lines.gmax,first.treat.name] <- 0
 
       ##figure out the dates
       tlist <- unique(df[,tname])[order(unique(df[,tname]))] ## this is going to be from smallest to largest
       # Figure out the groups
-      flist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
+      glist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
     }
   }
 
   # Only the treated groups
-  flist <- flist[flist>0]
+  glist <- glist[glist>0]
   
   # check for groups treated in the first period and drop these
   mint <- tlist[1]
@@ -152,9 +152,9 @@ att_gt <- function(yname,
   }
   ####################################
   # How many time periods
-  tlen <- length(tlist)
+  nT <- length(tlist)
   # How many treated groups
-  flen <- length(flist)
+  nG <- length(glist)
 
   # Make it a balanced panel
   df <- BMisc::makeBalancedPanel(df, idname, tname)
@@ -170,9 +170,9 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
   # Compute all ATT(g,t)
   #-----------------------------------------------------------------------------
-  results <- compute.att_gt(nG=flen,
-                            nT=tlen,
-                            glist=flist,
+  results <- compute.att_gt(nG=nG,
+                            nT=nT,
+                            glist=glist,
                             tlist=tlist,
                             data=df,
                             dta=dta,
@@ -204,10 +204,10 @@ att_gt <- function(yname,
   # matrix to hold influence function
   # (note: this is relying on having a balanced panel,
   # which we do currently enforce)
-  inffunc1 <- matrix(0, ncol=flen*(tlen-1), nrow=nrow(dta)) 
+  inffunc1 <- matrix(0, ncol=nG*(nT-1), nrow=nrow(dta)) 
 
   # populate result vectors and matrices
-  for (f in 1:length(flist)) {
+  for (f in 1:length(glist)) {
     for (s in 1:(length(tlist)-1)) {
       group[i] <- attgt.list[[i]]$group
       tt[i] <- attgt.list[[i]]$year
@@ -334,9 +334,24 @@ att_gt <- function(yname,
   # Compute all summaries of the ATT(g,t)
   #-----------------------------------------------------------------------------
   aggeffects <- NULL
-  if (aggte) {
-    aggeffects <- compute.aggte(flist, tlist, group, tt, att, first.treat.name, inffunc1,
-                                n, clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine)
+  if (aggte & (nT > 2)) {
+    aggeffects <- compute.aggte(glist,
+                                tlist,
+                                group,
+                                tt,
+                                att,
+                                first.treat.name,
+                                inffunc1,
+                                n,
+                                clustervars,
+                                dta,
+                                idname,
+                                bstrap,
+                                biters,
+                                alp,
+                                cband,
+                                maxe,
+                                mine)
   }
 
   # Return this list

@@ -13,9 +13,9 @@
 compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
                           clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine) {
 
-  if ( (length(clustervars) > 0) & !bstrap) {
-    warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
-  }
+  ## if ( (length(clustervars) > 0) & !bstrap) {
+  ##   warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
+  ## }
 
   #-----------------------------------------------------------------------------
   # Internal functions for getteing standard errors
@@ -54,18 +54,18 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     }
   }
 
-  ## internal function for computing standard errors
-  ##  this method is used across different types of
-  ##  aggregate treatment effect parameters and is just
-  ##  based on using the right influence function and weights
-  ##  -- these are specific to which aggregate treatment
-  ##  effect parameter is being considered.
-  ## @param wif is the influence function for the weights
+  # internal function for computing standard errors
+  #  this method is used across different types of
+  #  aggregate treatment effect parameters and is just
+  #  based on using the right influence function and weights
+  #  -- these are specific to which aggregate treatment
+  #  effect parameter is being considered.
+  # @param wif is the influence function for the weights
 
   getSE <- function(inffunc1, whichones, weights, wif=NULL) {
-    ## enforce weights are in matrix form
+    # enforce weights are in matrix form
     weights <- as.matrix(weights)
-    #multiplies influence function times weights and sums to get vector of weighted IF (of length n)
+    # multiplies influence function times weights and sums to get vector of weighted IF (of length n)
     thisinffunc <- inffunc1[,whichones]%*%weights
     # Incorporate influence function of the weights
     if (!is.null(wif)) {
@@ -74,24 +74,24 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     # Now, compute the standard errror
     getSE_inf(thisinffunc)
   }
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #                     data organization and recoding
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  ## do some recoding to make sure time periods are 1 unit apart
-  ## and then put these back together at the end
+
+  #-----------------------------------------------------------------------------
+  # data organization and recoding
+  #-----------------------------------------------------------------------------
+
+  # do some recoding to make sure time periods are 1 unit apart
+  # and then put these back together at the end
   originalt <- t
   originalgroup <- group
   originalflist <- flist
   originaltlist <- tlist
   uniquet <- seq(1,length(unique(t)))
-  ## function to switch from "new" t values to  original t values
+  # function to switch from "new" t values to  original t values
   t2orig <- function(t) {
     unique(c(originalt,0))[which(c(uniquet,0)==t)]
   }
-  ## function to switch between "original"
-  ##  t values and new t values
+  # function to switch between "original"
+  #  t values and new t values
   orig2t <- function(orig) {
     c(uniquet,0)[which(unique(c(originalt,0))==orig)]
   }
@@ -102,11 +102,12 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   # Set the weights
   weights.agg = dta$w
 
-  ## some variables used throughout
+  # some variables used throughout
   # Ever treated only among the units we actually compute the ATT(g,t)
   ever.treated <- 1 * (dta[,first.treat.name]>0)
   mean.w.ever.treated <- mean(weights.agg * ever.treated)
 
+  browser()
   # Probability of being in group g (among the relevant ever-treated groups!)
   pg <- sapply(originalflist,
                function(g) mean(weights.agg * ever.treated * (dta[,first.treat.name]==g))/
@@ -117,29 +118,34 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   tg <- split(t, group)
   keepers <- which(group <= t)
   G <-  unlist(lapply(dta[,first.treat.name], orig2t))
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #                     Compute the simple ATT summary
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  ## simple att
+
+  #-----------------------------------------------------------------------------
+  # Compute the simple ATT summary
+  #-----------------------------------------------------------------------------
+
+  # simple att
   simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
   # Estimation effect coming from P(G=g| Ever treated)
   # Part 1: est effect from P(G=g, ever treated = 1) treating P(ever treated) as known
   simple.oif1 <- sapply(keepers,
-                        function(k) ( (weights.agg *(G==group[k]) - mean(weights.agg * (G==group[k]))) /
-                                        mean.w.ever.treated
-                        )
-  )
+                        function(k) {
+                          ( (weights.agg *(G==group[k]) -
+                               mean(weights.agg * (G==group[k]))) /
+                              mean.w.ever.treated
+                          )
+                        })
   # Part 2: est effect from  P(ever treated) treating P(G=g, ever treated = 1) as known
   #simple.oif2 <- sapply(keepers,
   #                      function(j) mean(weights.agg * (G==group[j])) *
   #                        apply(sapply(keepers, function(k) (weights.agg*(G==group[k]) - mean(weights.agg*(G==group[k])))),1,sum))
   simple.oif2 <- sapply(keepers,
-                        function(j) ((mean(weights.agg * (G==group[j]))/(mean.w.ever.treated^2)) *
-                                       (weights.agg * ever.treated - mean.w.ever.treated)
-                        )
-  )
+                        function(j) {
+                          ((mean(weights.agg * (G==group[j])) /
+                              (mean.w.ever.treated^2)) *
+                             (weights.agg * ever.treated - mean.w.ever.treated)
+                          )
+                        })
+  
   # Estimation effect from numerator
   simple.oif <- (simple.oif1 - simple.oif2)/(sum(pg[keepers]))
   #Estimation effect from denominator of the weights (normalization)
@@ -150,11 +156,12 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   # Get standard error for the simple ATT average
   simple.se <- getSE(inffunc1, keepers, pg[keepers]/sum(pg[keepers]), simple.oif)
 
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #                     Compute the event-study estimators
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
+
+
+  #-----------------------------------------------------------------------------
+  # Compute the event-study estimators
+  #-----------------------------------------------------------------------------
+
   # Make sure maximum e is feasible
   if(is.null(maxe)) maxe <- max(t-group)+1
   if (maxe > (max(t-group)+1)) maxe <- max(t-group)+1
@@ -185,10 +192,12 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     # Estimation effect coming from P(G=g| treated for at least e periods)
     # Part 1: est effect from P(G=g, treatted at least e periods) treating P(treated for at least e periods) as known
     dynamic.oif1 <- sapply(whiche,
-                           function(k) ( (weights.agg *(G==group[k]) - mean(weights.agg * (G==group[k]))) /
-                                           mean.w.atleast.e.treated
-                           )
-    )
+                           function(k) {
+                             ( (weights.agg *(G==group[k]) -
+                                  mean(weights.agg * (G==group[k]))) /
+                                 mean.w.atleast.e.treated
+                             )
+                           })
 
     # Part 2: est effect from  P(treated for at least e periods) treating P(G=g) as known
     dynamic.oif2 <- sapply(whiche,
