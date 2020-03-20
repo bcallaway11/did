@@ -286,7 +286,7 @@ att_gt <- function(yname,
   preatt <- as.matrix(att[pre])
 
   # covariance matrix of pre-treatment atts
-  preV <- V[pre,pre]
+  preV <- as.matrix(V[pre,pre])
 
   # check if there are actually any pre-treatment periods
   if (length(preV) == 0) {

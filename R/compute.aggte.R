@@ -17,11 +17,10 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
   }
 
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
-  #             Internal functions for getteing standard errors
-  #-------------------------------------------------------------------------------------------
-  #-------------------------------------------------------------------------------------------
+  #-----------------------------------------------------------------------------
+  # Internal functions for getteing standard errors
+  #-----------------------------------------------------------------------------
+
   # This formula, the argument is the relevant influence function. It return the standard errors
   getSE_inf <- function(thisinffunc) {
     if (bstrap) {

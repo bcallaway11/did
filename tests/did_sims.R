@@ -35,8 +35,11 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
   #-----------------------------------------------------------------------------
   
   # randomly assign treated units to groups
-  G <- sample(1:T, size=nt, replace=TRUE)
-
+  # random groups
+  # G <- sample(1:T, size=nt, replace=TRUE)
+  # fixed groups
+  G <- unlist(lapply(1:T, function(g) rep(g, nt/T)))
+  
   # draw a single covariate
   Xt <- rnorm(nt)
 
@@ -100,7 +103,7 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
   # get results
   res <- att_gt(yname="Y", xformla=~X, data=ddf, tname="period", idname="id",
                 first.treat.name="G", estMethod="reg", printdetails=FALSE,
-                bstrap=bstrap, cband=cband)
+                bstrap=bstrap, cband=cband, aggte=FALSE)
 
 
   if (is.null(ret)) {
@@ -128,7 +131,7 @@ mean( bout )
 # check if uniform confidence bands are working
 te <- 0
 biters <- 100
-bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband"), cl=3)
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband", bstrap=TRUE, cband=TRUE), cl=3)
 mean( bout )
 
 

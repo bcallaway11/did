@@ -190,11 +190,11 @@ compute.att_gt <- function(nG,
         # for units that are not in G or C will be equal to 0
         inf.func <- rep(0, n)
 
-        # sqrt(n)/sqrt(n1) adjusts for estimating the
+        # n/n1 adjusts for estimating the
         # att_gt only using observations from groups
         # G and C
         
-        inf.func[disidx] <- (sqrt(n)/sqrt(n1))*attgt$inf.func
+        inf.func[disidx] <- (n/n1)*attgt$inf.func
 
         # save it in influence function matrix
         inffunc[g,t,] <- inf.func
