@@ -10,7 +10,7 @@ remotes::install_github("bcallaway11/DRDID")
 # set parameters
 #-----------------------------------------------------------------------------
 # number of time periods
-T <- 2
+T <- 3
 # number of treated units
 nt <- 5000
 # coefficient on X 
@@ -116,6 +116,9 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
     cl <- res$att - res$c * sqrt(diag(res$V))/sqrt(res$n)
     covers0 <- 1*(all( (cu > 0) & (cl < 0)))
     return(covers0)
+  } else if (ret=="simple") {
+    rej <- 1*( abs(res$aggte$simple.att / res$aggte$simple.se) > qnorm(.975) )
+    return(rej)
   } else {
     return(res)
   }
@@ -133,6 +136,13 @@ te <- 0
 biters <- 100
 bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband", bstrap=TRUE, cband=TRUE), cl=3)
 mean( bout )
+
+# check if simple att is working
+te <- 0
+biters <- 1000
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="simple"), cl=3)
+mean(bout)
+
 
 
 res <- sim()

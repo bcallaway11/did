@@ -10,7 +10,7 @@
 #' @keywords internal
 #'
 #' @export
-compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc1, n,
+compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc1, n,
                           clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine) {
 
   ## if ( (length(clustervars) > 0) & !bstrap) {
@@ -83,7 +83,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   # and then put these back together at the end
   originalt <- t
   originalgroup <- group
-  originalflist <- flist
+  originalglist <- glist
   originaltlist <- tlist
   uniquet <- seq(1,length(unique(t)))
   # function to switch from "new" t values to  original t values
@@ -97,7 +97,7 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   }
   t <- sapply(originalt, orig2t)
   group <- sapply(originalgroup, orig2t)
-  flist <- sapply(originalflist, orig2t)
+  glist <- sapply(originalglist, orig2t)
 
   # Set the weights
   weights.agg = dta$w
@@ -107,13 +107,19 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   ever.treated <- 1 * (dta[,first.treat.name]>0)
   mean.w.ever.treated <- mean(weights.agg * ever.treated)
 
-  browser()
+  
   # Probability of being in group g (among the relevant ever-treated groups!)
-  pg <- sapply(originalflist,
-               function(g) mean(weights.agg * ever.treated * (dta[,first.treat.name]==g))/
-                 mean(weights.agg * ever.treated))
+  ## pg <- sapply(originalflist,
+  ##              function(g) {
+  ##                mean(weights.agg * ever.treated * (dta[,first.treat.name]==g)) /
+  ##                  mean(weights.agg * ever.treated)
+  ##              })
+  
+  # we can work in overall probabilities because conditioning will cancel out
+  # cause it shows up in numerator and denominator
+  pg <- sapply(originalglist, function(g) mean(weights.agg*dta[,first.treat.name]==g))
   pgg <- pg
-  pg <- pg[match(group, flist)] ## make it have the same length as att
+  pg <- pg[match(group, glist)] ## make it have the same length as att
   attg <- split(att, group)
   tg <- split(t, group)
   keepers <- which(group <= t)
@@ -123,41 +129,66 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   # Compute the simple ATT summary
   #-----------------------------------------------------------------------------
 
+  ## # simple att
+  ## simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
+  ## # Estimation effect coming from P(G=g| Ever treated)
+  ## # Part 1: est effect from P(G=g, ever treated = 1) treating P(ever treated) as known
+  ## simple.oif1 <- sapply(keepers,
+  ##                       function(k) {
+  ##                         ( (weights.agg *(G==group[k]) -
+  ##                              mean(weights.agg * (G==group[k]))) /
+  ##                             mean.w.ever.treated
+  ##                         )
+  ##                       })
+  ## # Part 2: est effect from  P(ever treated) treating P(G=g, ever treated = 1) as known
+  ## #simple.oif2 <- sapply(keepers,
+  ## #                      function(j) mean(weights.agg * (G==group[j])) *
+  ## #                        apply(sapply(keepers, function(k) (weights.agg*(G==group[k]) - mean(weights.agg*(G==group[k])))),1,sum))
+  ## simple.oif2 <- sapply(keepers,
+  ##                       function(j) {
+  ##                         ((mean(weights.agg * (G==group[j])) /
+  ##                             (mean.w.ever.treated^2)) *
+  ##                            (weights.agg * ever.treated - mean.w.ever.treated)
+  ##                         )
+  ##                       })
+  
+  ## # Estimation effect from numerator
+  ## simple.oif <- (simple.oif1 - simple.oif2)/(sum(pg[keepers]))
+  ## #Estimation effect from denominator of the weights (normalization)
+  ## simple.oif3 <- base::rowSums(simple.oif) %*%  t(matrix(pg[keepers]/sum(pg[keepers])))
+  ## #Estimation effect from estimated weights (in total)
+  ## simple.oif <- simple.oif - simple.oif3
+
+
+  ## # Get standard error for the simple ATT average
+  ## simple.se <- getSE(inffunc1, keepers, pg[keepers]/sum(pg[keepers]), simple.oif)
+
+  
   # simple att
   simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
-  # Estimation effect coming from P(G=g| Ever treated)
-  # Part 1: est effect from P(G=g, ever treated = 1) treating P(ever treated) as known
-  simple.oif1 <- sapply(keepers,
-                        function(k) {
-                          ( (weights.agg *(G==group[k]) -
-                               mean(weights.agg * (G==group[k]))) /
-                              mean.w.ever.treated
-                          )
-                        })
-  # Part 2: est effect from  P(ever treated) treating P(G=g, ever treated = 1) as known
-  #simple.oif2 <- sapply(keepers,
-  #                      function(j) mean(weights.agg * (G==group[j])) *
-  #                        apply(sapply(keepers, function(k) (weights.agg*(G==group[k]) - mean(weights.agg*(G==group[k])))),1,sum))
-  simple.oif2 <- sapply(keepers,
-                        function(j) {
-                          ((mean(weights.agg * (G==group[j])) /
-                              (mean.w.ever.treated^2)) *
-                             (weights.agg * ever.treated - mean.w.ever.treated)
-                          )
-                        })
+
+  # account for having to estimate the weights in converting att(g,t)
+  # effect of estimating weights in the numerator
+  simple.oif1 <- sapply(keepers, function(k) {
+    (weights.agg * 1*(G==group[k]) - pg[k]) /
+      sum(pg[keepers])
+  })
+  # effect of estimating weights in the denominator
+  simple.oif2 <- rowSums( sapply( keepers, function(k) {
+    weights.agg*1*(G==group[k]) - pg[k]
+  })) %*%
+    t(pg[keepers]/(sum(pg[keepers])^2)) 
+  ## # effect of estimating weights in the denominator
+  ## simple.oif2 <- rowSums( sapply( keepers, function(k) {
+  ##   weights.agg*1*(G==group[k]) - mean(weights.agg*1*(G==group[k]))
+  ## })) %*%
+  ##   t(pg[keepers]/(sum(pg[keepers])^2)) 
+  # combine everything using getSE function
+  simple.se <- getSE(inffunc1, keepers, pg[keepers]/sum(pg[keepers]), simple.oif1 - simple.oif2)
+
+
   
-  # Estimation effect from numerator
-  simple.oif <- (simple.oif1 - simple.oif2)/(sum(pg[keepers]))
-  #Estimation effect from denominator of the weights (normalization)
-  simple.oif3 <- base::rowSums(simple.oif) %*%  t(matrix(pg[keepers]/sum(pg[keepers])))
-  #Estimation effect from estimated weights (in total)
-  simple.oif <- simple.oif - simple.oif3
-
-  # Get standard error for the simple ATT average
-  simple.se <- getSE(inffunc1, keepers, pg[keepers]/sum(pg[keepers]), simple.oif)
-
-
-
+  
   #-----------------------------------------------------------------------------
   # Compute the event-study estimators
   #-----------------------------------------------------------------------------
@@ -319,6 +350,6 @@ compute.aggte <- function(flist, tlist, group, t, att, first.treat.name, inffunc
   AGGTE(simple.att=simple.att, simple.se=simple.se,
         dynamic.att=dynamic.att, dynamic.se=dynamic.se,
         dynamic.att.e = c(dynamic.att.pre.e, dynamic.att.e), dynamic.se.e=dynamic.se.e,  c.dynamic=c.dynamic,
-        group=originalflist,times=originaltlist,
+        group=originalglist,times=originaltlist,
         e = c(eseq.pre, eseq))
 }
