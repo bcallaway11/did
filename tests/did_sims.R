@@ -5,6 +5,7 @@ fldr <- "~/Dropbox/did/R/"
 sapply(paste0(fldr,list.files(fldr)), source)
 # remotes::install_github("bcallaway11/did", ref="pedro")
 remotes::install_github("bcallaway11/DRDID")
+remotes::install_github("bcallaway11/BMisc")
 
 #-----------------------------------------------------------------------------
 # set parameters
