@@ -13,10 +13,6 @@
 compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc1, n,
                           clustervars, dta, idname, bstrap, biters, alp, cband, maxe, mine) {
 
-  ## if ( (length(clustervars) > 0) & !bstrap) {
-  ##   warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
-  ## }
-
   #-----------------------------------------------------------------------------
   # Internal functions for getteing standard errors
   #-----------------------------------------------------------------------------
@@ -62,7 +58,7 @@ compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc
   #  effect parameter is being considered.
   # @param wif is the influence function for the weights
 
-  getSE <- function(inffunc1, whichones, weights, wif=NULL) {
+  getSE <- function(att, inffunc1, whichones, weights, wif=NULL) {
     # enforce weights are in matrix form
     weights <- as.matrix(weights)
     # multiplies influence function times weights and sums to get vector of weighted IF (of length n)
@@ -72,9 +68,11 @@ compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc
       thisinffunc <- thisinffunc + wif%*%as.matrix(att[whichones])
     }
     # Now, compute the standard errror
-    getSE_inf(thisinffunc)
+    return(list(se=getSE_inf(thisinffunc),inf.func=thisinffunc))
   }
 
+
+  
   #-----------------------------------------------------------------------------
   # data organization and recoding
   #-----------------------------------------------------------------------------
@@ -184,14 +182,66 @@ compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc
   ## })) %*%
   ##   t(pg[keepers]/(sum(pg[keepers])^2)) 
   # combine everything using getSE function
-  simple.se <- getSE(inffunc1, keepers, pg[keepers]/sum(pg[keepers]), simple.oif1 - simple.oif2)
+  simple.se <- getSE(att, inffunc1, keepers, pg[keepers]/sum(pg[keepers]), simple.oif1 - simple.oif2)$se
+
+  #-----------------------------------------------------------------------------
+  # Compute the selective treatment timing estimators
+  #-----------------------------------------------------------------------------
 
 
+  # function to compute extra term
+  # in influence function due to estimating the weights
+  wif <- function(keepers, pg, weights.agg, G) {
+    if1 <- sapply(keepers, function(k) {
+      (weights.agg * 1*(G==group[k]) - pg[k]) /
+        sum(pg[keepers])
+    })
+    # effect of estimating weights in the denominator
+    if2 <- rowSums( sapply( keepers, function(k) {
+      weights.agg*1*(G==group[k]) - pg[k]
+    })) %*%
+      t(pg[keepers]/(sum(pg[keepers])^2))
+
+    if1 - if2
+  }
+  
+  ## Selective Treatment Timing
+  ## Note: for selective.att.g, don't need to adjust standard
+  ##  errors for estimating weights because they are known
+  selective.att.g <- sapply(glist, function(g) {
+    whichg <- which( (group == g) & (g <= t))
+    attg <- att[whichg]
+    mean(attg)
+  })
+  selective.se.inner <- lapply(glist, function(g) {
+        whichg <- which( (group == g) & (g <= t))
+        getSE(att,inffunc1,whichg, pg[whichg]/sum(pg[whichg]))
+  })
+  
+  selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
+  selective.inf.func.g <- simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,]
+  selective.att <- sum(selective.att.g * pgg)/sum(pgg)
+  selective.wif <- wif(1:length(glist), pgg, weights.agg, G)
+  selective.se <- getSE(selective.att.g, selective.inf.func.g, 1:length(glist), pgg/sum(pgg), selective.wif)$se
+  
   
   
   #-----------------------------------------------------------------------------
   # Compute the event-study estimators
   #-----------------------------------------------------------------------------
+
+
+  #eseq <- seq(1,max(t-group)+1)
+  
+  dynamic.att.e <- sapply(eseq, function(e) {
+    whiche <- which(t - group + 1 == e)
+    atte <- att[whiche]
+    pge <- pg[whiche]/(sum(pg[whiche]))
+    sum(atte*pge)
+  })
+
+
+  
 
   # Make sure maximum e is feasible
   if(is.null(maxe)) maxe <- max(t-group)+1
@@ -353,3 +403,6 @@ compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc
         group=originalglist,times=originaltlist,
         e = c(eseq.pre, eseq))
 }
+
+
+
