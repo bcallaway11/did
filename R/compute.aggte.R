@@ -223,25 +223,56 @@ compute.aggte <- function(glist, tlist, group, t, att, first.treat.name, inffunc
   selective.att <- sum(selective.att.g * pgg)/sum(pgg)
   selective.wif <- wif(1:length(glist), pgg, weights.agg, G)
   selective.se <- getSE(selective.att.g, selective.inf.func.g, 1:length(glist), pgg/sum(pgg), selective.wif)$se
-  
-  
-  
+    
   #-----------------------------------------------------------------------------
   # Compute the event-study estimators
   #-----------------------------------------------------------------------------
 
-
-  #eseq <- seq(1,max(t-group)+1)
+  eseq <- unique(t-group) #seq(0,max(t-group)) # fix this to cover pre-treatment periods
+  eseq <- eseq[order(eseq)]
   
   dynamic.att.e <- sapply(eseq, function(e) {
-    whiche <- which(t - group + 1 == e)
+    whiche <- which(t - group == e)
     atte <- att[whiche]
     pge <- pg[whiche]/(sum(pg[whiche]))
     sum(atte*pge)
   })
 
+  dynamic.se.inner <- lapply(eseq, function(e) {
+    whiche <- which(t - group == e)
+    pge <- pg[whiche]/(sum(pg[whiche]))
+    wif.e <- wif(whiche, pg, weights.agg, G)
+    getSE(att, inffunc1, whiche, pge, wif.e)
+  })
+
+  dynamic.se.e <- unlist(getListElement(dynamic.se.inner, "se"))
+  dynamic.inf.func.e <- simplify2array(getListElement(dynamic.se.inner, "inf.func"))[,1,]
+
+  # get overall average treatment effect
+  # by averaging over positive dynamics
+  epos <- eseq >= 0
+  dynamic.att <- mean(dynamic.att.e[epos])
+  dynamic.se  <- getSE(att=dynamic.att.e[epos],
+                       inffunc1=dynamic.inf.func.e[,epos],
+                       whichones=(1:sum(epos)),
+                       weights=(rep(1/sum(epos), sum(epos))))$se
+
+
+  #-----------------------------------------------------------------------------
+  # calendar time effects
+  #-----------------------------------------------------------------------------
+
 
   
+  browser()
+
+  dynamic.se.e <- sapply(eseq, function(e) {
+        whiche <- which(t - group + 1 == e)
+        pge <- pg[whiche]/(sum(pg[whiche]))
+        dynamic.oif1 <- sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k]))) / sum(pg[whiche]))
+        dynamic.oif2 <- sapply(whiche, function(j) mean(1*(G==group[j])) * apply(sapply(whiche, function(k) (1*(G==group[k]) - mean(1*(G==group[k])))),1,sum))
+        getSE(whiche, pge, dynamic.oif1 - dynamic.oif2)
+    })
 
   # Make sure maximum e is feasible
   if(is.null(maxe)) maxe <- max(t-group)+1
