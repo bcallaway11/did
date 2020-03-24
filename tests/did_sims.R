@@ -11,9 +11,9 @@ remotes::install_github("bcallaway11/BMisc")
 # set parameters
 #-----------------------------------------------------------------------------
 # number of time periods
-T <- 3
+T <- 5
 # number of treated units
-nt <- 5000
+nt <- 1000
 # coefficient on X 
 bett <- seq(1:T)
 # time fixed effect
@@ -147,8 +147,11 @@ mean(bout)
 
 
 res <- sim()
+ggdid(res)
+ate <- aggte(res, type="dynamic", balance.e=3)
+ggdid(ate)
 
 
 library(ggplot2)
 library(gridExtra)
-ggdid(res)
+ggdid(res, ylim=c(0,2))

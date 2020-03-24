@@ -1,14 +1,28 @@
+#' @title mboot
+#'
+#' @description function for multiplier bootstrap
+#'
+#' @param inf.func an influence function
+#' @param DIDparams DIDparams object
+#'
+#' @return list with (i) matrix of bootstrap iterations
+#'  and (ii) variance matrix
+#' 
+#' @export
 mboot <- function(inf.func, DIDparams) {
 
   # setup needed variables
   data <- DIDparams$data
-  tlist <- DIDparams$tlist
   idname <- DIDparams$idname
   clustervars <- DIDparams$clustervars
   biters <- DIDparams$biters
+  tname <- DIDparams$tname
+  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  alp <- DIDparams$alp
   
   # just get n obsevations (for clustering below...)
-  dta <- data[ data[,tname]==tlist[1], ] 
+  dta <- data[ data[,tname]==tlist[1], ]
+  n <- nrow(dta)
   
   # if include id as variable to cluster on
   # drop it as we do this automatically
@@ -38,7 +52,7 @@ mboot <- function(inf.func, DIDparams) {
       Ub <- sample(c(-1,1), n, replace=T)
     }
     # multiply weights onto influence function
-    Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
+    Rb <- sqrt(n)*(apply(Ub*(inf.func), 2, mean))
     # return bootstrap draw
     Rb
   })
@@ -46,6 +60,13 @@ mboot <- function(inf.func, DIDparams) {
   bres <- t(simplify2array(bout))
   # bootstrap variance matrix 
   V <- cov(bres)
+  # bootstrap standard error
+  bSigma <- apply(bres, 2,
+                  function(b) (quantile(b, .75, type=1, na.rm = T) -
+                                 quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+  # critical value for uniform confidence band
+  bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
+  crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
 
-  list(bres=bres, V=V)
+  list(bres=bres, V=V, se=bSigma, crit.val=crit.val)
 }

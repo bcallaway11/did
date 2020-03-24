@@ -40,11 +40,12 @@ DIDparams <- function(yname,
               clustervars=clustervars,
               cband=cband,
               printdetails=printdetails,
-              seedvec=seedvc,
+              seedvec=seedvec,
               pl=pl,
               cores=cores,
               method=method,
               estMethod=estMethod,
               panel=panel)
   class(out) <- "DIDparams"
+  out
 }

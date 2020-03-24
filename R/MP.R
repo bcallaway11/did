@@ -17,8 +17,8 @@
 #'
 #' @return MP object
 #' @export
-MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05) {
-  out <- list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp)
+MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05, DIDparams=NULL) {
+  out <- list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp, DIDparams=DIDparams)
   class(out) <- "MP"
   out
 }
@@ -37,9 +37,23 @@ summary.MP <- function(object, ...) {
   citation()
   colnames(out) <- c("group", "time", "att","se")
   cat("\n")
-  print(kable(out))
+  print(knitr::kable(out))
   cat("\n\n")
-  cat("P-value for pre-test of DID assumption:  ")
-  cat(as.character(mpobj$Wpval))
-  cat("\n\n")
+  if (!is.null(mpobj$Wpval)) {
+    cat("P-value for pre-test of DID assumption:  ")
+    cat(as.character(mpobj$Wpval))
+    cat("\n\n")
+  }
+}
+
+#' @title print.MP
+#'
+#' @description prints value of a \code{MP} object
+#'
+#' @param x a \code{MP} object
+#' @param ... extra arguments
+#'
+#' @export
+print.MP <- function(x,...) {
+  summary.MP(x,...)
 }

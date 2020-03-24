@@ -17,8 +17,8 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
   c.point <-  stats::qnorm(1 - ssresults$alp/2)
 
   p <- ggplot(ssresults,
-              aes(x=year, y=att, ymin=(att-c*ssresults$att.se),
-                  ymax=(att+c*ssresults$att.se), post=post)) +
+              aes(x=year, y=att, ymin=(att-c*att.se),
+                  ymax=(att+c*att.se), post=post)) +
 
     geom_point(aes(colour=post), size=1.5) +
     geom_errorbar(aes(colour=post), width=0.1) +
