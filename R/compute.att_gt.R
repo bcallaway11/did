@@ -32,7 +32,7 @@ compute.att_gt <- function(nG,
                            pl,
                            cores,
                            printdetails,
-                           nevertreated,
+                           control.group,
                            estMethod,
                            panel) {
 
@@ -99,12 +99,13 @@ compute.att_gt <- function(nG,
         # get dataset with current period and pre-treatment period
         disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
 
+        nevertreated <- (control.group[1] == "nevertreated")
         # sete up control group
-        if(nevertreated ==T){
+        if(nevertreated){
           # use the "never treated" group as the control group
           disdat$C <- 1*(disdat[,first.treat.name] == 0)
         }
-        if(nevertreated ==F){
+        if(!nevertreated){
           # use "not yet treated as control"
           # that is, never treated + units that are eventually treated,
           # but not treated by the current period

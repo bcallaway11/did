@@ -18,19 +18,23 @@ nt <- 1000
 bett <- seq(1:T)
 # time fixed effect
 thet <- seq(1:T)
-# treatment effect
-# (could make this vary across groups / times / length of exposure / be random
-te  <- 1
 # number of untreated units
 nu <- 1000
 # time fixed effect
 theu <- thet # changing this creates violations of parallel trends
 # covariate effect
 betu <- bett # changing this creates violations of conditional parallel trends
+#-----------------------------------------------------------------------------
+# parameters for treated potential outcomes
+#-----------------------------------------------------------------------------
+te.bet.ind <- rep(1,T) # no selective treatment timing
+te.bet.X <- bett #no heterogeneous effects by X
+te.t <- thet # no calendar time effects
+te.e <- rep(0,T) # no dynamic effects
+te <- 1 # overall basic effect
 
 
-
-sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
+sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE, control.group="nevertreated") {
   #-----------------------------------------------------------------------------
   # build dataset
   #-----------------------------------------------------------------------------
@@ -51,12 +55,14 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
   Ynames <- paste0("Y",1:T)
   Ynames <- paste0(1:T)
   Y0tmat <- sapply(1:T, function(t) {
-    thet[t] + Ct + rnorm(nt) + Xt*bett[t]
+    thet[t] + Ct + Xt*bett[t] + rnorm(nt)
   })
   Y0tdf <- as.data.frame(Y0tmat)
-
+  
   # generate treated potential outcomes
-  Y1tdf <- Y0tdf + te
+  Y1tdf <- sapply(1:T, function(t) {
+    te.t[t] + te.bet.ind[G]*Ct + Xt*te.bet.X[t] + (G <= t)*te.e[sapply(1:nt, function(i) max(t-G[i]+1,1))] + te + rnorm(nt) # hack for the dynamic effects but ok
+  })
 
   # generate observed data
   Ytdf <- sapply(1:T, function(t) {
@@ -104,7 +110,7 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
   # get results
   res <- att_gt(yname="Y", xformla=~X, data=ddf, tname="period", idname="id",
                 first.treat.name="G", estMethod="reg", printdetails=FALSE,
-                bstrap=bstrap, cband=cband)
+                bstrap=bstrap, cband=cband, control.group=control.group)
 
 
   if (is.null(ret)) {
@@ -128,7 +134,7 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE) {
 
 
 # check if Wald pre-tests are working
-biters <- 1000
+biters <- 100
 bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="Wpval"), cl=3)
 mean( bout )
 
@@ -140,17 +146,21 @@ mean( bout )
 
 # check if simple att is working
 te <- 0
-biters <- 1000
+biters <- 100
 bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="simple"), cl=3)
 mean(bout)
 
+# check if dynamic effects are working
+te.e <- T:1 / (T/4)
+te.bet.ind <- T:1 / (T/2)
 
-
-res <- sim()
-ggdid(res)
-ate <- aggte(res, type="dynamic", balance.e=3)
+res <- sim(control.group="nevertreated")
+ggdid(res, ylim=c(-2,14))
+ate <- aggte(res, type="dynamic")
 ggdid(ate)
 
+p <- ggdid(ate)
+ggsave("~/Downloads/event_study4_balanced5.pdf", p, width=12)
 
 library(ggplot2)
 library(gridExtra)

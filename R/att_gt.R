@@ -69,7 +69,7 @@ att_gt <- function(yname,
                    first.treat.name,
                    xformla,
                    data,
-                   nevertreated = T,
+                   control.group=c("nevertreated","notyettreated"),
                    aggte=TRUE,
                    maxe = NULL,
                    mine = NULL,
@@ -86,6 +86,8 @@ att_gt <- function(yname,
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
 
+  control.group <- control.group[1]
+  
   # store parameters for passing around later
   dp <- DIDparams(yname=yname,
                   tname=tname,
@@ -93,8 +95,7 @@ att_gt <- function(yname,
                   first.treat.name=first.treat.name,
                   xformla=xformla,
                   data=data,
-                  nevertreated=nevertreated,
-                  aggte=aggte,
+                  control.group=control.group,
                   maxe=maxe,
                   mine=mine,
                   w=w,
@@ -136,8 +137,8 @@ att_gt <- function(yname,
 
   # Check if there is a never treated grup
   if ( length(glist[glist==0]) == 0) {
-    if(nevertreated){
-      stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select nevertreated = F so you can use the not-yet treated units as a comparison group.")
+    if(control.group=="nevertreated"){
+      stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select control.group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
     } else {
       warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated las, nor any ATT(g,t) for t higher than or equal to the largest g.\n \nIf you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
       # Drop all time periods with time periods >= latest treated
@@ -213,7 +214,7 @@ att_gt <- function(yname,
                             pl=pl,
                             cores=cores,
                             printdetails=printdetails,
-                            nevertreated=nevertreated,
+                            control.group=control.group,
                             estMethod=estMethod,
                             panel=panel)
 

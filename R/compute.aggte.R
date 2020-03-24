@@ -170,9 +170,11 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     eseq <- unique(t-group) 
     eseq <- eseq[order(eseq)]
 
+    include.balanced.gt <- rep(TRUE, length(group))
     # if we balance the sample with resepect to event time
     if (!is.null(balance.e)) { 
       eseq <- eseq[ (eseq <= balance.e) & (eseq >= balance.e - maxT + 1)]
+      include.balanced.gt <- (maxT - group >= balance.e)
     }
 
     # these are not currently used, but if we want to trim
@@ -181,14 +183,14 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     # note that they would still be included in estimating overall effects
     
     dynamic.att.e <- sapply(eseq, function(e) {
-      whiche <- which( (t - group == e) & (maxT - group >= balance.e) ) 
+      whiche <- which( (t - group == e) & (include.balanced.gt) ) 
       atte <- att[whiche]
       pge <- pg[whiche]/(sum(pg[whiche]))
       sum(atte*pge)
     })
 
     dynamic.se.inner <- lapply(eseq, function(e) {
-      whiche <- which( (t - group == e) & (maxT - group >= balance.e) ) 
+      whiche <- which( (t - group == e) & (include.balanced.gt) ) 
       pge <- pg[whiche]/(sum(pg[whiche]))
       wif.e <- wif(whiche, pg, weights.ind, G, group)
       inf.func.e <- get_agg_inf_func(att=att,
@@ -209,7 +211,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     epos <- eseq >= 0
     dynamic.att <- mean(dynamic.att.e[epos])
     dynamic.inf.func <- get_agg_inf_func(att=dynamic.att.e[epos],
-                                         inffunc1=dynamic.inf.func.e[,epos],
+                                         inffunc1=as.matrix(dynamic.inf.func.e[,epos]),
                                          whichones=(1:sum(epos)),
                                          weights.agg=(rep(1/sum(epos), sum(epos))),
                                          wif=NULL)
