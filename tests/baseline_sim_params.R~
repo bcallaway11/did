@@ -1,0 +1,25 @@
+#-----------------------------------------------------------------------------
+# set parameters
+#-----------------------------------------------------------------------------
+# number of time periods
+T <- 5
+# number of treated units
+nt <- 1000
+# coefficient on X 
+bett <- seq(1:T)
+# time fixed effect
+thet <- seq(1:T)
+# number of untreated units
+nu <- 1000
+# time fixed effect
+theu <- thet # changing this creates violations of parallel trends
+# covariate effect
+betu <- bett # changing this creates violations of conditional parallel trends
+#-----------------------------------------------------------------------------
+# parameters for treated potential outcomes
+#-----------------------------------------------------------------------------
+te.bet.ind <- rep(1,T) # no selective treatment timing
+te.bet.X <- bett #no heterogeneous effects by X
+te.t <- thet # no calendar time effects
+te.e <- rep(0,T) # no dynamic effects
+te <- 1 # overall basic effect

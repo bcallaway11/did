@@ -43,7 +43,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   
   # data from first period
   dta <- data[ data[,tname]==tlist[1], ]
-  dta$w <- 1 # TODO: fix this
+  dta$w <- 1 # TODO: update these weights are wrong
 
   #-----------------------------------------------------------------------------
   # data organization and recoding
@@ -68,25 +68,26 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   t <- sapply(originalt, orig2t)
   group <- sapply(originalgroup, orig2t)
   glist <- sapply(originalglist, orig2t)
+  tlist <- unique(t)
   maxT <- max(t)
   
   # Set the weights
   weights.ind  <-  dta$w
-
-  # some variables used throughout
-  # Ever treated only among the units we actually compute the ATT(g,t)
-  ever.treated <- 1 * (dta[,first.treat.name]>0)
-  mean.w.ever.treated <- mean(weights.ind * ever.treated)
-
   
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
   pg <- sapply(originalglist, function(g) mean(weights.ind*dta[,first.treat.name]==g))
+
+  # length of this is equal to number of groups
   pgg <- pg
-  pg <- pg[match(group, glist)] ## make it have the same length as att
-  attg <- split(att, group)
-  tg <- split(t, group)
+
+  # same but length is equal to the number of ATT(g,t)
+  pg <- pg[match(group, glist)]
+
+  # which group time average treatment effects are post-treatment
   keepers <- which(group <= t)
+
+  # n x 1 vector of group variable
   G <-  unlist(lapply(dta[,first.treat.name], orig2t))
 
   #-----------------------------------------------------------------------------
@@ -96,13 +97,21 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   if (type == "simple") {
     
     # simple att
+    # averages all post-treatment ATT(g,t) with weights
+    # given by group size
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
+
+    # get the part of the influence function coming from estimated weights
     simple.wif <- wif(keepers, pg, weights.ind, G, group)
+
+    # get the overall influence function
     simple.if <- get_agg_inf_func(att=att,
                                   inffunc1=inffunc1,
                                   whichones=keepers,
                                   weights.agg=pg[keepers]/sum(pg[keepers]),
                                   wif=simple.wif)
+
+    # get standard errors from overall influence function
     simple.se <- getSE(simple.if, dp)
 
     return(AGGTEobj(overall.att=simple.att, overall.se=simple.se, type=type))
@@ -114,14 +123,16 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
 
   if (type == "selective") {
   
-    ## Selective Treatment Timing
-    ## Note: for selective.att.g, don't need to adjust standard
-    ##  errors for estimating weights because they are known
+    # get group specific ATTs
+    # note: there are no estimated weights here
     selective.att.g <- sapply(glist, function(g) {
+      # look at post-treatment periods for group g
       whichg <- which( (group == g) & (g <= t))
       attg <- att[whichg]
       mean(attg)
     })
+
+    # get standard errors for each group specific ATT
     selective.se.inner <- lapply(glist, function(g) {
       whichg <- which( (group == g) & (g <= t))
       inf.func.g <- get_agg_inf_func(att=att,
@@ -132,21 +143,36 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
       se.g <- getSE(inf.func.g, dp)
       list(inf.func=inf.func.g, se=se.g)
     })
-    
+
+    # recover standard errors separately by group
     selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
+
+    # recover influence function separately by group
     selective.inf.func.g <- simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,]
+
+    # use multiplier boostrap (across groups) to get critical value
+    # for constructing uniform confidence bands
     selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
+
+    # get overall att under selective treatment timing
+    # (here use pgg instead of pg because we can just look at each group)
     selective.att <- sum(selective.att.g * pgg)/sum(pgg)
+
+    # account for having to estimate pgg in the influence function
     selective.wif <- wif(keepers=1:length(glist),
                          pg=pgg,
                          weights.ind=weights.ind,
                          G=G,
                          group=group)
+
+    # get overall influence function
     selective.inf.func <- get_agg_inf_func(att=selective.att.g,
                                            inffunc1=selective.inf.func.g,
                                            whichones=(1:length(glist)),
                                            weights.agg=pgg/sum(pgg),
                                            wif=selective.wif)
+
+    # get overall standard error
     selective.se <- getSE(selective.inf.func, dp)
     
     return(AGGTEobj(overall.att=selective.att,
@@ -166,11 +192,19 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   #-----------------------------------------------------------------------------
 
   if (type == "dynamic") {
-    
+
+    # event times
+    # this looks at all available event times
+    # note: event times can be negative here.
+    # note: event time = 0 corresponds to "on impact"
     eseq <- unique(t-group) 
     eseq <- eseq[order(eseq)]
 
+    # if the user specifies balance.e, then we are going to
+    # drop some event times and some groups; if not, we just
+    # keep everything (that is what this variable is for)
     include.balanced.gt <- rep(TRUE, length(group))
+    
     # if we balance the sample with resepect to event time
     if (!is.null(balance.e)) { 
       eseq <- eseq[ (eseq <= balance.e) & (eseq >= balance.e - maxT + 1)]
@@ -181,14 +215,18 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     # out some lengths of exposure, we could use this
     # eseq <- eseq[ (eseq >= mine) & (eseq <= maxe) ]    
     # note that they would still be included in estimating overall effects
-    
+
+    # compute atts that are specific to each event time
     dynamic.att.e <- sapply(eseq, function(e) {
+      # keep att(g,t) for the right g&t as well as ones that
+      # are not trimmed out from balancing the sample
       whiche <- which( (t - group == e) & (include.balanced.gt) ) 
       atte <- att[whiche]
       pge <- pg[whiche]/(sum(pg[whiche]))
       sum(atte*pge)
     })
 
+    # compute standard errors for dynamic effects
     dynamic.se.inner <- lapply(eseq, function(e) {
       whiche <- which( (t - group == e) & (include.balanced.gt) ) 
       pge <- pg[whiche]/(sum(pg[whiche]))
@@ -230,8 +268,66 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   # calendar time effects
   #-----------------------------------------------------------------------------
 
+  if (type == "calendar") {
+    # calendar time specific atts
+    calendar.att.t <- sapply(tlist, function(t1) {
+      # look at post-treatment periods for group g
+      whicht <- which( (t == t1) & (group <= t))
+      attt <- att[whicht]
+      mean(attt)
+    })
 
-  # TODO...
+    # get standard errors and influence functions
+    # for each time specific att
+    calendar.se.inner <- lapply(tlist, function(t1) {
+      whicht <- which( (t == t1) & (group <= t))
+      wif.t <- wif(keepers=whicht,
+                   pg=pg,
+                   weights.ind=weights.ind,
+                   G=G,
+                   group=group)
+      inf.func.t <- get_agg_inf_func(att=att,
+                                     inffunc1=inffunc1,
+                                     whichones=whicht,
+                                     weights.agg=pg[whicht]/sum(pg[whicht]),
+                                     wif=wif.t)
+      se.t <- getSE(inf.func.t, dp)
+      list(inf.func=inf.func.t, se=se.t)
+    })
+
+    # recover standard errors separately by time
+    calendar.se.t <- unlist(getListElement(calendar.se.inner, "se"))
+
+    # recover influence function separately by time
+    calendar.inf.func.t <- simplify2array(getListElement(calendar.se.inner, "inf.func"))[,1,]
+
+    # use multiplier boostrap (across groups) to get critical value
+    # for constructing uniform confidence bands
+    calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
+
+    # get overall att under calendar time effects
+    # this is just average over all time periods
+    calendar.att <- mean(calendar.att.t)
+
+    # get overall influence function
+    calendar.inf.func <- get_agg_inf_func(att=calendar.att.t,
+                                           inffunc1=calendar.inf.func.t,
+                                           whichones=(1:length(tlist)),
+                                           weights.agg=rep(1/length(tlist), length(tlist)),
+                                           wif=NULL)
+
+    # get overall standard error
+    calendar.se <- getSE(calendar.inf.func, dp)
+    
+    return(AGGTEobj(overall.att=calendar.att,
+                    overall.se=calendar.se,
+                    type=type,
+                    egt=sapply(tlist,t2orig),
+                    att.egt=calendar.att.t,
+                    se.egt=calendar.se.t,
+                    crit.val.egt=calendar.crit.val))
+
+  }
   
   
 }
@@ -240,30 +336,90 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
 # Internal functions for getteing standard errors
 #-----------------------------------------------------------------------------
 
+#' @title Compute extra term in influence function due to estimating weights
+#'
+#' @description A function to compute the extra term that shows up in the
+#'  influence function for aggregated treatment effect parameters
+#'  due to estimating the weights
+#'
+#' @param keepers a vector of indices for which group-time average
+#'  treatment effects are used to compute a particular aggregated parameter
+#' @param pg a vector with same length as total number of group-time average
+#'  treatment effects that contains the probability of being in particular group
+#' @param weights.ind additional sampling weights (nx1)
+#' @param G vector containing which group a unit belongs to (nx1)
+#' @param group
+#'
+#' @return nxk influence function matrix
+#'
+#' @export
+wif <- function(keepers, pg, weights.ind, G, group) {
+  # note: weights are all of the form P(G=g|cond)/sum_cond(P(G=g|cond))
+  # this is equal to P(G=g)/sum_cond(P(G=g)) which simplifies things here
+  
+  # effect of estimating weights in the numerator
+  if1 <- sapply(keepers, function(k) {
+    (weights.ind * 1*(G==group[k]) - pg[k]) /
+      sum(pg[keepers])
+  })
+  # effect of estimating weights in the denominator
+  if2 <- rowSums( sapply( keepers, function(k) {
+    weights.ind*1*(G==group[k]) - pg[k]
+  })) %*%
+    t(pg[keepers]/(sum(pg[keepers])^2))
 
-# internal function for computing standard errors
-#  this method is used across different types of
-#  aggregate treatment effect parameters and is just
-#  based on using the right influence function and weights
-#  -- these are specific to which aggregate treatment
-#  effect parameter is being considered.
-# @param wif is the influence function for the weights
+  # return the influence function for the weights
+  if1 - if2
+}
 
+
+#' @title Get an influence function for particular aggregate parameters
+#'
+#' @title This is a generic internal function for combining influence
+#'  functions across ATT(g,t)'s to return an influence function for
+#'  various aggregated treatment effect parameters.
+#'
+#' @param att vector of group-time average treatment effects
+#' @param inffunc1 influence function for all group-time average treatment effects
+#'  (matrix)
+#' @param whichones which elements of att will be used to compute the aggregated
+#'  treatment effect parameter
+#' @param weights.agg the weights to apply to each element of att[whichones];
+#'  should have the same dimension as att[whichones]
+#' @param wif extra influence function term coming from estimating the weights;
+#'  should be n x k matrix where k is dimension of whichones
+#'
+#' @return nx1 influence function
+#'
+#' @export
 get_agg_inf_func <- function(att, inffunc1, whichones, weights.agg, wif=NULL) {
   # enforce weights are in matrix form
   weights.agg <- as.matrix(weights.agg)
+  
   # multiplies influence function times weights and sums to get vector of weighted IF (of length n)
   thisinffunc <- inffunc1[,whichones]%*%weights.agg
+
   # Incorporate influence function of the weights
   if (!is.null(wif)) {
     thisinffunc <- thisinffunc + wif%*%as.matrix(att[whichones])
   }
-  # Now, compute the standard errror
+
+  # return influence function
   return(thisinffunc)
 }
 
 
-# This formula, the argument is the relevant influence function. It return the standard errors
+#' @title Take influence function and return standard errors
+#'
+#' @description Function to take an nx1 influence function and return
+#'  a standard error
+#'
+#' @param thisinffunc An influence function
+#' @inheritParams compute.aggte
+#'
+#' @return scalar standard error
+#'
+#' @export
 getSE <- function(thisinffunc, DIDparams=NULL) {
   alp <- .05
   bstrap <- FALSE
@@ -282,18 +438,3 @@ getSE <- function(thisinffunc, DIDparams=NULL) {
   }
 }
 
-# function to compute extra term
-# in influence function due to estimating the weights
-wif <- function(keepers, pg, weights.ind, G, group) {
-  if1 <- sapply(keepers, function(k) {
-    (weights.ind * 1*(G==group[k]) - pg[k]) /
-      sum(pg[keepers])
-  })
-  # effect of estimating weights in the denominator
-  if2 <- rowSums( sapply( keepers, function(k) {
-    weights.ind*1*(G==group[k]) - pg[k]
-  })) %*%
-    t(pg[keepers]/(sum(pg[keepers])^2))
-
-  if1 - if2
-}
