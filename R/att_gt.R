@@ -86,6 +86,7 @@ att_gt <- function(yname,
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
 
+  # set control group
   control.group <- control.group[1]
   
   # store parameters for passing around later
@@ -112,28 +113,27 @@ att_gt <- function(yname,
                   estMethod=estMethod,
                   panel=panel)
   
-  ## make sure that data is a data.frame
-  df <- data
-  ## this gets around RStudio's default of reading data as tibble
-  if (!all( class(df) == "data.frame")) {
+  # make sure dataset is a data.frame
+  # this gets around RStudio's default of reading data as tibble
+  if (!all( class(data) == "data.frame")) {
     #warning("class of data object was not data.frame; converting...")
-    df <- as.data.frame(data)
+    data <- as.data.frame(data)
   }
   # weights if null
-  if(is.character(w))  w <- df[, as.character(w)]
+  if(is.character(w))  w <- data[, as.character(w)]
   if(is.null(w)) {
-    w <- as.vector(rep(1, nrow(df)))
+    w <- as.vector(rep(1, nrow(data)))
   } else if(min(w) < 0) stop("'w' must be non-negative")
-  df$w <- w
+  data$w <- w
 
   # Outcome variable will be denoted by y
-  df$y <- df[, yname]
+  data$y <- data[, yname]
   
   # figure out the dates
   # list of dates from smallest to largest
-  tlist <- unique(df[,tname])[order(unique(df[,tname]))] 
+  tlist <- unique(data[,tname])[order(unique(data[,tname]))] 
   # list of treated groups (by time) from smallest to largest
-  glist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
+  glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
 
   # Check if there is a never treated grup
   if ( length(glist[glist==0]) == 0) {
@@ -142,15 +142,15 @@ att_gt <- function(yname,
     } else {
       warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated las, nor any ATT(g,t) for t higher than or equal to the largest g.\n \nIf you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
       # Drop all time periods with time periods >= latest treated
-      df <- base::subset(df,(df[,tname] < max(glist)))
+      data <- base::subset(data,(data[,tname] < max(glist)))
       # Replace last treated time with zero
-      lines.gmax = df[,first.treat.name]==max(glist)
-      df[lines.gmax,first.treat.name] <- 0
+      lines.gmax = data[,first.treat.name]==max(glist)
+      data[lines.gmax,first.treat.name] <- 0
 
       ##figure out the dates
-      tlist <- unique(df[,tname])[order(unique(df[,tname]))] ## this is going to be from smallest to largest
+      tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
       # Figure out the groups
-      glist <- unique(df[,first.treat.name])[order(unique(df[,first.treat.name]))]
+      glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
     }
   }
 
@@ -159,10 +159,10 @@ att_gt <- function(yname,
   
   # check for groups treated in the first period and drop these
   mint <- tlist[1]
-  nfirstperiod <- nrow( df[ df[,first.treat.name] == mint, ] )
+  nfirstperiod <- nrow( data[ data[,first.treat.name] == mint, ] )
   if ( nfirstperiod > 0 ) {
     warning(paste0("dropping ", nfirstperiod, " units that were already treated in the first period...this is normal"))
-    df <- df[ df[,first.treat.name] != mint, ]
+    data <- data[ data[,first.treat.name] != mint, ]
   }
     
 
@@ -172,7 +172,7 @@ att_gt <- function(yname,
     warning("not guaranteed to order time periods correclty if they are not numeric")
   }
   ## check that first.treat doesn't change across periods for particular individuals
-  if (!all(sapply( split(df, df[,idname]), function(df) {
+  if (!all(sapply( split(data, data[,idname]), function(df) {
     length(unique(df[,first.treat.name]))==1
   }))) {
     stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
@@ -183,16 +183,41 @@ att_gt <- function(yname,
   # How many treated groups
   nG <- length(glist)
 
-  # Make it a balanced panel
-  df <- BMisc::makeBalancedPanel(df, idname, tname)
-  #dta is used to get a matrix of size n (like in cross sectional data)
-  dta <- df[ df[,tname]==tlist[1], ]  ## use this for the influence function
-
+   
   #################################################################
   # Size of each group (divide by lenth(tlist because we are working with long data))
-  #gsize <- aggregate(df[,"w"], by=list(df[,first.treat.name]),
+  #gsize <- aggregate(data[,"w"], by=list(data[,first.treat.name]),
   #                   function(x) sum(x)/length(tlist))
   #################################################################
+
+  # setup data in panel case
+  if (panel) {
+    # make it a balanced data set
+    data <- BMisc::makeBalancedPanel(data, idname, tname)
+
+    # create an n-row data.frame to hold the influence function later
+    #dta <- data[ data[,tname]==tlist[1], ]  
+
+    n <- nrow(data[ data[,tname]==tlist[1], ]) # use this for influence function
+              
+    # check that first.treat doesn't change across periods for particular individuals
+    if (!all(sapply( split(data, data[,idname]), function(df) {
+      length(unique(df[,first.treat.name]))==1
+    }))) {
+      stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+    }
+  } else {
+
+    # n-row data.frame to hold the influence function
+    data$rowid <- seq(1:nrow(data))
+    n <- nrow(data)
+    #dta <- data
+  }
+
+  # put in blank xformla if no covariates
+  if (is.null(xformla)) {
+    xformla <- ~1
+  }
 
   #-----------------------------------------------------------------------------
   # Compute all ATT(g,t)
@@ -201,8 +226,8 @@ att_gt <- function(yname,
                             nT=nT,
                             glist=glist,
                             tlist=tlist,
-                            data=df,
-                            dta=dta,
+                            data=data,
+                            n=n,
                             first.treat.name=first.treat.name,
                             yname=yname,
                             tname=tname,
@@ -222,33 +247,16 @@ att_gt <- function(yname,
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc
 
-  # create vectors to hold the results
-  group <- c()
-  att <- c()
-  tt <- c()
-  i <- 1
-
-  # matrix to hold influence function
-  # (note: this is relying on having a balanced panel,
-  # which we do currently enforce)
-  inffunc1 <- matrix(0, ncol=nG*(nT-1), nrow=nrow(dta)) 
-
-  # populate result vectors and matrices
-  for (f in 1:length(glist)) {
-    for (s in 1:(length(tlist)-1)) {
-      group[i] <- attgt.list[[i]]$group
-      tt[i] <- attgt.list[[i]]$year
-      att[i] <- attgt.list[[i]]$att
-      inffunc1[,i] <- inffunc[f,s,]
-      i <- i+1
-    }
-  }
-
+  attgt.results <- process.attgt(results)
+  group <- attgt.results$group
+  att <- attgt.results$att
+  tt <- attgt.results$tt
+  inffunc1 <- attgt.results$inf.func
+  
 
   # estimate variance
   # this is analogous to cluster robust standard errors that
   # are clustered at the unit level
-  n <- nrow(dta)
   V <- t(inffunc1)%*%inffunc1/n
 
   # if clustering along another dimension...we require using the
@@ -351,4 +359,38 @@ att_gt <- function(yname,
   # Return this list
   return(MP(group=group, t=tt, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
 
+}
+
+
+process.attgt <- function(attgt.results.list) {
+  attgt.list <- attgt.results.list$attgt
+  inffunc <- attgt.results.list$inffunc
+  nG <- length(unique(unlist(getListElement(attgt.list, "group"))))
+  nT <- length(unique(unlist(getListElement(attgt.list, "year"))))
+  # pick up number of observations from the influence function
+  # this will be flexible for panel or repeated cross sections
+  n <- length(inffunc[1,1,]) 
+  # create vectors to hold the results
+  group <- c()
+  att <- c()
+  tt <- c()
+  i <- 1
+
+  # matrix to hold influence function
+  # (note: this is relying on having a balanced panel,
+  # which we do currently enforce)
+  inffunc1 <- matrix(0, ncol=nG*nT, nrow=n) 
+
+  # populate result vectors and matrices
+  for (f in 1:nG) {
+    for (s in 1:nT) {
+      group[i] <- attgt.list[[i]]$group
+      tt[i] <- attgt.list[[i]]$year
+      att[i] <- attgt.list[[i]]$att
+      inffunc1[,i] <- inffunc[f,s,]
+      i <- i+1
+    }
+  }
+
+  list(group=group, att=att, tt=tt, inf.func=inffunc1)
 }

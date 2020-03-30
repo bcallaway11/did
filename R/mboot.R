@@ -22,7 +22,8 @@ mboot <- function(inf.func, DIDparams) {
   
   # just get n obsevations (for clustering below...)
   dta <- data[ data[,tname]==tlist[1], ]
-  n <- nrow(dta)
+
+  n <- nrow(inf.func) # this adjusts automatically to panel vs. repeated cross sections
   
   # if include id as variable to cluster on
   # drop it as we do this automatically

@@ -20,7 +20,7 @@ compute.att_gt <- function(nG,
                            glist,
                            tlist,
                            data,
-                           dta,
+                           n,
                            first.treat.name,
                            yname,
                            tname,
@@ -46,9 +46,9 @@ compute.att_gt <- function(nG,
   # number of time periods
   tlist.length <- length(tlist)
 
-  # 3-dimensional array which will store influence function
+    # 3-dimensional array which will store influence function
   # across groups and times
-  inffunc <- array(data=0, dim=c(nG,nT,nrow(dta)))
+  inffunc <- array(data=0, dim=c(nG,nT,n))
 
   # loop over groups
   for (g in 1:nG) {
@@ -91,33 +91,44 @@ compute.att_gt <- function(nG,
       #-----------------------------------------------------------------------------
       # results for the case with panel data
       #-----------------------------------------------------------------------------
+
+      #if (panel) {
+      
+      # post treatment dummy variable
+      post.treat <- 1*(glist[g]<=tlist[t+1])
+
+      # get dataset with current period and pre-treatment period
+      disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
+
+      # kind of hack, but need it to count for repeated cross sections case
+      thisdata <- data
+      
+      nevertreated <- (control.group[1] == "nevertreated")
+      # sete up control group
+      if(nevertreated){
+        # use the "never treated" group as the control group
+        disdat$C <- 1*(disdat[,first.treat.name] == 0)
+        thisdata$C <- 1*(thisdata[,first.treat.name] == 0)
+        thisdata$G <- 1*(thisdata[,first.treat.name] == glist[g])
+      }
+      if(!nevertreated){
+        # use "not yet treated as control"
+        # that is, never treated + units that are eventually treated,
+        # but not treated by the current period
+        disdat$C <- 1*((disdat[,first.treat.name] == 0) |
+                         (disdat[,first.treat.name] > tlist[t+1]))
+        thisdata$C <- 1*((thisdata[,first.treat.name] == 0) |
+                       (thisdata[,first.treat.name] > tlist[t+1]))
+        thisdata$G <- 1*(thisdata[,first.treat.name] == glist[g])
+        ## disdat$C <- 1*((disdat[,first.treat.name] == 0) +
+        ##                  (disdat[,first.treat.name] > max(disdat[, tname]))) *
+        ##   (disdat[,first.treat.name] != glist[g])
+      }
+
+      # set up dummy for particular treated group
+      disdat$G <- 1*(disdat[,first.treat.name] == glist[g])
+
       if (panel) {
-        
-        # post treatment dummy variable
-        post.treat <- 1*(glist[g]<=tlist[t+1])
-
-        # get dataset with current period and pre-treatment period
-        disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-
-        nevertreated <- (control.group[1] == "nevertreated")
-        # sete up control group
-        if(nevertreated){
-          # use the "never treated" group as the control group
-          disdat$C <- 1*(disdat[,first.treat.name] == 0)
-        }
-        if(!nevertreated){
-          # use "not yet treated as control"
-          # that is, never treated + units that are eventually treated,
-          # but not treated by the current period
-          disdat$C <- 1*((disdat[,first.treat.name] == 0) |
-                           (disdat[,first.treat.name] > tlist[t+1]))
-          ## disdat$C <- 1*((disdat[,first.treat.name] == 0) +
-          ##                  (disdat[,first.treat.name] > max(disdat[, tname]))) *
-          ##   (disdat[,first.treat.name] != glist[g])
-        }
-
-        # set up dummy for particular treated group
-        disdat$G <- 1*(disdat[,first.treat.name] == glist[g])
 
         # transform  disdat it into "cross-sectional" data where one of the columns
         # contains the change in the outcome over time.
@@ -182,30 +193,98 @@ compute.att_gt <- function(nG,
                                       covariates=covariates,
                                       boot=FALSE)
         }
+
+        # adjust influence function to account for only using
+        # subgroup to estimate att(g,t)
+        attgt$inf.func <- (n/n1)*attgt$inf.func
+
+      } else { # repeated cross sections
+
+        # total number of observations
+        n  <- nrow(data)
         
-        # save results for this att(g,t)
-        attgt.list[[counter]] <- list(att=attgt$ATT, group=glist[g], year=tlist[(t+1)], post=post.treat)
+        # pick up the indices for units that will be used to compute ATT(g,t)
+        # these conditions are (1) you are observed in the right period and
+        # (2) you are in the right group (it is possible to be observed in
+        # the right period but still not be part of the treated or control
+        # group in that period here
+        rightids <- disdat$rowid[ disdat$G==1 | disdat$C==1]
+        disidx <- (data$rowid %in% rightids)
 
-        # recover the influence function
-        # start with vector of 0s because influence function
-        # for units that are not in G or C will be equal to 0
-        inf.func <- rep(0, n)
+        # pick up the data that will be used to compute ATT(g,t)
+        disdat <- thisdata[disidx,]
 
-        # n/n1 adjusts for estimating the
-        # att_gt only using observations from groups
-        # G and C
-        
-        inf.func[disidx] <- (n/n1)*attgt$inf.func
+        # drop missing factors
+        disdat <- base::droplevels(disdat)
 
-        # save it in influence function matrix
-        inffunc[g,t,] <- inf.func
+        # give short names for data in this iteration
+        G <- disdat$G
+        C <- disdat$C
+        Y <- disdat$y
+        post <- 1*(disdat[,tname] == tlist[t+1])
+        #n1 <- sum(thisdata$G + thisdata$C) #nrow(disdat) # num obs. for computing ATT(g,t)
+        n1 <- sum(G+C)
+        w <- disdat$w
 
-        # update counter
-        counter <- counter+1
-      } # end panel 
+        # matrix of covariates
+        covariates <- model.matrix(xformla, data=disdat)
+
+
+        #-----------------------------------------------------------------------------
+        # code for actually computing att(g,t)
+        #-----------------------------------------------------------------------------
+
+        if (class(estMethod) == "function") {
+          # user-specified function
+          attgt <- estMethod(Y1=Ypost, Y0=Ypre,
+                             treat=G,
+                             covariates=covariates)
+        } else if (estMethod == "ipw") {
+          # inverse-probability weights
+          attgt <- DRDID::ipw_did_rc(y=Y,
+                                     post=post,
+                                     D=G,
+                                     covariates=covariates,
+                                     boot=FALSE)
+        } else if (estMethod == "reg") {
+          # regression
+          attgt <- DRDID::reg_did_rc(y=Y,
+                                     post=post,
+                                     D=G,
+                                     covariates=covariates,
+                                     boot=FALSE)
+        } else {
+          # doubly robust, this is default
+          attgt <- DRDID::drdid_rc(y=Y,
+                                      post=post,
+                                      D=G,
+                                      covariates=covariates,
+                                      boot=FALSE)
+        }
+
+        attgt$inf.func <- (n/n1)*attgt$inf.func
+      } #end panel if
+      
+      # save results for this att(g,t)
+      attgt.list[[counter]] <- list(att=attgt$ATT, group=glist[g], year=tlist[(t+1)], post=post.treat)
+
+      # recover the influence function
+      # start with vector of 0s because influence function
+      # for units that are not in G or C will be equal to 0
+      inf.func <- rep(0, n)
+
+      # n/n1 adjusts for estimating the
+      # att_gt only using observations from groups
+      # G and C
+      inf.func[disidx] <- attgt$inf.func
+
+      # save it in influence function matrix
+      inffunc[g,t,] <- inf.func
+
+      # update counter
+      counter <- counter+1
     } # end looping over t
-
-  }
-
+  } # end looping over g
+  
   return(list(attgt.list=attgt.list, inffunc=inffunc))
 }

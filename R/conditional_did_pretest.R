@@ -32,270 +32,497 @@
 #'
 #' @return list containing test results
 #' @export
-mp.spatt.test <- function(formla, xformlalist=NULL, data, tname,
-                          weightfun=NULL, w=NULL, panel=FALSE,
-                          idname=NULL, first.treat.name,
-                          alp=0.05, method="logit",
-                          biters=100, clustervarlist=NULL,
-                          pl=FALSE, cores=2) {
+conditional_did_pretest <- function(yname, 
+                                    tname,
+                                    idname=NULL,
+                                    first.treat.name,
+                                    xformla,
+                                    data,
+                                    control.group=c("nevertreated","notyettreated"),
+                                    aggte=TRUE,
+                                    maxe = NULL,
+                                    mine = NULL,
+                                    w=NULL,
+                                    alp=0.05,
+                                    bstrap=T, biters=1000, clustervars=NULL,
+                                    cband=T,
+                                    printdetails=TRUE,
+                                    seedvec=NULL, pl=FALSE, cores=1,method="logit",
+                                    estMethod="dr", panel=TRUE,
+                                    weightfun=NULL) {
 
 
-    data$y <- data[,BMisc::lhs.vars(formla)] ##data[,as.character(formula.tools::lhs(formla))]
-    ##figure out the dates and make balanced panel
-    tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
+  #-----------------------------------------------------------------------------
+  # Data pre-processing and error checking
+  #-----------------------------------------------------------------------------
 
-    flist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
-    flist <- flist[flist>0]
+  # set control group
+  control.group <- control.group[1]
+  
+  # store parameters for passing around later
+  dp <- DIDparams(yname=yname,
+                  tname=tname,
+                  idname=idname,
+                  first.treat.name=first.treat.name,
+                  xformla=xformla,
+                  data=data,
+                  control.group=control.group,
+                  maxe=maxe,
+                  mine=mine,
+                  w=w,
+                  alp=alp,
+                  bstrap=bstrap,
+                  biters=biters,
+                  clustervars=clustervars,
+                  cband=cband,
+                  printdetails=printdetails,
+                  seedvec=seedvec,
+                  pl=pl,
+                  cores=cores,
+                  method=method,
+                  estMethod=estMethod,
+                  panel=panel)
+  
+  # make sure dataset is a data.frame
+  # this gets around RStudio's default of reading data as tibble
+  if (!all( class(data) == "data.frame")) {
+    #warning("class of data object was not data.frame; converting...")
+    data <- as.data.frame(data)
+  }
+  # weights if null
+  if(is.character(w))  w <- data[, as.character(w)]
+  if(is.null(w)) {
+    w <- as.vector(rep(1, nrow(data)))
+  } else if(min(w) < 0) stop("'w' must be non-negative")
+  data$w <- w
 
+  # Outcome variable will be denoted by y
+  data$y <- data[, yname]
+  
+  # figure out the dates
+  # list of dates from smallest to largest
+  tlist <- unique(data[,tname])[order(unique(data[,tname]))] 
+  # list of treated groups (by time) from smallest to largest
+  glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
 
-    ##################################
-    ## eventually can put this in its own functions as it is duplicate
-    ## code for the estimations
-    ## do some error checking
-    if (!is.numeric(tlist)) {
-        warning("not guaranteed to order time periods correclty if they are not numeric")
-    }
-
-    ## check that first.treat doesn't change across periods for particular individuals
-    if (!all(sapply( split(data, data[,idname]), function(df) {
-        length(unique(df[,first.treat.name]))==1
-    }))) {
-        stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
-    }
-    ####################################
-
-    tlen <- length(tlist)
-    flen <- length(flist)
-    if (panel) {
-        data <- makeBalancedPanel(data, idname, tname)
-        dta <- data[ data[,tname]==tlist[1], ]  ## use this for the influence function
+  # Check if there is a never treated grup
+  if ( length(glist[glist==0]) == 0) {
+    if(control.group=="nevertreated"){
+      stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select control.group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
     } else {
-        warning("not guaranteed to work correctly for repeated cross sections")
-        dta <- data ## this is for repeated cross sections case though
-        ## i'm not sure it's working correctly overall
+      warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated las, nor any ATT(g,t) for t higher than or equal to the largest g.\n \nIf you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
+      # Drop all time periods with time periods >= latest treated
+      data <- base::subset(data,(data[,tname] < max(glist)))
+      # Replace last treated time with zero
+      lines.gmax = data[,first.treat.name]==max(glist)
+      data[lines.gmax,first.treat.name] <- 0
+
+      ##figure out the dates
+      tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
+      # Figure out the groups
+      glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
     }
+  }
 
-    n <- nrow(dta)
+  # Only the treated groups
+  glist <- glist[glist>0]
+  
+  # check for groups treated in the first period and drop these
+  mint <- tlist[1]
+  nfirstperiod <- nrow( data[ data[,first.treat.name] == mint, ] )
+  if ( nfirstperiod > 0 ) {
+    warning(paste0("dropping ", nfirstperiod, " units that were already treated in the first period...this is normal"))
+    data <- data[ data[,first.treat.name] != mint, ]
+  }
 
-    if (is.null(weightfun)) {
-        weightfun <- expf
+  
+  if (!pl) {
+    cores <- 1
+  }
+
+  ##################################
+  ## do some error checking
+  if (!is.numeric(tlist)) {
+    warning("not guaranteed to order time periods correclty if they are not numeric")
+  }
+  ## check that first.treat doesn't change across periods for particular individuals
+  if (!all(sapply( split(data, data[,idname]), function(df) {
+    length(unique(df[,first.treat.name]))==1
+  }))) {
+    stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+  }
+  ####################################
+  # How many time periods
+  nT <- length(tlist)
+  # How many treated groups
+  nG <- length(glist)
+
+  
+  #################################################################
+  # Size of each group (divide by lenth(tlist because we are working with long data))
+  #gsize <- aggregate(data[,"w"], by=list(data[,first.treat.name]),
+  #                   function(x) sum(x)/length(tlist))
+  #################################################################
+
+  # setup data in panel case
+  if (panel) {
+    # make it a balanced data set
+    data <- BMisc::makeBalancedPanel(data, idname, tname)
+
+    # create an n-row data.frame to hold the influence function later
+    #dta <- data[ data[,tname]==tlist[1], ]  
+
+    n <- nrow(data[ data[,tname]==tlist[1], ]) # use this for influence function
+    
+    # check that first.treat doesn't change across periods for particular individuals
+    if (!all(sapply( split(data, data[,idname]), function(df) {
+      length(unique(df[,first.treat.name]))==1
+    }))) {
+      stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
     }
+  } else {
 
-    xformlalist <- lapply(xformlalist, function(ff) if (is.null(ff)) ~1 else ff)
+    # n-row data.frame to hold the influence function
+    data$rowid <- seq(1:nrow(data))
+    n <- nrow(data)
+    #dta <- data
+  }
 
-    thecount <- 1
-    innercount <- 1
+  # put in blank xformla if no covariates
+  if (is.null(xformla)) {
+    xformla <- ~1
+  }
 
-    outlist <- lapply(xformlalist, function(xformla) {
+  if (is.null(weightfun)) {
+    weightfun <- indicator
+  }
 
-        ##
-        ##X1 <- apply(model.matrix(xformla, data), 2, function(col) {
-        ##    pnorm(col)
-        ##})## for the entire dataset
-        X <- apply(model.matrix(xformla, dta), 2, function(col) {
-            ##pnorm(col)
-            ecdf(col)(col)
-        })
+  #xformlalist <- lapply(xformlalist, function(ff) if (is.null(ff)) ~1 else ff)
 
-        ## for debugging: X <- as.matrix(X[1:100,])
+  thecount <- 1
+  innercount <- 1
 
-        X <- unique(X)
+  #outlist <- lapply(xformlalist, function(xformla) {
 
-        X1 <- apply(model.matrix(xformla, dta), 2, function(col) {
-            ecdf(col)(col)
-            ##pnorm(col)
-        })
+  ##
+  ##X1 <- apply(model.matrix(xformla, data), 2, function(col) {
+  ##    pnorm(col)
+  ##})## for the entire dataset
 
-        thetlist <- list()
-        pscorelist <- list()
-        for (f in 1:flen) {
+  dta <- data[ data[,tname]==tlist[1], ]
+  
+  ## X <- apply(model.matrix(xformla, dta), 2, function(col) {
+  ##   ##pnorm(col)
+  ##   ecdf(col)(col)
+  ## })
 
-            disdat <- data[(data[,tname]==tlist[1]),]
+  ## #for debugging:
+  ## #X <- as.matrix(X[1:100,])
 
-            disdat$C <- 1*(disdat[,first.treat.name] == 0)
+  ## #X <- unique(X) # do we want to do this...
+  
+  ## X1 <- apply(model.matrix(xformla, dta), 2, function(col) {
+  ##   ecdf(col)(col)
+  ##   ##pnorm(col)
+  ## })
 
-            disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
+  X <- model.matrix(xformla, dta)
+  X1 <- X
 
-            disdat <- droplevels(disdat)
+  #for debugging:
+  # X <- as.matrix(X[1:100,])
+  
+  ## thetlist <- list()
+  ## pscorelist <- list()
+  ## for (g in 1:nG) {
 
-            pformla <- xformla
-            pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
-            pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                              data=subset(disdat, C+G==1))
-            thetlist[[f]] <- coef(pscore.reg)
-            pscorelist[[f]] <- predict(pscore.reg, newdata=disdat, type="response")
-        }
+  ##   disdat <- data[(data[,tname]==tlist[1]),]
 
+  ##   disdat$C <- 1*(disdat[,first.treat.name] == 0)
 
+  ##   disdat$G <- 1*(disdat[,first.treat.name] == flist[g])
 
-        cat("\n Step", thecount, "of", length(xformlalist), ":.....................\n")
-        thecount <<- thecount+1
-        out <- pbapply::pblapply(1:nrow(X), function(i) {
-            www <- as.numeric(weightfun(X1, X[i,]))##exp(X1%*%X[i,])##plogis(X1%*%X[i,]) ##(1*(apply((X1 <= X[i,]), 1, all)))
-            yname <- BMisc::lhs.vars(formla) ##as.character(formula.tools::lhs(formla))
+  ##   disdat <- droplevels(disdat)
 
-            fatt <- list()
-            counter <- 1
-            inffunc <- array(data=0, dim=c(sum(sapply(flist, function(g) 1*(g>tlist[-1]))), nrow(dta)))
-            Jout <- c()
-            groupout <- c()
-            tout <- c()
-            for (f in 1:flen) {
-                for (t in 1:(tlen-1)) {
-                    pret <- t
-                    ## if (flist[f]<=tlist[(t+1)]) {
-                    ##     pret <- tail(which(tlist < flist[f]),1) ## remember, this is just an index
-                    ## }
+  ##   pformla <- xformla
+  ##   pformla <- BMisc::toformula("G", BMisc::rhs.vars(pformla))##formula.tools::lhs(pformla) <- as.name("G")
+  ##   pscore.reg <- glm(pformla, family=binomial(link="logit"),
+  ##                     data=subset(disdat, C+G==1))
+  ##   thetlist[[g]] <- coef(pscore.reg)
+  ##   pscorelist[[g]] <- predict(pscore.reg, newdata=disdat, type="response")
+  ## }   
 
-                    if (flist[f] <= tlist[t+1]) break
-
-                    disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
-                    disdat <- panel2cs(disdat, yname, idname, tname)
-
-                    disdat$C <- 1*(disdat[,first.treat.name] == 0)
-
-                    disdat$G <- 1*(disdat[,first.treat.name] == flist[f])
-
-                    disdat <- droplevels(disdat)
-
-                    ## try to do tthis his outside of the loop
-                    ## pformla <- xformla
-                    ## formula.tools::lhs(pformla) <- as.name("G")
-                    ## pscore.reg <- glm(pformla, family=binomial(link="logit"),
-                    ##                   data=subset(disdat, C+G==1))
-                    ## thet <- coef(pscore.reg)
-                    ## pscore <- predict(pscore.reg, newdata=disdat, type="response")
-                    thet <-thetlist[[f]]
-                    pscore <- pscorelist[[f]]
-
-                    G <- disdat$G
-                    C <- disdat$C
-                    dy <- disdat$dy
-                    x <- model.matrix(xformla, data=disdat)
-                    n <- nrow(disdat)
-
-                    Jwg1 <- G/pscore
-                    Jwg <- Jwg1/mean(Jwg1)
-                    Jwc1 <- pscore*C/(1-pscore)
-                    Jwc <- Jwc1/mean(Jwc1)
-                    ##Jwc1 <- C/(1-pscore)
-                    ##Jwc <- Jwc1/mean(Jwc1)
-
-                    J <- mean( (Jwg - Jwc)*www*dy )
-
-                    fatt[[counter]] <- list(J=J, group=flist[f], year=tlist[(t+1)], post=1*(flist[f]<=tlist[(t+1)]))
-
-                    ## get the influence function
-
-                    psig <- Jwg*(www*dy - mean(Jwg*www*dy))
-
-                    M <- as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * (www*dy - mean(Jwc*www*dy)) * x), 2, mean) / mean(Jwc1))
-                    A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
-                    A1 <- (t(A1*x)%*%x/n)
-                    A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
-                    A <- A2%*%MASS::ginv(A1)
-                    psic <- Jwc*(www*dy - mean(Jwc*www*dy)) + A%*%M
-
-                    ## Jg <- mean(Jwg*dy*www)
-                    ## Jc <- mean(Jwc*dy*www)
-
-                    ## Mg <- as.matrix(apply(as.matrix((G/(pscore))^2 * g(x,thet) * ( (dy*www - Jg) )* x), 2, mean) / mean( G/pscore  ))
-
-                    ## Mc <- -as.matrix(apply(as.matrix((C/(1-pscore))^2 * g(x,thet) * ( (dy*www - Jc)) * x), 2, mean) / mean( C / (1-pscore) ) )
-
-                    ## A1 <- (G + C)*g(x,thet)^2/(pscore*(1-pscore))
-                    ## A1 <- (t(A1*x)%*%x/n)
-                    ## A2 <- ((G + C)*(G-pscore)*g(x,thet)/(pscore*(1-pscore)))*x
-                    ## A <- A2%*%MASS::ginv(A1)
-
-                    ## psig <- Jwg*dy*www - A%*%Mg
-                    ## psic <- Jwc*dy*www - A%*%Mc
-
-                    inffunc[counter,] <- psig - psic
-                    Jout[counter] <- J
-                    groupout[counter] <- flist[f]
-                    tout[counter] <- tlist[t+1]
-
-                    counter <- counter+1
-                }
-            }
-
-            list(J=Jout, group=groupout, t=tout, inffunc=inffunc)
-
-        })
+  
+  
+  thecount <<- thecount+1
+  n.preperiods <- sum(sapply(glist, function(g) 1*(g>tlist[-1])))
+  inffunc1 <- array(data=0, dim=c(n.preperiods, n, n))
 
 
-        outinffunc <- lapply(out, function(o) t(o$inffunc))
+  cat("Step 1 of 2: Computing test statistic....\n")
+  out <- pbapply::pblapply(1:nrow(X), function(i) {
+    # these are the weights for the conditional moment test
+    # all this is super hack and specific to indicator weighting
+    www <- as.numeric(weightfun(X1, X[i,]))
+    rightids <- dta[,idname][www==1]
+    thisdata <- data
+    thisdata[,yname] <- 0
+    thisdata[ thisdata[,idname] %in% rightids,yname] <- data[ thisdata[,idname] %in% rightids,yname] # this is only going to work if use indicator weights, I think (otherwise you will multiply by www twice
 
-        J <- t(sapply(out, function(o) o$J))
-        KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
-        CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
-
-        if (!pl) {
-            cores <- 1
-        }
-
-        innercount <<- 1
-        lapply(clustervarlist, function(clustervars) {
-
-            cat("\n >>> Inner Step", innercount, "of", length(clustervarlist), ":.....................\n")
-            innercount <<- innercount+1
-            bout <- pbapply::pblapply(1:biters, cl=cores, FUN=function(b) {
-                Jb <- t(sapply(outinffunc, function(inffunc1) {
-                    ## new version
-                    if (idname %in% clustervars) {
-                        clustervars <- clustervars[-which(clustervars==idname)]
-                    }
-                    ##clustervars <- clustervars[-which(clustervars==idname)]
-                    if (length(clustervars) > 1) {
-                        stop("can't handle that many cluster variables")
-                    }
-                    if (length(clustervars) > 0) {
-                        n1 <- length(unique(dta[,clustervars]))
-                        Vb <- matrix(sample(c(-1,1), n1, replace=T))
-                        Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-                        Ub <- data.frame(dta[,clustervars])
-                        Ub <- Vb[match(Ub[,1], Vb[,1]),]
-                        Ub <- Ub[,-1]
-                    } else {
-                        Ub <- sample(c(-1,1), n, replace=T)
-                    }
-                    ##Ub <- sample(c(-1,1), n, replace=T)
-                    ##Rb <- sqrt(n)*(apply(Ub*(inffunc1), 2, mean))
-                    ##Rb
-                    Jb1 <- apply(Ub*inffunc1, 2, mean)
-                    Jb1
-                }))
-
-                ##bres <- t(simplify2array(bout))
-                ##V <- cov(bres)
-                CvMb <- n*sum(apply(Jb, 2, function(j) mean( j^2 )))
-                KSb <- sqrt(n) * sum(apply(Jb,2,function(j) max(abs(j))))
-                list(CvMb=CvMb, KSb=KSb)
-            })
-
-            CvMb <- unlist(lapply(bout, function(b1) b1$CvMb))
-            CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
-            CvMpval <- 1-ecdf(CvMb)(CvM)
-
-            KSb <- unlist(lapply(bout, function(b1) b1$KSb))
-            KSocval <- quantile(KSb, probs=(1-alp), type=1)
-            KSpval <- 1-ecdf(KSb)(KS)
+    Jres <- compute.att_gt(nG=nG,
+                           nT=nT,
+                           glist=glist,
+                           tlist=tlist,
+                           data=thisdata,
+                           n=n,
+                           first.treat.name=first.treat.name,
+                           yname=yname,
+                           tname=tname,
+                           w=w,
+                           idname=idname,
+                           xformla=xformla,
+                           method=method,
+                           seedvec=seedvec,
+                           pl=FALSE,
+                           cores=1,
+                           printdetails=FALSE,
+                           control.group="nevertreated",
+                           estMethod=estMethod,
+                           panel=panel)
 
 
-            ## bres <- lapply(bout, simplify2array)
-            ## CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
-            ## CvMb <- n*apply(CvMb, 2, sum)
-            ## CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
-            ## CvMpval <- 1-ecdf(CvMb)(CvM)
-            ## bres <- sapply(bres, function(b) apply(b, 1, function(bb) max(abs(bb))))
-            ## KSb <- sqrt(n)*apply(bres, 2, sum)
-            ## KSocval <- quantile(KSb, probs=(1-alp), type=1)
-            ## KSpval=1-ecdf(KSb)(KS)
-            out <- MP.TEST(CvM=CvM, CvMb=CvMb, CvMcval=CvMocval, CvMpval=CvMpval, KS=KS, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervars=clustervars, xformla=xformla)
-            out
-        })
-    })
+    J.results <- process.attgt(Jres)
+    group <- J.results$group
+    att <- J.results$att
+    tt <- J.results$tt
+    inf.func <- J.results$inf.func
 
-    return(unlist(outlist, recursive=FALSE))
+    list(J=att, group=group, t=tt, inf.func=inf.func)
+  }, cl=cores)
+
+  
+
+  # outinffunc <- lapply(out, function(o) t(o$inf.func))
+  Jinf.func <- simplify2array(getListElement(out, "inf.func"))
+  
+  J <- t(sapply(out, function(o) o$J))
+  #KS <- sqrt(n) * sum(apply(J,2,function(j) max(abs(j))))
+  #CvM <- n*sum(apply(J, 2, function(j) mean( j^2 )))
+  # average J^2 across x, and then sum across g and t
+  CvM <- n*sum(apply(J^2, 2, mean)) 
+  
+
+  
+  #boot.res <- test.empboot(dp)
+  cat("Step 2 of 2: Simulating limiting distribution of test statistic....\n")
+  boot.res <- test.mboot(Jinf.func, dp, cores=cores)
+
+
+  ## #some debugging code
+  ## ddd <- 5
+  ## bout <- sapply(1:100, function(b) {
+
+  ##   Jstar <- apply(sample(c(-1,1), size=n, replace=TRUE)*Jinf.func[,ddd,], 2, mean)
+  ##   mean((sqrt(n)*Jstar)^2)
+  ## })
+
+  ## ts <- mean((sqrt(n)*J[,ddd])^2)
+  ## 1-ecdf(bout)(ts)
+
+
+  ## ts2.inner <- apply( (sqrt(n)*J)^2, 2, mean)
+  ## ts2 <- sum(ts2.inner)
+  ## bout2 <- sapply(1:100, function(b) {
+
+  ##   Jstar <- t(apply(sample(c(-1,1), size=n, replace=TRUE)*Jinf.func[,,], c(2,3), mean))
+  ##   cvm.inner <- apply((sqrt(n)*Jstar)^2, 2, mean)
+  ##   sum(cvm.inner)
+  ## })
+  ## 1-ecdf(bout2)(ts2)
+ 
+  
+  CvMb <- boot.res$bres
+  ## CvMb <- unlist(lapply(bout, function(b1) b1$CvMb))
+  CvM.crit.val <- boot.res$crit.val
+  CvMpval <- 1-ecdf(CvMb)(CvM)
+
+  ## KSb <- unlist(lapply(bout, function(b1) b1$KSb))
+  ## KSocval <- quantile(KSb, probs=(1-alp), type=1)
+  ## KSpval <- 1-ecdf(KSb)(KS)
+
+
+  ## bres <- lapply(bout, simplify2array)
+  ## CvMb <- sapply(bres, function(b) apply(b, 1, function(bb) mean(bb^2)))
+  ## CvMb <- n*apply(CvMb, 2, sum)
+  ## CvMocval <- quantile(CvMb, probs=(1-alp), type=1)
+  ## CvMpval <- 1-ecdf(CvMb)(CvM)
+  ## bres <- sapply(bres, function(b) apply(b, 1, function(bb) max(abs(bb))))
+  ## KSb <- sqrt(n)*apply(bres, 2, sum)
+  ## KSocval <- quantile(KSb, probs=(1-alp), type=1)
+  ## KSpval=1-ecdf(KSb)(KS)
+  out <- list(CvM=CvM, CvMb=CvMb, CvMcval=CvM.crit.val, CvMpval=CvMpval)#KS=, KSb=KSb, KScval=KSocval, KSpval=KSpval, clustervars=clustervars, xformla=xformla)
+  out
+}
+
+
+
+#' @title expf
+#'
+#' @description exponential weighting function
+#'
+#' @param X matrix of X's from the data
+#' @param u a particular value to multiply times the X's
+#'
+#' @return numeric vector
+#' @examples
+#' data(mpdta)
+#' dta <- subset(mpdta, year==2007)
+#' X <- model.matrix(~lpop, data=dta)
+#' X <- expf(X, X[1,])
+#'
+#' @export
+expf <- function(X, u) {
+    exp(X%*%u)
+}
+
+#' @title indicator
+#'
+#' @description indicator weighting function
+#'
+#' @param X matrix of X's from the data
+#' @param u a particular value to compare X's to
+#'
+#' @return numeric vector
+#'
+#' @examples
+#' data(mpdta)
+#' dta <- subset(mpdta, year==2007)
+#' X <- model.matrix(~lpop, data=dta)
+#' X <- indicator(X, X[1,])
+#'
+#' @export
+indicator <- function(X, u) {
+  # check if each element in each row of X <= corresponding element in u
+  cond <- t(apply( X, 1, function(x) x <= u))
+  # check if entire row of X <= entire row of u
+  1*apply(cond, 1, all)
+  #apply(X <= u, 1, function(b) 1*all(b))
+}
+
+
+test.mboot <- function(inf.func, DIDparams, cores=1) {
+
+  # setup needed variables
+  data <- DIDparams$data
+  idname <- DIDparams$idname
+  clustervars <- DIDparams$clustervars
+  biters <- DIDparams$biters
+  tname <- DIDparams$tname
+  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  alp <- DIDparams$alp
+  
+  # just get n obsevations (for clustering below...)
+  dta <- data[ data[,tname]==tlist[1], ]
+  n <- nrow(dta)
+  
+  # if include id as variable to cluster on
+  # drop it as we do this automatically
+  if (idname %in% clustervars) {
+    clustervars <- clustervars[-which(clustervars==idname)]
+  }
+
+  # we can only handle up to 2-way clustering
+  # (in principle could do more, but not high priority now)
+  if (length(clustervars) > 1) {
+    stop("can't handle that many cluster variables")
+  }
+
+  # bootstrap
+  bout <- pbapply::pbsapply(1:biters, FUN=function(b) {
+    if (length(clustervars) > 0) {
+      # draw Rademachar weights
+      # these are the same within clusters
+      # see paper for details
+      n1 <- length(unique(dta[,clustervars]))
+      Vb <- matrix(sample(c(-1,1), n1, replace=T))
+      Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+      Ub <- data.frame(dta[,clustervars])
+      Ub <- Vb[match(Ub[,1], Vb[,1]),]
+      Ub <- Ub[,-1]
+    } else {
+      Ub <- sample(c(-1,1), n, replace=T)
+    }
+    # multiply weights onto influence function
+    Jb <- t(apply(Ub*inf.func, c(2,3), mean))
+    CvMb <- n*sum(apply(Jb^2, 2, mean))
+    # return bootstrap draw
+    CvMb
+  }, cl=cores)
+  # bootstrap results
+  ## bres <- t(simplify2array(bout))
+  ## # bootstrap variance matrix 
+  ## # V <- cov(bres)
+  ## # bootstrap standard error
+  ## bSigma <- apply(bres, 2,
+  ##                 function(b) (quantile(b, .75, type=1, na.rm = T) -
+  ##                                quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+  ## # critical value for uniform confidence band
+  ## bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
+  crit.val <- quantile(bout, 1-alp, type=1)
+
+  list(bres=bout, crit.val=crit.val)
+}
+
+
+
+test.empboot <- function(inf.func, DIDparams) {
+
+  # setup needed variables
+  data <- DIDparams$data
+  idname <- DIDparams$idname
+  clustervars <- DIDparams$clustervars
+  biters <- DIDparams$biters
+  tname <- DIDparams$tname
+  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  alp <- DIDparams$alp
+  
+  # just get n obsevations (for clustering below...)
+  dta <- data[ data[,tname]==tlist[1], ]
+  n <- nrow(dta)
+  
+  # bootstrap
+  bout <- pbapply::pbsapply(1:biters, FUN=function(b) {
+    if (length(clustervars) > 0) {
+      stop("no clustering allowed")
+      # draw Rademachar weights
+      # these are the same within clusters
+      # see paper for details
+      n1 <- length(unique(dta[,clustervars]))
+      Vb <- matrix(sample(c(-1,1), n1, replace=T))
+      Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
+      Ub <- data.frame(dta[,clustervars])
+      Ub <- Vb[match(Ub[,1], Vb[,1]),]
+      Ub <- Ub[,-1]
+    } else {
+      bdata <- BMisc::blockBootSample(data, idname)
+    }
+    # multiply weights onto influence function
+    Jb <- t(apply(Ub*inf.func, c(2,3), mean))
+    CvMb <- n*sum(apply(Jb^2, 2, mean))
+    # return bootstrap draw
+    CvMb
+  })
+  # bootstrap results
+  ## bres <- t(simplify2array(bout))
+  ## # bootstrap variance matrix 
+  ## # V <- cov(bres)
+  ## # bootstrap standard error
+  ## bSigma <- apply(bres, 2,
+  ##                 function(b) (quantile(b, .75, type=1, na.rm = T) -
+  ##                                quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+  ## # critical value for uniform confidence band
+  ## bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
+  crit.val <- quantile(bout, 1-alp, type=1)
+
+  list(bres=bout, crit.val=crit.val)
 }
