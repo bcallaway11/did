@@ -1,6 +1,12 @@
 template:
   params:
-    bootswatch: united
+    bootswatch: sandstone
+
+home:
+  links:
+    - text: Source Code
+      href: https://github.com/bcallaway11/did
+
 reference:
   - title: "Difference in Differences Methods"
     desc: >
