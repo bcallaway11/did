@@ -1,5 +1,5 @@
 ---
-title: "DID with Multiple Time Periods"
+title: "Introduction to DID with Multiple Time Periods"
 author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -15,8 +15,6 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
-
-# DID with Multiple Time Periods
 
 Difference in differences is one of the most common approaches for trying to identifying and estimate the causal effect of participating in a treatment on some outcome.
 
@@ -74,6 +72,8 @@ That is, the $ATT$ is the difference between the mean change in outcomes over ti
 
 ### Two way fixed effects regressions
 
+Now let's move to a more general case where there are $\mathcal{T}$ total time periods.  Denote particular time periods by $t$ where $t=1,\ldots,\mathcal{T}$.
+
 By far the most common approach to *trying* to estimate the effect of a binary treatment in this setup is the two way fixed effects regression (TWFE).  This is a regression like
 $$
 Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
@@ -105,6 +105,13 @@ And this issue can have potentially severe consequences.  For example, it is pos
 [Baker (2019)](https://andrewcbaker.netlify.com/2019/09/25/difference-in-differences-methodology/) has a really nice (and accessible) discussion of these issues in more detail.
 
 
+## Treatment Effects in Difference in Differences Designs with Multiple Periods
+
+In light of the potential problems with TWFE regressions in DID designs with multiple periods, are there alternative approaches that can be used in this case?
+
+Yes, and it turns out that it is not all that complicated!
+
+To fix ideas, let's provide some extended notation and be clear about the identifying assumptions that we are going to make.
 
 **Notation**
 
@@ -112,17 +119,34 @@ And this issue can have potentially severe consequences.  For example, it is pos
 
 * $Y_{it}(g)$ is individual $i$'s potential outcome in time period $t$ if they become treated in period $g$.
 
-* $G_i$ is the time period when individual $i$ becomes treated (often *groups* are defined by the time period when a unit becomes treated; hence, the $G$ notation).  Set $G_i = 0$ for individuals that are never treated.
+* $G_i$ is the time period when individual $i$ becomes treated (often *groups* are defined by the time period when a unit becomes treated; hence, the $G$ notation).
 
-* $Y_{it}$ is individual $i$'s observed outcome in time period $t$.  It is given by $Y_{it} = \indicator{G_i = 0} Y_{it}(0) + \indicator{G_i = g} \indicator{G_i \leq t} Y_{it}(g)$.  The notation here is a bit complicated, but in words, the observed outcome in period $t$ is an untreated potential outcome for individuals that are never treated and for individuals that are not treated yet in period $t$.  Otherwise (i.e., in time periods where individual $i$ is already treated), we observe their treated potential outcome (which can depend on *when* they became treated)
+* $C_i$ is an indicator variable for whether or not an individuals is in the untreated group (it is possible for the control group to change across different time periods, but, to keep things simple here, just consider the case where we use units that never participate in the treatment as the control group).
+
+* $Y_{it}$ is individual $i$'s observed outcome in time period $t$.  For individuals in the untreated group, $Y_{it} = Y_{it}(0)$ in all time periods.  For individuals in other groups, we observe $Y_{it} = \mathbf{1}\{ G_i > t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} \mathbf{1}\{G_i \leq t\} Y_{it}(G_i)$.  The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on *when* they became treated).
 
 * $X_i$ vector of covariates
 
-The main identifying assumption in DID designs is the parallel trends assumption.
+### Main Assumptions
+
+**Parallel Trends Assumption**
+For all $g=2,...,\mathcal{T}$, $t=2,...,\mathcal{T}$ with $g \leq t$,
+$$
+  E[\Delta Y_t(0) | G=g] = E[\Delta Y_t(0) | C=1]
+$$
+
+This is a natural extension of the parallel trends assumption in the two period and two group case.  It says that, in the absence of treatment, trends in untreated potential outcomes would be the same across groups.  It also assumes it only when $g \leq t$ -- these are post-treatment periods for units in group $g$.
+
+**Staggered Treatment Adoption Assumption**
+Let $D_{it} = 1$ if an individual participates in the treatment and $D_{it}=0$ otherwise.  Then, for $t=1,...,\mathcal{T}-1$, $D_{it} = 1 \implies D_{it+1} = 1$.
+
+Staggered treatment adoption implies that once a unit participates in the treatment, they remain in the treatment.  This is a leading case in many applications in economics.  For example, it would be the case for policies that roll out to different locations over some period of time.  It would also be the case for many individual-level treatments that have a "scarring" effect.  For example, in the context of job training, most applications consider participating in the treatment *ever* as defining treatment, not participating in some job training program year after year.  This assumption is what allows us to define groups by treatment timing.  
 
 ## Group-Time Average Treatment Effects
 
-A natural way to generalize the two period - two group case is to define *group-time average treatment effects*:
+The above assumptions are natural extensions of the identifying assumptions in the two period and two group case to the multiple period case.  
+
+Likewise, a natural way to generalize the parameter of interest (the ATT) from the two period and two group case to the multiple period case is to define **group-time average treatment effects**:
 
 $$
   ATT(g,t) = E[Y_t(g) - Y_t(0) | G=g]
@@ -132,9 +156,15 @@ This is the average effect of participating in the treatment for individuals in 
 
 To give a couple more examples, suppose that a researcher has access to three time periods.  Then, $ATT(g=2,t=3)$ is the average effect of participating in the treatment for the group of individuals that become treated in time period 2 in time period 3.  Similarly, $ATT(g=3,t=3)$ is the average effect of participating in the treatment for the group of individuals that become treated in time period 3 in time period 3.
 
-It is also possible to extend the parallel trends assumption to the case with more than two time periods.
+**Identification of Group-Time Average Treatment Effects**
+
+Under the parallel trends assumption, it is straightforward to show that group-time average treatment effects are identified.
 
 
-## Event Studies
+These group-time average treatment effects are the building blocks of understanding the effect of participating in a treatment in DID designs with multiple time periods.  This vignette has covered basic background issues on DID with multiple periods.  Callaway and Sant'Anna (2019) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](articles/index.html)
 
-### Common Pitfalls
+* Parallel trends assumptions that hold only after conditioning on covariates
+
+* How to aggregate group-time average treatment effects into a single summary treatment effect parameter, event study plot, as well as other aggregations
+
+* How to pre-test the parallel trends assumption underlying the DID approach

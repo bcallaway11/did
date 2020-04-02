@@ -8,14 +8,16 @@ License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Imports:
-    BMisc (>= 1.3.1),
+    BMisc (>= 1.4.1),
     MASS,
     pbapply,
     stats,
     ggplot2,
     knitr,
     utils,
-    gridExtra
+    gridExtra,
+    plm,
+    DRDID
 RoxygenNote: 7.1.0
 VignetteBuilder: knitr
 Suggests: 

@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>compute.att_gt — compute.att_gt • did</title>
+<title>Compute Group-Time Average Treatment Effects — compute.att_gt • did</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -19,7 +19,7 @@
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/sandstone/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
@@ -46,7 +46,7 @@
 
 
 
-<meta property="og:title" content="compute.att_gt — compute.att_gt" />
+<meta property="og:title" content="Compute Group-Time Average Treatment Effects — compute.att_gt" />
 <meta property="og:description" content="compute.att_gt does the main work for computing
  mutliperiod group-time average treatment effects" />
 <meta property="og:image" content="/logo.png" />
@@ -88,37 +88,13 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">User Guides</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-    <li>
-      <a href="../articles/did-basics.html">Introduction to the did Package</a>
-    </li>
-    <li>
-      <a href="../articles/multi-period-did.html">DID with Multiple Time Periods</a>
-    </li>
-    <li>
-      <a href="../articles/pre-testing.html">Pre-Testing</a>
-    </li>
-    <li>
-      <a href="../articles/tests.html">Introduction to the did Package</a>
-    </li>
-  </ul>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li>
-  <a href="../news/index.html">Changelog</a>
+  <a href="../news/index.html">News</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -136,7 +112,7 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>compute.att_gt</h1>
+    <h1>Compute Group-Time Average Treatment Effects</h1>
     
     <div class="hidden name"><code>compute.att_gt.Rd</code></div>
     </div>
@@ -146,81 +122,14 @@
  mutliperiod group-time average treatment effects</p>
     </div>
 
-    <pre class="usage"><span class='fu'>compute.att_gt</span>(
-  <span class='no'>flen</span>,
-  <span class='no'>tlen</span>,
-  <span class='no'>flist</span>,
-  <span class='no'>tlist</span>,
-  <span class='no'>data</span>,
-  <span class='no'>dta</span>,
-  <span class='no'>first.treat.name</span>,
-  <span class='no'>outcome</span>,
-  <span class='no'>tname</span>,
-  <span class='no'>w</span>,
-  <span class='no'>idname</span>,
-  <span class='no'>method</span>,
-  <span class='no'>seedvec</span>,
-  <span class='no'>pl</span>,
-  <span class='no'>cores</span>,
-  <span class='no'>printdetails</span>,
-  <span class='no'>nevertreated</span>
-)</pre>
+    <pre class="usage"><span class='fu'>compute.att_gt</span>(<span class='no'>dp</span>)</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>data</th>
-      <td><p>The name of the data.frame that contains the data</p></td>
-    </tr>
-    <tr>
-      <th>first.treat.name</th>
-      <td><p>The name of the variable in <code>data</code> that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
-in the untreated group.</p></td>
-    </tr>
-    <tr>
-      <th>outcome</th>
-      <td><p>The outcome y (in quotations, always!)</p></td>
-    </tr>
-    <tr>
-      <th>tname</th>
-      <td><p>The name of the column containing the time periods</p></td>
-    </tr>
-    <tr>
-      <th>w</th>
-      <td><p>The name of the column containing the sampling weights. If not set, all observations have same weight.</p></td>
-    </tr>
-    <tr>
-      <th>idname</th>
-      <td><p>The individual (cross-sectional unit) id name</p></td>
-    </tr>
-    <tr>
-      <th>method</th>
-      <td><p>The method for estimating the propensity score when covariates
-are included (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>seedvec</th>
-      <td><p>Optional value to set random seed; can possibly be used
-in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>pl</th>
-      <td><p>Boolean for whether or not to use parallel processing (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>cores</th>
-      <td><p>The number of cores to use for parallel processing (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>printdetails</th>
-      <td><p>Boolean for showing detailed results or not</p></td>
-    </tr>
-    <tr>
-      <th>nevertreated</th>
-      <td><p>Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.</p></td>
+      <th>dp</th>
+      <td><p>A DIDparams object</p></td>
     </tr>
     </table>
 

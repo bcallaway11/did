@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>att_gt — att_gt • did</title>
+<title>Group-Time Average Treatment Effects — att_gt • did</title>
 
 <!-- favicons -->
 <link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
@@ -19,7 +19,7 @@
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/sandstone/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
@@ -46,10 +46,12 @@
 
 
 
-<meta property="og:title" content="att_gt — att_gt" />
-<meta property="og:description" content="att_gt computes average treatment effects in DID setups  where there are more
- than two periods of data and allowing for treatment to occur at different points in time.
- See Callaway ans Sant'Anna (2019) for a detailed description." />
+<meta property="og:title" content="Group-Time Average Treatment Effects — att_gt" />
+<meta property="og:description" content="att_gt computes average treatment effects in DID
+ setups where there are more than two periods of data and allowing for
+ treatment to occur at different points in time and allowing for
+ treatment effect heterogeneity and dynamics.
+ See Callaway and Sant'Anna (2019) for a detailed description." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -89,37 +91,13 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">User Guides</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-    <li>
-      <a href="../articles/did-basics.html">Introduction to the did Package</a>
-    </li>
-    <li>
-      <a href="../articles/multi-period-did.html">DID with Multiple Time Periods</a>
-    </li>
-    <li>
-      <a href="../articles/pre-testing.html">Pre-Testing</a>
-    </li>
-    <li>
-      <a href="../articles/tests.html">Introduction to the did Package</a>
-    </li>
-  </ul>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li>
-  <a href="../news/index.html">Changelog</a>
+  <a href="../news/index.html">News</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -137,50 +115,46 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>att_gt</h1>
+    <h1>Group-Time Average Treatment Effects</h1>
     
     <div class="hidden name"><code>att_gt.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p><code>att_gt</code> computes average treatment effects in DID setups  where there are more
- than two periods of data and allowing for treatment to occur at different points in time.
- See Callaway ans Sant'Anna (2019) for a detailed description.</p>
+    <p><code>att_gt</code> computes average treatment effects in DID
+ setups where there are more than two periods of data and allowing for
+ treatment to occur at different points in time and allowing for
+ treatment effect heterogeneity and dynamics.
+ See Callaway and Sant'Anna (2019) for a detailed description.</p>
     </div>
 
     <pre class="usage"><span class='fu'>att_gt</span>(
-  <span class='no'>outcome</span>,
-  <span class='no'>data</span>,
+  <span class='no'>yname</span>,
   <span class='no'>tname</span>,
   <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
   <span class='no'>first.treat.name</span>,
-  <span class='kw'>nevertreated</span> <span class='kw'>=</span> <span class='no'>T</span>,
-  <span class='kw'>aggte</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>maxe</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>mine</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
+  <span class='kw'>xformla</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
+  <span class='no'>data</span>,
+  <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
+  <span class='kw'>control.group</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='st'>"nevertreated"</span>, <span class='st'>"notyettreated"</span>),
+  <span class='kw'>weightsname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
   <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
-  <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='no'>T</span>,
+  <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
+  <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
   <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
   <span class='kw'>clustervars</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>cband</span> <span class='kw'>=</span> <span class='no'>T</span>,
+  <span class='kw'>estMethod</span> <span class='kw'>=</span> <span class='st'>"dr"</span>,
   <span class='kw'>printdetails</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>seedvec</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
   <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>2</span>,
-  <span class='kw'>method</span> <span class='kw'>=</span> <span class='st'>"logit"</span>
+  <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>1</span>
 )</pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>outcome</th>
-      <td><p>The outcome y (in quotations, always!)</p></td>
-    </tr>
-    <tr>
-      <th>data</th>
-      <td><p>The name of the data.frame that contains the data</p></td>
+      <th>yname</th>
+      <td><p>The name of the outcome variable</p></td>
     </tr>
     <tr>
       <th>tname</th>
@@ -192,30 +166,52 @@
     </tr>
     <tr>
       <th>first.treat.name</th>
-      <td><p>The name of the variable in <code>data</code> that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
+      <td><p>The name of the variable in <code>data</code> that
+contains the first period when a particular observation is treated.
+This should be a positive number for all observations in treated groups.
+It defines which "group" a unit belongs to.  It should be 0 for units
 in the untreated group.</p></td>
     </tr>
     <tr>
-      <th>nevertreated</th>
-      <td><p>Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.</p></td>
+      <th>xformla</th>
+      <td><p>A formula for the covariates to include in the
+model.  It should be of the form <code>~ X1 + X2</code>.  Default
+is NULL which is equivalent to <code>xformla=~1</code>.  This is
+used to create a matrix of covariates which is then passed
+to the 2x2 DID estimator chosen in <code>estMethod</code>.</p></td>
     </tr>
     <tr>
-      <th>aggte</th>
-      <td><p>boolean for whether or not to compute aggregate treatment effect parameters, default TRUE</p></td>
+      <th>data</th>
+      <td><p>The name of the data.frame that contains the data</p></td>
     </tr>
     <tr>
-      <th>maxe</th>
-      <td><p>maximum values of periods ahead to be computed in event study. Only used if aggte = T.</p></td>
+      <th>panel</th>
+      <td><p>Whether or not the data is a panel dataset.
+The panel dataset should be provided in long format -- that
+is, where each row corresponds to a unit observed at a
+particular point in time.  The default is TRUE.  When
+is using a panel dataset, the variable <code>idname</code> must
+be set.  When <code>panel=FALSE</code>, the data is treated
+as repeated cross sections.</p></td>
     </tr>
     <tr>
-      <th>mine</th>
-      <td><p>minimum values of periods ahead to be computed in event study. Only used if aggte = T.</p></td>
+      <th>control.group</th>
+      <td><p>Which units to use the control group.
+The default is "nevertreated" which sets the control group
+to be the group of units that never participate in the
+treatment.  This group does not change across groups or
+time periods.  The other option is to set
+<code>group="notyettreated"</code>.  In this case, the control group
+is set to the group of units that have not yet participated
+in the treatment in that time period.  This includes all
+never treated units, but it includes additional units that
+eventually participate in the treatment, but have not
+participated yet.</p></td>
     </tr>
     <tr>
-      <th>w</th>
-      <td><p>The name of the column containing the sampling weights. If not set, all observations have same weight.</p></td>
+      <th>weightsname</th>
+      <td><p>The name of the column containing the sampling weights.
+If not set, all observations have same weight.</p></td>
     </tr>
     <tr>
       <th>alp</th>
@@ -225,7 +221,16 @@ in the untreated group.</p></td>
       <th>bstrap</th>
       <td><p>Boolean for whether or not to compute standard errors using
 the multiplier boostrap.  If standard errors are clustered, then one
-must set <code>bstrap=TRUE</code>. Default is <code>TRUE</code>.</p></td>
+must set <code>bstrap=TRUE</code>. Default is <code>FALSE</code> and analytical
+standard errors are reported.</p></td>
+    </tr>
+    <tr>
+      <th>cband</th>
+      <td><p>Boolean for whether or not to compute a uniform confidence
+ band that covers all of the group-time average treatment effects
+ with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
+ bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
+<code>FALSE</code> and the resulting standard errors will be pointwise.</p></td>
     </tr>
     <tr>
       <th>biters</th>
@@ -240,33 +245,51 @@ must be the same as idname which allows for clustering at the individual
 level.</p></td>
     </tr>
     <tr>
-      <th>cband</th>
-      <td><p>Boolean for whether or not to compute a uniform confidence
-band that covers all of the group-time average treatment effects
-with fixed probability <code>1-alp</code>.  The default is <code>TRUE</code>
-and the resulting standard errors will be pointwise.</p></td>
+      <th>estMethod</th>
+      <td><p>the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
+approach in the <code>DRDID</code> package.  Other built-in methods
+include "ipw" for inverse probability weighting and "reg" for
+first step regression estimators.  The user can also pass their
+own function for estimating group time average treatment
+effects.  This should be a function
+<code>f(Y1,Y0,treat,covariates)</code> where <code>Y1</code> is an
+<code>n</code> x <code>1</code> vector of outcomes in the post-treatment
+outcomes, <code>Y0</code> is an <code>n</code> x <code>1</code> vector of
+pre-treatment outcomes, <code>treat</code> is a vector indicating
+whether or not an individual participates in the treatment,
+and <code>covariates</code> is an <code>n</code> x <code>k</code> matrix of
+covariates.  The function should return a list that includes
+<code>ATT</code> (an estimated average treatment effect), and
+<code>inf.func</code> (an <code>n</code> x <code>1</code> influence function).
+The function can return other things as well, but these are
+the only two that are required. <code>estMethod</code> is only used
+if covariates are included.</p></td>
     </tr>
     <tr>
       <th>printdetails</th>
       <td><p>Boolean for showing detailed results or not</p></td>
     </tr>
     <tr>
-      <th>seedvec</th>
-      <td><p>Optional value to set random seed; can possibly be used
-in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
-    </tr>
-    <tr>
       <th>pl</th>
-      <td><p>Boolean for whether or not to use parallel processing (not implemented)</p></td>
+      <td><p>Boolean for whether or not to use parallel processing
+(not implemented yet)</p></td>
     </tr>
     <tr>
       <th>cores</th>
-      <td><p>The number of cores to use for parallel processing (not implemented)</p></td>
+      <td><p>The number of cores to use for parallel processing
+(not implemented yet)</p></td>
     </tr>
     <tr>
-      <th>method</th>
-      <td><p>The method for estimating the propensity score when covariates
-are included (not implemented)</p></td>
+      <th>nevertreated</th>
+      <td><p>did currently provides two possibilities for the
+control group.  The first one is to use the group of units that are never
+participate in the treatment.  This is the default behavior and occurs
+when nevertreated=TRUE.  In the case where there is no group that is never
+treated, att_gt will use the group that is treated in the last period and
+provide a warning.  The other possible control group is the "not yet
+treated" group.  This is a larger group and includes both never treated
+units and units that have not yet (but eventually will) participate in the
+treatment.  This control group changes across different time periods.</p></td>
     </tr>
     </table>
 
@@ -275,8 +298,74 @@ are included (not implemented)</p></td>
     <p><code>MP</code> object</p>
     <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2018).</p>
+    <p>Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2019).</p>
 
+    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
+    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span>(<span class='no'>mpdta</span>)
+
+<span class='co'># with covariates</span>
+<span class='no'>out1</span> <span class='kw'>&lt;-</span> <span class='fu'>att_gt</span>(<span class='kw'>yname</span><span class='kw'>=</span><span class='st'>"lemp"</span>,
+               <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
+               <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>,
+               <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
+               <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>,
+               <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
+               <span class='kw'>printdetails</span><span class='kw'>=</span><span class='fl'>FALSE</span>)
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>out1</span>)</div><div class='output co'>#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |  2004| 2004| -0.0145297| 0.0221292|
+#&gt; |  2004| 2005| -0.0764219| 0.0286713|
+#&gt; |  2004| 2006| -0.1404483| 0.0353781|
+#&gt; |  2004| 2007| -0.1069039| 0.0328865|
+#&gt; |  2006| 2004| -0.0004721| 0.0222234|
+#&gt; |  2006| 2005| -0.0062025| 0.0184957|
+#&gt; |  2006| 2006|  0.0009606| 0.0194002|
+#&gt; |  2006| 2007| -0.0412939| 0.0197211|
+#&gt; |  2007| 2004|  0.0267278| 0.0140657|
+#&gt; |  2007| 2005| -0.0045766| 0.0157178|
+#&gt; |  2007| 2006| -0.0284475| 0.0181809|
+#&gt; |  2007| 2007| -0.0287814| 0.0162390|
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of DID assumption:  0.23267
+#&gt; </div><div class='input'>
+<span class='co'># without covariates</span>
+<span class='no'>out2</span> <span class='kw'>&lt;-</span> <span class='fu'>att_gt</span>(<span class='kw'>yname</span><span class='kw'>=</span><span class='st'>"lemp"</span>,
+               <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
+               <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>,
+               <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
+               <span class='kw'>xformla</span><span class='kw'>=</span><span class='kw'>NULL</span>,
+               <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
+               <span class='kw'>printdetails</span><span class='kw'>=</span><span class='fl'>FALSE</span>)
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>out2</span>)</div><div class='output co'>#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |  2004| 2004| -0.0105032| 0.0232510|
+#&gt; |  2004| 2005| -0.0704232| 0.0309848|
+#&gt; |  2004| 2006| -0.1372587| 0.0364357|
+#&gt; |  2004| 2007| -0.1008114| 0.0343592|
+#&gt; |  2006| 2004|  0.0065201| 0.0233268|
+#&gt; |  2006| 2005| -0.0027508| 0.0195586|
+#&gt; |  2006| 2006| -0.0045946| 0.0177552|
+#&gt; |  2006| 2007| -0.0412245| 0.0202292|
+#&gt; |  2007| 2004|  0.0305067| 0.0150336|
+#&gt; |  2007| 2005| -0.0027259| 0.0163958|
+#&gt; |  2007| 2006| -0.0310871| 0.0178775|
+#&gt; |  2007| 2007| -0.0260544| 0.0166554|
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of DID assumption:  0.16812
+#&gt; </div><div class='input'>
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

@@ -3,7 +3,7 @@
 \docType{data}
 \name{mpdta}
 \alias{mpdta}
-\title{County teen employment}
+\title{County Teen Employment Dataset}
 \format{
 A data frame with 2000 rows and 5 variables:
 \describe{
@@ -19,14 +19,14 @@ A data frame with 2000 rows and 5 variables:
 }
 }
 \source{
-Callaway and Sant'Anna (2018)
+Callaway and Sant'Anna (2019)
 }
 \usage{
 mpdta
 }
 \description{
-A dataset containing (the log of) teen employment in 500 counties in the U.S.
- from 2004 to 2007.  This is a subset of the dataset used in Callaway and
- Sant'Anna (2018).  See that paper for additional descriptions.
+A dataset containing (the log of) teen employment in 500 counties
+ in the U.S. from 2004 to 2007.  This is a subset of the dataset used in Callaway and
+ Sant'Anna (2019).  See that paper for additional descriptions.
 }
 \keyword{datasets}

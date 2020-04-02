@@ -1,11 +1,32 @@
 template:
   params:
-    bootswatch: sandstone
+    bootswatch: flatly
+
+navbar:
+  title: "did"
+  left:
+    - text: "User Guides"
+      href: articles/index.html
+    - text: "Functions"
+      href: reference/index.html
+    - text: "News"
+      href: news/index.html
 
 home:
   links:
     - text: Source Code
       href: https://github.com/bcallaway11/did
+    - text: Report Bugs or Feature Requests
+      href: https://github.com/bcallaway11/did/issues
+
+articles:
+  - title: User Guides
+    desc: >
+      These articles provide a general introduction to DID with multiple time periods, an introduction to the R **did** package for estimating treatment effects, and details on how to use the **did** package to pre-test the parallel trends assumption underlying the DID approach.  
+    contents:
+    - multi-period-did
+    - did-basics
+    - pre-testing
 
 reference:
   - title: "Difference in Differences Methods"
@@ -13,38 +34,54 @@ reference:
       Tools to compute average treatment effects, particularly in
       the case with multiple periods and variation in treatment timing
     contents: 
-      - mp.spatt
+      - att_gt
+      - aggte
   - title: "Pre-Testing"
     desc: >
       Tools to compute "pre-test" the DID assumption in the case where
       multiple periods are available
     contents:
-      - mp.spatt.test
+      - conditional_did_pretest
   - title: "Plotting and Summarizing"
     desc: >
       Tools for plotting and summarizing the results of the
-      \texttt{mp.spatt} method
+      **att_gt** method and **aggte** method
     contents:
       - ggdid
+      - ggdid.MP
+      - ggdid.AGGTEobj
       - summary.MP
-      - summary.AGGTE
+      - summary.AGGTEobj
       - summary.MP.TEST
+      - print.MP
   - title: "Classes"
     desc: >
-      Classes available in the \texttt{did} package
+      Classes available in the **did** package
     contents:
       - MP
-      - AGGTE
+      - AGGTEobj
       - MP.TEST
-  - title: "Weighting Functions"
+      - DIDparams
+  - title: "Helper Functions"
     desc: >
-      Available weighting functions for the pre-test
+      A number of other miscellaneous helper functions
     contents:
+      - mboot
+      - test.mboot
+      - pre_process_did
+      - process_attgt
       - indicator
-      - expf
-      - onefun
   - title: "Data"
     desc: >
       Available datasets in the package
     contents:
       - mpdta
+  - title: "Package Documentation"
+    contents:
+      - did
+  - title: "Deprecated Functions"
+    desc: >
+      Functions that are being replaced in version 2.0.0
+    contents:
+      - mp.spatt
+      - mp.spatt.test

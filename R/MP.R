@@ -4,8 +4,11 @@
 #'
 #' @param group which group (defined by period first treated) an group-time average treatment effect is for
 #' @param t which time period a group-time average treatment effect is for
-#' @param att the group-average treatment effect for group \code{group} and time period \code{t}
-#' @param c simulataneous critical value if one is obtaining simultaneous confidence bands. Otherwise it reports the critival value based on pointwise normal approximation.
+#' @param att the group-average treatment effect for group \code{group} and time
+#'  period \code{t}
+#' @param c simulataneous critical value if one is obtaining simultaneous confidence
+#'  bands. Otherwise it reports the critival value based on pointwise normal
+#'  approximation.
 #' @param V the variance matrix for group-time average treatment effects
 #' @param inffunc the influence function for estimating group-time average treatment effects
 #' @param n the number of observations
@@ -14,6 +17,8 @@
 #'  common trends assumption
 #' @param aggte an aggregate treatment effects object
 #' @param alp the significance level, default is 0.05
+#' @param DIDparams a DIDparams object.  A way to optionally return the parameters
+#'  of the call to \code{att_gt} or \code{conditional_did_pretest}.
 #'
 #' @return MP object
 #' @export

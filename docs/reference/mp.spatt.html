@@ -6,23 +6,38 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>mp.spatt — mp.spatt • did</title>
+<title>Group-Time Average Treatment Effects with Mulitple Periods — mp.spatt • did</title>
+
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
 <!-- jquery -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.7/united/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8=" crossorigin="anonymous"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
+
+<!-- bootstrap-toc -->
+<link rel="stylesheet" href="../bootstrap-toc.css">
+<script src="../bootstrap-toc.js"></script>
 
 <!-- Font Awesome icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous" />
 
 <!-- clipboard.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js" integrity="sha256-FiZwavyI2V6+EXO1U+xzLG3IKldpiTFf3153ea9zikQ=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script>
 
-<!-- sticky kit -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sticky-kit/1.1.3/sticky-kit.min.js" integrity="sha256-c4Rlo1ZozqTPE2RLuvbusY3+SU1pQaJC0TjuhygMipw=" crossorigin="anonymous"></script>
+<!-- headroom.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script>
 
 <!-- pkgdown -->
 <link href="../pkgdown.css" rel="stylesheet">
@@ -30,13 +45,11 @@
 
 
 
-<meta property="og:title" content="mp.spatt — mp.spatt" />
 
-<meta property="og:description" content="mp.spatt computes the ATT in the case where there are more
- than two periods of data and allowing for treatment to occur at different points in time
- extending the method of Abadie (2005).  This method relies on once individuals are treated
- they remain in the treated state for the duration." />
-<meta name="twitter:card" content="summary" />
+<meta property="og:title" content="Group-Time Average Treatment Effects with Mulitple Periods — mp.spatt" />
+<meta property="og:description" content="Deprecated function for computing group-time average treatment effects" />
+<meta property="og:image" content="/logo.png" />
+
 
 
 
@@ -50,9 +63,10 @@
 <![endif]-->
 
 
+
   </head>
 
-  <body>
+  <body data-spy="scroll" data-target="#toc">
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -66,38 +80,22 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.2.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.0</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fa fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">User Guides</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-    <li>
-      <a href="../articles/did-basics.html">DID Basics</a>
-    </li>
-  </ul>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li>
-  <a href="../news/index.html">Changelog</a>
+  <a href="../news/index.html">News</a>
 </li>
       </ul>
-      
       <ul class="nav navbar-nav navbar-right">
         
       </ul>
@@ -107,285 +105,41 @@
 </div><!--/.navbar -->
 
       
+
       </header>
 
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>mp.spatt</h1>
+    <h1>Group-Time Average Treatment Effects with Mulitple Periods</h1>
     
     <div class="hidden name"><code>mp.spatt.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    
-    <p><code>mp.spatt</code> computes the ATT in the case where there are more
- than two periods of data and allowing for treatment to occur at different points in time
- extending the method of Abadie (2005).  This method relies on once individuals are treated
- they remain in the treated state for the duration.</p>
-    
+    <p>Deprecated function for computing group-time average treatment effects</p>
     </div>
 
-    <pre class="usage"><span class='fu'>mp.spatt</span>(<span class='no'>formla</span>, <span class='kw'>xformla</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>data</span>, <span class='no'>tname</span>, <span class='kw'>aggte</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>, <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>first.treat.name</span>, <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
-  <span class='kw'>method</span> <span class='kw'>=</span> <span class='st'>"logit"</span>, <span class='kw'>se</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>, <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>100</span>,
-  <span class='kw'>clustervars</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>citers</span> <span class='kw'>=</span> <span class='fl'>100</span>, <span class='kw'>seedvec</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>2</span>, <span class='kw'>printdetails</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>)</pre>
-    
+    <pre class="usage"><span class='fu'>mp.spatt</span>(<span class='no'>...</span>)</pre>
+
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>formla</th>
-      <td><p>The formula y ~ d where y is the outcome and d is the
-treatment indicator (d should be binary)</p></td>
-    </tr>
-    <tr>
-      <th>xformla</th>
-      <td><p>A optional one sided formula for additional covariates that
-will be adjusted for.  E.g ~ age + education.  Additional covariates can
-also be passed by name using the x paramater.</p></td>
-    </tr>
-    <tr>
-      <th>data</th>
-      <td><p>The name of the data.frame that contains the data</p></td>
-    </tr>
-    <tr>
-      <th>tname</th>
-      <td><p>The name of the column containing the time periods</p></td>
-    </tr>
-    <tr>
-      <th>aggte</th>
-      <td><p>boolean for whether or not to compute aggregate treatment effect parameters, default TRUE</p></td>
-    </tr>
-    <tr>
-      <th>w</th>
-      <td><p>A vector of weights for each observation (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>panel</th>
-      <td><p>Boolean indicating whether the data is panel or repeated cross
-sections</p></td>
-    </tr>
-    <tr>
-      <th>idname</th>
-      <td><p>The individual (cross-sectional unit) id name</p></td>
-    </tr>
-    <tr>
-      <th>first.treat.name</th>
-      <td><p>The name of the variable in <code>data</code> that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
-in the untreated group.</p></td>
-    </tr>
-    <tr>
-      <th>alp</th>
-      <td><p>the significance level, default is 0.05</p></td>
-    </tr>
-    <tr>
-      <th>method</th>
-      <td><p>The method for estimating the propensity score when covariates
-are included</p></td>
-    </tr>
-    <tr>
-      <th>se</th>
-      <td><p>Boolean whether or not to compute standard errors</p></td>
-    </tr>
-    <tr>
-      <th>bstrap</th>
-      <td><p>Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
-must set <code>bstrap=TRUE</code>.</p></td>
-    </tr>
-    <tr>
-      <th>biters</th>
-      <td><p>The number of boostrap iterations to use.  The default is 100,
-and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
-    </tr>
-    <tr>
-      <th>clustervars</th>
-      <td><p>A vector of variables to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level.</p></td>
-    </tr>
-    <tr>
-      <th>cband</th>
-      <td><p>Boolean for whether or not to compute a uniform confidence
-band that covers all of the group-time average treatment effects
-with fixed probability <code>1-alp</code>.  The default is <code>FALSE</code>
-and the resulting standard errors will be pointwise.</p></td>
-    </tr>
-    <tr>
-      <th>citers</th>
-      <td><p>Computing uniform confidence bands requires the bootstrap,
-if <code>cband = TRUE</code>, then this is the number of boostrap iterations
-to compute the conidence band.  The default is 100.</p></td>
-    </tr>
-    <tr>
-      <th>seedvec</th>
-      <td><p>Optional value to set random seed; can possibly be used
-in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>pl</th>
-      <td><p>Boolean for whether or not to use parallel processing</p></td>
-    </tr>
-    <tr>
-      <th>cores</th>
-      <td><p>The number of cores to use for parallel processing</p></td>
-    </tr>
-    <tr>
-      <th>printdetails</th>
-      <td><p>Boolean for showing detailed results or not</p></td>
+      <th>...</th>
+      <td><p>extra arguments</p></td>
     </tr>
     </table>
-    
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p><code>MP</code> object</p>
-    
-    <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2018).</p>
-    
-
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='fu'><a href='https://www.rdocumentation.org/packages/utils/topics/data'>data</a></span>(<span class='no'>mpdta</span>)
-
-<span class='co'>## with covariates</span>
-<span class='no'>out1</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-                <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-                <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
-                <span class='kw'>bstrap</span><span class='kw'>=</span><span class='fl'>FALSE</span>, <span class='kw'>se</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>cband</span><span class='kw'>=</span><span class='fl'>FALSE</span>)</div><div class='output co'>#&gt; current period: 2004 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2005 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2006 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2007 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2006 
-#&gt; current group: 2006 
-#&gt; set pretreatment period to be 2005 
-#&gt; current period: 2007 
-#&gt; current group: 2006 
-#&gt; set pretreatment period to be 2005 
-#&gt; current period: 2007 
-#&gt; current group: 2007 
-#&gt; set pretreatment period to be 2006 </div><div class='input'><span class='co'>## summarize the group-time average treatment effects</span>
-<span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>out1</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
-#&gt; 
-#&gt; 
-#&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |  2004| 2004| -0.0145484| 0.0219886|
-#&gt; |  2004| 2005| -0.0764499| 0.0284761|
-#&gt; |  2004| 2006| -0.1404646| 0.0350339|
-#&gt; |  2004| 2007| -0.1069326| 0.0330405|
-#&gt; |  2006| 2004| -0.0008686| 0.0221298|
-#&gt; |  2006| 2005| -0.0063972| 0.0185132|
-#&gt; |  2006| 2006|  0.0012080| 0.0192254|
-#&gt; |  2006| 2007| -0.0413082| 0.0196941|
-#&gt; |  2007| 2004|  0.0265561| 0.0141314|
-#&gt; |  2007| 2005| -0.0046609| 0.0155829|
-#&gt; |  2007| 2006| -0.0283403| 0.0181435|
-#&gt; |  2007| 2007| -0.0288948| 0.0162974|
-#&gt; 
-#&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.23803
-#&gt; </div><div class='input'><span class='co'>## summarize the aggregated treatment effect parameters</span>
-<span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>out1</span>$<span class='no'>aggte</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
-#&gt; Overall Summary Measures 
-#&gt; ------------------------ 
-#&gt; Simple ATT    :  -0.04177708 
-#&gt;   SE          :  0.01118622 
-#&gt; Selective ATT :  -0.03287537 
-#&gt;   SE          :  0.01118622 
-#&gt; Dynamic ATT   :  -0.08037689 
-#&gt;   SE          :  0.02076471 
-#&gt; Calendar ATT  :  -0.0441701 
-#&gt;   SE          :  0.01892826 
-#&gt; 
-#&gt; Dynamic Treatment Effects 
-#&gt; -------------------------
-#&gt; 
-#&gt; |  e|        att|        se|
-#&gt; |--:|----------:|---------:|
-#&gt; |  1| -0.0210883| 0.0114816|
-#&gt; |  2| -0.0530221| 0.0163636|
-#&gt; |  3| -0.1404646| 0.0370100|
-#&gt; |  4| -0.1069326| 0.0342974|</div><div class='input'>
-<span class='co'>## without any covariates</span>
-<span class='no'>out2</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformla</span><span class='kw'>=</span><span class='kw'>NULL</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-                <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-                <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
-                <span class='kw'>bstrap</span><span class='kw'>=</span><span class='fl'>FALSE</span>, <span class='kw'>se</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>cband</span><span class='kw'>=</span><span class='fl'>FALSE</span>)</div><div class='output co'>#&gt; current period: 2004 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2005 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2006 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2007 
-#&gt; current group: 2004 
-#&gt; set pretreatment period to be 2003 
-#&gt; current period: 2006 
-#&gt; current group: 2006 
-#&gt; set pretreatment period to be 2005 
-#&gt; current period: 2007 
-#&gt; current group: 2006 
-#&gt; set pretreatment period to be 2005 
-#&gt; current period: 2007 
-#&gt; current group: 2007 
-#&gt; set pretreatment period to be 2006 </div><div class='input'><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>out2</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
-#&gt; 
-#&gt; 
-#&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |  2004| 2004| -0.0105032| 0.0232510|
-#&gt; |  2004| 2005| -0.0704232| 0.0309848|
-#&gt; |  2004| 2006| -0.1372587| 0.0364357|
-#&gt; |  2004| 2007| -0.1008114| 0.0343592|
-#&gt; |  2006| 2004|  0.0065201| 0.0233268|
-#&gt; |  2006| 2005| -0.0027508| 0.0195586|
-#&gt; |  2006| 2006| -0.0045946| 0.0177552|
-#&gt; |  2006| 2007| -0.0412245| 0.0202292|
-#&gt; |  2007| 2004|  0.0305067| 0.0150336|
-#&gt; |  2007| 2005| -0.0027259| 0.0163958|
-#&gt; |  2007| 2006| -0.0310871| 0.0178775|
-#&gt; |  2007| 2007| -0.0260544| 0.0166554|
-#&gt; 
-#&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.16812
-#&gt; </div><div class='input'>
-</div></pre>
   </div>
-  <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
-    <h2>Contents</h2>
-    <ul class="nav nav-pills nav-stacked">
-      <li><a href="#arguments">Arguments</a></li>
-      
-      <li><a href="#value">Value</a></li>
-
-      <li><a href="#references">References</a></li>
-      
-      <li><a href="#examples">Examples</a></li>
-    </ul>
-
+  <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
+    <nav id="toc" data-toggle="toc" class="sticky-top">
+      <h2 data-toc-skip>Contents</h2>
+    </nav>
   </div>
 </div>
+
 
       <footer>
       <div class="copyright">
@@ -393,13 +147,16 @@ in conjunction with bootstrapping standard errors#' (not implemented)</p></td>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.3.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
 </div>
+
       </footer>
    </div>
 
   
 
+
   </body>
 </html>
+
 

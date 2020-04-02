@@ -19,7 +19,7 @@
 <!-- jquery -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
 <!-- Bootstrap -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/sandstone/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
@@ -113,7 +113,7 @@
       <a href="../articles/pre-testing.html">Pre-Testing</a>
     </li>
     <li>
-      <a href="../articles/tests.html">Introduction to the did Package</a>
+      <a href="../articles/tests.html">Tests</a>
     </li>
   </ul>
 </li>
@@ -166,55 +166,6 @@
   <span class='no'>het</span>
 )</pre>
 
-    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
-    <table class="ref-arguments">
-    <colgroup><col class="name" /><col class="desc" /></colgroup>
-    <tr>
-      <th>first.treat.name</th>
-      <td><p>The name of the variable in <code>data</code> that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
-in the untreated group.</p></td>
-    </tr>
-    <tr>
-      <th>clustervars</th>
-      <td><p>A vector of variables to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level.</p></td>
-    </tr>
-    <tr>
-      <th>idname</th>
-      <td><p>The individual (cross-sectional unit) id name</p></td>
-    </tr>
-    <tr>
-      <th>bstrap</th>
-      <td><p>Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
-must set <code>bstrap=TRUE</code>. Default is <code>TRUE</code>.</p></td>
-    </tr>
-    <tr>
-      <th>biters</th>
-      <td><p>The number of boostrap iterations to use.  The default is 1000,
-and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
-    </tr>
-    <tr>
-      <th>alp</th>
-      <td><p>the significance level, default is 0.05</p></td>
-    </tr>
-    <tr>
-      <th>maxe</th>
-      <td><p>maximum values of periods ahead to be computed in event study. Only used if aggte = T.</p></td>
-    </tr>
-    <tr>
-      <th>mine</th>
-      <td><p>minimum values of periods ahead to be computed in event study. Only used if aggte = T.</p></td>
-    </tr>
-    <tr>
-      <th>het</th>
-      <td><p>The name of the column containing the (binary) categories for heterogeneity</p></td>
-    </tr>
-    </table>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 

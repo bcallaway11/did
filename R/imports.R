@@ -1,4 +1,5 @@
-#' did: Difference in Differences with multiple periods and variation in
+#' @title Difference in Differences
+#' @description Difference in Differences with multiple periods and variation in
 #'  treatment timing
 #'
 #' @docType package
@@ -11,4 +12,6 @@
 #' @import ggplot2
 #' @import utils
 #' @import gridExtra
+#' @import DRDID
+#' @import plm
 NULL

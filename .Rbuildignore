@@ -8,3 +8,4 @@
 ^revdep$
 ^CRAN-RELEASE$
 ^tests$
+^pkgdown$

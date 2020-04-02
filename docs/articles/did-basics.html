@@ -5,19 +5,19 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Introduction to the did Package • did</title>
+<title>Getting Started with the did Package • did</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
 <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png">
 <link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png">
 <link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png">
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/sandstone/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="Introduction to the did Package">
+<script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with the did Package">
 <meta property="og:description" content="did">
 <meta property="og:image" content="/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
@@ -45,37 +45,13 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
 <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">User Guides</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-<li>
-      <a href="../articles/did-basics.html">Introduction to the did Package</a>
-    </li>
-    <li>
-      <a href="../articles/multi-period-did.html">DID with Multiple Time Periods</a>
-    </li>
-    <li>
-      <a href="../articles/pre-testing.html">Pre-Testing</a>
-    </li>
-    <li>
-      <a href="../articles/tests.html">Introduction to the did Package</a>
-    </li>
-  </ul>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li>
-  <a href="../news/index.html">Changelog</a>
+  <a href="../news/index.html">News</a>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right"></ul>
@@ -91,10 +67,10 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Introduction to the did Package</h1>
+      <h1 data-toc-skip>Getting Started with the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 class="date">2020-03-30</h4>
+            <h4 class="date">2020-04-02</h4>
       
       
       <div class="hidden name"><code>did-basics.Rmd</code></div>
@@ -103,13 +79,269 @@
 
     
     
-<p>Note: This is a work in progress…</p>
 <p>This vignette discusses the basics of using Difference-in-Differences (DID) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the <code>did</code> package.</p>
-<div id="a-running-example" class="section level1">
+<div id="examples-with-simulated-data" class="section level1">
 <h1 class="hasAnchor">
-<a href="#a-running-example" class="anchor"></a>A Running Example</h1>
-<p>Throughout the vignette, we use a subset of data that comes from Callaway and Sant’Anna (2019). This is a dataset that contains county-level teen employment rates from 2003-2007. The data can be loaded by</p>
+<a href="#examples-with-simulated-data" class="anchor"></a>Examples with simulated data</h1>
+<p>Let’s start with a really simple example with simulated data. Here, there are going to be 4 time periods. There are 4000 units in the treated group that are randomly (uniformly) assigned to first participate in the treatment (a <em>group</em>) in each time period. And there are 4000 never treated units. The data generating process for untreated and treated potential outcomes is given by</p>
+<p><span class="math display">\[
+  Y_{it}(0) = \theta_t + \eta_i + X_i'\beta_t + v_{it}
+\]</span></p>
+<p><span class="math display">\[
+  Y_{it}(1) = \theta_t + \eta_i + X_i'\beta_t + u_{it}
+\]</span></p>
+<p>where <span class="math inline">\(\theta_t = \beta_t = t\)</span> for <span class="math inline">\(t=1,\ldots,4\)</span>, <span class="math inline">\(\eta_i \sim N(G_i, 1)\)</span> where <span class="math inline">\(G_i\)</span> is which group an individual belongs to, <span class="math inline">\(X_i \sim N( \mu_{D_i}, 1)\)</span> where <span class="math inline">\(\mu_{D_i} = 1\)</span> for never treated units and 0 otherwise, <span class="math inline">\(v_{it} \sim N(0,1)\)</span>, and <span class="math inline">\(u_{it} \sim N(0,1)\)</span>. Also, all random variables are drawn independently of each other. In this setup <span class="math inline">\(ATT(g,t) = 0\)</span> for all groups and time periods.</p>
+<div id="estimating-group-time-average-treatment-effects" class="section level2">
+<h2 class="hasAnchor">
+<a href="#estimating-group-time-average-treatment-effects" class="anchor"></a>Estimating Group-Time Average Treatment Effects</h2>
+<p><strong>Building the dataset</strong></p>
+<div class="sourceCode"><html><body><pre class="r"><span class="co"># generate dataset with 4 time periods</span>
+<span class="no">time.periods</span> <span class="kw">&lt;-</span> <span class="fl">4</span>
+
+<span class="co"># generate data set with these parameters</span>
+<span class="no">data</span> <span class="kw">&lt;-</span> <span class="fu">build_sim_dataset</span>()
+
+<span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span>(<span class="no">data</span>)
+<span class="co">#&gt; [1] 27952</span>
+<span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span>(<span class="no">data</span>)
+<span class="co">#&gt;       G        X id period        Y treat</span>
+<span class="co">#&gt; 1     2 0.530541  1      1 4.795125     1</span>
+<span class="co">#&gt; 8001  2 0.530541  1      2 6.159789     1</span>
+<span class="co">#&gt; 16001 2 0.530541  1      3 6.482624     1</span>
+<span class="co">#&gt; 24001 2 0.530541  1      4 8.288278     1</span>
+<span class="co">#&gt; 2     4 1.123550  2      1 4.375698     1</span>
+<span class="co">#&gt; 8002  4 1.123550  2      2 9.285481     1</span></pre></body></html></div>
+<p><strong>Estimating Group-Time Average Treatment Effects</strong></p>
+<p>The main function to estimate group-time average treatment effects is the <code>att_gt</code> function. <a href="reference/att_gt.html">See documentation here</a>. The most basic call to <code>att_gt</code> is given in the following</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="co"># estimate group-time average treatment effects using att_gt method</span>
+<span class="no">example.attgt</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="kw">yname</span><span class="kw">=</span><span class="st">"Y"</span>,
+                        <span class="kw">tname</span><span class="kw">=</span><span class="st">"period"</span>,
+                        <span class="kw">idname</span><span class="kw">=</span><span class="st">"id"</span>,
+                        <span class="kw">first.treat.name</span><span class="kw">=</span><span class="st">"G"</span>,
+                        <span class="kw">xformla</span><span class="kw">=</span>~<span class="no">X</span>,
+                        <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>,
+                        <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>
+                        )
+
+<span class="co"># summarize the results</span>
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">example.attgt</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  group   time          att          se</span>
+<span class="co">#&gt; ------  -----  -----------  ----------</span>
+<span class="co">#&gt;      2      2   -0.0384779   0.0584763</span>
+<span class="co">#&gt;      2      3    0.0423904   0.0580786</span>
+<span class="co">#&gt;      2      4    0.0103901   0.0602665</span>
+<span class="co">#&gt;      3      2   -0.0392402   0.0566184</span>
+<span class="co">#&gt;      3      3    0.0877322   0.0572303</span>
+<span class="co">#&gt;      3      4   -0.0062495   0.0552018</span>
+<span class="co">#&gt;      4      2   -0.0537170   0.0584071</span>
+<span class="co">#&gt;      4      3    0.0382368   0.0559763</span>
+<span class="co">#&gt;      4      4   -0.0590188   0.0561094</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; P-value for pre-test of DID assumption:  0.79243</span></pre></body></html></div>
+<p>The summary of <code>example.attgt</code> provides estimates of the group-time average treatment effects in the column labeled <code>att</code>, and the corresponding standard errors are given in the column <code>se</code>. The corresponding groups and times are given in the columns <code>group</code> and <code>time</code>. Under the parallel trends assumption, group-time average treatment effects are identified in periods when <span class="math inline">\(g \leq t\)</span> (i.e., post-treatment periods for each group). The table also reports pseudo group-time average treatment effects when <span class="math inline">\(g &gt; t\)</span> (i.e., pre-treatment periods for group <span class="math inline">\(g\)</span>). These can be used as a pre-test for the parallel trends assumption. In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results. <a href="pre-testing">A much more detailed discussion of using the <strong>did</strong> package for pre-testing is available here</a>.</p>
+<p>Next, we’ll demonstrate how to plot group-time average treatment effects. To plot these, use the <code>ggdid</code> function which builds off the <code>ggplot2</code> package.</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="co"># plot the results</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">example.attgt</span>)</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
+<p>The resulting figure is one that contains separate plots for each group. Notice in the figure above, the first plot is labeled “Group 2”, the second “Group 3”, etc. Then, the figure contains estimates of group-time average treamtent effects for each group in each time period along with a confidence interval. The red dots in the plots are pre-treatment pseudo group-time average treatment effects and are most useful for pre-testing the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects and should be interpreted as the average effect of participating in the treatment for units in a particular group at a particular point in time.</p>
+</div>
+<div id="extensions" class="section level2">
+<h2 class="hasAnchor">
+<a href="#extensions" class="anchor"></a>Extensions</h2>
+<p>The above discussion covered only the most basic case for using the <code>did</code> package. There are a number of extensions that are useful in applications.</p>
+<div id="adjustments-for-multiple-hypothesis-testing" class="section level3">
+<h3 class="hasAnchor">
+<a href="#adjustments-for-multiple-hypothesis-testing" class="anchor"></a>Adjustments for Multiple Hypothesis Testing</h3>
+<p>By default, the <code>did</code> package reports analytical standard errors and 95% <em>pointwise</em> confidence intervals in plots. However, it is usually a better practice to report uniform confidence bands in plots of group-time average treatment effects with multiple time periods – these are confidence bands that are robust to multiple hypothesis testing.</p>
+<p>To report uniform confidence bands requires the bootstrap; and to get these in practice, set the options <code>bstrap=TRUE, cband=TRUE</code>.</p>
+<div class="sourceCode"><html><body><pre class="r">  <span class="no">example.attgt.mh</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="kw">yname</span><span class="kw">=</span><span class="st">"Y"</span>,
+                        <span class="kw">tname</span><span class="kw">=</span><span class="st">"period"</span>,
+                        <span class="kw">idname</span><span class="kw">=</span><span class="st">"id"</span>,
+                        <span class="kw">first.treat.name</span><span class="kw">=</span><span class="st">"G"</span>,
+                        <span class="kw">xformla</span><span class="kw">=</span>~<span class="no">X</span>,
+                        <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>,
+                        <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>,
+                        <span class="kw">bstrap</span><span class="kw">=</span><span class="fl">TRUE</span>,
+                        <span class="kw">cband</span><span class="kw">=</span><span class="fl">TRUE</span>
+                        )
+  <span class="co">## plot (not shown, but will result in somewhat wider confidence bands)</span>
+  <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">example.attgt.mh</span>)</pre></body></html></div>
+</div>
+<div id="aggregating-group-time-average-treatment-effects" class="section level3">
+<h3 class="hasAnchor">
+<a href="#aggregating-group-time-average-treatment-effects" class="anchor"></a>Aggregating group-time average treatment effects</h3>
+<p>In many applications, there can be a large number of groups and time periods. In this case, it may be infeasible to interpret plots of group-time average treatment effects. The <code>did</code> package provides a number of ways to aggregate group-time average treatment effects using the <code>aggte</code> method.</p>
+<div id="simple-aggregation" class="section level4">
+<h4 class="hasAnchor">
+<a href="#simple-aggregation" class="anchor"></a>Simple Aggregation</h4>
+<p>The default approach is to just return a weighted average of all group-time average treatment effects with weights proportional to the group size.</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">agg.simple</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span>(<span class="no">example.attgt</span>)
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">agg.simple</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overall ATT:  </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;        att          se</span>
+<span class="co">#&gt; ----------  ----------</span>
+<span class="co">#&gt;  0.0065453   0.0306131</span></pre></body></html></div>
+</div>
+<div id="dynamic-effects-and-event-studies" class="section level4">
+<h4 class="hasAnchor">
+<a href="#dynamic-effects-and-event-studies" class="anchor"></a>Dynamic Effects and Event Studies</h4>
+<p>The most common alternative approach is to aggregate group-time effects into an event study plot. To do this</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">agg.es</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span>(<span class="no">example.attgt</span>, <span class="kw">type</span><span class="kw">=</span><span class="st">"dynamic"</span>)
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">agg.es</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overall ATT:  </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;       att          se</span>
+<span class="co">#&gt; ---------  ----------</span>
+<span class="co">#&gt;  0.008566   0.0353013</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Dynamic Effects:</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  event time          att          se</span>
+<span class="co">#&gt; -----------  -----------  ----------</span>
+<span class="co">#&gt;          -2   -0.0537170   0.0584071</span>
+<span class="co">#&gt;          -1   -0.0010647   0.0355493</span>
+<span class="co">#&gt;           0   -0.0012450   0.0288719</span>
+<span class="co">#&gt;           1    0.0165528   0.0407190</span>
+<span class="co">#&gt;           2    0.0103901   0.0602665</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">agg.es</span>)</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
+<p>In this figure, the x-axis is the length of exposure to the treatment. Length of exposure equal to 0 provides the average effect of participating in the treatment across groups in the time period when they first participate in the treatment. Length of exposure equal to -1 corresponds to the time period before groups first participate in the treatment, and length of exposure equal to 1 corresponds to the first time period after initial exposure to the treatment.</p>
+<p>Not much interesting is going on here…as there are no dynamics and the effect is equal to 0 in all time periods.</p>
+</div>
+<div id="selective-treatment-timing-group-specific-effects" class="section level4">
+<h4 class="hasAnchor">
+<a href="#selective-treatment-timing-group-specific-effects" class="anchor"></a>Selective Treatment Timing / Group-Specific Effects</h4>
+<p>Another idea is to look at average effects specific to each group. To do this</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">agg.gs</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span>(<span class="no">example.attgt</span>, <span class="kw">type</span><span class="kw">=</span><span class="st">"selective"</span>)
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">agg.gs</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overall ATT:  </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;         att          se</span>
+<span class="co">#&gt; -----------  ----------</span>
+<span class="co">#&gt;  -0.0043376   0.0299661</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Group Effects:</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  group          att          se</span>
+<span class="co">#&gt; ------  -----------  ----------</span>
+<span class="co">#&gt;      2    0.0047676   0.0483314</span>
+<span class="co">#&gt;      3    0.0407414   0.0489135</span>
+<span class="co">#&gt;      4   -0.0590188   0.0561094</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">agg.gs</span>)</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
+<p>In this figure, the x-axis is categorized by group. They y-axis provides estimates of the average effect of participating in the treatment for units in each group averaged across all time periods after that group becomes treated.</p>
+</div>
+<div id="calendar-time-effects" class="section level4">
+<h4 class="hasAnchor">
+<a href="#calendar-time-effects" class="anchor"></a>Calendar Time Effects</h4>
+<p>Finally, the <code>did</code> package allows aggregations across different time periods. To do this</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">agg.ct</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span>(<span class="no">example.attgt</span>, <span class="kw">type</span><span class="kw">=</span><span class="st">"calendar"</span>)
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">agg.ct</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overall ATT:  </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;        att          se</span>
+<span class="co">#&gt; ----------  ----------</span>
+<span class="co">#&gt;  0.0027636   0.0323215</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Time Effects:</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  time          att          se</span>
+<span class="co">#&gt; -----  -----------  ----------</span>
+<span class="co">#&gt;     2   -0.0384779   0.0584763</span>
+<span class="co">#&gt;     3    0.0650613   0.0443442</span>
+<span class="co">#&gt;     4   -0.0182927   0.0385953</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">agg.ct</span>)</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
+<p>In this figure, the x-axis is the time period and the estimates along the y-axis are the average effect of participating in the treatment in a particular time period for all groups that participated in the treatment in that time period.</p>
+</div>
+</div>
+<div id="small-group-sizes" class="section level3">
+<h3 class="hasAnchor">
+<a href="#small-group-sizes" class="anchor"></a>Small Group Sizes</h3>
+<p>Small group sizes can sometimes cause estimation problems in the <code>did</code> package. To give an example, if there are any groups that have fewer than observations than the number of covariates in the model, the code will error. The <code>did</code> package reports a warning if there are any groups that have fewer than 5 observations.</p>
+<p>In addition, statistical inference, particularly on group-time average treatment may become more tenuous with small groups. For example, the effect sample size for estimating the change in outcomes over time for individuals in a particular group is equal to the number of observations in that group and asymptotic results are unlikely to provide good approximations to the sampling distribution of group-time average treatment effects when the number of units in a group is small.</p>
+<p>A reasonable alternative approach in this case is to just focus on aggregated treatment effect paramaters (i.e., to run <code><a href="../reference/aggte.html">aggte(..., type="sample")</a></code> or <code><a href="../reference/aggte.html">aggte(...,type="dynamic")</a></code>). For each of these cases, the effective sample size is the total number of units that are ever treated. As long as the total number of ever treated units is “large” (which should be the case for any DID application), then the statistical inference results provided by the <code>did</code> package should be reliable.</p>
+</div>
+<div id="selecting-alternative-control-groups" class="section level3">
+<h3 class="hasAnchor">
+<a href="#selecting-alternative-control-groups" class="anchor"></a>Selecting Alternative Control Groups</h3>
+<p>By default, the <code>did</code> package uses the group of units that never participate in the treatment as the control group. In this case, if there is no group that never participates, then the <code>did</code> package will drop the last period and set units that do not become treated until the last period as the control group (this will also throw a warning). The other option for the control group is to use the “not yet treated”. The “not yet treated” include the never treated as well as those units that, for a particular point in time, have not been treated yet (though they eventually become treated). This group is at least as large as the never treated group though it changes across time periods. To use the “not yet treated” as the control, set the option <code>control.group="notyettreated"</code>.</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">example.attgt.altcontrol</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="kw">yname</span><span class="kw">=</span><span class="st">"Y"</span>,
+                        <span class="kw">tname</span><span class="kw">=</span><span class="st">"period"</span>,
+                        <span class="kw">idname</span><span class="kw">=</span><span class="st">"id"</span>,
+                        <span class="kw">first.treat.name</span><span class="kw">=</span><span class="st">"G"</span>,
+                        <span class="kw">xformla</span><span class="kw">=</span>~<span class="no">X</span>,
+                        <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>,
+                        <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>,
+                        <span class="kw">control.group</span><span class="kw">=</span><span class="st">"notyettreated"</span>
+                        )
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">example.attgt.altcontrol</span>)</pre></body></html></div>
+</div>
+<div id="repeated-cross-sections" class="section level3">
+<h3 class="hasAnchor">
+<a href="#repeated-cross-sections" class="anchor"></a>Repeated cross sections</h3>
+<p>The <code>did</code> package can also work with repeated cross section rather than panel data. If the data is repeated cross sections, simply set the option <code>panel=FALSE</code>. In this case, <code>idname</code> is also ignored. From a usage standpoint, everything else is identical to the case with panel data.</p>
+</div>
+<div id="alternative-estimation-methods" class="section level3">
+<h3 class="hasAnchor">
+<a href="#alternative-estimation-methods" class="anchor"></a>Alternative Estimation Methods</h3>
+<p>The <code>did</code> package implements all the <span class="math inline">\(2 \times 2\)</span> DID estimators that are in the <code>DRDID</code> package. By default, the <code>did</code> package uses “doubly robust” estimators that are based on first step linear regressions for the outcome variable and logit for the generalized propensity score. The other options are “ipw” for inverse probability weighting and “reg” for regression.</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">example.attgt.reg</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="kw">yname</span><span class="kw">=</span><span class="st">"Y"</span>,
+                        <span class="kw">tname</span><span class="kw">=</span><span class="st">"period"</span>,
+                        <span class="kw">idname</span><span class="kw">=</span><span class="st">"id"</span>,
+                        <span class="kw">first.treat.name</span><span class="kw">=</span><span class="st">"G"</span>,
+                        <span class="kw">xformla</span><span class="kw">=</span>~<span class="no">X</span>,
+                        <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>,
+                        <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>,
+                        <span class="kw">estMethod</span><span class="kw">=</span><span class="st">"reg"</span>
+                        )
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">example.attgt.reg</span>)</pre></body></html></div>
+<p>The argument <code>estMethod</code> is also available to pass in a custom function for estimating DID with 2 periods and 2 groups. <a href="references/att_gt">See its documentation for more details</a>. <strong>Fair Warning:</strong> this is very advanced use of the <code>did</code> package and should be done with caution.</p>
+</div>
+</div>
+</div>
+<div id="an-example-with-real-data" class="section level1">
+<h1 class="hasAnchor">
+<a href="#an-example-with-real-data" class="anchor"></a>An example with real data</h1>
+<p>Next, we use a subset of data that comes from Callaway and Sant’Anna (2019). This is a dataset that contains county-level teen employment rates from 2003-2007. The data can be loaded by</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="fu"><a href="https://rdrr.io/r/base/library.html">library</a></span>(<span class="no">did</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Attaching package: 'did'</span>
+<span class="co">#&gt; The following objects are masked _by_ '.GlobalEnv':</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;     aggte, AGGTEobj, att_gt, compute.aggte, compute.att_gt,</span>
+<span class="co">#&gt;     conditional_did_pretest, DIDparams, ggdid, gplot, indicator, mboot,</span>
+<span class="co">#&gt;     MP, mp.spatt, mp.spatt.test, MP.TEST, pre_process_did,</span>
+<span class="co">#&gt;     process_attgt, test.mboot</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span>(<span class="no">mpdta</span>)</pre></body></html></div>
 <p><code>mpdta</code> is a balanced panel with 2500 observations. And the dataset looks like</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span>(<span class="no">mpdta</span>)
@@ -120,50 +352,144 @@
 <span class="co">#&gt; 819 2006       8001 5.896761 8.378161        2007     1</span>
 <span class="co">#&gt; 827 2007       8001 5.896761 8.487352        2007     1</span>
 <span class="co">#&gt; 937 2003       8019 2.232377 4.997212        2007     1</span></pre></body></html></div>
+<p><strong>Data Requirements</strong></p>
 <p>In particular applications, the dataset should look like this with the key parts being:</p>
 <ul>
-<li><p>There needs to be an <code>id</code> variable. In <code>mpdta</code>, it is the variable <code>countyreal</code>. This should not vary over time for particular units.</p></li>
-<li><p>There needs to be a <code>time</code> variable. In <code>mpdta</code>, it is the variable <code>year</code></p></li>
-<li><p>In this application, the outcome is <code>lemp</code></p></li>
-<li><p>There needs to be a <code>treatment</code> variable. In <code>mpdta</code>, it is the variable <code>treat</code>. This variable indicates whether or not an individual is ever treated. Thus, it should be set equal to 1 in all periods for individuals that are treated at any point. It should be set equal to 0 for individuals that are never treated.</p></li>
-<li><p>There needs to be a <code>first.treated</code> variable. In <code>mpdta</code>, it is the variable <code>first.treat</code>. This is the time period when an individual first becomes treated. For individuals that are never treated, this variable should be set equal to 0.</p></li>
-<li><p>The <code>did</code> package allows for incorporating covariates (see below). In <code>mpdta</code>, <code>lpop</code> is the log of county population. The <code>did</code> package requires that covariates be time-invariant. For time varying covariates like county population, we recommend using the value of the covariate in the first time period.</p></li>
+<li><p>The dataset should be in <em>long</em> format – each row corresponds to a particular unit at a particular point in time. Sometimes panel data is in <em>wide</em> format – each row contains all the information about a particular unit in all time periods. To convert from wide to long in <code>R</code>, one can use the <code><a href="https://tidyr.tidyverse.org/reference/gather.html">tidyr::gather</a></code> function. <a href="http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/">Here is an example</a></p></li>
+<li><p>There needs to be an id variable. In <code>mpdta</code>, it is the variable <code>countyreal</code>. This should not vary over time for particular units. The name of this variable is passed to methods in the <code>did</code> package by setting, for example, <code>idname="countyreal"</code></p></li>
+<li><p>There needs to be a time variable. In <code>mpdta</code>, it is the variable <code>year</code>. The name of this variable is passed to methods in the <code>did</code> package by setting, for example, <code>tname="year"</code></p></li>
+<li><p>In this application, the outcome is <code>lemp</code>. The name of this variable is passed to methods in the <code>did</code> package by setting, for example, <code>yname="lemp"</code></p></li>
+<li><p>There needs to be a group variable. In <code>mpdta</code>, it is the variable <code>first.treat</code>. This is the time period when an individual first becomes treated. <em>For individuals that are never treated, this variable should be set equal to 0.</em> The name of this variable is passed to methods in the <code>did</code> package by setting, for example, <code>first.treat.name="first.treat"</code></p></li>
+<li><p>The <code>did</code> package allows for incorporating covariates so that the parallel trends assumption holds only after conditioning on these covariates. In <code>mpdta</code>, <code>lpop</code> is the log of county population. The <code>did</code> package requires that covariates be time-invariant. For time varying covariates like county population, the <code>did</code> package sets the value of the covariate to be equal to the value of the covariate in the first time period. Covariates are passed as a formula to the <code>did</code> package by setting, for example, <code>xformla=~lpop</code>. For estimators under unconditional parallel trends, the <code>xformla</code> argument can be left blank or can be set as <code>xformla=~1</code> to only include a constant.</p></li>
 </ul>
-<p>Here are some additional comments about the data structure:</p>
+<div id="the-effect-of-the-minimum-wage-on-youth-employment" class="section level3">
+<h3 class="hasAnchor">
+<a href="#the-effect-of-the-minimum-wage-on-youth-employment" class="anchor"></a>The Effect of the Minimum Wage on Youth Employment</h3>
+<p>Next, we walk through a straightforward, but realistic way to use the <code>did</code> package to carry out an application.</p>
+<p><strong>Side Comment:</strong> This is just an example of how to use our method in a semi-realistic setup. To really evaluate the effect of the minimum wage on teen employment, one would need to be more careful along a number of dimensions.</p>
+<p>We’ll consider two cases. For the first case, we won’t condition on any covariates. For the second, we’ll condition on the log of county population (in a “real” application, one might want to condition on more covariates).</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="co"># estimate group-time average treatment effects without covariates</span>
+<span class="co"># set bstrap=TRUE and cband=TRUE to get uniform confidence bands</span>
+<span class="no">mw.attgt</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="kw">yname</span><span class="kw">=</span><span class="st">"lemp"</span>,
+                   <span class="kw">first.treat.name</span><span class="kw">=</span><span class="st">"first.treat"</span>,
+                   <span class="kw">idname</span><span class="kw">=</span><span class="st">"countyreal"</span>,
+                   <span class="kw">tname</span><span class="kw">=</span><span class="st">"year"</span>,
+                   <span class="kw">xformla</span><span class="kw">=</span>~<span class="fl">1</span>,
+                   <span class="kw">data</span><span class="kw">=</span><span class="no">mpdta</span>,
+                   <span class="kw">bstrap</span><span class="kw">=</span><span class="fl">TRUE</span>,
+                   <span class="kw">cband</span><span class="kw">=</span><span class="fl">TRUE</span>,
+                   <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>
+                   )
+
+<span class="co"># summarize the results</span>
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">mw.attgt</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  group   time          att          se</span>
+<span class="co">#&gt; ------  -----  -----------  ----------</span>
+<span class="co">#&gt;   2004   2004   -0.0105032   0.0237488</span>
+<span class="co">#&gt;   2004   2005   -0.0704232   0.0309841</span>
+<span class="co">#&gt;   2004   2006   -0.1372587   0.0367781</span>
+<span class="co">#&gt;   2004   2007   -0.1008114   0.0357535</span>
+<span class="co">#&gt;   2006   2004    0.0065201   0.0230745</span>
+<span class="co">#&gt;   2006   2005   -0.0027508   0.0201314</span>
+<span class="co">#&gt;   2006   2006   -0.0045946   0.0184040</span>
+<span class="co">#&gt;   2006   2007   -0.0412245   0.0213023</span>
+<span class="co">#&gt;   2007   2004    0.0305067   0.0150905</span>
+<span class="co">#&gt;   2007   2005   -0.0027259   0.0159087</span>
+<span class="co">#&gt;   2007   2006   -0.0310871   0.0178610</span>
+<span class="co">#&gt;   2007   2007   -0.0260544   0.0175494</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; P-value for pre-test of DID assumption:  0.16133</span>
+
+<span class="co"># plot the results</span>
+<span class="co"># set ylim so that all plots have the same scale along y-axis</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">mw.attgt</span>, <span class="kw">ylim</span><span class="kw">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(-<span class="fl">.3</span>,<span class="fl">.3</span>))</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-15-1.png" width="700"></p>
+<p>There are a few things to notice in this case</p>
+<ul>
+<li><p>There does not appear to be much evidence against the parallel trends assumption. One fails to reject using the Wald test reported in <code>summary</code>; likewise the uniform confidence bands cover 0 in all pre-treatment periods.</p></li>
+<li><p>There is some evidence of negative effects of the minimum wage on employment. Two group-time average treatment effects are negative and statistically different from 0. These results also suggest that it may be helpful to aggregate the group-time average treatment effects.</p></li>
+</ul>
+<div class="sourceCode"><html><body><pre class="r"><span class="co"># aggregate the group-time average treatment effects</span>
+<span class="no">mw.dyn</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span>(<span class="no">mw.attgt</span>, <span class="kw">type</span><span class="kw">=</span><span class="st">"dynamic"</span>)
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">mw.dyn</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overall ATT:  </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;         att          se</span>
+<span class="co">#&gt; -----------  ----------</span>
+<span class="co">#&gt;  -0.0772398   0.0226653</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Dynamic Effects:</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  event time          att          se</span>
+<span class="co">#&gt; -----------  -----------  ----------</span>
+<span class="co">#&gt;          -3    0.0305067   0.0153135</span>
+<span class="co">#&gt;          -2   -0.0005631   0.0141303</span>
+<span class="co">#&gt;          -1   -0.0244587   0.0143414</span>
+<span class="co">#&gt;           0   -0.0199318   0.0115551</span>
+<span class="co">#&gt;           1   -0.0509574   0.0177870</span>
+<span class="co">#&gt;           2   -0.1372587   0.0407911</span>
+<span class="co">#&gt;           3   -0.1008114   0.0354370</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">mw.dyn</span>, <span class="kw">ylim</span><span class="kw">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(-<span class="fl">.3</span>,<span class="fl">.3</span>))</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-16-1.png" width="700"></p>
+<p>These continue to be uniform confidence bands for dynamic effects. The results are broadly similar to the ones from the group-time average treatment effects: one fails to reject parallel trends in pre-treatment periods and it looks like somewhat negative effects of the minimum wage on youth employment.</p>
+<p>One potential issue with these dynamic effect estimators is that the composition of the groups changes with different lengths of exposure in the event study plots. For example, for the group of states who increased their minimum wage in 2007, we only see the effect of the minimum wage on impact, but we do not observe any dynamic effects. If the effects of the minimum wage are systematically different across groups (here, there is not much evidence of this as the effect for all groups seems to be close to 0 on impact and perhaps becoming more negative over time), then this can lead to confounding dynamics and selective treatment timing among different groups. One way to combat this is to balance the sample by (i) only including groups that are exposed to the treatment for at least a certain number of time periods and (ii) only look at dynamic effects in those time periods. In the <code>did</code> package, one can do this by specifying the <code>balance.e</code> option. Here, we set <code>balance.e=1</code> – what this does is to only consider groups of states that are treated in 2004 and 2006 (and drops the group treated in 2007) and then only looks at dynamics on impact and in the next period following raising the minimum wage.</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">mw.dyn.balance</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span>(<span class="no">mw.attgt</span>, <span class="kw">type</span><span class="kw">=</span><span class="st">"dynamic"</span>, <span class="kw">balance.e</span><span class="kw">=</span><span class="fl">1</span>)
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">mw.dyn.balance</span>)
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Overall ATT:  </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;         att         se</span>
+<span class="co">#&gt; -----------  ---------</span>
+<span class="co">#&gt;  -0.0287608   0.014584</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; Dynamic Effects:</span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt; </span>
+<span class="co">#&gt;  event time          att          se</span>
+<span class="co">#&gt; -----------  -----------  ----------</span>
+<span class="co">#&gt;          -2    0.0065201   0.0261332</span>
+<span class="co">#&gt;          -1   -0.0027508   0.0194250</span>
+<span class="co">#&gt;           0   -0.0065642   0.0142618</span>
+<span class="co">#&gt;           1   -0.0509574   0.0174175</span>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">mw.dyn.balance</span>, <span class="kw">ylim</span><span class="kw">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(-<span class="fl">.3</span>,<span class="fl">.3</span>))</pre></body></html></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-17-1.png" width="700"></p>
+<p>Finally, we can run all the same results including a covariate. In this application the results turn out to be nearly identical, and here we provide just the code for estimating the group-time average treatment effects while including covariates. The other steps are otherwise the same.</p>
+<div class="sourceCode"><html><body><pre class="r"><span class="no">mw.attgt.X</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="kw">yname</span><span class="kw">=</span><span class="st">"lemp"</span>,
+                   <span class="kw">first.treat.name</span><span class="kw">=</span><span class="st">"first.treat"</span>,
+                   <span class="kw">idname</span><span class="kw">=</span><span class="st">"countyreal"</span>,
+                   <span class="kw">tname</span><span class="kw">=</span><span class="st">"year"</span>,
+                   <span class="kw">xformla</span><span class="kw">=</span>~<span class="no">lpop</span>,
+                   <span class="kw">data</span><span class="kw">=</span><span class="no">mpdta</span>,
+                   <span class="kw">bstrap</span><span class="kw">=</span><span class="fl">TRUE</span>,
+                   <span class="kw">cband</span><span class="kw">=</span><span class="fl">TRUE</span>,
+                   <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>
+                   )</pre></body></html></div>
+</div>
+<div id="common-issues-with-the-did-package" class="section level2">
+<h2 class="hasAnchor">
+<a href="#common-issues-with-the-did-package" class="anchor"></a>Common Issues with the did package</h2>
+<p>We update this section with common issues that people run into when using the <code>did</code> package. Please feel free to contact us with questions or comments.</p>
 <ul>
 <li><p>In the case with panel data, the <code>did</code> package “balances” the panel by dropping individual units which do not have observations in each time period.</p></li>
-<li><p>The <code>did</code> package requires that there are some individuals that are never treated. In some applications, eventually all individuals become treated and identifying treatment effects is based on exploiting differences in the timing when individuals become treated. One way around this is to drop the last time period and call the group of individuals that are first treated in the last period as the control group (i.e., set <code>treat=0</code> for that group)</p></li>
 <li><p>The <code>did</code> package is only built to handle staggered treatment adoption designs. This means that once an individual becomes treated, they remain treated in all subsequent periods.</p></li>
 </ul>
 </div>
-<div id="identification" class="section level1">
-<h1 class="hasAnchor">
-<a href="#identification" class="anchor"></a>Identification</h1>
-<p>First, we provide a brief overview of how identification works as well as parameters of interest in DID designs.</p>
-The main identifying assumption in DID designs is called a parallel trends assumption. Let <span class="math inline">\(Y_{it}(0)\)</span> denote an individual’s untreated “potential” outcome in time period <span class="math inline">\(t\)</span> and <span class="math inline">\(Y_{it}(1)\)</span> denote an individual’s treated “potential” outcome in time period <span class="math inline">\(t\)</span>. The observed outcome for an individual is <span class="math inline">\(Y_{it} = D_i Y_{it}(1) - (1-D_i)Y_{it}(0)\)</span>.
-<span class="math display">\[\begin{align*}
- E[\Delta Y_t(0) | X, D=1] = E[\Delta Y_t(0)|X,D=1]
-\end{align*}\]</span>
-</div>
-<div id="estimation" class="section level1">
-<h1 class="hasAnchor">
-<a href="#estimation" class="anchor"></a>Estimation</h1>
-<div id="two-groups-two-periods" class="section level2">
-<h2 class="hasAnchor">
-<a href="#two-groups-two-periods" class="anchor"></a>Two-Groups / Two Periods</h2>
-</div>
-<div id="multiple-groups-and-periods" class="section level2">
-<h2 class="hasAnchor">
-<a href="#multiple-groups-and-periods" class="anchor"></a>Multiple Groups and Periods</h2>
-</div>
-</div>
-<div id="common-issues-using-the-did-package" class="section level1">
-<h1 class="hasAnchor">
-<a href="#common-issues-using-the-did-package" class="anchor"></a>Common Issues using the <code>did</code> package</h1>
-</div>
-<div id="references" class="section level1">
-<h1 class="hasAnchor">
-<a href="#references" class="anchor"></a>References</h1>
 </div>
   </div>
 

@@ -2,57 +2,12 @@
 % Please edit documentation in R/compute.att_gt.R
 \name{compute.att_gt}
 \alias{compute.att_gt}
-\title{compute.att_gt}
+\title{Compute Group-Time Average Treatment Effects}
 \usage{
-compute.att_gt(
-  flen,
-  tlen,
-  flist,
-  tlist,
-  data,
-  dta,
-  first.treat.name,
-  outcome,
-  tname,
-  w,
-  idname,
-  method,
-  seedvec,
-  pl,
-  cores,
-  printdetails,
-  nevertreated
-)
+compute.att_gt(dp)
 }
 \arguments{
-\item{data}{The name of the data.frame that contains the data}
-
-\item{first.treat.name}{The name of the variable in \code{data} that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
-in the untreated group.}
-
-\item{outcome}{The outcome y (in quotations, always!)}
-
-\item{tname}{The name of the column containing the time periods}
-
-\item{w}{The name of the column containing the sampling weights. If not set, all observations have same weight.}
-
-\item{idname}{The individual (cross-sectional unit) id name}
-
-\item{method}{The method for estimating the propensity score when covariates
-are included (not implemented)}
-
-\item{seedvec}{Optional value to set random seed; can possibly be used
-in conjunction with bootstrapping standard errors#' (not implemented)}
-
-\item{pl}{Boolean for whether or not to use parallel processing (not implemented)}
-
-\item{cores}{The number of cores to use for parallel processing (not implemented)}
-
-\item{printdetails}{Boolean for showing detailed results or not}
-
-\item{nevertreated}{Boolean for using the group which is never treated in the sample as the comparison unit. Default is TRUE.}
+\item{dp}{A DIDparams object}
 }
 \value{
 a list with length equal to the number of groups times the

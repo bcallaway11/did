@@ -15,7 +15,8 @@ MP(
   W = NULL,
   Wpval = NULL,
   aggte = NULL,
-  alp = 0.05
+  alp = 0.05,
+  DIDparams = NULL
 )
 }
 \arguments{
@@ -23,11 +24,14 @@ MP(
 
 \item{t}{which time period a group-time average treatment effect is for}
 
-\item{att}{the group-average treatment effect for group \code{group} and time period \code{t}}
+\item{att}{the group-average treatment effect for group \code{group} and time
+period \code{t}}
 
 \item{V}{the variance matrix for group-time average treatment effects}
 
-\item{c}{simulataneous critical value if one is obtaining simultaneous confidence bands. Otherwise it reports the critival value based on pointwise normal approximation.}
+\item{c}{simulataneous critical value if one is obtaining simultaneous confidence
+bands. Otherwise it reports the critival value based on pointwise normal
+approximation.}
 
 \item{inffunc}{the influence function for estimating group-time average treatment effects}
 
@@ -41,6 +45,9 @@ common trends assumption}
 \item{aggte}{an aggregate treatment effects object}
 
 \item{alp}{the significance level, default is 0.05}
+
+\item{DIDparams}{a DIDparams object.  A way to optionally return the parameters
+of the call to \code{att_gt} or \code{conditional_did_pretest}.}
 }
 \value{
 MP object

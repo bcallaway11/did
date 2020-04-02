@@ -8,21 +8,36 @@
 
 <title>mp.spatt.test — mp.spatt.test • did</title>
 
-<!-- jquery -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
-<!-- Bootstrap -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.7/united/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
+<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png" />
+<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png" />
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8=" crossorigin="anonymous"></script>
+<!-- jquery -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+<!-- Bootstrap -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script>
+
+<!-- bootstrap-toc -->
+<link rel="stylesheet" href="../bootstrap-toc.css">
+<script src="../bootstrap-toc.js"></script>
 
 <!-- Font Awesome icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous" />
 
 <!-- clipboard.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js" integrity="sha256-FiZwavyI2V6+EXO1U+xzLG3IKldpiTFf3153ea9zikQ=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script>
 
-<!-- sticky kit -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sticky-kit/1.1.3/sticky-kit.min.js" integrity="sha256-c4Rlo1ZozqTPE2RLuvbusY3+SU1pQaJC0TjuhygMipw=" crossorigin="anonymous"></script>
+<!-- headroom.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script>
 
 <!-- pkgdown -->
 <link href="../pkgdown.css" rel="stylesheet">
@@ -30,11 +45,12 @@
 
 
 
-<meta property="og:title" content="mp.spatt.test — mp.spatt.test" />
 
-<meta property="og:description" content="integrated moments test for conditional common trends holding in all pre-treatment time
- periods across all groups" />
-<meta name="twitter:card" content="summary" />
+<meta property="og:title" content="mp.spatt.test — mp.spatt.test" />
+<meta property="og:description" content="Deprecated function for integrated moments test for conditional
+ parallel trends holding in all pre-treatment time periods across all groups" />
+<meta property="og:image" content="/logo.png" />
+
 
 
 
@@ -48,9 +64,10 @@
 <![endif]-->
 
 
+
   </head>
 
-  <body>
+  <body data-spy="scroll" data-target="#toc">
     <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
@@ -64,38 +81,22 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">1.2.2</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.0</span>
       </span>
     </div>
 
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="../index.html">
-    <span class="fa fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">User Guides</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-    <li>
-      <a href="../articles/did-basics.html">DID Basics</a>
-    </li>
-  </ul>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li>
-  <a href="../news/index.html">Changelog</a>
+  <a href="../news/index.html">News</a>
 </li>
       </ul>
-      
       <ul class="nav navbar-nav navbar-right">
         
       </ul>
@@ -105,6 +106,7 @@
 </div><!--/.navbar -->
 
       
+
       </header>
 
 <div class="row">
@@ -116,140 +118,30 @@
     </div>
 
     <div class="ref-description">
-    
-    <p>integrated moments test for conditional common trends holding in all pre-treatment time
- periods across all groups</p>
-    
+    <p>Deprecated function for integrated moments test for conditional
+ parallel trends holding in all pre-treatment time periods across all groups</p>
     </div>
 
-    <pre class="usage"><span class='fu'>mp.spatt.test</span>(<span class='no'>formla</span>, <span class='kw'>xformlalist</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='no'>data</span>, <span class='no'>tname</span>,
-  <span class='kw'>weightfun</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>w</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='no'>first.treat.name</span>, <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>, <span class='kw'>method</span> <span class='kw'>=</span> <span class='st'>"logit"</span>, <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>100</span>,
-  <span class='kw'>clustervarlist</span> <span class='kw'>=</span> <span class='kw'>NULL</span>, <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>, <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>2</span>)</pre>
-    
+    <pre class="usage"><span class='fu'>mp.spatt.test</span>(<span class='no'>...</span>)</pre>
+
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
     <colgroup><col class="name" /><col class="desc" /></colgroup>
     <tr>
-      <th>formla</th>
-      <td><p>The formula y ~ d where y is the outcome and d is the
-treatment indicator (d should be binary)</p></td>
-    </tr>
-    <tr>
-      <th>xformlalist</th>
-      <td><p>A list of formulas for the X variables.  This allows to
-test using different specifications for X, if desired</p></td>
-    </tr>
-    <tr>
-      <th>data</th>
-      <td><p>The name of the data.frame that contains the data</p></td>
-    </tr>
-    <tr>
-      <th>tname</th>
-      <td><p>The name of the column containing the time periods</p></td>
-    </tr>
-    <tr>
-      <th>weightfun</th>
-      <td><p>A function that takes in two arguments, X and u, to compute
-the weighting function for the test.  The default is <code>1*(X &lt;= u)</code></p></td>
-    </tr>
-    <tr>
-      <th>w</th>
-      <td><p>A vector of weights for each observation (not implemented)</p></td>
-    </tr>
-    <tr>
-      <th>panel</th>
-      <td><p>Boolean indicating whether the data is panel or repeated cross
-sections</p></td>
-    </tr>
-    <tr>
-      <th>idname</th>
-      <td><p>The individual (cross-sectional unit) id name</p></td>
-    </tr>
-    <tr>
-      <th>first.treat.name</th>
-      <td><p>The name of the variable in <code>data</code> that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
-in the untreated group.</p></td>
-    </tr>
-    <tr>
-      <th>alp</th>
-      <td><p>the significance level, default is 0.05</p></td>
-    </tr>
-    <tr>
-      <th>method</th>
-      <td><p>The method for estimating the propensity score when covariates
-are included</p></td>
-    </tr>
-    <tr>
-      <th>biters</th>
-      <td><p>The number of boostrap iterations to use.  The default is 100,
-and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
-    </tr>
-    <tr>
-      <th>clustervarlist</th>
-      <td><p>A list of cluster variables.  This allows to conduct
-the test using different levels of clustering, if desired.</p></td>
-    </tr>
-    <tr>
-      <th>pl</th>
-      <td><p>Boolean for whether or not to use parallel processing</p></td>
-    </tr>
-    <tr>
-      <th>cores</th>
-      <td><p>The number of cores to use for parallel processing</p></td>
+      <th>...</th>
+      <td><p>extra arguments</p></td>
     </tr>
     </table>
-    
-    <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>list containing test results</p>
-    
-    <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2018).</p>
-    
-
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><span class='co'># NOT RUN {</span>
-<span class='fu'><a href='https://www.rdocumentation.org/packages/utils/topics/data'>data</a></span>(<span class='no'>mpdta</span>)
-<span class='no'>mptest</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt.test</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformlalist</span><span class='kw'>=</span><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/list'>list</a></span>(~<span class='no'>lpop</span>), <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-                <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-                <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>, <span class='kw'>clustervarlist</span><span class='kw'>=</span><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/list'>list</a></span>(<span class='kw'>NULL</span>))
-<span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>mptest</span><span class='kw'>[[</span><span class='fl'>1</span>]])
-<span class='co'># }</span><div class='input'>
-<span class='fu'><a href='https://www.rdocumentation.org/packages/utils/topics/data'>data</a></span>(<span class='no'>mpdta</span>)
-<span class='no'>mptest</span> <span class='kw'>&lt;-</span> <span class='fu'>mp.spatt.test</span>(<span class='no'>lemp</span> ~ <span class='no'>treat</span>, <span class='kw'>xformlalist</span><span class='kw'>=</span><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/list'>list</a></span>(<span class='kw'>NULL</span>), <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-                <span class='kw'>panel</span><span class='kw'>=</span><span class='fl'>TRUE</span>, <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-                <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>, <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>, <span class='kw'>clustervarlist</span><span class='kw'>=</span><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/list'>list</a></span>(<span class='kw'>NULL</span>))</div><div class='output co'>#&gt; 
-#&gt;  Step 1 of 1 :.....................
-#&gt; 
-#&gt;  &gt;&gt;&gt; Inner Step 1 of 1 :.....................</div><div class='input'><span class='fu'><a href='https://www.rdocumentation.org/packages/base/topics/summary'>summary</a></span>(<span class='no'>mptest</span><span class='kw'>[[</span><span class='fl'>1</span>]])</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
-#&gt; Cramer von Mises: 
-#&gt;   Test Statistic:  7.22123 
-#&gt;   Critical Value:  14.06254 
-#&gt;   P-value       :  0.41 
-#&gt;  
-#&gt; Clustering on   :  , 
-#&gt; X formula       :  ~ 1 </div><div class='input'>
-</div></pre>
   </div>
-  <div class="col-md-3 hidden-xs hidden-sm" id="sidebar">
-    <h2>Contents</h2>
-    <ul class="nav nav-pills nav-stacked">
-      <li><a href="#arguments">Arguments</a></li>
-      
-      <li><a href="#value">Value</a></li>
-
-      <li><a href="#references">References</a></li>
-      
-      <li><a href="#examples">Examples</a></li>
-    </ul>
-
+  <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
+    <nav id="toc" data-toggle="toc" class="sticky-top">
+      <h2 data-toc-skip>Contents</h2>
+    </nav>
   </div>
 </div>
+
 
       <footer>
       <div class="copyright">
@@ -257,13 +149,16 @@ the test using different levels of clustering, if desired.</p></td>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.3.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
 </div>
+
       </footer>
    </div>
 
   
 
+
   </body>
 </html>
+
 

@@ -1,9 +1,10 @@
-#' @title compute.aggte
+#' @title Compute Aggregated Treatment Effect Paramaters
 #'
-#' @description does the heavy lifting on computing aggregated group-time
+#' @description Does the heavy lifting on computing aggregated group-time
 #'  average treatment effects
 #'
 #' @inheritParams att_gt
+#' @inheritParams aggte
 #'
 #' @return \code{AGGTE} object
 #'
@@ -13,7 +14,7 @@
 compute.aggte <- function(MP, type="simple", balance.e=NULL) {
 
   #-----------------------------------------------------------------------------
-  # process MP object
+  # unpack MP object
   #-----------------------------------------------------------------------------
   # load parameters
   group <- MP$group
@@ -31,20 +32,15 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   biters <- dp$biters
   alp <- dp$alp
   cband <- dp$cband
-  maxe <- dp$maxe
-  mine <- dp$mine
-  # figure out the dates
-  # list of dates from smallest to largest
-  tlist <- unique(data[,tname])[order(unique(data[,tname]))] 
-  # list of treated groups (by time) from smallest to largest
-  glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
-  # Only the treated groups
-  glist <- glist[glist>0]
+  tlist <- dp$tlist
+  glist <- dp$glist
+  panel <- dp$panel
   
   # data from first period
-  dta <- data[ data[,tname]==tlist[1], ]
-  dta$w <- 1 # TODO: update these weights are wrong
-
+  ifelse(panel,
+         dta <- data[ data[,tname]==tlist[1], ],
+         dta <- data
+         )
   #-----------------------------------------------------------------------------
   # data organization and recoding
   #-----------------------------------------------------------------------------
@@ -348,11 +344,11 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
 #'  treatment effects that contains the probability of being in particular group
 #' @param weights.ind additional sampling weights (nx1)
 #' @param G vector containing which group a unit belongs to (nx1)
-#' @param group
+#' @param group vector of groups
 #'
 #' @return nxk influence function matrix
 #'
-#' @export
+#' @keywords internal
 wif <- function(keepers, pg, weights.ind, G, group) {
   # note: weights are all of the form P(G=g|cond)/sum_cond(P(G=g|cond))
   # this is equal to P(G=g)/sum_cond(P(G=g)) which simplifies things here
@@ -391,7 +387,7 @@ wif <- function(keepers, pg, weights.ind, G, group) {
 #'
 #' @return nx1 influence function
 #'
-#' @export
+#' @keywords internal
 get_agg_inf_func <- function(att, inffunc1, whichones, weights.agg, wif=NULL) {
   # enforce weights are in matrix form
   weights.agg <- as.matrix(weights.agg)
@@ -419,7 +415,7 @@ get_agg_inf_func <- function(att, inffunc1, whichones, weights.agg, wif=NULL) {
 #'
 #' @return scalar standard error
 #'
-#' @export
+#' @keywords internal
 getSE <- function(thisinffunc, DIDparams=NULL) {
   alp <- .05
   bstrap <- FALSE

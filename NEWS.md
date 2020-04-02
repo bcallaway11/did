@@ -1,7 +1,27 @@
-# did 1.3.0
-  * Deprecated \code{mp.spatt} function and replaced it with \code{att_gt} function
-  * Calling \code{att_gt} is similar to calling \code{mp.spatt}; instead of formula for outcome of the form \code{y~treat}, now just pass the name of the outcome variable
-  * Bug fixes for including groups that are "already treated" in the first period
+# did 2.0.0
+  * Big improvement on code base / functionality / testing
+  
+  * Deprecated **mp.spatt** function and replaced it with **att_gt** function
+
+  * Calling **att_gt** is similar to calling **mp.spatt**; instead of formula for outcome of the form `y~treat`, now just pass the name of the outcome variable
+
+  * Deprecated **mp.spatt** function and replaced it with **conditional_did_pretest** function
+
+  * New **estMethod** parameter.  Can call any function for 2x2 DID in the **DRDID** package (default is now doubly robust estimation, but inverse probability weights and regression estimators are also supported) as well as provide custom 2x2 DID estimators
+
+  * Bug fixes for including groups that are *already treated* in the first period
+
+  * Allow for user to select control group -- either *never treated* or *not yet treated*
+
+  * Add functionality for uniform confidence bands for all aggregated treatment effect parameters
+
+  * Introduced dynamic effects in pre-treatment periods.  These allow for users to report event study plots that are common that include pre-treatment periods and are common in applied work.  The event study plots in the **did** package are robust to selective treatment timing (unlike standard regression event study plots)
+
+  * Support for using repeated cross sections data instead of panel data is much improved
+
+  * Support for using sampling weights is much improved
+
+  * Big improvement to website, vignettes, and code documentation
   
 # did 1.2.3
   * Corrected check problems
@@ -20,7 +40,7 @@
 
   * Added some error handling for some cases with small group sizes, and fixed some cryptic error messages
 
-  * Fixes handling for data being in format besides "data.frame" (e.g. "tibble")
+  * Fixes handling for data being in format besides *data.frame* (e.g. *tibble*)
 
   * Add warnings about small group sizes which are a very common source of trouble
 

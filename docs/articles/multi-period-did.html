@@ -5,19 +5,19 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DID with Multiple Time Periods • did</title>
+<title>Introduction to DID with Multiple Time Periods • did</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
 <link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png">
 <link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png">
 <link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png">
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/sandstone/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
 <script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="DID with Multiple Time Periods">
+<script src="../pkgdown.js"></script><meta property="og:title" content="Introduction to DID with Multiple Time Periods">
 <meta property="og:description" content="did">
 <meta property="og:image" content="/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
@@ -45,37 +45,13 @@
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
 <li>
-  <a href="../index.html">
-    <span class="fas fa fas fa-home fa-lg"></span>
-     
-  </a>
+  <a href="../articles/index.html">User Guides</a>
 </li>
 <li>
-  <a href="../reference/index.html">Reference</a>
-</li>
-<li class="dropdown">
-  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
-    Articles
-     
-    <span class="caret"></span>
-  </a>
-  <ul class="dropdown-menu" role="menu">
-<li>
-      <a href="../articles/did-basics.html">Introduction to the did Package</a>
-    </li>
-    <li>
-      <a href="../articles/multi-period-did.html">DID with Multiple Time Periods</a>
-    </li>
-    <li>
-      <a href="../articles/pre-testing.html">Pre-Testing</a>
-    </li>
-    <li>
-      <a href="../articles/tests.html">Introduction to the did Package</a>
-    </li>
-  </ul>
+  <a href="../reference/index.html">Functions</a>
 </li>
 <li>
-  <a href="../news/index.html">Changelog</a>
+  <a href="../news/index.html">News</a>
 </li>
       </ul>
 <ul class="nav navbar-nav navbar-right"></ul>
@@ -91,10 +67,10 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>DID with Multiple Time Periods</h1>
+      <h1 data-toc-skip>Introduction to DID with Multiple Time Periods</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 class="date">2020-03-30</h4>
+            <h4 class="date">2020-04-02</h4>
       
       
       <div class="hidden name"><code>multi-period-did.Rmd</code></div>
@@ -103,9 +79,6 @@
 
     
     
-<div id="did-with-multiple-time-periods" class="section level1">
-<h1 class="hasAnchor">
-<a href="#did-with-multiple-time-periods" class="anchor"></a>DID with Multiple Time Periods</h1>
 <p>Difference in differences is one of the most common approaches for trying to identifying and estimate the causal effect of participating in a treatment on some outcome.</p>
 <p>The “textbook” version of DID involves two periods and two groups. The <em>untreated group</em> never participates in the treatment, and the <em>treated group</em> becomes treated in the second period.</p>
 <p>However, much applied work deals with cases where there are more than two time periods and different individuals can become treated at different points in time. Regardless of the number of time periods, by far the leading approach in applied work is to try to estimate the effect of the treatment using a two way fixed effects regression. This works great in the case with two periods, but there are a number of recent methodological papers that suggest that there may be substantial drawbacks to using two way fixed effects with multiple time periods.</p>
@@ -144,6 +117,7 @@
 <div id="two-way-fixed-effects-regressions" class="section level3">
 <h3 class="hasAnchor">
 <a href="#two-way-fixed-effects-regressions" class="anchor"></a>Two way fixed effects regressions</h3>
+<p>Now let’s move to a more general case where there are <span class="math inline">\(\mathcal{T}\)</span> total time periods. Denote particular time periods by <span class="math inline">\(t\)</span> where <span class="math inline">\(t=1,\ldots,\mathcal{T}\)</span>.</p>
 <p>By far the most common approach to <em>trying</em> to estimate the effect of a binary treatment in this setup is the two way fixed effects regression (TWFE). This is a regression like <span class="math display">\[
 Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
 \]</span> where <span class="math inline">\(\theta_t\)</span> is a time fixed effect, <span class="math inline">\(\eta_i\)</span> is an individual fixed effect, <span class="math inline">\(D_{it}\)</span> is a treatment dummy variable, <span class="math inline">\(v_{it}\)</span> are time varying unobservables that are mean independent of everything else, and <span class="math inline">\(\alpha\)</span> is the parameter of interest. <span class="math inline">\(\alpha\)</span> is often interpreted as <em>the effect</em> or the <em>average effect</em> of participating in the treatment.</p>
@@ -163,36 +137,52 @@ Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
 <p>The first of these two comparisons are good (or at least in the spirit of DID) in that they take the path of outcomes experienced by units that become treated and adjust it by the path of outcomes that experienced by units that are not participating in the treatment. The third comparison is different though: it adjusts the path of outcomes for newly treated units by the path of outcomes for already treated units. But this is not the path of untreated potential outcomes, it includes <em>treatment effect dynamics</em>. Thus, these dynamics appear in <span class="math inline">\(\alpha\)</span> <em>as part of the control</em>.</p>
 <p>And this issue can have potentially severe consequences. For example, it is possible to come up with examples where the effect of participating in the treatment is positive for all individuals in all time periods, but the TWFE estimation procedure leads to estimating a negative effect of participating in the treatment.</p>
 <p><a href="https://andrewcbaker.netlify.com/2019/09/25/difference-in-differences-methodology/">Baker (2019)</a> has a really nice (and accessible) discussion of these issues in more detail.</p>
+</div>
+</div>
+<div id="treatment-effects-in-difference-in-differences-designs-with-multiple-periods" class="section level2">
+<h2 class="hasAnchor">
+<a href="#treatment-effects-in-difference-in-differences-designs-with-multiple-periods" class="anchor"></a>Treatment Effects in Difference in Differences Designs with Multiple Periods</h2>
+<p>In light of the potential problems with TWFE regressions in DID designs with multiple periods, are there alternative approaches that can be used in this case?</p>
+<p>Yes, and it turns out that it is not all that complicated!</p>
+<p>To fix ideas, let’s provide some extended notation and be clear about the identifying assumptions that we are going to make.</p>
 <p><strong>Notation</strong></p>
 <ul>
 <li><p><span class="math inline">\(Y_{it}(0)\)</span> is individual <span class="math inline">\(i\)</span>’s untreated potential outcome. This is the outcome that individual <span class="math inline">\(i\)</span> would experience in period <span class="math inline">\(t\)</span> if they do not participate in the treatment.</p></li>
 <li><p><span class="math inline">\(Y_{it}(g)\)</span> is individual <span class="math inline">\(i\)</span>’s potential outcome in time period <span class="math inline">\(t\)</span> if they become treated in period <span class="math inline">\(g\)</span>.</p></li>
-<li><p><span class="math inline">\(G_i\)</span> is the time period when individual <span class="math inline">\(i\)</span> becomes treated (often <em>groups</em> are defined by the time period when a unit becomes treated; hence, the <span class="math inline">\(G\)</span> notation). Set <span class="math inline">\(G_i = 0\)</span> for individuals that are never treated.</p></li>
-<li><p><span class="math inline">\(Y_{it}\)</span> is individual <span class="math inline">\(i\)</span>’s observed outcome in time period <span class="math inline">\(t\)</span>. It is given by <span class="math inline">\(Y_{it} = \indicator{G_i = 0} Y_{it}(0) + \indicator{G_i = g} \indicator{G_i \leq t} Y_{it}(g)\)</span>. The notation here is a bit complicated, but in words, the observed outcome in period <span class="math inline">\(t\)</span> is an untreated potential outcome for individuals that are never treated and for individuals that are not treated yet in period <span class="math inline">\(t\)</span>. Otherwise (i.e., in time periods where individual <span class="math inline">\(i\)</span> is already treated), we observe their treated potential outcome (which can depend on <em>when</em> they became treated)</p></li>
+<li><p><span class="math inline">\(G_i\)</span> is the time period when individual <span class="math inline">\(i\)</span> becomes treated (often <em>groups</em> are defined by the time period when a unit becomes treated; hence, the <span class="math inline">\(G\)</span> notation).</p></li>
+<li><p><span class="math inline">\(C_i\)</span> is an indicator variable for whether or not an individuals is in the untreated group (it is possible for the control group to change across different time periods, but, to keep things simple here, just consider the case where we use units that never participate in the treatment as the control group).</p></li>
+<li><p><span class="math inline">\(Y_{it}\)</span> is individual <span class="math inline">\(i\)</span>’s observed outcome in time period <span class="math inline">\(t\)</span>. For individuals in the untreated group, <span class="math inline">\(Y_{it} = Y_{it}(0)\)</span> in all time periods. For individuals in other groups, we observe <span class="math inline">\(Y_{it} = \mathbf{1}\{ G_i &gt; t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} \mathbf{1}\{G_i \leq t\} Y_{it}(G_i)\)</span>. The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on <em>when</em> they became treated).</p></li>
 <li><p><span class="math inline">\(X_i\)</span> vector of covariates</p></li>
 </ul>
-<p>The main identifying assumption in DID designs is the parallel trends assumption.</p>
+<div id="main-assumptions" class="section level3">
+<h3 class="hasAnchor">
+<a href="#main-assumptions" class="anchor"></a>Main Assumptions</h3>
+<p><strong>Parallel Trends Assumption</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(g \leq t\)</span>, <span class="math display">\[
+  E[\Delta Y_t(0) | G=g] = E[\Delta Y_t(0) | C=1]
+\]</span></p>
+<p>This is a natural extension of the parallel trends assumption in the two period and two group case. It says that, in the absence of treatment, trends in untreated potential outcomes would be the same across groups. It also assumes it only when <span class="math inline">\(g \leq t\)</span> – these are post-treatment periods for units in group <span class="math inline">\(g\)</span>.</p>
+<p><strong>Staggered Treatment Adoption Assumption</strong> Let <span class="math inline">\(D_{it} = 1\)</span> if an individual participates in the treatment and <span class="math inline">\(D_{it}=0\)</span> otherwise. Then, for <span class="math inline">\(t=1,...,\mathcal{T}-1\)</span>, <span class="math inline">\(D_{it} = 1 \implies D_{it+1} = 1\)</span>.</p>
+<p>Staggered treatment adoption implies that once a unit participates in the treatment, they remain in the treatment. This is a leading case in many applications in economics. For example, it would be the case for policies that roll out to different locations over some period of time. It would also be the case for many individual-level treatments that have a “scarring” effect. For example, in the context of job training, most applications consider participating in the treatment <em>ever</em> as defining treatment, not participating in some job training program year after year. This assumption is what allows us to define groups by treatment timing.</p>
 </div>
 </div>
 <div id="group-time-average-treatment-effects" class="section level2">
 <h2 class="hasAnchor">
 <a href="#group-time-average-treatment-effects" class="anchor"></a>Group-Time Average Treatment Effects</h2>
-<p>A natural way to generalize the two period - two group case is to define <em>group-time average treatment effects</em>:</p>
+<p>The above assumptions are natural extensions of the identifying assumptions in the two period and two group case to the multiple period case.</p>
+<p>Likewise, a natural way to generalize the parameter of interest (the ATT) from the two period and two group case to the multiple period case is to define <strong>group-time average treatment effects</strong>:</p>
 <p><span class="math display">\[
   ATT(g,t) = E[Y_t(g) - Y_t(0) | G=g]
 \]</span></p>
 <p>This is the average effect of participating in the treatment for individuals in group <span class="math inline">\(g\)</span> at time period <span class="math inline">\(t\)</span>. Notice that when there are two time periods and two groups (the textbook case), the average treatment effect on the treated is given by <span class="math inline">\(ATT = ATT(g=2,t=2)\)</span>.</p>
 <p>To give a couple more examples, suppose that a researcher has access to three time periods. Then, <span class="math inline">\(ATT(g=2,t=3)\)</span> is the average effect of participating in the treatment for the group of individuals that become treated in time period 2 in time period 3. Similarly, <span class="math inline">\(ATT(g=3,t=3)\)</span> is the average effect of participating in the treatment for the group of individuals that become treated in time period 3 in time period 3.</p>
-<p>It is also possible to extend the parallel trends assumption to the case with more than two time periods.</p>
-</div>
-<div id="event-studies" class="section level2">
-<h2 class="hasAnchor">
-<a href="#event-studies" class="anchor"></a>Event Studies</h2>
-<div id="common-pitfalls" class="section level3">
-<h3 class="hasAnchor">
-<a href="#common-pitfalls" class="anchor"></a>Common Pitfalls</h3>
-</div>
-</div>
+<p><strong>Identification of Group-Time Average Treatment Effects</strong></p>
+<p>Under the parallel trends assumption, it is straightforward to show that group-time average treatment effects are identified.</p>
+<p>These group-time average treatment effects are the building blocks of understanding the effect of participating in a treatment in DID designs with multiple time periods. This vignette has covered basic background issues on DID with multiple periods. Callaway and Sant’Anna (2019) discusses many extensions and these are all provided in the <strong>did</strong> package as well. <a href="articles/index.html">See our User Guides for more details.</a></p>
+<ul>
+<li><p>Parallel trends assumptions that hold only after conditioning on covariates</p></li>
+<li><p>How to aggregate group-time average treatment effects into a single summary treatment effect parameter, event study plot, as well as other aggregations</p></li>
+<li><p>How to pre-test the parallel trends assumption underlying the DID approach</p></li>
+</ul>
 </div>
   </div>
 

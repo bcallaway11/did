@@ -2,64 +2,38 @@
 % Please edit documentation in R/compute.aggte.R
 \name{compute.aggte}
 \alias{compute.aggte}
-\title{compute.aggte}
+\title{Compute Aggregated Treatment Effect Paramaters}
 \usage{
-compute.aggte(
-  flist,
-  tlist,
-  group,
-  t,
-  att,
-  first.treat.name,
-  inffunc1,
-  n,
-  clustervars,
-  dta,
-  idname,
-  bstrap,
-  biters,
-  alp,
-  cband,
-  maxe,
-  mine
-)
+compute.aggte(MP, type = "simple", balance.e = NULL)
 }
 \arguments{
-\item{first.treat.name}{The name of the variable in \code{data} that contains the first
-period when a particular observation is treated.  This should be a positive
-number for all observations in treated groups.  It should be 0 for observations
-in the untreated group.}
+\item{MP}{an MP object (i.e., the results of the \code{att_gt} method)}
 
-\item{clustervars}{A vector of variables to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level.}
+\item{type}{Which type of aggregated treatment effect parameter to compute.
+The default is "simple" (this just computes a weighted average of all
+group-time average treatment effects with weights proportional to group
+size).  Other options are "dynamic" (this computes average effects across
+different lengths of exposure to the treatment and is similar to an
+"event study"; here the overall effect averages the effect of the
+treatment across all positive lengths of exposure); "selective" (this
+computes average treatment effects across different groups; here
+the overall effect averages the effect across different groups); and
+"calendar" (this computes average treatment effects across different
+time periods; here the overall effect averages the effect across each
+time period).}
 
-\item{idname}{The individual (cross-sectional unit) id name}
-
-\item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is \code{TRUE}.}
-
-\item{biters}{The number of boostrap iterations to use.  The default is 1000,
-and this is only applicable if \code{bstrap=TRUE}.}
-
-\item{alp}{the significance level, default is 0.05}
-
-\item{cband}{Boolean for whether or not to compute a uniform confidence
-band that covers all of the group-time average treatment effects
-with fixed probability \code{1-alp}.  The default is \code{TRUE}
-and the resulting standard errors will be pointwise.}
-
-\item{maxe}{maximum values of periods ahead to be computed in event study. Only used if aggte = T.}
-
-\item{mine}{minimum values of periods ahead to be computed in event study. Only used if aggte = T.}
+\item{balance.e}{If set (and if one computes dynamic effects), it balances
+the sample with respect to event time.  For example, if \code{balance.e=2},
+\code{aggte} will drop groups that are not exposed to treatment for
+at least three periods. (the initial period when \code{e=0} as well as the
+next two periods when \code{e=1} and the \code{e=2}).  This ensures that
+the composition of groups does not change when event time changes.}
 }
 \value{
 \code{AGGTE} object
 }
 \description{
-does the heavy lifting on computing aggregated group-time
+Does the heavy lifting on computing aggregated group-time
  average treatment effects
 }
 \keyword{internal}

@@ -1,9 +1,9 @@
-#' @title compute.att_gt
+#' @title Compute Group-Time Average Treatment Effects
 #'
 #' @description \code{compute.att_gt} does the main work for computing
 #'  mutliperiod group-time average treatment effects
 #'
-#' @inheritParams att_gt
+#' @param dp A DIDparams object
 #'
 #' @return a list with length equal to the number of groups times the
 #'  number of time periods; each element of the list contains an
@@ -15,27 +15,31 @@
 #' @keywords internal
 #'
 #' @export
-compute.att_gt <- function(nG,
-                           nT,
-                           glist,
-                           tlist,
-                           data,
-                           n,
-                           first.treat.name,
-                           yname,
-                           tname,
-                           w,
-                           idname,
-                           xformla,
-                           method,
-                           seedvec,
-                           pl,
-                           cores,
-                           printdetails,
-                           control.group,
-                           estMethod,
-                           panel) {
+compute.att_gt <- function(dp) {
 
+  #-----------------------------------------------------------------------------
+  # unpack DIDparams
+  #-----------------------------------------------------------------------------
+  data <- dp$data
+  yname <- dp$yname
+  tname <- dp$tname
+  idname <- dp$idname
+  xformla <- dp$xformla
+  weightsname <- dp$weightsname
+  estMethod <- dp$estMethod
+  panel <- dp$panel
+  printdetails <- dp$printdetails
+  control.group <- dp$control.group
+  first.treat.name <- dp$first.treat.name
+  n  <- dp$n
+  nT <- dp$nT
+  nG <- dp$nG
+  tlist <- dp$tlist
+  glist <- dp$glist
+  
+  #-----------------------------------------------------------------------------
+  # main computations
+  #-----------------------------------------------------------------------------
 
   # will populate with all att(g,t)
   attgt.list <- list()
@@ -46,7 +50,7 @@ compute.att_gt <- function(nG,
   # number of time periods
   tlist.length <- length(tlist)
 
-    # 3-dimensional array which will store influence function
+  # 3-dimensional array which will store influence function
   # across groups and times
   inffunc <- array(data=0, dim=c(nG,nT,n))
 
@@ -118,11 +122,8 @@ compute.att_gt <- function(nG,
         disdat$C <- 1*((disdat[,first.treat.name] == 0) |
                          (disdat[,first.treat.name] > tlist[t+1]))
         thisdata$C <- 1*((thisdata[,first.treat.name] == 0) |
-                       (thisdata[,first.treat.name] > tlist[t+1]))
+                           (thisdata[,first.treat.name] > tlist[t+1]))
         thisdata$G <- 1*(thisdata[,first.treat.name] == glist[g])
-        ## disdat$C <- 1*((disdat[,first.treat.name] == 0) +
-        ##                  (disdat[,first.treat.name] > max(disdat[, tname]))) *
-        ##   (disdat[,first.treat.name] != glist[g])
       }
 
       # set up dummy for particular treated group
@@ -151,27 +152,19 @@ compute.att_gt <- function(nG,
         # give short names for data in this iteration
         G <- disdat$G
         C <- disdat$C
-        Ypre <- disdat$Y
+        Ypre <- disdat$y
         Ypost <- disdat$yt1
         dy <- disdat$dy 
         n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
         w <- disdat$w
 
-
-        
-        # Currently, we still pass to functions if there are no covariates
-        # but perhaps
-        # if there are no covariates, just manually compute
-        # att_gt
-
         # matrix of covariates
         covariates <- model.matrix(xformla, data=disdat)
-
-
+        
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
-
+        
         if (class(estMethod) == "function") {
           # user-specified function
           attgt <- estMethod(Y1=Ypost, Y0=Ypre,
@@ -222,13 +215,12 @@ compute.att_gt <- function(nG,
         C <- disdat$C
         Y <- disdat$y
         post <- 1*(disdat[,tname] == tlist[t+1])
-        #n1 <- sum(thisdata$G + thisdata$C) #nrow(disdat) # num obs. for computing ATT(g,t)
+        # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
         w <- disdat$w
 
         # matrix of covariates
         covariates <- model.matrix(xformla, data=disdat)
-
 
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
@@ -256,12 +248,15 @@ compute.att_gt <- function(nG,
         } else {
           # doubly robust, this is default
           attgt <- DRDID::drdid_rc(y=Y,
-                                      post=post,
-                                      D=G,
-                                      covariates=covariates,
-                                      boot=FALSE)
+                                   post=post,
+                                   D=G,
+                                   covariates=covariates,
+                                   boot=FALSE)
         }
 
+        # n/n1 adjusts for estimating the
+        # att_gt only using observations from groups
+        # G and C
         attgt$inf.func <- (n/n1)*attgt$inf.func
       } #end panel if
       
@@ -273,9 +268,7 @@ compute.att_gt <- function(nG,
       # for units that are not in G or C will be equal to 0
       inf.func <- rep(0, n)
 
-      # n/n1 adjusts for estimating the
-      # att_gt only using observations from groups
-      # G and C
+      # populate the influence function in the right places
       inf.func[disidx] <- attgt$inf.func
 
       # save it in influence function matrix

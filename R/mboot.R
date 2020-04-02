@@ -1,12 +1,17 @@
-#' @title mboot
+#' @title Multiplier Bootstrap
 #'
-#' @description function for multiplier bootstrap
+#' @description A function to take an influence function and use the
+#'  multiplier bootsrap to compute standard errors and critical values for
+#'  uniform confidence bands.
 #'
 #' @param inf.func an influence function
 #' @param DIDparams DIDparams object
 #'
-#' @return list with (i) matrix of bootstrap iterations
-#'  and (ii) variance matrix
+#' @return list with elements
+#' * bres returns from each bootstrap iteration
+#' * V variance matrix
+#' * se standard errors
+#' * crit.val a critical value for computing uniform confidence bands
 #' 
 #' @export
 mboot <- function(inf.func, DIDparams) {
@@ -58,7 +63,9 @@ mboot <- function(inf.func, DIDparams) {
     Rb
   })
   # bootstrap results
-  bres <- t(simplify2array(bout))
+  bres <- simplify2array(bout)
+  # handle vector and matrix case differently, so you get nxk matrix
+  ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
   # bootstrap variance matrix 
   V <- cov(bres)
   # bootstrap standard error
@@ -69,5 +76,5 @@ mboot <- function(inf.func, DIDparams) {
   bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
   crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
 
-  list(bres=bres, V=V, se=bSigma, crit.val=crit.val)
+  list(bres=bres, V=V, se=bSigma/sqrt(n), crit.val=crit.val)
 }

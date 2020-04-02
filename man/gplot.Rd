@@ -13,20 +13,6 @@ gplot(
   xgap = 1
 )
 }
-\arguments{
-\item{ylim}{optional y limits for the plot; settng here makes the y limits
-the same across different plots}
-
-\item{xlab}{optional x-axis label}
-
-\item{ylab}{optional y-axis label}
-
-\item{title}{optional plot title}
-
-\item{xgap}{optional gap between the labels on the x-axis.  For example,
-\code{xgap=3} indicates that the labels should show up for every third
-value on the x-axis.  The default is 1.}
-}
 \value{
 a \code{ggplot2} object
 }
