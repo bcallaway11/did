@@ -90,11 +90,14 @@ pre_process_did <- function(yname,
     warning("not guaranteed to order time periods correclty if they are not numeric")
   }
 
+   
   #check that first.treat doesn't change across periods for particular individuals
-  if (!all(sapply( split(data, data[,idname]), function(df) {
-    length(unique(df[,first.treat.name]))==1
-  }))) {
-    stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+  if (panel) {
+    if (!all(sapply( split(data, data[,idname]), function(df) {
+      length(unique(df[,first.treat.name]))==1
+    }))) {
+      stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+    }
   }
 
   

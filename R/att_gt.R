@@ -161,6 +161,7 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
   results <- compute.att_gt(dp)
 
+  
   # extract ATT(g,t) and influence functions
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc

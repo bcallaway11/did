@@ -164,32 +164,37 @@ compute.att_gt <- function(dp) {
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
-        
+
         if (class(estMethod) == "function") {
           # user-specified function
-          attgt <- estMethod(Y1=Ypost, Y0=Ypre,
-                             treat=G,
-                             covariates=covariates)
+          attgt <- estMethod(y1=Ypost, y0=Ypre,
+                             D=G,
+                             covariates=covariates,
+                             i.weights=w,
+                             inffunc=TRUE)
         } else if (estMethod == "ipw") {
           # inverse-probability weights
-          attgt <- DRDID::ipw_did_panel(Ypost, Ypre, G,
-                                        covariates=covariates,
-                                        boot=FALSE)
+          attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
+                                            covariates=covariates,
+                                            i.weights=w,
+                                            boot=FALSE, inffunc=TRUE)
         } else if (estMethod == "reg") {
           # regression
           attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
                                         covariates=covariates,
-                                        boot=FALSE)
+                                        i.weights=w,
+                                        boot=FALSE, inffunc=TRUE)
         } else {
           # doubly robust, this is default
           attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
                                       covariates=covariates,
-                                      boot=FALSE)
+                                      i.weights=w,
+                                      boot=FALSE, inffunc=TRUE)
         }
-
+        
         # adjust influence function to account for only using
         # subgroup to estimate att(g,t)
-        attgt$inf.func <- (n/n1)*attgt$inf.func
+        attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
 
       } else { # repeated cross sections
 
@@ -225,39 +230,45 @@ compute.att_gt <- function(dp) {
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
-
+        
         if (class(estMethod) == "function") {
           # user-specified function
-          attgt <- estMethod(Y1=Ypost, Y0=Ypre,
-                             treat=G,
-                             covariates=covariates)
+          attgt <- estMethod(y=Y,
+                             post=post,
+                             D=G,
+                             covariates=covariates,
+                             i.weights=w,
+                             inffunc=TRUE)
         } else if (estMethod == "ipw") {
           # inverse-probability weights
-          attgt <- DRDID::ipw_did_rc(y=Y,
-                                     post=post,
-                                     D=G,
-                                     covariates=covariates,
-                                     boot=FALSE)
+          attgt <- DRDID::std_ipw_did_rc(y=Y,
+                                         post=post,
+                                         D=G,
+                                         covariates=covariates,
+                                         i.weights=w,
+                                         boot=FALSE, inffunc=TRUE)
         } else if (estMethod == "reg") {
           # regression
           attgt <- DRDID::reg_did_rc(y=Y,
                                      post=post,
                                      D=G,
                                      covariates=covariates,
-                                     boot=FALSE)
+                                     i.weights=w,
+                                     boot=FALSE, inffunc=TRUE)
         } else {
           # doubly robust, this is default
           attgt <- DRDID::drdid_rc(y=Y,
                                    post=post,
                                    D=G,
                                    covariates=covariates,
-                                   boot=FALSE)
+                                   i.weights=w,
+                                   boot=FALSE, inffunc=TRUE)
         }
 
         # n/n1 adjusts for estimating the
         # att_gt only using observations from groups
         # G and C
-        attgt$inf.func <- (n/n1)*attgt$inf.func
+        attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
       } #end panel if
       
       # save results for this att(g,t)
@@ -269,7 +280,7 @@ compute.att_gt <- function(dp) {
       inf.func <- rep(0, n)
 
       # populate the influence function in the right places
-      inf.func[disidx] <- attgt$inf.func
+      inf.func[disidx] <- attgt$att.inf.func
 
       # save it in influence function matrix
       inffunc[g,t,] <- inf.func

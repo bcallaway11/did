@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
 fldr <- "~/Dropbox/did/R/"
 sapply(paste0(fldr,list.files(fldr)), source)
-remotes::install_github("bcallaway11/DRDID")
+remotes::install_github("pedrohcgs/DRDID")
 library(BMisc)
 library(ggplot2)
 library(gridExtra)
@@ -47,7 +47,7 @@ where $\theta_t = \beta_t = t$ for $t=1,\ldots,4$, $\eta_i \sim N(G_i, 1)$ where
 **Building the dataset**
 
 ```{r echo=FALSE}
-source("~/Dropbox/did/tests/did_sims.R")
+source("~/Dropbox/did/tests/setup_sims.R")
 reset.sim()
 te <- 0
 set.seed(1814)

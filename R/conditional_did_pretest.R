@@ -66,6 +66,14 @@ conditional_did_pretest <- function(yname,
   glist <- dp$glist
   n <- dp$n
 
+  # check if possible to do test
+  # note: tlist[2] contains the 2nd time period
+  # (which is the first period where able to calculate ATT(g,t)'s)
+  if ( max(glist) <= tlist[2] ) {
+    stop("There are no pre-treatment periods to use to conduct test.")
+  }
+
+  
   # set which weight function to use
   # the only option that will work with current setup
   # is indicator so hard-code it here
@@ -84,12 +92,13 @@ conditional_did_pretest <- function(yname,
 
   #for debugging:
   # X <- as.matrix(X[1:100,])
-  
 
   cat("Step 1 of 2: Computing test statistic....\n")
   out <- pbapply::pblapply(1:nrow(X), function(i) {
     # these are the weights for the conditional moment test
+    # indicator weights
     www <- as.numeric(weightfun(X1, X[i,]))
+    # for indicator weights, just choose rows where weights = 1
     rightids <- dta[,idname][www==1]
 
     # create a new dataset and set the outcome to be the outcomes multiplied by the
@@ -97,7 +106,8 @@ conditional_did_pretest <- function(yname,
     # weights*** (otherwise you will multiply by www twice))
     thisdata <- data
     thisdata[,yname] <- 0
-    thisdata[ thisdata[,idname] %in% rightids,yname] <- data[ thisdata[,idname] %in% rightids,yname] 
+    thisdata[ thisdata[,idname] %in% rightids,yname] <- data[ thisdata[,idname] %in% rightids,yname]
+    thisdata$y <- thisdata[,yname]
 
     # set new parameters to pass to call to compute.att_gt
     thisdp <- dp
@@ -114,19 +124,31 @@ conditional_did_pretest <- function(yname,
     tt <- J.results$tt
     inf.func <- J.results$inf.func
 
-    ## ***TODO: drop post treatment results
-
     # return the results for this weighting function
     list(J=att, group=group, t=tt, inf.func=inf.func)
   }, cl=cores)
 
-  
+  # drop post-treatment (g,t); ***TODO: this is an obvious place
+  # to make the code faster -- instead of dropping these, never
+  # compute them***
+  out <- lapply(out, function(Js) {
+    # which elements of results to keep
+    keepers <- Js$group > Js$t 
+    this.group <- Js$group[keepers]
+    this.t <- Js$t[keepers]
+    this.J <- as.matrix(Js$J[keepers])
+    this.inf.func <- as.matrix(Js$inf.func[,keepers])
+    list(J=this.J, group=this.group, t=this.t, inf.func=this.inf.func)
+  })
 
   # grab an array of the influence function for the test statistic
   Jinf.func <- simplify2array(getListElement(out, "inf.func"))
 
   # get the test statistic for all values of g,t,x
-  J <- t(sapply(out, function(o) o$J))
+  J.inner <- sapply(out, function(o) o$J)
+
+  # handle case with 1 pre-treatment period differently from multiple periods
+  ifelse(class(J.inner)=="matrix", J <- t(J.inner), J <- as.matrix(J.inner))
 
   # compute CvM test statistic by averaging over X, and summing over g and t
   CvM <- n*sum(apply(J^2, 2, mean)) 
@@ -138,10 +160,11 @@ conditional_did_pretest <- function(yname,
   cat("Step 2 of 2: Simulating limiting distribution of test statistic....\n")
   boot.res <- test.mboot(Jinf.func, dp, cores=cores)
 
+  
   #-----------------------------------------------------------------------------
-  # some debugging code
-  # keeping in case helpful later on
-  ## ddd <- 5
+  ## # some debugging code
+  ## # keeping in case helpful later on
+  ## ddd <- 1
   ## bout <- sapply(1:100, function(b) {
 
   ##   Jstar <- apply(sample(c(-1,1), size=n, replace=TRUE)*Jinf.func[,ddd,], 2, mean)
@@ -161,8 +184,8 @@ conditional_did_pretest <- function(yname,
   ##   sum(cvm.inner)
   ## })
   ## 1-ecdf(bout2)(ts2)
-  #-----------------------------------------------------------------------------
-
+  ## #-----------------------------------------------------------------------------
+  
   # bootstrap results
   CvMb <- boot.res$bres
   # bootstrap critical value
@@ -254,9 +277,12 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
   tname <- DIDparams$tname
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
+  panel <- DIDparams$panel
   
   # just get n obsevations (for clustering below...)
-  dta <- data[ data[,tname]==tlist[1], ]
+  ifelse(panel,
+         dta <- data[ data[,tname]==tlist[1], ],
+         dta <- data)
   n <- nrow(dta)
   
   # if include id as variable to cluster on

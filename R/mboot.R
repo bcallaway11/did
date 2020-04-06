@@ -24,9 +24,12 @@ mboot <- function(inf.func, DIDparams) {
   tname <- DIDparams$tname
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
+  panel <- DIDparams$panel
   
   # just get n obsevations (for clustering below...)
-  dta <- data[ data[,tname]==tlist[1], ]
+  ifelse(panel,
+         dta <- data[ data[,tname]==tlist[1], ],
+         dta <- data)
 
   n <- nrow(inf.func) # this adjusts automatically to panel vs. repeated cross sections
   

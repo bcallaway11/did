@@ -1,18 +1,3 @@
-#-----------------------------------------------------------------------------
-
-# load did code
-fldr <- "~/Dropbox/did/R/"
-sapply(paste0(fldr,list.files(fldr)), source)
-# remotes::install_github("bcallaway11/did", ref="pedro")
-remotes::install_github("bcallaway11/DRDID")
-remotes::install_github("bcallaway11/BMisc")
-
-
-
-reset.sim()
-sim(panel=FALSE)
-
-
 
 #-----------------------------------------------------------------------------
 # check if Wald pre-tests are working
@@ -81,18 +66,5 @@ ggdid(res)#, ylim=c(-2,14))
 ate <- aggte(res, type="dynamic")
 ggdid(ate)
 
-## p <- ggdid(ate)
-## ggsave("~/Downloads/event_study4_balanced5.pdf", p, width=12)
-
-library(ggplot2)
-library(gridExtra)
-## ggdid(res, ylim=c(0,2))
 
 
-#-----------------------------------------------------------------------------
-# test if 2 period case works (possible to introduce bugs that affect this
-# case only)
-#-----------------------------------------------------------------------------
-reset.sim()
-time.periods <- 2
-sim()
