@@ -72,7 +72,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
-  pg <- sapply(originalglist, function(g) mean(weights.ind*dta[,first.treat.name]==g))
+  pg <- sapply(originalglist, function(g) mean(weights.ind*(dta[,first.treat.name]==g)))
 
   # length of this is equal to number of groups
   pgg <- pg
