@@ -1,3 +1,18 @@
+---
+title: "Fast Test Cases for did Package"
+author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
 source("setup_sims.R")
 fldr <- "~/Dropbox/did/R/"
 sapply(paste0(fldr,list.files(fldr)), source)
@@ -5,15 +20,18 @@ remotes::install_github("pedrohcgs/DRDID")
 library(BMisc)
 library(ggplot2)
 library(gridExtra)
+```
+
+# Fast Simulations
+
+These are simulations that will run fast
+and serve as basic checks that we have not
+introduced any bugs into the code
 
 
-#-----------------------------------------------------------------------------
-# These are simulations that will run fast
-# and serve as basic checks that we have not
-# introduced any bugs into the code
-#-----------------------------------------------------------------------------
+## Tests with panel data
 
-
+```{r}
 #-----------------------------------------------------------------------------
 # test each estimation method with panel data
 # Expected results: treatment effects = 1, p-value for pre-test
@@ -57,9 +75,12 @@ res
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               first.treat.name="G", estMethod="ipw", printdetails=FALSE)
 res
+```
 
 
+## Tests with 2 periods
 
+```{r}
 #-----------------------------------------------------------------------------
 # test if 2 period case works (possible to introduce bugs that affect this
 # case only)
@@ -72,8 +93,10 @@ data <- build_sim_dataset()
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               first.treat.name="G", estMethod="ipw", printdetails=FALSE)
 res
+```
 
-
+## Test no covariates
+```{r}
 #-----------------------------------------------------------------------------
 # test no covariates case
 # Expected Result: te=1, p-value for pre-test uniformly distributed
@@ -85,8 +108,11 @@ data <- build_sim_dataset()
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               first.treat.name="G", estMethod="reg", printdetails=FALSE)
 res
+```
 
+## Test Repeated Cross Sections
 
+```{r}
 #-----------------------------------------------------------------------------
 # test repeated cross sections, regression sims
 # Expected result: te=1, p-value for pre-test uniformly distributed
@@ -128,7 +154,12 @@ res
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               first.treat.name="G", estMethod="ipw", printdetails=FALSE, panel=FALSE)
 res
+```
 
+
+## Test not-yet-treated as control
+
+```{r}
 #-----------------------------------------------------------------------------
 # test not yet treated as control
 # Expected result: te=1, p-value for pre-test U[0,1]
@@ -141,8 +172,11 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control.group="nevertreated",
               first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
 res
+```
 
 
+## Test Aggregated Treatment Effects
+```{r}
 #-----------------------------------------------------------------------------
 # *test dynamic effects*
 # expected result: te=length of exposure
@@ -157,6 +191,7 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
 res
 summary(aggte(res, type="dynamic"))
+
 
 #-----------------------------------------------------------------------------
 # test selective treatment timing
@@ -205,10 +240,13 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
 res
 summary(aggte(res, type="dynamic"))
 summary(aggte(res, type="dynamic", balance.e=2))
+```
 
 
 
+## Misc error handling tests
 
+```{r}
 #-----------------------------------------------------------------------------
 # incorrectly specified id
 #-----------------------------------------------------------------------------
@@ -230,9 +268,11 @@ tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname=
 #-----------------------------------------------------------------------------
 # incorrectly specified time period
 #-----------------------------------------------------------------------------
+```
 
 
-
+## Test custom estimation method
+```{r}
 #-----------------------------------------------------------------------------
 # custom estimation method
 # Expected results: te=1, pre-test p-value uniformly distributed, code runs
@@ -243,3 +283,4 @@ data <- build_sim_dataset(panel=TRUE)
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               first.treat.name="G", estMethod=DRDID::drdid_imp_panel, printdetails=FALSE, panel=TRUE)
 res
+```

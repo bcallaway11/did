@@ -3,7 +3,7 @@ reset.sim <- function() {
   # set parameters
   #-----------------------------------------------------------------------------
   # number of time periods
-  time.periods <<- 4
+  # time.periods <<- 4
   # number of treated units
   nt <<- 4000
   # coefficient on X 

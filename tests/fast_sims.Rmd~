@@ -1,10 +1,25 @@
-source("setup_sims.R")
+---
+title: "Fast Test Cases for did Package"
+author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
 fldr <- "~/Dropbox/did/R/"
 sapply(paste0(fldr,list.files(fldr)), source)
 remotes::install_github("pedrohcgs/DRDID")
 library(BMisc)
 library(ggplot2)
 library(gridExtra)
+```
 
 
 #-----------------------------------------------------------------------------
