@@ -58,15 +58,16 @@ pre_process_did <- function(yname,
     if(control.group=="nevertreated"){
       stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select control.group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
     } else {
-      warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated las, nor any ATT(g,t) for t higher than or equal to the largest g.\n \nIf you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
+      warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
+
       # Drop all time periods with time periods >= latest treated
       data <- base::subset(data,(data[,tname] < max(glist)))
       # Replace last treated time with zero
-      lines.gmax = data[,first.treat.name]==max(glist)
+      lines.gmax <- data[,first.treat.name]==max(glist)
       data[lines.gmax,first.treat.name] <- 0
 
-      ##figure out the dates
-      tlist <- unique(data[,tname])[order(unique(data[,tname]))] ## this is going to be from smallest to largest
+      #figure out the dates
+      tlist <- unique(data[,tname])[order(unique(data[,tname]))] # this is going to be from smallest to largest
       # Figure out the groups
       glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
     }
@@ -136,9 +137,20 @@ pre_process_did <- function(yname,
 
   # setup data in panel case
   if (panel) {
+    # check for complete cases
+    keepers <- complete.cases(cbind.data.frame(data[,c(idname, tname, yname, first.treat.name)], model.matrix(xformla, data=data)))
+    if (nrow(data[keepers,]) < nrow(data)) {
+      warning(paste0("dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data...."))
+      data <- data[keepers,]
+    }
+    
     # make it a balanced data set
+    n <- nrow(data)
     data <- BMisc::makeBalancedPanel(data, idname, tname)
-
+    if (nrow(data) < n) {
+      warning(paste0("dropped ", n-nrow(data), " observations while converting to balanced panel..."))
+    }
+    
     # create an n-row data.frame to hold the influence function later
     #dta <- data[ data[,tname]==tlist[1], ]  
 
@@ -151,7 +163,13 @@ pre_process_did <- function(yname,
       stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
     }
   } else {
-
+    # check for complete cases
+    keepers <- complete.cases(cbind.data.frame(data[,c(tname, yname, first.treat.name)], model.matrix(xformla, data=data)))
+    if (nrow(data[keepers,]) < nrow(data)) {
+      warning(paste0("dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data...."))
+      data <- data[keepers,]
+    }
+    
     # n-row data.frame to hold the influence function
     data$rowid <- seq(1:nrow(data))
     idname <- "rowid"
