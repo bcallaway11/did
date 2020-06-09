@@ -81,10 +81,10 @@ pre_process_did <- function(yname,
   glist <- glist[glist > first.period]
   
   # check for groups treated in the first period and drop these
-  nfirstperiod <- nrow( data[ data[,first.treat.name] <= first.period, ] )
+  nfirstperiod <- length(unique(data[ data[,first.treat.name] <= first.period, ] )[,idname])
   if ( nfirstperiod > 0 ) {
     warning(paste0("dropping ", nfirstperiod, " units that were already treated in the first period...this is normal"))
-    data <- data[ data[,first.treat.name] > mint, ]
+    data <- data[ data[,first.treat.name] > first.period, ]
   }
     
 
