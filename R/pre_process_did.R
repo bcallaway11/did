@@ -84,7 +84,7 @@ pre_process_did <- function(yname,
   nfirstperiod <- length(unique(data[ data[,first.treat.name] <= first.period, ] )[,idname])
   if ( nfirstperiod > 0 ) {
     warning(paste0("dropping ", nfirstperiod, " units that were already treated in the first period...this is normal"))
-    data <- data[ data[,first.treat.name] > first.period, ]
+    data <- data[ data[,first.treat.name] %in% c(0,glist), ]
   }
     
 
