@@ -172,7 +172,6 @@ pre_process_did <- function(yname,
 
     # create an n-row data.frame to hold the influence function later
     #dta <- data[ data[,tname]==tlist[1], ]
-
     n <- nrow(data[ data[,tname]==tlist[1], ]) # use this for influence function
 
     # check that first.treat doesn't change across periods for particular individuals
