@@ -2,7 +2,7 @@
 % Please edit documentation in R/AGGTEobj.R
 \name{AGGTEobj}
 \alias{AGGTEobj}
-\title{AGGTE}
+\title{AGGTEobj}
 \usage{
 AGGTEobj(
   overall.att = NULL,
@@ -40,7 +40,8 @@ effects.}
 an AGGTEobj
 }
 \description{
-\code{AGGTE} class for aggregate treatment effects
+Objects of this class hold results on aggregated
+ group-time average treatment effects
 
 An object for holding aggregated treatment effect parameters.
 }

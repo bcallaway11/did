@@ -46,12 +46,12 @@ common trends assumption}
 
 \item{alp}{the significance level, default is 0.05}
 
-\item{DIDparams}{a DIDparams object.  A way to optionally return the parameters
-of the call to \code{att_gt} or \code{conditional_did_pretest}.}
+\item{DIDparams}{a \code{\link{DIDparams}} object.  A way to optionally return the parameters
+of the call to \code{\link{att_gt}} or \code{\link{conditional_did_pretest}}.}
 }
 \value{
 MP object
 }
 \description{
-multi-period object
+Multi-period objects that hold results for group-time average treatment effects
 }

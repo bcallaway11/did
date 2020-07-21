@@ -15,8 +15,8 @@ att_gt(
   control.group = c("nevertreated", "notyettreated"),
   weightsname = NULL,
   alp = 0.05,
-  bstrap = FALSE,
-  cband = FALSE,
+  bstrap = TRUE,
+  cband = TRUE,
   biters = 1000,
   clustervars = NULL,
   estMethod = "dr",
@@ -73,14 +73,16 @@ If not set, all observations have same weight.}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
 the multiplier boostrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is \code{FALSE} and analytical
+must set \code{bstrap=TRUE}. Default is \code{TRUE} (in addition, cband
+is also by default \code{TRUE} indicating that uniform confidence bands
+will be returned.  If bstrap is \code{FALSE}, then analytical
 standard errors are reported.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
  band that covers all of the group-time average treatment effects
  with fixed probability \code{1-alp}.  In order to compute uniform confidence
  bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
-\code{FALSE} and the resulting standard errors will be pointwise.}
+\code{TRUE}.}
 
 \item{biters}{The number of boostrap iterations to use.  The default is 1000,
 and this is only applicable if \code{bstrap=TRUE}.}
@@ -128,7 +130,8 @@ units and units that have not yet (but eventually will) participate in the
 treatment.  This control group changes across different time periods.}
 }
 \value{
-\code{MP} object
+an \code{\link{MP}} object containing all the results for group-time average
+ treatment effects
 }
 \description{
 \code{att_gt} computes average treatment effects in DID

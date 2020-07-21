@@ -1,6 +1,7 @@
 #' @title MP.TEST
 #'
-#' @description MP.TEST objects
+#' @description An object that holds results from computing pre-test of the
+#'  conditional parallel trends assumption
 #'
 #' @param CvM Cramer von Mises test statistic
 #' @param CvMb a vector of boostrapped Cramer von Mises test statistics

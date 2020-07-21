@@ -4,7 +4,7 @@ author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{DID with Multiple Time Periods}
+  %\VignetteIndexEntry{Introduction to DID with Multiple Time Periods}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,7 +26,7 @@ This vignette briefly discusses the emerging literature on DID with multiple tim
 
 ## Background
 
-This section covers two .  First, it discusses DID with two time periods and two groups -- this is the "textbook" case of DID.  Second, it briefly considers issues with two way fixed effects regressions when there are multiple time periods.
+To start with, we'll consider some background material in this section.  First, we'll discuss DID with two time periods and two groups -- this is the "textbook" case of DID.  Second, we briefly consider issues with two way fixed effects regressions when there are multiple time periods.
 
 ### DID with 2 Periods and 2 Groups
 
@@ -60,7 +60,7 @@ $$
   E[\Delta Y_t(0) | D=1] = E[\Delta Y_t(0) | D=0]
 $$
 
-In words, this assumption says that the change (or "path") in outcomes over time experienced that individuals in the treated group *would have experienced if they had not participated in the treatment* is the same as the path of outcomes that individuals in the untreated group actually experienced.  The parallel trends assumption allows for the level of untreated potential outcomes to differ across groups and is consistent with, for example, fixed effects models for untreated potential outcomes where the mean of the unobserved fixed effect can be different across groups.
+In words, this assumption says that the change (or "path") in outcomes over time that individuals in the treated group *would have experienced if they had not participated in the treatment* is the same as the path of outcomes that individuals in the untreated group actually experienced.  The parallel trends assumption allows for the level of untreated potential outcomes to differ across groups and is consistent with, for example, fixed effects models for untreated potential outcomes where the mean of the unobserved fixed effect can be different across groups.
 
 This assumption is potentially useful because the path of untreated potential outcomes for individuals in the treated group (the term on the left in the above equation) is not known, but the the researcher does observe the path of untreated potential outcomes for individuals in the untreated group.  In fact, it is straightforward to show that, under the parallel trends assumption, the $ATT$ is identified and given by
 $$
@@ -84,9 +84,9 @@ Although this is essentially a standard approach in applied work, there are a nu
 
 **When will TWFE work?**
 
-1. Effects really aren't heterogeneous.  If the effect of participating in the treatment really is $\alpha$ for all individuals, TWFE will work great.  Actually, you can allow for some limited forms of treatment effect heterogeneity; if the average effect of participating in the treatment is the same for all groups (defined by treatment timing) across all time periods, TWFE will work just fine.
+1. Effects really aren't heterogeneous.  If the effect of participating in the treatment really is $\alpha$ for all units, TWFE will work great.  That being said, in many applications, treatment effects are very likely to be heterogeneous -- they can may vary across different units or exhibit dynamics or change across different time periods.  In particular applications, this is worth thinking about, but, at least in our view, we think that heterogeneous effects of participating in some treatment is the leading case.  [Actually, there is one caveat here in that you can allow for some limited forms of treatment effect heterogeneity; if the average effect of participating in the treatment is the same for all groups (defined by treatment timing) across all time periods, TWFE will work just fine.  This is still a subtle case, and one advantage of the newer approaches is that they are robust (i.e., will work just fine in either case).]
 
-2. There are only two time periods.  This is the textbook case (2 periods, one group becomes treated in the second period, the other is never treated).  In this case, under parallel trends, $\alpha$ is going to be numerically equal to the $ATT$.  In other words, in this case, even though it looks like you have restricted the effect of participating in the treatment to be the same across all individuals, TWFE exhibits *robustness* to treatment effect heterogeneity.  Unfortunately, this robustness to treatment effect heterogeneity does not continue to hold when ther are more periods and groups become treated at different points in time.
+2. There are only two time periods.  This is the textbook case (2 periods, one group becomes treated in the second period, the other is never treated).  In this case, under parallel trends, $\alpha$ is going to be numerically equal to the $ATT$.  In other words, in this case, even though it looks like you have restricted the effect of participating in the treatment to be the same across all units, TWFE exhibits *robustness* to treatment effect heterogeneity.  Unfortunately, this robustness to treatment effect heterogeneity does not continue to hold when ther are more periods and groups become treated at different points in time.
 
 **Why is TWFE not robust to treatment effect heterogeneity?**
 
@@ -98,9 +98,9 @@ There are entire papers written about this.  But here is the short version:  in 
 
 * newly treated units relative to already treated units (bad!!!)
 
-The first of these two comparisons are good (or at least in the spirit of DID) in that they take the path of outcomes experienced by units that become treated and adjust it by the path of outcomes that experienced by units that are not participating in the treatment.  The third comparison is different though: it adjusts the path of outcomes for newly treated units by the path of outcomes for already treated units.  But this is not the path of untreated potential outcomes, it includes *treatment effect dynamics*.  Thus, these dynamics appear in $\alpha$ *as part of the control*.
+The first of these two comparisons are good (or at least in the spirit of DID) in that they take the path of outcomes experienced by units that become treated and adjust it by the path of outcomes experienced by units that are not participating in the treatment.  The third comparison is different though: it adjusts the path of outcomes for newly treated units by the path of outcomes for already treated units.  But this is not the path of untreated potential outcomes, it includes *treatment effect dynamics*.  Thus, these dynamics appear in $\alpha$ *as part of the control*.
 
-And this issue can have potentially severe consequences.  For example, it is possible to come up with examples where the effect of participating in the treatment is positive for all individuals in all time periods, but the TWFE estimation procedure leads to estimating a negative effect of participating in the treatment.
+And this issue can have potentially severe consequences.  For example, it is possible to come up with examples where the effect of participating in the treatment is positive for all units in all time periods, but the TWFE estimation procedure leads to estimating a negative effect of participating in the treatment.
 
 [Baker (2019)](https://andrewcbaker.netlify.com/2019/09/25/difference-in-differences-methodology/) has a really nice (and accessible) discussion of these issues in more detail.
 
@@ -161,10 +161,52 @@ To give a couple more examples, suppose that a researcher has access to three ti
 Under the parallel trends assumption, it is straightforward to show that group-time average treatment effects are identified.
 
 
-These group-time average treatment effects are the building blocks of understanding the effect of participating in a treatment in DID designs with multiple time periods.  This vignette has covered basic background issues on DID with multiple periods.  Callaway and Sant'Anna (2019) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](articles/index.html)
+These group-time average treatment effects are the building blocks of understanding the effect of participating in a treatment in DID designs with multiple time periods.
 
-* Parallel trends assumptions that hold only after conditioning on covariates
+## Parallel Trends Conditional on Covariates
 
-* How to aggregate group-time average treatment effects into a single summary treatment effect parameter, event study plot, as well as other aggregations
+In many cases, the parallel trends assumption is substantially more plausible if it holds after conditioning on observed covariates.  In other words, if the parallel trends assumption is modified to be
 
-* How to pre-test the parallel trends assumption underlying the DID approach
+**Parallel Trends Assumption**
+For all $g=2,...,\mathcal{T}$, $t=2,...,\mathcal{T}$ with $g \leq t$,
+$$
+  E[\Delta Y_t(0) | X, G=g] = E[\Delta Y_t(0) | X, C=1]
+$$
+
+This assumption says that the path of outcomes that units in group $g$ would have experienced if they had not participated in the treatment is the same as the path of outcomes for units in the untreated group *conditional on having the same covariates*. 
+
+An example of a case where this assumption is attractive is one where a researcher is interested in estimating the effect of participating in job training on earnings.  In that case, if the path of earnings (in the absence of participating in job training) depends on things like education, previous occupation, or years of experience (which it almost certainly does), then it would be important to condition on these types of variables in order to make parallel trends hold.  
+
+In this case, the parameter of interest is still often the $ATT$.  It is still straightforward to identify and estimate the $ATT$ in this case.  Basically, one needs to estimate the change in outcomes for individuals in the untreated group conditional on $X$, but average out $X$ over the distribution of covariates for indivduals in group $g$ to obtain $ATT(g,t)$ (see Callaway and Sant'Anna (2019) and references therein for many more details).  But the **did** package automates all of this for the user in this case.
+
+## Aggregating Group-Time Average Treatment Effects
+
+Group-time average treatment effects are natural parameters to identify in the context of DID with multiple periods and multiple groups.  But in many applications, there may be a lot of them.  This are some benefits and costs here.  The main benefit is that it is relatively straightforward to think about heterogeneous effects across groups and time using group-time average treatment effects.  On the other hand, it can be hard to summarize them (e.g., they are not just a single number).
+
+In our paper, we propose a number of ways to aggregate group-time average treatment effects.  Here, we will just consider a few that we think applied researchers are most likely to use.  First, consider the average effect of participating in the treatment separately for each group.  This is given by
+
+$$
+  \theta_S(g) = \frac{1}{\mathcal{T} - g + 1} \sum_{t=2}^{\mathcal{T}} \mathbf{1}\{g \leq t\} ATT(g,t)
+$$
+
+This parameter may be of interest in its own right, but a natural overall effect parameter is given by
+
+$$
+  \theta^O_S := \sum_{g=2}^{\mathcal{T}} \theta_S(g) P(G=g)
+$$
+
+This is the overall effect of participating in the treatment across all groups that have ever participated in the treatment.  This is close to being an multi-period analogue of the $ATT$ in the two period case.  
+
+Another main parameter of interest in the context of DID with multiple periods is what we call a dynamic effects estimator -- but the interpretation is what is ascribed to ``event studies'' that are common in applied work.  This dynamic effects estimator is given by
+
+$$
+  \theta_D(e) := \sum_{g=2}^{\mathcal{T}} \mathbf{1} \{ g + e \leq \mathcal{T} \} ATT(g,g+e) P(G=g | G+e \leq \mathcal{T})
+$$
+
+This is the average effect of participating in the treatment for the group of units that have been exposed to the treatment for exactly $e$ time periods.  
+
+All of these aggregations are available in the **did** package and examples with real data are available in our [Getting Started with the **did** Package](did-basics.html) vignette.
+
+## Conclusion
+
+This vignette has covered basic background issues on DID with multiple periods.  Callaway and Sant'Anna (2019) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](articles/index.html)

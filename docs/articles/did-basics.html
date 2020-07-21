@@ -70,7 +70,7 @@
       <h1 data-toc-skip>Getting Started with the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 class="date">2020-04-06</h4>
+            <h4 class="date">2020-07-04</h4>
       
       
       <div class="hidden name"><code>did-basics.Rmd</code></div>
@@ -132,18 +132,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  group   time          att          se</span>
 <span class="co">#&gt; ------  -----  -----------  ----------</span>
-<span class="co">#&gt;      2      2   -0.0384779   0.0584763</span>
-<span class="co">#&gt;      2      3    0.0423904   0.0580786</span>
-<span class="co">#&gt;      2      4    0.0103901   0.0602665</span>
-<span class="co">#&gt;      3      2   -0.0392402   0.0566184</span>
-<span class="co">#&gt;      3      3    0.0877322   0.0572303</span>
-<span class="co">#&gt;      3      4   -0.0062495   0.0552018</span>
-<span class="co">#&gt;      4      2   -0.0537170   0.0584071</span>
-<span class="co">#&gt;      4      3    0.0382368   0.0559763</span>
-<span class="co">#&gt;      4      4   -0.0590188   0.0561094</span>
+<span class="co">#&gt;      2      2   -0.0384779   0.0595007</span>
+<span class="co">#&gt;      2      3    0.0423904   0.0570986</span>
+<span class="co">#&gt;      2      4    0.0103901   0.0596166</span>
+<span class="co">#&gt;      3      2   -0.0392402   0.0577590</span>
+<span class="co">#&gt;      3      3    0.0877322   0.0578688</span>
+<span class="co">#&gt;      3      4   -0.0062495   0.0562760</span>
+<span class="co">#&gt;      4      2   -0.0537170   0.0589144</span>
+<span class="co">#&gt;      4      3    0.0382368   0.0566823</span>
+<span class="co">#&gt;      4      4   -0.0590188   0.0571202</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of DID assumption:  0.79243</span></pre></body></html></div>
+<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.80226</span></pre></body></html></div>
 <p>The summary of <code>example.attgt</code> provides estimates of the group-time average treatment effects in the column labeled <code>att</code>, and the corresponding standard errors are given in the column <code>se</code>. The corresponding groups and times are given in the columns <code>group</code> and <code>time</code>. Under the parallel trends assumption, group-time average treatment effects are identified in periods when <span class="math inline">\(g \leq t\)</span> (i.e., post-treatment periods for each group). The table also reports pseudo group-time average treatment effects when <span class="math inline">\(g &gt; t\)</span> (i.e., pre-treatment periods for group <span class="math inline">\(g\)</span>). These can be used as a pre-test for the parallel trends assumption. In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results. <a href="pre-testing">A much more detailed discussion of using the <strong>did</strong> package for pre-testing is available here</a>.</p>
 <p>Next, we’ll demonstrate how to plot group-time average treatment effects. To plot these, use the <code>ggdid</code> function which builds off the <code>ggplot2</code> package.</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="co"># plot the results</span>
@@ -191,7 +191,7 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;        att          se</span>
 <span class="co">#&gt; ----------  ----------</span>
-<span class="co">#&gt;  0.0065453   0.0306131</span></pre></body></html></div>
+<span class="co">#&gt;  0.0065453   0.0304204</span></pre></body></html></div>
 </div>
 <div id="dynamic-effects-and-event-studies" class="section level4">
 <h4 class="hasAnchor">
@@ -207,7 +207,7 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;       att          se</span>
 <span class="co">#&gt; ---------  ----------</span>
-<span class="co">#&gt;  0.008566   0.0353013</span>
+<span class="co">#&gt;  0.008566   0.0345536</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Dynamic Effects:</span>
@@ -215,11 +215,11 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  event time          att          se</span>
 <span class="co">#&gt; -----------  -----------  ----------</span>
-<span class="co">#&gt;          -2   -0.0537170   0.0584071</span>
-<span class="co">#&gt;          -1   -0.0010647   0.0355493</span>
-<span class="co">#&gt;           0   -0.0012450   0.0288719</span>
-<span class="co">#&gt;           1    0.0165528   0.0407190</span>
-<span class="co">#&gt;           2    0.0103901   0.0602665</span>
+<span class="co">#&gt;          -2   -0.0537170   0.0592692</span>
+<span class="co">#&gt;          -1   -0.0010647   0.0370382</span>
+<span class="co">#&gt;           0   -0.0012450   0.0300326</span>
+<span class="co">#&gt;           1    0.0165528   0.0403166</span>
+<span class="co">#&gt;           2    0.0103901   0.0599083</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">agg.es</span>)</pre></body></html></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-8-1.png" width="700"></p>
 <p>In this figure, the x-axis is the length of exposure to the treatment. Length of exposure equal to 0 provides the average effect of participating in the treatment across groups in the time period when they first participate in the treatment. Length of exposure equal to -1 corresponds to the time period before groups first participate in the treatment, and length of exposure equal to 1 corresponds to the first time period after initial exposure to the treatment.</p>
@@ -239,7 +239,7 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;         att          se</span>
 <span class="co">#&gt; -----------  ----------</span>
-<span class="co">#&gt;  -0.0043376   0.0299661</span>
+<span class="co">#&gt;  -0.0043376   0.0289786</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group Effects:</span>
@@ -247,9 +247,9 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  group          att          se</span>
 <span class="co">#&gt; ------  -----------  ----------</span>
-<span class="co">#&gt;      2    0.0047676   0.0483314</span>
-<span class="co">#&gt;      3    0.0407414   0.0489135</span>
-<span class="co">#&gt;      4   -0.0590188   0.0561094</span>
+<span class="co">#&gt;      2    0.0047676   0.0492867</span>
+<span class="co">#&gt;      3    0.0407414   0.0482822</span>
+<span class="co">#&gt;      4   -0.0590188   0.0579768</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">agg.gs</span>)</pre></body></html></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-9-1.png" width="700"></p>
 <p>In this figure, the x-axis is categorized by group. They y-axis provides estimates of the average effect of participating in the treatment for units in each group averaged across all time periods after that group becomes treated.</p>
@@ -268,7 +268,7 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;        att          se</span>
 <span class="co">#&gt; ----------  ----------</span>
-<span class="co">#&gt;  0.0027636   0.0323215</span>
+<span class="co">#&gt;  0.0027636   0.0330524</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Time Effects:</span>
@@ -276,9 +276,9 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  time          att          se</span>
 <span class="co">#&gt; -----  -----------  ----------</span>
-<span class="co">#&gt;     2   -0.0384779   0.0584763</span>
-<span class="co">#&gt;     3    0.0650613   0.0443442</span>
-<span class="co">#&gt;     4   -0.0182927   0.0385953</span>
+<span class="co">#&gt;     2   -0.0384779   0.0590536</span>
+<span class="co">#&gt;     3    0.0650613   0.0447196</span>
+<span class="co">#&gt;     4   -0.0182927   0.0370985</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">agg.ct</span>)</pre></body></html></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
 <p>In this figure, the x-axis is the time period and the estimates along the y-axis are the average effect of participating in the treatment in a particular time period for all groups that participated in the treatment in that time period.</p>
@@ -287,9 +287,9 @@
 <div id="small-group-sizes" class="section level3">
 <h3 class="hasAnchor">
 <a href="#small-group-sizes" class="anchor"></a>Small Group Sizes</h3>
-<p>Small group sizes can sometimes cause estimation problems in the <code>did</code> package. To give an example, if there are any groups that have fewer than observations than the number of covariates in the model, the code will error. The <code>did</code> package reports a warning if there are any groups that have fewer than 5 observations.</p>
-<p>In addition, statistical inference, particularly on group-time average treatment may become more tenuous with small groups. For example, the effect sample size for estimating the change in outcomes over time for individuals in a particular group is equal to the number of observations in that group and asymptotic results are unlikely to provide good approximations to the sampling distribution of group-time average treatment effects when the number of units in a group is small.</p>
-<p>A reasonable alternative approach in this case is to just focus on aggregated treatment effect paramaters (i.e., to run <code><a href="../reference/aggte.html">aggte(..., type="sample")</a></code> or <code><a href="../reference/aggte.html">aggte(...,type="dynamic")</a></code>). For each of these cases, the effective sample size is the total number of units that are ever treated. As long as the total number of ever treated units is “large” (which should be the case for any DID application), then the statistical inference results provided by the <code>did</code> package should be reliable.</p>
+<p>Small group sizes can sometimes cause estimation problems in the <code>did</code> package. To give an example, if there are any groups that have fewer observations than the number of covariates in the model, the code will error. The <code>did</code> package reports a warning if there are any groups that have fewer than 5 observations.</p>
+<p>In addition, statistical inference, particularly on group-time average treatment may become more tenuous with small groups. For example, the effective sample size for estimating the change in outcomes over time for individuals in a particular group is equal to the number of observations in that group and asymptotic results are unlikely to provide good approximations to the sampling distribution of group-time average treatment effects when the number of units in a group is small.</p>
+<p>A reasonable alternative approach in this case is to just focus on aggregated treatment effect paramaters (i.e., to run <code><a href="../reference/aggte.html">aggte(..., type="selective")</a></code> or <code><a href="../reference/aggte.html">aggte(...,type="dynamic")</a></code>). For each of these cases, the effective sample size is the total number of units that are ever treated. As long as the total number of ever treated units is “large” (which should be the case for any DID application), then the statistical inference results provided by the <code>did</code> package should be reliable.</p>
 </div>
 <div id="selecting-alternative-control-groups" class="section level3">
 <h3 class="hasAnchor">
@@ -341,7 +341,7 @@
 <span class="co">#&gt;     aggte, AGGTEobj, att_gt, compute.aggte, compute.att_gt,</span>
 <span class="co">#&gt;     conditional_did_pretest, DIDparams, ggdid, gplot, indicator, mboot,</span>
 <span class="co">#&gt;     MP, mp.spatt, mp.spatt.test, MP.TEST, pre_process_did,</span>
-<span class="co">#&gt;     process_attgt, test.mboot</span>
+<span class="co">#&gt;     process_attgt, splot, test.mboot</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span>(<span class="no">mpdta</span>)</pre></body></html></div>
 <p><code>mpdta</code> is a balanced panel with 2500 observations. And the dataset looks like</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span>(<span class="no">mpdta</span>)
@@ -390,21 +390,21 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  group   time          att          se</span>
 <span class="co">#&gt; ------  -----  -----------  ----------</span>
-<span class="co">#&gt;   2004   2004   -0.0105032   0.0237488</span>
-<span class="co">#&gt;   2004   2005   -0.0704232   0.0309841</span>
-<span class="co">#&gt;   2004   2006   -0.1372587   0.0367781</span>
-<span class="co">#&gt;   2004   2007   -0.1008114   0.0357535</span>
-<span class="co">#&gt;   2006   2004    0.0065201   0.0230745</span>
-<span class="co">#&gt;   2006   2005   -0.0027508   0.0201314</span>
-<span class="co">#&gt;   2006   2006   -0.0045946   0.0184040</span>
-<span class="co">#&gt;   2006   2007   -0.0412245   0.0213023</span>
-<span class="co">#&gt;   2007   2004    0.0305067   0.0150905</span>
-<span class="co">#&gt;   2007   2005   -0.0027259   0.0159087</span>
-<span class="co">#&gt;   2007   2006   -0.0310871   0.0178610</span>
-<span class="co">#&gt;   2007   2007   -0.0260544   0.0175494</span>
+<span class="co">#&gt;   2004   2004   -0.0105032   0.0232574</span>
+<span class="co">#&gt;   2004   2005   -0.0704232   0.0303984</span>
+<span class="co">#&gt;   2004   2006   -0.1372587   0.0357797</span>
+<span class="co">#&gt;   2004   2007   -0.1008114   0.0338881</span>
+<span class="co">#&gt;   2006   2004    0.0065201   0.0226712</span>
+<span class="co">#&gt;   2006   2005   -0.0027508   0.0193870</span>
+<span class="co">#&gt;   2006   2006   -0.0045946   0.0182110</span>
+<span class="co">#&gt;   2006   2007   -0.0412245   0.0201470</span>
+<span class="co">#&gt;   2007   2004    0.0305067   0.0149585</span>
+<span class="co">#&gt;   2007   2005   -0.0027259   0.0165699</span>
+<span class="co">#&gt;   2007   2006   -0.0310871   0.0178853</span>
+<span class="co">#&gt;   2007   2007   -0.0260544   0.0168903</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of DID assumption:  0.16133</span>
+<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.16218</span>
 
 <span class="co"># plot the results</span>
 <span class="co"># set ylim so that all plots have the same scale along y-axis</span>
@@ -426,7 +426,7 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;         att          se</span>
 <span class="co">#&gt; -----------  ----------</span>
-<span class="co">#&gt;  -0.0772398   0.0226653</span>
+<span class="co">#&gt;  -0.0772398   0.0208423</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Dynamic Effects:</span>
@@ -434,13 +434,13 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  event time          att          se</span>
 <span class="co">#&gt; -----------  -----------  ----------</span>
-<span class="co">#&gt;          -3    0.0305067   0.0153135</span>
-<span class="co">#&gt;          -2   -0.0005631   0.0141303</span>
-<span class="co">#&gt;          -1   -0.0244587   0.0143414</span>
-<span class="co">#&gt;           0   -0.0199318   0.0115551</span>
-<span class="co">#&gt;           1   -0.0509574   0.0177870</span>
-<span class="co">#&gt;           2   -0.1372587   0.0407911</span>
-<span class="co">#&gt;           3   -0.1008114   0.0354370</span>
+<span class="co">#&gt;          -3    0.0305067   0.0152208</span>
+<span class="co">#&gt;          -2   -0.0005631   0.0134695</span>
+<span class="co">#&gt;          -1   -0.0244587   0.0138787</span>
+<span class="co">#&gt;           0   -0.0199318   0.0119374</span>
+<span class="co">#&gt;           1   -0.0509574   0.0172560</span>
+<span class="co">#&gt;           2   -0.1372587   0.0437706</span>
+<span class="co">#&gt;           3   -0.1008114   0.0341392</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">mw.dyn</span>, <span class="kw">ylim</span><span class="kw">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(-<span class="fl">.3</span>,<span class="fl">.3</span>))</pre></body></html></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-16-1.png" width="700"></p>
 <p>These continue to be uniform confidence bands for dynamic effects. The results are broadly similar to the ones from the group-time average treatment effects: one fails to reject parallel trends in pre-treatment periods and it looks like somewhat negative effects of the minimum wage on youth employment.</p>
@@ -453,9 +453,9 @@
 <span class="co">#&gt; Overall ATT:  </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt;         att         se</span>
-<span class="co">#&gt; -----------  ---------</span>
-<span class="co">#&gt;  -0.0287608   0.014584</span>
+<span class="co">#&gt;         att          se</span>
+<span class="co">#&gt; -----------  ----------</span>
+<span class="co">#&gt;  -0.0287608   0.0136979</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Dynamic Effects:</span>
@@ -463,10 +463,10 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  event time          att          se</span>
 <span class="co">#&gt; -----------  -----------  ----------</span>
-<span class="co">#&gt;          -2    0.0065201   0.0261332</span>
-<span class="co">#&gt;          -1   -0.0027508   0.0194250</span>
-<span class="co">#&gt;           0   -0.0065642   0.0142618</span>
-<span class="co">#&gt;           1   -0.0509574   0.0174175</span>
+<span class="co">#&gt;          -2    0.0065201   0.0247222</span>
+<span class="co">#&gt;          -1   -0.0027508   0.0194116</span>
+<span class="co">#&gt;           0   -0.0065642   0.0143631</span>
+<span class="co">#&gt;           1   -0.0509574   0.0179951</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">mw.dyn.balance</span>, <span class="kw">ylim</span><span class="kw">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span>(-<span class="fl">.3</span>,<span class="fl">.3</span>))</pre></body></html></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-17-1.png" width="700"></p>
 <p>Finally, we can run all the same results including a covariate. In this application the results turn out to be nearly identical, and here we provide just the code for estimating the group-time average treatment effects while including covariates. The other steps are otherwise the same.</p>

@@ -70,7 +70,9 @@ If not set, all observations have same weight.}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
 the multiplier boostrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is \code{FALSE} and analytical
+must set \code{bstrap=TRUE}. Default is \code{TRUE} (in addition, cband
+is also by default \code{TRUE} indicating that uniform confidence bands
+will be returned.  If bstrap is \code{FALSE}, then analytical
 standard errors are reported.}
 
 \item{biters}{The number of boostrap iterations to use.  The default is 1000,
@@ -85,7 +87,7 @@ level.}
  band that covers all of the group-time average treatment effects
  with fixed probability \code{1-alp}.  In order to compute uniform confidence
  bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
-\code{FALSE} and the resulting standard errors will be pointwise.}
+\code{TRUE}.}
 
 \item{printdetails}{Boolean for showing detailed results or not}
 
@@ -135,5 +137,5 @@ of rows in a panel dataset).}
 \item{glist}{a vector containing each group}
 }
 \description{
-object to hold did parameters
+Object to hold did parameters that are passed across functions
 }

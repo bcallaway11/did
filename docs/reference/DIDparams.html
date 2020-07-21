@@ -47,7 +47,7 @@
 
 
 <meta property="og:title" content="DIDparams — DIDparams" />
-<meta property="og:description" content="object to hold did parameters" />
+<meta property="og:description" content="Object to hold did parameters that are passed across functions" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -117,7 +117,7 @@
     </div>
 
     <div class="ref-description">
-    <p>object to hold did parameters</p>
+    <p>Object to hold did parameters that are passed across functions</p>
     </div>
 
     <pre class="usage"><span class='fu'>DIDparams</span>(
@@ -208,7 +208,9 @@ If not set, all observations have same weight.</p></td>
       <th>bstrap</th>
       <td><p>Boolean for whether or not to compute standard errors using
 the multiplier boostrap.  If standard errors are clustered, then one
-must set <code>bstrap=TRUE</code>. Default is <code>FALSE</code> and analytical
+must set <code>bstrap=TRUE</code>. Default is <code>TRUE</code> (in addition, cband
+is also by default <code>TRUE</code> indicating that uniform confidence bands
+will be returned.  If bstrap is <code>FALSE</code>, then analytical
 standard errors are reported.</p></td>
     </tr>
     <tr>
@@ -229,7 +231,7 @@ level.</p></td>
  band that covers all of the group-time average treatment effects
  with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
  bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
-<code>FALSE</code> and the resulting standard errors will be pointwise.</p></td>
+<code>TRUE</code>.</p></td>
     </tr>
     <tr>
       <th>printdetails</th>

@@ -6,7 +6,7 @@
 #'
 #' @inheritParams att_gt
 #'
-#' @return DIDparams object
+#' @return a \code{\link{DIDparams}} object
 #'
 #' @export
 pre_process_did <- function(yname, 
@@ -46,7 +46,7 @@ pre_process_did <- function(yname,
   
   # Outcome variable will be denoted by y
   data$y <- data[, yname]
-  
+
   # figure out the dates
   # list of dates from smallest to largest
   tlist <- unique(data[,tname])[order(unique(data[,tname]))] 
@@ -56,9 +56,11 @@ pre_process_did <- function(yname,
   # Check if there is a never treated group
   if ( length(glist[glist==0]) == 0) {
     if(control.group=="nevertreated"){
-      stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select control.group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
+      stop("There is no available never treated group")
+      #stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group. Otherwise, select control.group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
     } else {
-      warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
+      # no need to warn as this is expected case
+      # warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,first.treat.name] = 0 for the observation in this group.")
 
       # Drop all time periods with time periods >= latest treated
       data <- base::subset(data,(data[,tname] < max(glist)))
@@ -79,9 +81,9 @@ pre_process_did <- function(yname,
   # drop groups treated in the first period or before
   first.period <- tlist[1]
   glist <- glist[glist > first.period]
-  
+
   # check for groups treated in the first period and drop these
-  nfirstperiod <- length(unique(data[ data[,first.treat.name] <= first.period, ] )[,idname])
+  nfirstperiod <- length(unique(data[ !((data[,first.treat.name] > first.period) | (data[,first.treat.name]==0)), ] )[,idname])
   if ( nfirstperiod > 0 ) {
     warning(paste0("dropping ", nfirstperiod, " units that were already treated in the first period...this is normal"))
     data <- data[ data[,first.treat.name] %in% c(0,glist), ]
@@ -90,17 +92,25 @@ pre_process_did <- function(yname,
 
   
   # check that time periods are numeric
-  if (!is.numeric(tlist)) {
-    warning("not guaranteed to order time periods correclty if they are not numeric")
-  }
+  #if (!is.numeric(tlist)) {
+  #  warning("not guaranteed to order time periods correctly if they are not numeric")
+  #}
+  
+  # make sure time periods are numeric
+  if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
+  
 
    
-  #check that first.treat doesn't change across periods for particular individuals
+  
   if (panel) {
+    # check that id is numeric
+    if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
+
+    #check that first.treat doesn't change across periods for particular individuals
     if (!all(sapply( split(data, data[,idname]), function(df) {
       length(unique(df[,first.treat.name]))==1
     }))) {
-      stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+      stop("The value of first.treat must be the same across all periods for each particular individual.")
     }
   }
 
@@ -142,16 +152,19 @@ pre_process_did <- function(yname,
   if (panel) {
     # check for complete cases
     keepers <- complete.cases(cbind.data.frame(data[,c(idname, tname, yname, first.treat.name)], model.matrix(xformla, data=data)))
+    n <- length(unique(data[,idname]))
+    n.keep <- length(unique(data[keepers,idname]))
     if (nrow(data[keepers,]) < nrow(data)) {
-      warning(paste0("dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data...."))
+      warning(paste0("dropped ", (n-n.keep), " observations that had missing data...."))
       data <- data[keepers,]
     }
     
     # make it a balanced data set
-    n <- nrow(data)
+    n.old <- length(unique(data[,idname]))
     data <- BMisc::makeBalancedPanel(data, idname, tname)
+    n <- length(unique(data[,idname]))
     if (nrow(data) < n) {
-      warning(paste0("dropped ", n-nrow(data), " observations while converting to balanced panel..."))
+      warning(paste0("dropped ", n.old-n, " observations while converting to balanced panel..."))
     }
     
     # create an n-row data.frame to hold the influence function later
@@ -163,7 +176,7 @@ pre_process_did <- function(yname,
     if (!all(sapply( split(data, data[,idname]), function(df) {
       length(unique(df[,first.treat.name]))==1
     }))) {
-      stop("Error: the value of first.treat must be the same across all periods for each particular individual.")
+      stop("The value of first.treat must be the same across all periods for each particular individual.")
     }
   } else {
     # check for complete cases

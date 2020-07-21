@@ -1,6 +1,7 @@
-#' @title AGGTE
+#' @title AGGTEobj
 #'
-#' @description \code{AGGTE} class for aggregate treatment effects
+#' @description Objects of this class hold results on aggregated
+#'  group-time average treatment effects
 #'
 #' @title Aggregate Treatment Effect Parameters Object
 #'

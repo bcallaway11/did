@@ -71,7 +71,7 @@ ggdid.MP <- function(object,
     gplot(thisdta, ylim, xlab, ylab, title, xgap)
   })
 
-  do.call("grid.arrange", c(mplots))
+  do.call("ggarrange", c(mplots, ncol=ncol))
 }
 
 
@@ -89,14 +89,28 @@ ggdid.AGGTEobj <- function(object,
                            title="",
                            xgap=1,
                            ...) {
+
+  if ( !(object$type %in% c("dynamic","selective","calendar")) ) {
+    stop(paste0("Plot method not available for this type of aggregation"))
+  }
   
   post.treat <- 1*(object$egt >= 0)
-  results <- cbind.data.frame(year=as.factor(object$egt),
+  results <- cbind.data.frame(year=object$egt,
                               att=object$att.egt,
                               att.se=object$se.egt,
                               post=as.factor(post.treat))
   results$c <- object$crit.val.egt
+
+  if (title == "") {
+    title <- ifelse(object$type=="selective", "Average Effect by Group", ifelse(object$type=="dynamic", "Average Effect by Length of Exposure", "Average Effect by Time Period"))
+  }
+
+  if (object$type == "selective") {
+    # alternative plot if selective treatment timing plot
+    p <- splot(results, ylim, xlab, ylab, title)
+  } else {
+    p <- gplot(results, ylim, xlab, ylab, title, xgap)
+  }
   
-  p <- gplot(results, ylim, xlab, ylab, title, xgap)
   p
 }

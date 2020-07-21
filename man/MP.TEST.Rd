@@ -39,5 +39,6 @@ MP.TEST(
 \item{xformla}{formla for the X variables used in the test}
 }
 \description{
-MP.TEST objects
+An object that holds results from computing pre-test of the
+ conditional parallel trends assumption
 }

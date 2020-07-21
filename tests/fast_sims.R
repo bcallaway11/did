@@ -4,7 +4,7 @@ sapply(paste0(fldr,list.files(fldr)), source)
 remotes::install_github("pedrohcgs/DRDID")
 library(BMisc)
 library(ggplot2)
-library(gridExtra)
+library(ggpubr)
 
 
 #-----------------------------------------------------------------------------
@@ -20,6 +20,7 @@ library(gridExtra)
 # uniformly distributed, ipw model is incorectly specified here
 #-----------------------------------------------------------------------------
 reset.sim()
+time.periods <- 4
 data <- build_sim_dataset()
 
 # dr

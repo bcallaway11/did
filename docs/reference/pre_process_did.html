@@ -217,7 +217,9 @@ If not set, all observations have same weight.</p></td>
       <th>bstrap</th>
       <td><p>Boolean for whether or not to compute standard errors using
 the multiplier boostrap.  If standard errors are clustered, then one
-must set <code>bstrap=TRUE</code>. Default is <code>FALSE</code> and analytical
+must set <code>bstrap=TRUE</code>. Default is <code>TRUE</code> (in addition, cband
+is also by default <code>TRUE</code> indicating that uniform confidence bands
+will be returned.  If bstrap is <code>FALSE</code>, then analytical
 standard errors are reported.</p></td>
     </tr>
     <tr>
@@ -226,7 +228,7 @@ standard errors are reported.</p></td>
  band that covers all of the group-time average treatment effects
  with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
  bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
-<code>FALSE</code> and the resulting standard errors will be pointwise.</p></td>
+<code>TRUE</code>.</p></td>
     </tr>
     <tr>
       <th>biters</th>
@@ -279,7 +281,7 @@ if covariates are included.</p></td>
 
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
-    <p>DIDparams object</p>
+    <p>a <code><a href='DIDparams.html'>DIDparams</a></code> object</p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

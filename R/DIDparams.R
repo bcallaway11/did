@@ -1,6 +1,6 @@
 #' @title DIDparams
 #'
-#' @description object to hold did parameters
+#' @description Object to hold did parameters that are passed across functions
 #'
 #' @inheritParams att_gt
 #' @param n The number of observations.  This is equal to the

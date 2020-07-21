@@ -19,7 +19,7 @@
 #'
 #' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2019).
 #'
-#' @return an MP.TEST object
+#' @return an \code{\link{MP.TEST}} object
 #' @export
 conditional_did_pretest <- function(yname, 
                    tname,

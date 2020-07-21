@@ -1,6 +1,6 @@
-#' @title Process Results from \code{compute.att_gt}
+#' @title Process Results from \code{\link{compute.att_gt}}
 #'
-#' @param attgt.results.list list of results from \code{compute.att_gt}
+#' @param attgt.results.list list of results from \code{\link{compute.att_gt}}
 #'
 #' @return list
 #'  * group which group a set of results belongs to

@@ -70,7 +70,7 @@
       <h1 data-toc-skip>Pre-Testing in a DID Setup using the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 class="date">2020-04-06</h4>
+            <h4 class="date">2020-07-04</h4>
       
       
       <div class="hidden name"><code>pre-testing.Rmd</code></div>
@@ -217,9 +217,10 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span>()</pre></body></html></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
 <p>You will notice that everything looks good here. The pre-test performs well (the caveat to this is that the standard errors are “pointwise” and would be better to have uniform confidence bands though this does not seem to be standard practice in applications).</p>
-<p>We can compare this to what happens using the  package:</p>
+<p>We can compare this to what happens using the <code>did</code> package:</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="co"># estimate group-group time average treatment effects</span>
-<span class="no">did.att.gt</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="st">"Y"</span>, <span class="st">"period"</span>, <span class="st">"id"</span>, <span class="st">"G"</span>, <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>, <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>)
+<span class="no">did.att.gt</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="st">"Y"</span>, <span class="st">"period"</span>, <span class="st">"id"</span>, <span class="st">"G"</span>, <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>,
+                     <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>, <span class="kw">bstrap</span><span class="kw">=</span><span class="fl">FALSE</span>, <span class="kw">cband</span><span class="kw">=</span><span class="fl">FALSE</span>)
 <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">did.att.gt</span>)
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. </span>
@@ -239,7 +240,7 @@
 <span class="co">#&gt;      4      4    4.0303982   0.1369432</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of DID assumption:  0.79239</span>
+<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.79239</span>
 
 <span class="co"># plot them</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">did.att.gt</span>)</pre></body></html></div>
@@ -318,7 +319,7 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span>()</pre></body></html></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
 <p>In contrast to the last case, it is clear that things have gone wrong here. <strong>Parallel trends holds in all time periods and for all groups here</strong>, but the event study regression incorrectly rejects that parallel trends holds – this is due to the selective treatment timing.</p>
-<p>We can compare this to what happens using the  package:</p>
+<p>We can compare this to what happens using the <code>did</code> package:</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="co"># estimate group-group time average treatment effects</span>
 <span class="no">did.att.gt</span> <span class="kw">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span>(<span class="st">"Y"</span>, <span class="st">"period"</span>, <span class="st">"id"</span>, <span class="st">"G"</span>, <span class="kw">data</span><span class="kw">=</span><span class="no">data</span>, <span class="kw">printdetails</span><span class="kw">=</span><span class="fl">FALSE</span>)
 <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span>(<span class="no">did.att.gt</span>)
@@ -329,18 +330,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt;  group   time          att          se</span>
 <span class="co">#&gt; ------  -----  -----------  ----------</span>
-<span class="co">#&gt;      2      2    5.0029547   0.0871903</span>
-<span class="co">#&gt;      2      3    4.0633505   0.1140602</span>
-<span class="co">#&gt;      2      4    3.1104585   0.1475448</span>
-<span class="co">#&gt;      3      2   -0.0275928   0.0490521</span>
-<span class="co">#&gt;      3      3    3.9992880   0.1033183</span>
-<span class="co">#&gt;      3      4    2.9554333   0.1315381</span>
-<span class="co">#&gt;      4      2   -0.0420415   0.0516402</span>
-<span class="co">#&gt;      4      3    0.0015543   0.0490802</span>
-<span class="co">#&gt;      4      4    2.0334554   0.1379003</span>
+<span class="co">#&gt;      2      2    5.0029547   0.0870479</span>
+<span class="co">#&gt;      2      3    4.0633505   0.1157049</span>
+<span class="co">#&gt;      2      4    3.1104585   0.1485773</span>
+<span class="co">#&gt;      3      2   -0.0275928   0.0494924</span>
+<span class="co">#&gt;      3      3    3.9992880   0.1017755</span>
+<span class="co">#&gt;      3      4    2.9554333   0.1279480</span>
+<span class="co">#&gt;      4      2   -0.0420415   0.0517733</span>
+<span class="co">#&gt;      4      3    0.0015543   0.0480569</span>
+<span class="co">#&gt;      4      4    2.0334554   0.1375333</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of DID assumption:  0.79239</span>
+<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.79832</span>
 
 <span class="co"># plot them</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span>(<span class="no">did.att.gt</span>)</pre></body></html></div>
@@ -359,9 +360,9 @@
 <div id="conditional-moment-tests" class="section level2">
 <h2 class="hasAnchor">
 <a href="#conditional-moment-tests" class="anchor"></a>Conditional Moment Tests</h2>
-<p>Another main use case for the  package is when the parallel trends assumptions holds after conditioning on some covariates. This is likely to be important in many applications. For example, to evaluate the effect of participating in a job training program on earnings, it is likely to important to condition on an individual’s education. This would be true if (i) the distribution of education is different for individuals that participate in job training relative to those that don’t (this is very likely to hold as people that participate in job training tend to have less education than those who do not), and (ii) if the path of earnings (absent participating in job training) depends on an individual’s education. See Heckman, Ichimura, and Todd (1998) and Abadie (2005) for more discussion.</p>
+<p>Another main use case for the <code>did</code> package is when the parallel trends assumptions holds after conditioning on some covariates. This is likely to be important in many applications. For example, to evaluate the effect of participating in a job training program on earnings, it is likely to important to condition on an individual’s education. This would be true if (i) the distribution of education is different for individuals that participate in job training relative to those that don’t (this is very likely to hold as people that participate in job training tend to have less education than those who do not), and (ii) if the path of earnings (absent participating in job training) depends on an individual’s education. See Heckman, Ichimura, and Todd (1998) and Abadie (2005) for more discussion.</p>
 <p>Even when one includes covariates to estimate group-time average treatment effects, pre-tests based only on group-time average treatment effects can fail to detect some violations of the parallel trends assumption. To give an example, suppose that the only covariate is binary variable for an individual’s sex. Pre-tests based on group-time average treatment effects could fail to detect violations of the conditional parallel trends assumption in cases where it is violated in one direction for men and in the other direction for women.</p>
-<p>The  package contains an additional pre-test for the conditional parallel trends assumption in the  function.</p>
+<p>The <code>did</code> package contains an additional pre-test for the conditional parallel trends assumption in the <code>conditional_did_pretest</code> function.</p>
 <div class="sourceCode"><html><body><pre class="r"><span class="co"># not run yet</span>
 <span class="fu">reset.sim</span>()
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span>(<span class="fl">1814</span>)

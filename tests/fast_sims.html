@@ -11,7 +11,7 @@
 
 <meta name="author" content="Brantly Callaway and Pedro H.C. Sant'Anna" />
 
-<meta name="date" content="2020-04-07" />
+<meta name="date" content="2020-07-04" />
 
 <title>Fast Test Cases for did Package</title>
 
@@ -180,7 +180,7 @@ summary {
 
 <h1 class="title toc-ignore">Fast Test Cases for did Package</h1>
 <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
-<h4 class="date">2020-04-07</h4>
+<h4 class="date">2020-07-04</h4>
 
 </div>
 
@@ -195,6 +195,7 @@ summary {
 # Expected results: treatment effects = 1, p-value for pre-test
 # uniformly distributed, ipw model is incorectly specified here
 #-----------------------------------------------------------------------------
+time.periods &lt;- 4
 reset.sim()
 data &lt;- build_sim_dataset()
 
@@ -209,18 +210,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0616525   0.0625738
-#&gt;      2      3    1.1045584   0.0551317
-#&gt;      2      4    1.1250315   0.0587251
-#&gt;      3      2    0.0063471   0.0607254
-#&gt;      3      3    0.9687885   0.0584948
-#&gt;      3      4    0.9923311   0.0567290
-#&gt;      4      2    0.0938631   0.0631452
-#&gt;      4      3   -0.0523486   0.0599518
-#&gt;      4      4    1.0317009   0.0574829
+#&gt;      2      2    0.9979854   0.0555757
+#&gt;      2      3    0.9642905   0.0581331
+#&gt;      2      4    1.0080213   0.0557103
+#&gt;      3      2   -0.0072913   0.0572857
+#&gt;      3      3    0.9924744   0.0601674
+#&gt;      3      4    1.0435331   0.0578778
+#&gt;      4      2   -0.0385688   0.0561338
+#&gt;      4      3   -0.0582053   0.0579138
+#&gt;      4      4    1.1382828   0.0567792
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.44726
+#&gt; P-value for pre-test of parallel trends assumption:  0.38979
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
@@ -233,18 +234,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0756658   0.0560117
-#&gt;      2      3    1.0806517   0.0534129
-#&gt;      2      4    1.1221540   0.0553515
-#&gt;      3      2    0.0184020   0.0551705
-#&gt;      3      3    0.9343639   0.0554056
-#&gt;      3      4    0.9769844   0.0547779
-#&gt;      4      2    0.1096702   0.0556633
-#&gt;      4      3   -0.0933603   0.0557465
-#&gt;      4      4    1.0544566   0.0550864
+#&gt;      2      2    1.0333276   0.0559470
+#&gt;      2      3    0.9928478   0.0568831
+#&gt;      2      4    1.0180557   0.0545262
+#&gt;      3      2    0.0269291   0.0555275
+#&gt;      3      3    0.9856081   0.0556496
+#&gt;      3      4    1.0191119   0.0549710
+#&gt;      4      2   -0.0074756   0.0534735
+#&gt;      4      3   -0.0651051   0.0538033
+#&gt;      4      4    1.1231803   0.0544745
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.20108
+#&gt; P-value for pre-test of parallel trends assumption:  0.49124
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               first.treat.name=&quot;G&quot;, estMethod=&quot;ipw&quot;, printdetails=FALSE)
@@ -256,18 +257,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0420633   0.0609689
-#&gt;      2      3    1.0665459   0.0670877
-#&gt;      2      4    1.0681137   0.0800134
-#&gt;      3      2   -0.0188703   0.0598412
-#&gt;      3      3    0.9450720   0.0647935
-#&gt;      3      4    0.9442778   0.0708891
-#&gt;      4      2    0.0996662   0.0620474
-#&gt;      4      3   -0.0468908   0.0673292
-#&gt;      4      4    1.0373014   0.0591049
+#&gt;      2      2    0.9676840   0.0601413
+#&gt;      2      3    0.9044939   0.0715263
+#&gt;      2      4    0.9175159   0.0877874
+#&gt;      3      2   -0.0239101   0.0605771
+#&gt;      3      3    0.9762978   0.0641815
+#&gt;      3      4    1.0105143   0.0717276
+#&gt;      4      2   -0.0783164   0.0584939
+#&gt;      4      3   -0.0968953   0.0583884
+#&gt;      4      4    1.0980010   0.0612981
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.298
+#&gt; P-value for pre-test of parallel trends assumption:  0.06782
 
 #-----------------------------------------------------------------------------
 # test each estimation method with panel data
@@ -288,18 +289,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0073189   0.0709011
-#&gt;      2      3    1.1790827   0.0712561
-#&gt;      2      4    1.0808728   0.0716974
-#&gt;      3      2   -0.0430614   0.0738610
-#&gt;      3      3    1.1216586   0.0724899
-#&gt;      3      4    1.0778019   0.0702969
-#&gt;      4      2   -0.0474075   0.0748672
-#&gt;      4      3    0.0602083   0.0717321
-#&gt;      4      4    1.0726314   0.0720247
+#&gt;      2      2    1.0296763   0.0712154
+#&gt;      2      3    0.9326626   0.0730380
+#&gt;      2      4    0.9166056   0.0741639
+#&gt;      3      2   -0.0697946   0.0715272
+#&gt;      3      3    1.0866813   0.0697231
+#&gt;      3      4    0.9799371   0.0753641
+#&gt;      4      2    0.1176145   0.0732361
+#&gt;      4      3   -0.0825076   0.0695239
+#&gt;      4      4    0.9960738   0.0743017
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.8383
+#&gt; P-value for pre-test of parallel trends assumption:  0.05041
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
@@ -312,18 +313,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0079036   0.0709628
-#&gt;      2      3    1.1788027   0.0712161
-#&gt;      2      4    1.0783984   0.0716326
-#&gt;      3      2   -0.0419236   0.0739525
-#&gt;      3      3    1.1198725   0.0726145
-#&gt;      3      4    1.0716349   0.0703600
-#&gt;      4      2   -0.0454703   0.0749536
-#&gt;      4      3    0.0569205   0.0718742
-#&gt;      4      4    1.0647899   0.0717320
+#&gt;      2      2    1.0315080   0.0723065
+#&gt;      2      3    0.9307755   0.0747609
+#&gt;      2      4    0.9178618   0.0773676
+#&gt;      3      2   -0.0649653   0.0747895
+#&gt;      3      3    1.0760596   0.0715179
+#&gt;      3      4    0.9780230   0.0791520
+#&gt;      4      2    0.1245211   0.0738975
+#&gt;      4      3   -0.0982758   0.0691249
+#&gt;      4      4    1.0087701   0.0730809
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.85825
+#&gt; P-value for pre-test of parallel trends assumption:  0.04645
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               first.treat.name=&quot;G&quot;, estMethod=&quot;ipw&quot;, printdetails=FALSE)
@@ -335,18 +336,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0184127   0.0713027
-#&gt;      2      3    1.2012908   0.0733617
-#&gt;      2      4    1.1137538   0.0748721
-#&gt;      3      2   -0.0210620   0.0745435
-#&gt;      3      3    1.1436986   0.0725982
-#&gt;      3      4    1.1210069   0.0724012
-#&gt;      4      2   -0.0152370   0.0755569
-#&gt;      4      3    0.0924382   0.0727946
-#&gt;      4      4    1.1035817   0.0728216
+#&gt;      2      2    1.0289250   0.0723877
+#&gt;      2      3    0.9312239   0.0755503
+#&gt;      2      4    0.9144437   0.0800320
+#&gt;      3      2   -0.0767297   0.0759977
+#&gt;      3      3    1.0803351   0.0722183
+#&gt;      3      4    0.9669152   0.0807787
+#&gt;      4      2    0.0992342   0.0796751
+#&gt;      4      3   -0.0993272   0.0730530
+#&gt;      4      4    0.9783808   0.0739816
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.60706</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.09459</code></pre>
 </div>
 <div id="tests-with-2-periods" class="section level2">
 <h2>Tests with 2 periods</h2>
@@ -355,8 +356,8 @@ res
 # case only)
 # Expected results: warning about no pre-treatment periods to test
 #-----------------------------------------------------------------------------
-reset.sim()
 time.periods &lt;- 2
+reset.sim()
 data &lt;- build_sim_dataset()
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
@@ -368,21 +369,111 @@ res
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt;  group   time         att          se
-#&gt; ------  -----  ----------  ----------
-#&gt;      2      2   0.9858708   0.0510515</code></pre>
+#&gt;  group   time       att         se
+#&gt; ------  -----  --------  ---------
+#&gt;      2      2   1.00854   0.053575
+
+summary(aggte(res, type=&quot;simple&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  1.00854   0.0543904
+summary(aggte(res, type=&quot;selective&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  1.00854   0.0522804
+#&gt; 
+#&gt; 
+#&gt; Group Effects:
+#&gt; 
+#&gt; 
+#&gt;  group       att          se
+#&gt; ------  --------  ----------
+#&gt;      2   1.00854   0.0511613
+summary(aggte(res, type=&quot;dynamic&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  1.00854   0.0552829
+#&gt; 
+#&gt; 
+#&gt; Dynamic Effects:
+#&gt; 
+#&gt; 
+#&gt;  event time       att          se
+#&gt; -----------  --------  ----------
+#&gt;           0   1.00854   0.0541184
+summary(aggte(res, type=&quot;calendar&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  1.00854   0.0555101
+#&gt; 
+#&gt; 
+#&gt; Time Effects:
+#&gt; 
+#&gt; 
+#&gt;  time       att          se
+#&gt; -----  --------  ----------
+#&gt;     2   1.00854   0.0555985</code></pre>
 </div>
 <div id="test-no-covariates" class="section level2">
 <h2>Test no covariates</h2>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # test no covariates case
-# Expected Result: te=1, p-value for pre-test uniformly distributed
+# Expected Result: te=1, p-value for pre-test uniformly distributed,
+#  identical results for different estimation methods
 #-----------------------------------------------------------------------------
+time.periods &lt;- 4
 reset.sim()
 bett &lt;- betu &lt;- rep(0,time.periods)
 data &lt;- build_sim_dataset()
 
-res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~1, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;dr&quot;, printdetails=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt;  group   time          att          se
+#&gt; ------  -----  -----------  ----------
+#&gt;      2      2    1.0165253   0.0793104
+#&gt;      2      3    1.0301211   0.1088681
+#&gt;      2      4    1.0888263   0.1374589
+#&gt;      3      2    0.0248822   0.0540725
+#&gt;      3      3    1.1760593   0.1116099
+#&gt;      3      4    1.1402602   0.1444183
+#&gt;      4      2    0.0265695   0.0503964
+#&gt;      4      3   -0.0518816   0.0487513
+#&gt;      4      4    0.9646223   0.1315548
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.73855
+
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~1, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               first.treat.name=&quot;G&quot;, estMethod=&quot;reg&quot;, printdetails=FALSE)
 res
 #&gt; 
@@ -390,20 +481,20 @@ res
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt;  group   time         att          se
-#&gt; ------  -----  ----------  ----------
-#&gt;      2      2   1.0167085   0.0806974
-#&gt;      2      3   1.0610918   0.1049502
-#&gt;      2      4   0.9838591   0.1318737
-#&gt;      3      2   0.0443469   0.0562181
-#&gt;      3      3   0.9182200   0.1107655
-#&gt;      3      4   0.7939365   0.1411174
-#&gt;      4      2   0.0055786   0.0543621
-#&gt;      4      3   0.0755636   0.0536635
-#&gt;      4      4   0.9675748   0.1381399
+#&gt;  group   time          att          se
+#&gt; ------  -----  -----------  ----------
+#&gt;      2      2    1.0165253   0.0839355
+#&gt;      2      3    1.0301211   0.1145188
+#&gt;      2      4    1.0888263   0.1402385
+#&gt;      3      2    0.0248822   0.0536682
+#&gt;      3      3    1.1760593   0.1057207
+#&gt;      3      4    1.1402602   0.1386839
+#&gt;      4      2    0.0265695   0.0484146
+#&gt;      4      3   -0.0518816   0.0507331
+#&gt;      4      4    0.9646223   0.1383077
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.31618</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.75702</code></pre>
 </div>
 <div id="test-repeated-cross-sections" class="section level2">
 <h2>Test Repeated Cross Sections</h2>
@@ -425,18 +516,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    0.8931782   0.1796842
-#&gt;      2      3    0.6630126   0.1753216
-#&gt;      2      4    0.8689605   0.1628508
-#&gt;      3      2    0.1065694   0.1827480
-#&gt;      3      3    0.8785233   0.1937098
-#&gt;      3      4    0.8068502   0.1788547
-#&gt;      4      2    0.1810810   0.1759058
-#&gt;      4      3   -0.3162671   0.1745750
-#&gt;      4      4    0.9793029   0.1613414
+#&gt;      2      2    0.8055411   0.1719247
+#&gt;      2      3    0.6824523   0.1652183
+#&gt;      2      4    0.6220040   0.1699691
+#&gt;      3      2   -0.0679108   0.1579641
+#&gt;      3      3    1.0182853   0.1667629
+#&gt;      3      4    1.0598346   0.1626180
+#&gt;      4      2   -0.2144126   0.1601791
+#&gt;      4      3    0.2880932   0.1665564
+#&gt;      4      4    0.8597109   0.1635771
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.34877
+#&gt; P-value for pre-test of parallel trends assumption:  0.35127
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
@@ -449,18 +540,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0067537   0.2104054
-#&gt;      2      3    0.7982425   0.2317128
-#&gt;      2      4    1.2536586   0.2797999
-#&gt;      3      2    0.2107763   0.2153413
-#&gt;      3      3    0.6849345   0.2697119
-#&gt;      3      4    0.7234527   0.3126749
-#&gt;      4      2    0.2755048   0.2122418
-#&gt;      4      3   -0.4514926   0.2800514
-#&gt;      4      4    1.1548864   0.3724006
+#&gt;      2      2    0.6829999   0.2044010
+#&gt;      2      3    0.7289631   0.2305676
+#&gt;      2      4    0.4603305   0.2604932
+#&gt;      3      2   -0.3822253   0.2056255
+#&gt;      3      3    1.1580616   0.2848800
+#&gt;      3      4    1.5982580   0.3252101
+#&gt;      4      2   -0.0764927   0.2177811
+#&gt;      4      3    0.2403031   0.2703372
+#&gt;      4      4    1.0054373   0.3523025
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.32141
+#&gt; P-value for pre-test of parallel trends assumption:  0.23684
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               first.treat.name=&quot;G&quot;, estMethod=&quot;ipw&quot;, printdetails=FALSE, panel=FALSE)
@@ -472,18 +563,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    0.8447975   0.3288099
-#&gt;      2      3    0.5503621   0.3020042
-#&gt;      2      4    1.2994266   0.4612048
-#&gt;      3      2    0.0776086   0.3356286
-#&gt;      3      3    0.6423155   0.4455281
-#&gt;      3      4    1.1197307   0.5848028
-#&gt;      4      2    0.0980673   0.3054990
-#&gt;      4      3   -0.5004401   0.3972498
-#&gt;      4      4    1.3963941   0.5375592
+#&gt;      2      2    0.7045365   0.2654324
+#&gt;      2      3    0.6203920   0.3169802
+#&gt;      2      4    0.3548638   0.3477124
+#&gt;      3      2   -0.3752636   0.2612078
+#&gt;      3      3    0.9115787   0.3781824
+#&gt;      3      4    1.3922232   0.3914191
+#&gt;      4      2   -0.0901004   0.2647394
+#&gt;      4      3    0.0043247   0.3507299
+#&gt;      4      4    1.1371085   0.4708454
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.5935
+#&gt; P-value for pre-test of parallel trends assumption:  0.534
 
 #-----------------------------------------------------------------------------
 # test repeated cross sections, ipw sims
@@ -503,18 +594,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0979076   0.2069926
-#&gt;      2      3    0.9904936   0.2103254
-#&gt;      2      4    0.9480863   0.2110624
-#&gt;      3      2    0.3199749   0.2066044
-#&gt;      3      3    0.7217096   0.1991129
-#&gt;      3      4    0.8082570   0.1983309
-#&gt;      4      2   -0.0885385   0.2164482
-#&gt;      4      3   -0.0961916   0.1994981
-#&gt;      4      4    1.1301587   0.2041198
+#&gt;      2      2    1.1574831   0.2068069
+#&gt;      2      3    1.4914912   0.2002333
+#&gt;      2      4    1.2563264   0.2148148
+#&gt;      3      2    0.3432634   0.2112022
+#&gt;      3      3    1.1357606   0.2287109
+#&gt;      3      4    0.9639555   0.2389198
+#&gt;      4      2    0.0906113   0.2022526
+#&gt;      4      3   -0.0285975   0.2392041
+#&gt;      4      4    0.9400628   0.2130177
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.15153
+#&gt; P-value for pre-test of parallel trends assumption:  0.40257
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
@@ -527,18 +618,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    0.9272840   0.2519784
-#&gt;      2      3    0.9665552   0.2927855
-#&gt;      2      4    1.0100520   0.3262307
-#&gt;      3      2    0.2526625   0.2645148
-#&gt;      3      3    0.7261700   0.3153133
-#&gt;      3      4    0.6756852   0.3555116
-#&gt;      4      2    0.0209850   0.2493160
-#&gt;      4      3   -0.3560800   0.3111615
-#&gt;      4      4    1.0626387   0.3919171
+#&gt;      2      2    1.1600795   0.2623953
+#&gt;      2      3    1.6757032   0.2694866
+#&gt;      2      4    1.4347507   0.3189821
+#&gt;      3      2    0.0677424   0.2588937
+#&gt;      3      3    1.3910967   0.3177197
+#&gt;      3      4    1.6628517   0.3597970
+#&gt;      4      2   -0.1378686   0.2495796
+#&gt;      4      3    0.3588096   0.3152860
+#&gt;      4      4    0.8800073   0.3943447
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.42151
+#&gt; P-value for pre-test of parallel trends assumption:  0.67319
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               first.treat.name=&quot;G&quot;, estMethod=&quot;ipw&quot;, printdetails=FALSE, panel=FALSE)
@@ -550,18 +641,123 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0653732   0.2986399
-#&gt;      2      3    1.1173056   0.3577116
-#&gt;      2      4    1.6324464   0.4163607
-#&gt;      3      2    0.4063142   0.3105212
-#&gt;      3      3    0.6973928   0.4081396
-#&gt;      3      4    1.1527620   0.4723470
-#&gt;      4      2    0.1424276   0.3121225
-#&gt;      4      3   -0.3476298   0.4202707
-#&gt;      4      4    1.7353095   0.5436717
+#&gt;      2      2    0.7064432   0.3127349
+#&gt;      2      3    1.3871148   0.3593905
+#&gt;      2      4    1.0915738   0.5078074
+#&gt;      3      2   -0.4649391   0.3247464
+#&gt;      3      3    1.7805087   0.4304369
+#&gt;      3      4    2.2972737   0.5973547
+#&gt;      4      2   -0.7187713   0.3351905
+#&gt;      4      3    0.8053560   0.4496789
+#&gt;      4      4    0.8520248   0.7348657
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.51103</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.13533
+
+#-----------------------------------------------------------------------------
+# test repeated cross sections, test aggregations
+# Expected result: te=length of exposure, p-value for pre-test uniformly distributed
+#-----------------------------------------------------------------------------
+reset.sim()
+te.e &lt;- 1:time.periods
+data &lt;- build_sim_dataset(panel=FALSE)
+
+# dr
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;dr&quot;, printdetails=FALSE, panel=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt;  group   time          att          se
+#&gt; ------  -----  -----------  ----------
+#&gt;      2      2    1.7977583   0.1605685
+#&gt;      2      3    3.1005858   0.1458064
+#&gt;      2      4    4.1131065   0.1574778
+#&gt;      3      2    0.0642204   0.1449142
+#&gt;      3      3    2.0360176   0.1523623
+#&gt;      3      4    3.0203510   0.1533054
+#&gt;      4      2   -0.1702517   0.1567298
+#&gt;      4      3    0.1858540   0.1628831
+#&gt;      4      4    2.1748127   0.1517138
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.54094
+
+summary(aggte(res))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att        se
+#&gt; ---------  --------
+#&gt;  2.705197   0.08022
+summary(aggte(res, type=&quot;dynamic&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  3.05919   0.0932818
+#&gt; 
+#&gt; 
+#&gt; Dynamic Effects:
+#&gt; 
+#&gt; 
+#&gt;  event time          att          se
+#&gt; -----------  -----------  ----------
+#&gt;          -2   -0.1702517   0.1567696
+#&gt;          -1    0.1255851   0.0992291
+#&gt;           0    2.0040368   0.0781604
+#&gt;           1    3.0604278   0.1013929
+#&gt;           2    4.1131065   0.1473951
+summary(aggte(res, type=&quot;selective&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  2.566271   0.0745379
+#&gt; 
+#&gt; 
+#&gt; Group Effects:
+#&gt; 
+#&gt; 
+#&gt;  group        att          se
+#&gt; ------  ---------  ----------
+#&gt;      2   3.003817   0.1274699
+#&gt;      3   2.528184   0.1276501
+#&gt;      4   2.174813   0.1604509
+summary(aggte(res, type=&quot;calendar&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  2.489606   0.0894372
+#&gt; 
+#&gt; 
+#&gt; Time Effects:
+#&gt; 
+#&gt; 
+#&gt;  time        att          se
+#&gt; -----  ---------  ----------
+#&gt;     2   1.797758   0.1611669
+#&gt;     3   2.568302   0.1151637
+#&gt;     4   3.102757   0.1130473</code></pre>
 </div>
 <div id="test-not-yet-treated-as-control" class="section level2">
 <h2>Test not-yet-treated as control</h2>
@@ -574,7 +770,7 @@ data &lt;- build_ipw_dataset(panel=FALSE)
 
 # dr
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
-              control.group=&quot;nevertreated&quot;,
+              control.group=&quot;notyettreated&quot;,
               first.treat.name=&quot;G&quot;, estMethod=&quot;dr&quot;, printdetails=FALSE, panel=FALSE)
 res
 #&gt; 
@@ -584,18 +780,68 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    0.6465399   0.1999693
-#&gt;      2      3    0.7928961   0.2019589
-#&gt;      2      4    0.8112007   0.2058569
-#&gt;      3      2   -0.2813640   0.1955118
-#&gt;      3      3    1.4459031   0.2006246
-#&gt;      3      4    1.0748537   0.2027117
-#&gt;      4      2   -0.5950071   0.2149449
-#&gt;      4      3    0.3485690   0.2046565
-#&gt;      4      4    0.6945120   0.2054118
+#&gt;      2      2    0.9162036   0.1894408
+#&gt;      2      3    1.1965226   0.2292519
+#&gt;      2      4    0.8471715   0.2001624
+#&gt;      3      2    0.3203965   0.1753679
+#&gt;      3      3    1.0441171   0.2327243
+#&gt;      3      4    0.9362634   0.2061368
+#&gt;      4      2   -0.0746093   0.1466469
+#&gt;      4      3    0.0824425   0.1485221
+#&gt;      4      4    0.6082517   0.2361765
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.04984</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.30059</code></pre>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# test not yet treated as control in case w/o never treated group
+# Expected result: te=1, p-value for pre-test U[0,1]
+#-----------------------------------------------------------------------------
+reset.sim()
+data &lt;- build_sim_dataset()
+data &lt;- subset(data, G &gt; 0) # drop nevertreated
+
+# dr
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
+              control.group=&quot;notyettreated&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;dr&quot;, printdetails=FALSE, panel=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt;  group   time          att          se
+#&gt; ------  -----  -----------  ----------
+#&gt;      2      2    0.8568582   0.0764238
+#&gt;      2      3    0.9598050   0.0914939
+#&gt;      3      2   -0.0487675   0.0581844
+#&gt;      3      3    0.9906011   0.0876377
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.40194</code></pre>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# test nevertreated as control in case w/o never treated group
+# Expected result: te=1, p-value for pre-test U[0,1], error on no never treated
+#  units
+#-----------------------------------------------------------------------------
+reset.sim()
+data &lt;- build_sim_dataset()
+data &lt;- subset(data, G &gt; 0) # drop nevertreated
+
+# dr
+tryCatch(res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
+              control.group=&quot;nevertreated&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;dr&quot;, printdetails=FALSE, panel=FALSE),
+         error=function(cond) {
+           message(&quot;expected error:&quot;)
+           message(cond)
+           message(&quot;\n&quot;)
+           return(NA)
+         }
+         )
+#&gt; expected error:
+#&gt; 
+#&gt; [1] NA</code></pre>
 </div>
 <div id="test-aggregated-treatment-effects" class="section level2">
 <h2>Test Aggregated Treatment Effects</h2>
@@ -619,18 +865,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    0.9983486   0.1047182
-#&gt;      2      3    2.0156124   0.1201061
-#&gt;      2      4    2.9987342   0.1377768
-#&gt;      3      2    0.0134187   0.1034990
-#&gt;      3      3    1.0332880   0.1353155
-#&gt;      3      4    2.0219066   0.1556691
-#&gt;      4      2   -0.0395545   0.1048247
-#&gt;      4      3    0.0031230   0.1358878
-#&gt;      4      4    0.9617530   0.1725024
+#&gt;      2      2    0.9588835   0.1004981
+#&gt;      2      3    2.0395587   0.1141086
+#&gt;      2      4    3.0214498   0.1364881
+#&gt;      3      2    0.0439874   0.1011550
+#&gt;      3      3    0.9664806   0.1351627
+#&gt;      3      4    1.9833361   0.1528122
+#&gt;      4      2   -0.0121184   0.1048247
+#&gt;      4      3   -0.0473933   0.1417828
+#&gt;      4      4    1.0398965   0.1858020
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.97351
+#&gt; P-value for pre-test of parallel trends assumption:  0.93817
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
@@ -640,7 +886,7 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt;       att          se
 #&gt; ---------  ----------
-#&gt;  2.005154   0.0781353
+#&gt;  2.007004   0.0808136
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -648,11 +894,11 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt;  event time          att          se
 #&gt; -----------  -----------  ----------
-#&gt;          -2   -0.0395545   0.1048247
-#&gt;          -1    0.0083214   0.0819284
-#&gt;           0    0.9980364   0.0772745
-#&gt;           1    2.0186902   0.0977818
-#&gt;           2    2.9987342   0.1377768
+#&gt;          -2   -0.0121184   0.1037991
+#&gt;          -1   -0.0014046   0.0829302
+#&gt;           0    0.9883839   0.0789384
+#&gt;           1    2.0111783   0.0971699
+#&gt;           2    3.0214498   0.1333638
 
 
 #-----------------------------------------------------------------------------
@@ -675,18 +921,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    2.0917523   0.3113349
-#&gt;      2      3    1.9240630   0.3772430
-#&gt;      2      4    2.4488439   0.4143951
-#&gt;      3      2   -0.0036980   0.2880455
-#&gt;      3      3    6.1424942   0.4674914
-#&gt;      3      4    6.2974279   0.5334510
-#&gt;      4      2   -0.1291497   0.3056443
-#&gt;      4      3   -0.0974467   0.4349728
-#&gt;      4      4   12.2013333   0.6489400
+#&gt;      2      2    1.3124373   0.3223226
+#&gt;      2      3    1.4357120   0.3729728
+#&gt;      2      4    1.4337560   0.4814132
+#&gt;      3      2   -0.4606414   0.2942653
+#&gt;      3      3    6.2340777   0.4863003
+#&gt;      3      4    7.1898599   0.5497819
+#&gt;      4      2   -0.1555805   0.3102339
+#&gt;      4      3   -0.4189907   0.4412318
+#&gt;      4      4   12.6791707   0.6355995
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.93544
+#&gt; P-value for pre-test of parallel trends assumption:  0.25513
 summary(aggte(res, type=&quot;selective&quot;))
 #&gt; 
 #&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
@@ -694,9 +940,9 @@ summary(aggte(res, type=&quot;selective&quot;))
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt;       att          se
-#&gt; ---------  ----------
-#&gt;  6.860434   0.2800525
+#&gt;     att          se
+#&gt; -------  ----------
+#&gt;  7.1434   0.2863322
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
@@ -704,9 +950,9 @@ summary(aggte(res, type=&quot;selective&quot;))
 #&gt; 
 #&gt;  group         att          se
 #&gt; ------  ----------  ----------
-#&gt;      2    2.154886   0.3031144
-#&gt;      3    6.219961   0.4198305
-#&gt;      4   12.201333   0.6489400
+#&gt;      2    1.393968   0.3064087
+#&gt;      3    6.711969   0.4060622
+#&gt;      4   12.679171   0.5996126
 
 
 #-----------------------------------------------------------------------------
@@ -729,18 +975,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.9456501   0.1946596
-#&gt;      2      3    2.8495499   0.1696584
-#&gt;      2      4    3.8404563   0.1697384
-#&gt;      3      2   -0.0047980   0.1832123
-#&gt;      3      3    2.9171979   0.1864201
-#&gt;      3      4    3.9729167   0.1792248
-#&gt;      4      2    0.0866978   0.1762537
-#&gt;      4      3   -0.2045794   0.1856546
-#&gt;      4      4    4.0265335   0.1631071
+#&gt;      2      2    2.0433294   0.1722285
+#&gt;      2      3    2.9142477   0.1684770
+#&gt;      2      4    4.1047181   0.1857204
+#&gt;      3      2    0.0677609   0.1632248
+#&gt;      3      3    2.8046158   0.1630036
+#&gt;      3      4    3.7367247   0.1619324
+#&gt;      4      2   -0.1018118   0.1658466
+#&gt;      4      3    0.0511639   0.1562192
+#&gt;      4      4    4.2323198   0.1833968
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.69707
+#&gt; P-value for pre-test of parallel trends assumption:  0.82484
 summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
 #&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
@@ -748,9 +994,9 @@ summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt;      att        se
-#&gt; --------  --------
-#&gt;  2.92522   0.09504
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  2.975783   0.0973836
 #&gt; 
 #&gt; 
 #&gt; Time Effects:
@@ -758,9 +1004,9 @@ summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
 #&gt;  time        att          se
 #&gt; -----  ---------  ----------
-#&gt;     2   1.945650   0.1946596
-#&gt;     3   2.883374   0.1379735
-#&gt;     4   3.946636   0.1127484
+#&gt;     2   2.043329   0.1775893
+#&gt;     3   2.859432   0.1322381
+#&gt;     4   4.024587   0.1303217
 
 #-----------------------------------------------------------------------------
 # test balancing with respect to length of exposure
@@ -783,18 +1029,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    2.9392632   0.0977897
-#&gt;      2      3    4.0073136   0.0977955
-#&gt;      2      4    5.0169503   0.0985555
-#&gt;      3      2   -0.0817206   0.0820590
-#&gt;      3      3    6.9825084   0.1191745
-#&gt;      3      4    8.0937684   0.1180041
-#&gt;      4      2   -0.0311334   0.0831377
-#&gt;      4      3    0.0173202   0.0795958
-#&gt;      4      4   12.9964511   0.1438255
+#&gt;      2      2    2.9428059   0.0985304
+#&gt;      2      3    3.9724750   0.0936733
+#&gt;      2      4    4.9294536   0.0914654
+#&gt;      3      2   -0.0301001   0.0814107
+#&gt;      3      3    6.9841870   0.1223106
+#&gt;      3      4    7.9951740   0.1222015
+#&gt;      4      2   -0.0939036   0.0808696
+#&gt;      4      3   -0.0196734   0.0807077
+#&gt;      4      4   12.9814426   0.1472391
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.80206
+#&gt; P-value for pre-test of parallel trends assumption:  0.51349
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
@@ -804,7 +1050,7 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt;       att         se
 #&gt; ---------  ---------
-#&gt;  6.207871   0.060611
+#&gt;  6.162789   0.061553
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -812,12 +1058,12 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt;  event time          att          se
 #&gt; -----------  -----------  ----------
-#&gt;          -2   -0.0311334   0.0831377
-#&gt;          -1   -0.0332210   0.0517723
-#&gt;           0    7.5601392   0.0759193
-#&gt;           1    6.0465228   0.0798806
-#&gt;           2    5.0169503   0.0985555
-summary(aggte(res, type=&quot;dynamic&quot;, balance.e=2))
+#&gt;          -2   -0.0939036   0.0793397
+#&gt;          -1   -0.0248710   0.0508013
+#&gt;           0    7.6031083   0.0763955
+#&gt;           1    5.9558057   0.0809427
+#&gt;           2    4.9294536   0.0987105
+summary(aggte(res, type=&quot;dynamic&quot;, balance.e=1))
 #&gt; 
 #&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
 #&gt; 
@@ -826,23 +1072,253 @@ summary(aggte(res, type=&quot;dynamic&quot;, balance.e=2))
 #&gt; 
 #&gt;       att          se
 #&gt; ---------  ----------
-#&gt;  3.987842   0.0751954
+#&gt;  5.445577   0.0673137
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
 #&gt; 
 #&gt; 
-#&gt;  event time        att          se
-#&gt; -----------  ---------  ----------
-#&gt;           0   2.939263   0.0977897
-#&gt;           1   4.007314   0.0977955
-#&gt;           2   5.016950   0.0985555</code></pre>
+#&gt;  event time          att          se
+#&gt; -----------  -----------  ----------
+#&gt;          -1   -0.0301001   0.0861144
+#&gt;           0    4.9353475   0.0745653
+#&gt;           1    5.9558057   0.0776340</code></pre>
+</div>
+<div id="test-unequally-spaced-periods" class="section level2">
+<h2>Test Unequally Spaced Periods</h2>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# test that att_gt and aggte work with unequally spaced periods
+# expected result: te=length of exposure
+#-----------------------------------------------------------------------------
+time.periods &lt;- 8
+reset.sim()
+te &lt;- 0
+te.e &lt;- 1:time.periods
+data &lt;- build_sim_dataset()
+keep.periods &lt;- c(1,2,5,7)
+data &lt;- subset(data, G %in% c(0, keep.periods))
+data &lt;- subset(data, period %in% keep.periods)
+
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
+              control.group=&quot;nevertreated&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;reg&quot;, printdetails=FALSE, panel=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt;  group   time          att          se
+#&gt; ------  -----  -----------  ----------
+#&gt;      2      2    1.0002494   0.1370329
+#&gt;      2      5    4.0056289   0.2106219
+#&gt;      2      7    6.0551406   0.2785065
+#&gt;      5      2   -0.0457492   0.1462455
+#&gt;      5      5    1.0462459   0.2423619
+#&gt;      5      7    3.0006451   0.3003823
+#&gt;      7      2   -0.0514154   0.1298323
+#&gt;      7      5   -0.0119259   0.2309773
+#&gt;      7      7    1.0617124   0.3814861
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.96159
+summary(aggte(res, type=&quot;dynamic&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  3.524319   0.1616139
+#&gt; 
+#&gt; 
+#&gt; Dynamic Effects:
+#&gt; 
+#&gt; 
+#&gt;  event time          att          se
+#&gt; -----------  -----------  ----------
+#&gt;          -5   -0.0514154   0.1376232
+#&gt;          -3   -0.0457492   0.1408484
+#&gt;          -2   -0.0119259   0.2243647
+#&gt;           0    1.0358629   0.1651407
+#&gt;           2    3.0006451   0.2990786
+#&gt;           3    4.0056289   0.2219090
+#&gt;           5    6.0551406   0.2866201
+summary(aggte(res, type=&quot;selective&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  2.259743   0.1605957
+#&gt; 
+#&gt; 
+#&gt; Group Effects:
+#&gt; 
+#&gt; 
+#&gt;  group        att          se
+#&gt; ------  ---------  ----------
+#&gt;      2   3.687006   0.1800652
+#&gt;      5   2.023445   0.2499526
+#&gt;      7   1.061712   0.3706418
+summary(aggte(res, type=&quot;calendar&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  2.299562   0.1195353
+#&gt; 
+#&gt; 
+#&gt; Time Effects:
+#&gt; 
+#&gt; 
+#&gt;  time        att          se
+#&gt; -----  ---------  ----------
+#&gt;     2   1.000249   0.1371932
+#&gt;     5   2.525937   0.1699700
+#&gt;     7   3.372499   0.1943826</code></pre>
+</div>
+<div id="test-unequally-spaced-first-treatment-timing" class="section level2">
+<h2>Test Unequally Spaced First Treatment Timing</h2>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# test that att_gt and aggte work with unequally spaced groups
+# expected result: te=length of exposure
+#-----------------------------------------------------------------------------
+time.periods &lt;- 4
+reset.sim()
+te &lt;- 0
+te.e &lt;- 1:time.periods
+data &lt;- build_sim_dataset()
+keep.groups &lt;- c(2,4)
+data &lt;- subset(data, G %in% c(0, keep.groups))
+
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
+              control.group=&quot;notyettreated&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;reg&quot;, printdetails=FALSE, panel=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt;  group   time         att          se
+#&gt; ------  -----  ----------  ----------
+#&gt;      2      2   1.1389276   0.1090094
+#&gt;      2      3   2.1492159   0.1278652
+#&gt;      2      4   3.0855139   0.1406697
+#&gt;      4      2   0.0350764   0.0860684
+#&gt;      4      3   0.0504767   0.1078114
+#&gt;      4      4   1.0190871   0.1772637
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.68528
+summary(aggte(res, type=&quot;dynamic&quot;, balance.e=0))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  1.07825   0.1046355
+#&gt; 
+#&gt; 
+#&gt; Dynamic Effects:
+#&gt; 
+#&gt; 
+#&gt;  event time         att          se
+#&gt; -----------  ----------  ----------
+#&gt;          -2   0.0350764   0.0864165
+#&gt;          -1   0.0504767   0.1137385
+#&gt;           0   1.0782496   0.1036697
+summary(aggte(res, type=&quot;selective&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;      att          se
+#&gt; --------  ----------
+#&gt;  1.56483   0.1033724
+#&gt; 
+#&gt; 
+#&gt; Group Effects:
+#&gt; 
+#&gt; 
+#&gt;  group        att          se
+#&gt; ------  ---------  ----------
+#&gt;      2   2.124553   0.1027100
+#&gt;      4   1.019087   0.1645814
+summary(aggte(res, type=&quot;calendar&quot;))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt;       att          se
+#&gt; ---------  ----------
+#&gt;  1.780148   0.0830324
+#&gt; 
+#&gt; 
+#&gt; Time Effects:
+#&gt; 
+#&gt; 
+#&gt;  time        att          se
+#&gt; -----  ---------  ----------
+#&gt;     2   1.138928   0.1119358
+#&gt;     3   2.149216   0.1269363
+#&gt;     4   2.052300   0.1139125</code></pre>
+</div>
+<div id="test-some-units-treated-in-first-period" class="section level2">
+<h2>Test Some Units Treated in First Period</h2>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# test that att_gt works when some units are treated in first period
+# expected result: te=length of exposure, code runs with warning message about
+#  dropped units
+#-----------------------------------------------------------------------------
+time.periods &lt;- 4
+reset.sim()
+te &lt;- 1
+data &lt;- build_sim_dataset()
+data &lt;- subset(data, period &gt;= 2)
+
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
+              control.group=&quot;nevertreated&quot;,
+              first.treat.name=&quot;G&quot;, estMethod=&quot;reg&quot;, printdetails=FALSE, panel=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt;  group   time          att          se
+#&gt; ------  -----  -----------  ----------
+#&gt;      3      3    1.0473726   0.1352081
+#&gt;      3      4    1.0359383   0.1554476
+#&gt;      4      3   -0.0489866   0.1392883
+#&gt;      4      4    0.9520751   0.1742190
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.72507</code></pre>
 </div>
 <div id="misc-error-handling-tests" class="section level2">
 <h2>Misc error handling tests</h2>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # incorrectly specified id
 #-----------------------------------------------------------------------------
+time.periods &lt;- 4
 reset.sim()
 data &lt;- build_sim_dataset()
 
@@ -850,13 +1326,13 @@ data &lt;- build_sim_dataset()
 tryCatch(res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;brant&quot;,
                        first.treat.name=&quot;G&quot;, estMethod=&quot;dr&quot;, printdetails=FALSE),
          error=function(cond) {
-           message(&quot;expected error&quot;)
+           message(&quot;expected error:&quot;)
            message(cond)
            message(&quot;\n&quot;)
            return(NA)
          }
          )
-#&gt; expected error
+#&gt; expected error:
 #&gt; 
 #&gt; [1] NA
 
@@ -884,18 +1360,18 @@ res
 #&gt; 
 #&gt;  group   time          att          se
 #&gt; ------  -----  -----------  ----------
-#&gt;      2      2    1.0206543   0.0574152
-#&gt;      2      3    0.9611304   0.0582336
-#&gt;      2      4    0.9945897   0.0572602
-#&gt;      3      2    0.0093924   0.0594046
-#&gt;      3      3    0.8960985   0.0572139
-#&gt;      3      4    0.9097943   0.0574994
-#&gt;      4      2   -0.0101506   0.0572545
-#&gt;      4      3   -0.0112633   0.0544349
-#&gt;      4      4    0.9322672   0.0563771
+#&gt;      2      2    0.9393502   0.0575826
+#&gt;      2      3    1.0391400   0.0617500
+#&gt;      2      4    1.0402243   0.0573644
+#&gt;      3      2   -0.0186642   0.0576243
+#&gt;      3      3    0.9916984   0.0601144
+#&gt;      3      4    1.0230175   0.0574277
+#&gt;      4      2   -0.0511656   0.0564167
+#&gt;      4      3    0.0347060   0.0606853
+#&gt;      4      4    0.9836121   0.0588377
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of DID assumption:  0.97659</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.8418</code></pre>
 </div>
 </div>
 

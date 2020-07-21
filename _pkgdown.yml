@@ -27,6 +27,7 @@ articles:
     - multi-period-did
     - did-basics
     - pre-testing
+    - extensions
 
 reference:
   - title: "Difference in Differences Methods"

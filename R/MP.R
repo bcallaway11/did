@@ -1,6 +1,6 @@
 #' @title MP
 #'
-#' @description multi-period object
+#' @description Multi-period objects that hold results for group-time average treatment effects
 #'
 #' @param group which group (defined by period first treated) an group-time average treatment effect is for
 #' @param t which time period a group-time average treatment effect is for
@@ -17,8 +17,8 @@
 #'  common trends assumption
 #' @param aggte an aggregate treatment effects object
 #' @param alp the significance level, default is 0.05
-#' @param DIDparams a DIDparams object.  A way to optionally return the parameters
-#'  of the call to \code{att_gt} or \code{conditional_did_pretest}.
+#' @param DIDparams a \code{\link{DIDparams}} object.  A way to optionally return the parameters
+#'  of the call to \code{\link{att_gt}} or \code{\link{conditional_did_pretest}}.
 #'
 #' @return MP object
 #' @export
@@ -45,7 +45,7 @@ summary.MP <- function(object, ...) {
   print(knitr::kable(out))
   cat("\n\n")
   if (!is.null(mpobj$Wpval)) {
-    cat("P-value for pre-test of DID assumption:  ")
+    cat("P-value for pre-test of parallel trends assumption:  ")
     cat(as.character(mpobj$Wpval))
     cat("\n\n")
   }

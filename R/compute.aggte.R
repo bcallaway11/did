@@ -6,7 +6,7 @@
 #' @inheritParams att_gt
 #' @inheritParams aggte
 #'
-#' @return \code{AGGTE} object
+#' @return \code{\link{AGGTEobj}} object
 #'
 #' @keywords internal
 #'
@@ -144,7 +144,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
 
     # recover influence function separately by group
-    selective.inf.func.g <- simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,]
+    selective.inf.func.g <- as.matrix(simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,])
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -193,18 +193,19 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     # this looks at all available event times
     # note: event times can be negative here.
     # note: event time = 0 corresponds to "on impact"
-    eseq <- unique(t-group) 
+    #eseq <- unique(t-group)
+    eseq <- unique(originalt - originalgroup)
     eseq <- eseq[order(eseq)]
 
     # if the user specifies balance.e, then we are going to
     # drop some event times and some groups; if not, we just
     # keep everything (that is what this variable is for)
-    include.balanced.gt <- rep(TRUE, length(group))
+    include.balanced.gt <- rep(TRUE, length(originalgroup))
     
     # if we balance the sample with resepect to event time
     if (!is.null(balance.e)) { 
-      eseq <- eseq[ (eseq <= balance.e) & (eseq >= balance.e - maxT + 1)]
-      include.balanced.gt <- (maxT - group >= balance.e)
+      eseq <- eseq[ (eseq <= balance.e) & (eseq >= balance.e - t2orig(maxT) + t2orig(1))]
+      include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance.e)
     }
 
     # these are not currently used, but if we want to trim
@@ -216,7 +217,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     dynamic.att.e <- sapply(eseq, function(e) {
       # keep att(g,t) for the right g&t as well as ones that
       # are not trimmed out from balancing the sample
-      whiche <- which( (t - group == e) & (include.balanced.gt) ) 
+      whiche <- which( (originalt - originalgroup == e) & (include.balanced.gt) ) 
       atte <- att[whiche]
       pge <- pg[whiche]/(sum(pg[whiche]))
       sum(atte*pge)
@@ -224,7 +225,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
 
     # compute standard errors for dynamic effects
     dynamic.se.inner <- lapply(eseq, function(e) {
-      whiche <- which( (t - group == e) & (include.balanced.gt) ) 
+      whiche <- which( (originalt - originalgroup == e) & (include.balanced.gt) ) 
       pge <- pg[whiche]/(sum(pg[whiche]))
       wif.e <- wif(whiche, pg, weights.ind, G, group)
       inf.func.e <- get_agg_inf_func(att=att,
@@ -237,7 +238,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     })
 
     dynamic.se.e <- unlist(getListElement(dynamic.se.inner, "se"))
-    dynamic.inf.func.e <- simplify2array(getListElement(dynamic.se.inner, "inf.func"))[,1,]
+    dynamic.inf.func.e <- as.matrix(simplify2array(getListElement(dynamic.se.inner, "inf.func"))[,1,])
     dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
 
     # get overall average treatment effect
@@ -265,8 +266,14 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   #-----------------------------------------------------------------------------
 
   if (type == "calendar") {
+
+    # drop time periods where no one is treated yet
+    # (can't get treatment effects in those periods)
+    minG <- min(group)
+    calendar.tlist <- tlist[tlist>=minG]
+    
     # calendar time specific atts
-    calendar.att.t <- sapply(tlist, function(t1) {
+    calendar.att.t <- sapply(calendar.tlist, function(t1) {
       # look at post-treatment periods for group g
       whicht <- which( (t == t1) & (group <= t))
       attt <- att[whicht]
@@ -275,7 +282,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
 
     # get standard errors and influence functions
     # for each time specific att
-    calendar.se.inner <- lapply(tlist, function(t1) {
+    calendar.se.inner <- lapply(calendar.tlist, function(t1) {
       whicht <- which( (t == t1) & (group <= t))
       wif.t <- wif(keepers=whicht,
                    pg=pg,
@@ -295,7 +302,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     calendar.se.t <- unlist(getListElement(calendar.se.inner, "se"))
 
     # recover influence function separately by time
-    calendar.inf.func.t <- simplify2array(getListElement(calendar.se.inner, "inf.func"))[,1,]
+    calendar.inf.func.t <- as.matrix(simplify2array(getListElement(calendar.se.inner, "inf.func"))[,1,])
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -308,8 +315,8 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     # get overall influence function
     calendar.inf.func <- get_agg_inf_func(att=calendar.att.t,
                                            inffunc1=calendar.inf.func.t,
-                                           whichones=(1:length(tlist)),
-                                           weights.agg=rep(1/length(tlist), length(tlist)),
+                                           whichones=(1:length(calendar.tlist)),
+                                           weights.agg=rep(1/length(calendar.tlist), length(calendar.tlist)),
                                            wif=NULL)
 
     # get overall standard error
@@ -318,7 +325,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
     return(AGGTEobj(overall.att=calendar.att,
                     overall.se=calendar.se,
                     type=type,
-                    egt=sapply(tlist,t2orig),
+                    egt=sapply(calendar.tlist,t2orig),
                     att.egt=calendar.att.t,
                     se.egt=calendar.se.t,
                     crit.val.egt=calendar.crit.val))

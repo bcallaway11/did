@@ -30,7 +30,7 @@ next two periods when \code{e=1} and the \code{e=2}).  This ensures that
 the composition of groups does not change when event time changes.}
 }
 \value{
-\code{AGGTE} object
+\code{\link{AGGTEobj}} object
 }
 \description{
 Does the heavy lifting on computing aggregated group-time
