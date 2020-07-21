@@ -15,15 +15,6 @@
 #'  This should be a positive number for all observations in treated groups.
 #'  It defines which "group" a unit belongs to.  It should be 0 for units
 #'  in the untreated group.
-#' @param nevertreated did currently provides two possibilities for the
-#'  control group.  The first one is to use the group of units that are never
-#'  participate in the treatment.  This is the default behavior and occurs
-#'  when nevertreated=TRUE.  In the case where there is no group that is never
-#'  treated, att_gt will use the group that is treated in the last period and
-#'  provide a warning.  The other possible control group is the "not yet
-#'  treated" group.  This is a larger group and includes both never treated
-#'  units and units that have not yet (but eventually will) participate in the
-#'  treatment.  This control group changes across different time periods.
 #' @param weightsname The name of the column containing the sampling weights.
 #'  If not set, all observations have same weight.
 #' @param alp the significance level, default is 0.05
@@ -104,7 +95,7 @@
 #'                data=mpdta,
 #'                printdetails=FALSE)
 #' summary(out1)
-#' 
+#'
 #' # without covariates
 #' out2 <- att_gt(yname="lemp",
 #'                tname="year",
@@ -114,12 +105,12 @@
 #'                data=mpdta,
 #'                printdetails=FALSE)
 #' summary(out2)
-#' 
+#'
 #' @return an \code{\link{MP}} object containing all the results for group-time average
 #'  treatment effects
 #'
 #' @export
-att_gt <- function(yname, 
+att_gt <- function(yname,
                    tname,
                    idname=NULL,
                    first.treat.name,
@@ -139,7 +130,7 @@ att_gt <- function(yname,
                    cores=1) {
 
   # this is a DIDparams object
-  dp <- pre_process_did(yname=yname, 
+  dp <- pre_process_did(yname=yname,
                         tname=tname,
                         idname=idname,
                         first.treat.name=first.treat.name,
@@ -164,7 +155,7 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
   results <- compute.att_gt(dp)
 
-  
+
   # extract ATT(g,t) and influence functions
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc
@@ -175,7 +166,7 @@ att_gt <- function(yname,
   att <- attgt.results$att
   tt <- attgt.results$tt
   inffunc1 <- attgt.results$inf.func
-  
+
 
   # estimate variance
   # this is analogous to cluster robust standard errors that
@@ -200,7 +191,7 @@ att_gt <- function(yname,
   }
 
 
-  
+
   #-----------------------------------------------------------------------------
   # compute Wald pre-test
   #-----------------------------------------------------------------------------
