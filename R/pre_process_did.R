@@ -10,27 +10,26 @@
 #'
 #' @export
 pre_process_did <- function(yname,
-                   tname,
-                   idname = NULL,
-                   first.treat.name,
-                   xformla = NULL,
-                   data,
-                   panel = TRUE,
-                   control.group = c("nevertreated","notyettreated"),
-                   weightsname = NULL,
-                   alp = 0.05,
-                   bstrap = FALSE,
-                   cband = FALSE,
-                   biters = 1000,
-                   clustervars = NULL,
-                   estMethod = "dr",
-                   printdetails = TRUE,
-                   pl = FALSE,
-                   cores = 1) {
+                            tname,
+                            idname,
+                            first.treat.name,
+                            xformla = NULL,
+                            data,
+                            panel = TRUE,
+                            control.group = c("nevertreated","notyettreated"),
+                            weightsname = NULL,
+                            alp = 0.05,
+                            bstrap = FALSE,
+                            cband = FALSE,
+                            biters = 1000,
+                            clustervars = NULL,
+                            estMethod = "dr",
+                            printdetails = TRUE,
+                            pl = FALSE,
+                            cores = 1) {
   #-----------------------------------------------------------------------------
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
-
   # set control group
   control.group <- control.group[1]
 
@@ -41,7 +40,7 @@ pre_process_did <- function(yname,
     data <- as.data.frame(data)
   }
   # weights if null
-  ifelse(is.null(weightsname), w <- rep(1,nrow(data)), w <- data[,weightsname])
+  ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
   data$w <- w
 
   # Outcome variable will be denoted by y
@@ -112,23 +111,17 @@ pre_process_did <- function(yname,
   }
 
   # This is a duplicate but I kept it before making the final changes
-  if (panel) {
+  #if (panel) {
     # check that id is numeric
-    if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
+  #  if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
 
     #check that first.treat doesn't change across periods for particular individuals
-    if (!all(sapply( split(data, data[,idname]), function(df) {
-      length(unique(df[,first.treat.name]))==1
-    }))) {
-      stop("The value of first.treat must be the same across all periods for each particular individual.")
-    }
-  }
-
-
-  # How many time periods
-  nT <- length(tlist)
-  # How many treated groups
-  nG <- length(glist)
+   # if (!all(sapply( split(data, data[,idname]), function(df) {
+    #  length(unique(df[,first.treat.name]))==1
+    #}))) {
+    #  stop("The value of first.treat must be the same across all periods for each particular individual.")
+    #}
+  #}
 
 
   # put in blank xformla if no covariates
@@ -192,15 +185,31 @@ pre_process_did <- function(yname,
     # check for complete cases
     keepers <- complete.cases(cbind.data.frame(data[,c(tname, yname, first.treat.name)], model.matrix(xformla, data=data)))
     if (nrow(data[keepers,]) < nrow(data)) {
-      warning(paste0("dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data...."))
+      warning(paste0("Dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data."))
       data <- data[keepers,]
     }
 
     # n-row data.frame to hold the influence function
-    data$rowid <- seq(1:nrow(data))
-    idname <- "rowid"
+    if(is.null(idname)) {
+      data$rowid <- seq(1:nrow(data))
+      idname <- "rowid"
+    }
     n <- nrow(data)
   }
+
+  # Update tlist and glist because of data handling
+  # figure out the dates
+  # list of dates from smallest to largest
+  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  # list of treated groups (by time) from smallest to largest
+  glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
+
+  # How many time periods
+  nT <- length(tlist)
+  # How many treated groups
+  nG <- length(glist)
+
+
 
   # store parameters for passing around later
   dp <- DIDparams(yname=yname,

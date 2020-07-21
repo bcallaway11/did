@@ -1,13 +1,13 @@
 #' @title Compute Group-Time Average Treatment Effects
 #'
 #' @description \code{compute.att_gt} does the main work for computing
-#'  mutliperiod group-time average treatment effects
+#'  multiperiod group-time average treatment effects
 #'
 #' @param dp A DIDparams object
 #'
 #' @return a list with length equal to the number of groups times the
 #'  number of time periods; each element of the list contains an
-#'  object that contains group-time average treamtent effect as well
+#'  object that contains group-time average treatment effect as well
 #'  as which group it is for and which time period it is for. It also exports
 #'  the influence function which is used externally to compute
 #'  standard errors.
@@ -36,7 +36,7 @@ compute.att_gt <- function(dp) {
   nG <- dp$nG
   tlist <- dp$tlist
   glist <- dp$glist
-  
+
   #-----------------------------------------------------------------------------
   # main computations
   #-----------------------------------------------------------------------------
@@ -64,8 +64,8 @@ compute.att_gt <- function(dp) {
       # set pre-treatment time period (this is updated later
       # if g <= t (i.e. for "already treated" groups)
       pret <- t
-      
-      
+
+
       # code to update pre-treatment time periods
       if (glist[g]<=tlist[(t+1)]) {
 
@@ -73,7 +73,7 @@ compute.att_gt <- function(dp) {
         # this recovers the right pre-treatment period for this group
         # it is the most recent pre-treatment period (g-1)
         pret <- utils::tail(which(tlist < glist[g]),1)
-        
+
         # print a warning message if there are no pre-treatment period
         if (length(pret) == 0) {
           warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g], "\nUnits from this group are dropped"))
@@ -82,7 +82,7 @@ compute.att_gt <- function(dp) {
           # break, jump out of this loop
           break
         }
-        
+
       }
 
       # print the details of which iteration we are on
@@ -97,7 +97,7 @@ compute.att_gt <- function(dp) {
       #-----------------------------------------------------------------------------
 
       #if (panel) {
-      
+
       # post treatment dummy variable
       post.treat <- 1*(glist[g]<=tlist[t+1])
 
@@ -106,7 +106,7 @@ compute.att_gt <- function(dp) {
 
       # kind of hack, but need it to count for repeated cross sections case
       thisdata <- data
-      
+
       nevertreated <- (control.group[1] == "nevertreated")
       # sete up control group
       if(nevertreated){
@@ -154,13 +154,13 @@ compute.att_gt <- function(dp) {
         C <- disdat$C
         Ypre <- disdat$y
         Ypost <- disdat$yt1
-        dy <- disdat$dy 
+        dy <- disdat$dy
         n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
         w <- disdat$w
 
         # matrix of covariates
         covariates <- model.matrix(xformla, data=disdat)
-        
+
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
@@ -191,7 +191,7 @@ compute.att_gt <- function(dp) {
                                       i.weights=w,
                                       boot=FALSE, inffunc=TRUE)
         }
-        
+
         # adjust influence function to account for only using
         # subgroup to estimate att(g,t)
         attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
@@ -200,7 +200,7 @@ compute.att_gt <- function(dp) {
 
         # total number of observations
         n  <- nrow(data)
-        
+
         # pick up the indices for units that will be used to compute ATT(g,t)
         # these conditions are (1) you are observed in the right period and
         # (2) you are in the right group (it is possible to be observed in
@@ -230,7 +230,7 @@ compute.att_gt <- function(dp) {
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
-        
+
         if (class(estMethod) == "function") {
           # user-specified function
           attgt <- estMethod(y=Y,
@@ -270,7 +270,7 @@ compute.att_gt <- function(dp) {
         # G and C
         attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
       } #end panel if
-      
+
       # save results for this att(g,t)
       attgt.list[[counter]] <- list(att=attgt$ATT, group=glist[g], year=tlist[(t+1)], post=post.treat)
 
@@ -289,6 +289,6 @@ compute.att_gt <- function(dp) {
       counter <- counter+1
     } # end looping over t
   } # end looping over g
-  
+
   return(list(attgt.list=attgt.list, inffunc=inffunc))
 }
