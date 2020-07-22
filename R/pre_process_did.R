@@ -203,6 +203,13 @@ pre_process_did <- function(yname,
   # list of treated groups (by time) from smallest to largest
   glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
 
+  # Only the treated groups
+  glist <- glist[glist>0]
+
+  # drop groups treated in the first period or before
+  first.period <- tlist[1]
+  glist <- glist[glist > first.period]
+
   # How many time periods
   nT <- length(tlist)
   # How many treated groups
