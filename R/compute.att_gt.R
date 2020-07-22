@@ -119,10 +119,12 @@ compute.att_gt <- function(dp) {
         # use "not yet treated as control"
         # that is, never treated + units that are eventually treated,
         # but not treated by the current period
-        disdat$C <- 1*((disdat[,first.treat.name] == 0) |
-                         (disdat[,first.treat.name] > tlist[t+1]))
+        disdat$C <- 1 * ((disdat[,first.treat.name] == 0) |
+                           ((disdat[,first.treat.name] > tlist[t+1]) &
+                              (disdat[,first.treat.name] != glist[g])))
         thisdata$C <- 1*((thisdata[,first.treat.name] == 0) |
-                           (thisdata[,first.treat.name] > tlist[t+1]))
+                           ((thisdata[,first.treat.name] > tlist[t+1]) &
+                              (thisdata[,first.treat.name] != glist[g])))
         thisdata$G <- 1*(thisdata[,first.treat.name] == glist[g])
       }
 
