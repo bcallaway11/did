@@ -21,23 +21,28 @@
 #' @param crit.val.egt A critical value for computing uniform confidence
 #'  bands for dynamic effects, selective treatment timing, or time period
 #'  effects.
+#' @param inf.function The influence function of the chosen aggregated parameters
 #'
 #' @return an AGGTEobj
 #' @export
-AGGTEobj <- function(overall.att=NULL,
-                     overall.se=NULL,
-                     type="simple",
-                     egt=NULL,
-                     att.egt=NULL,
-                     se.egt=NULL,
-                     crit.val.egt=NULL) {
-  out <- list(overall.att=overall.att,
-              overall.se=overall.se,
-              type=type,
-              egt=egt,
-              att.egt=att.egt,
-              se.egt=se.egt,
-              crit.val.egt=crit.val.egt)
+AGGTEobj <- function(overall.att = NULL,
+                     overall.se = NULL,
+                     type = "simple",
+                     egt = NULL,
+                     att.egt = NULL,
+                     se.egt = NULL,
+                     crit.val.egt = NULL,
+                     inf.function = NULL) {
+
+  out <- list(overall.att = overall.att,
+              overall.se = overall.se,
+              type = type,
+              egt = egt,
+              att.egt = att.egt,
+              se.egt = se.egt,
+              crit.val.egt = crit.val.egt,
+              inf.function = inf.function)
+
   class(out)  <- "AGGTEobj"
   out
 }
@@ -62,13 +67,13 @@ summary.AGGTEobj <- function(object, ...) {
 
   # handle cases depending on type
   if (object$type %in% c("selective","dynamic","calendar")) {
-  
+
     if (object$type=="dynamic") { c1name <- "event time"; cat("Dynamic Effects:") }
     if (object$type=="selective") { c1name <- "group"; cat("Group Effects:") }
-    if (object$type=="calendar") { c1name <- "time"; cat("Time Effects:") } 
+    if (object$type=="calendar") { c1name <- "time"; cat("Time Effects:") }
     out2 <- cbind(object$egt, object$att.egt, object$se.egt)
     colnames(out2) <- c(c1name, "att", "se")
     cat("\n")
     print(knitr::kable(out2))
-  } 
+  }
 }
