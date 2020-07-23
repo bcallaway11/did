@@ -261,7 +261,10 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
                     egt=eseq,
                     att.egt=dynamic.att.e,
                     se.egt=dynamic.se.e,
-                    crit.val.egt=dynamic.crit.val))
+                    crit.val.egt=dynamic.crit.val,
+                    inf.function = list(dynamic.inf.func.e = dynamic.inf.func.e,
+                                        dynamic.inf.func = dynamic.inf.func)
+    ))
   }
 
   #-----------------------------------------------------------------------------
