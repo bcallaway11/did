@@ -118,16 +118,6 @@ if covariates are included.}
 
 \item{cores}{The number of cores to use for parallel processing
 (not implemented yet)}
-
-\item{nevertreated}{did currently provides two possibilities for the
-control group.  The first one is to use the group of units that are never
-participate in the treatment.  This is the default behavior and occurs
-when nevertreated=TRUE.  In the case where there is no group that is never
-treated, att_gt will use the group that is treated in the last period and
-provide a warning.  The other possible control group is the "not yet
-treated" group.  This is a larger group and includes both never treated
-units and units that have not yet (but eventually will) participate in the
-treatment.  This control group changes across different time periods.}
 }
 \value{
 an \code{\link{MP}} object containing all the results for group-time average

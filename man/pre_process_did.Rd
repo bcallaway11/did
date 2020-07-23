@@ -7,7 +7,7 @@
 pre_process_did(
   yname,
   tname,
-  idname = NULL,
+  idname,
   first.treat.name,
   xformla = NULL,
   data,

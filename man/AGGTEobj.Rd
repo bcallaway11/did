@@ -11,7 +11,8 @@ AGGTEobj(
   egt = NULL,
   att.egt = NULL,
   se.egt = NULL,
-  crit.val.egt = NULL
+  crit.val.egt = NULL,
+  inf.function = NULL
 )
 }
 \arguments{
@@ -35,6 +36,8 @@ time effects)}
 \item{crit.val.egt}{A critical value for computing uniform confidence
 bands for dynamic effects, selective treatment timing, or time period
 effects.}
+
+\item{inf.function}{The influence function of the chosen aggregated parameters}
 }
 \value{
 an AGGTEobj
