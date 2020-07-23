@@ -12,7 +12,7 @@
 #' * V variance matrix
 #' * se standard errors
 #' * crit.val a critical value for computing uniform confidence bands
-#' 
+#'
 #' @export
 mboot <- function(inf.func, DIDparams) {
 
@@ -25,14 +25,14 @@ mboot <- function(inf.func, DIDparams) {
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
-  
+
   # just get n obsevations (for clustering below...)
   ifelse(panel,
          dta <- data[ data[,tname]==tlist[1], ],
          dta <- data)
 
   n <- nrow(inf.func) # this adjusts automatically to panel vs. repeated cross sections
-  
+
   # if include id as variable to cluster on
   # drop it as we do this automatically
   if (idname %in% clustervars) {
@@ -44,7 +44,7 @@ mboot <- function(inf.func, DIDparams) {
   if (length(clustervars) > 1) {
     stop("can't handle that many cluster variables")
   }
-  
+
   # bootstrap
   bout <- lapply(1:biters, FUN=function(b) {
     if (length(clustervars) > 0) {
@@ -69,7 +69,11 @@ mboot <- function(inf.func, DIDparams) {
   bres <- simplify2array(bout)
   # handle vector and matrix case differently, so you get nxk matrix
   ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
-  # bootstrap variance matrix 
+  # Non-degenerate dimensions
+  ndg.dim <- base::colSums(bres)!=0
+  bres <- bres[ , ndg.dim]
+
+  # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
   V <- cov(bres)
   # bootstrap standard error
   bSigma <- apply(bres, 2,
@@ -79,5 +83,8 @@ mboot <- function(inf.func, DIDparams) {
   bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
   crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
 
-  list(bres=bres, V=V, se=bSigma/sqrt(n), crit.val=crit.val)
+  se <- rep(0, length(ndg.dim))
+  se[ndg.dim] <- as.numeric(bSigma)/sqrt(n)
+
+  list(bres = bres, V = V, se = se, crit.val = crit.val)
 }
