@@ -88,9 +88,9 @@ mboot <- function(inf.func, DIDparams) {
   bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
   crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
 
-  se <- rep(NA, length(ndg.dim))
+  se <- rep(0, length(ndg.dim))
   se[ndg.dim] <- as.numeric(bSigma)/sqrt(n)
-  se[se==0] <- NA
+  #se[se==0] <- NA
 
   list(bres = bres, V = V, se = se, crit.val = crit.val)
 }
