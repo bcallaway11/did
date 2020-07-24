@@ -90,6 +90,7 @@ mboot <- function(inf.func, DIDparams) {
 
   se <- rep(NA, length(ndg.dim))
   se[ndg.dim] <- as.numeric(bSigma)/sqrt(n)
+  se[se==0] <- NA
 
   list(bres = bres, V = V, se = se, crit.val = crit.val)
 }
