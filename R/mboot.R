@@ -71,7 +71,7 @@ mboot <- function(inf.func, DIDparams) {
   ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
   # Non-degenerate dimensions
   ndg.dim <- base::colSums(bres)!=0
-  bres <- bres[ , ndg.dim]
+  bres <- bres[ , ndg.dim, drop = F]
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
   V <- cov(bres)

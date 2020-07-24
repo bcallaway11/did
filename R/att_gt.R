@@ -167,6 +167,13 @@ att_gt <- function(yname,
   tt <- attgt.results$tt
   inffunc1 <- attgt.results$inf.func
 
+  # drop anywhere where ATT is NA because of unbalanced panel
+  notna <- !is.na(att)
+  group <- group[notna]
+  att <- att[notna]
+  tt <- tt[notna]
+  inffunc1 <- inffunc1[, notna]
+
 
   # estimate variance
   # this is analogous to cluster robust standard errors that

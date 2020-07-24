@@ -192,6 +192,9 @@ pre_process_did <- function(yname,
     if(is.null(idname)) {
       data$rowid <- seq(1:nrow(data))
       idname <- "rowid"
+    } else {
+      # set rowid to idname for repeated cross section/unbalance panel
+      data$rowid <- data[, idname]
     }
     n <- nrow(data)
   }
