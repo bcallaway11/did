@@ -21,9 +21,10 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   t <- MP$t
   att <- MP$att
   dp <- MP$DIDparams
-  first.treat.name <- dp$first.treat.name
   inffunc1 <- MP$inffunc
   n <- MP$n
+
+  first.treat.name <- dp$first.treat.name
   clustervars <- dp$clustervars
   data <- dp$data
   tname <- dp$tname
@@ -180,7 +181,9 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
                     egt=originalglist,
                     att.egt=selective.att.g,
                     se.egt=selective.se.g,
-                    crit.val.egt=selective.crit.val))
+                    crit.val.egt=selective.crit.val,
+                    inf.function = list(selective.inf.func.g = selective.inf.func.g,
+                                        selective.inf.func = selective.inf.func)))
 
   }
 
@@ -334,7 +337,9 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
                     egt=sapply(calendar.tlist,t2orig),
                     att.egt=calendar.att.t,
                     se.egt=calendar.se.t,
-                    crit.val.egt=calendar.crit.val))
+                    crit.val.egt=calendar.crit.val,
+                    inf.function = list(calendar.inf.func.t = calendar.inf.func.t,
+                                        calendar.inf.func = calendar.inf.func)))
 
   }
 
