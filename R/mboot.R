@@ -69,8 +69,12 @@ mboot <- function(inf.func, DIDparams) {
   bres <- simplify2array(bout)
   # handle vector and matrix case differently, so you get nxk matrix
   ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
+
   # Non-degenerate dimensions
-  ndg.dim <- base::colSums(bres)!=0
+  ndg.dim <- (base::colSums(bres) != 0)
+  # If NA, set it to false
+  ndg.dim[is.na(ndg.dim)] <- FALSE
+
   bres <- bres[ , ndg.dim]
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
@@ -79,6 +83,7 @@ mboot <- function(inf.func, DIDparams) {
   bSigma <- apply(bres, 2,
                   function(b) (quantile(b, .75, type=1, na.rm = T) -
                                  quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+
   # critical value for uniform confidence band
   bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
   crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)

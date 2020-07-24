@@ -21,9 +21,10 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   t <- MP$t
   att <- MP$att
   dp <- MP$DIDparams
-  first.treat.name <- dp$first.treat.name
   inffunc1 <- MP$inffunc
   n <- MP$n
+
+  first.treat.name <- dp$first.treat.name
   clustervars <- dp$clustervars
   data <- dp$data
   tname <- dp$tname
