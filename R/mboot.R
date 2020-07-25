@@ -74,7 +74,7 @@ mboot <- function(inf.func, DIDparams) {
   ndg.dim <- (base::colSums(bres) != 0)
   # If NA, set it to false
   ndg.dim[is.na(ndg.dim)] <- FALSE
-  bres <- bres[ , ndg.dim]
+  bres <- bres[ , ndg.dim, drop = FALSE]
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
   V <- cov(bres)
