@@ -48,6 +48,8 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL, na.rm = FALSE) {
     glist <- sort(unique(group))
   }
 
+  if((na.rm == FALSE) && base::anyNA(att)) stop("Missing values at att_gt found. If you want to remove these, set `na.rm = TRUE'.")
+
 
   # data from first period
   ifelse(panel,
