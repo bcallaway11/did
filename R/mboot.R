@@ -25,7 +25,8 @@ mboot <- function(inf.func, DIDparams) {
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
-
+  # Make sure inf.func is matrix because we need this for computing n below
+  inf.func <- as.matrix(inf.func)
   # just get n obsevations (for clustering below...)
   ifelse(panel,
          dta <- data[ data[,tname]==tlist[1], ],
