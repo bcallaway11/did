@@ -11,7 +11,7 @@
 #' @keywords internal
 #'
 #' @export
-compute.aggte <- function(MP, type="simple", balance.e=NULL) {
+compute.aggte <- function(MP, type="simple", balance.e=NULL, na.rm = FALSE) {
 
   #-----------------------------------------------------------------------------
   # unpack MP object
@@ -23,6 +23,7 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   dp <- MP$DIDparams
   inffunc1 <- MP$inffunc
   n <- MP$n
+
 
   first.treat.name <- dp$first.treat.name
   clustervars <- dp$clustervars
@@ -36,6 +37,17 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL) {
   tlist <- dp$tlist
   glist <- dp$glist
   panel <- dp$panel
+
+  if(na.rm){
+    notna <- !is.na(att)
+    group <- group[notna]
+    t <- t[notna]
+    att <- att[notna]
+    inffunc1 <- inffunc1[, notna]
+    #tlist <- sort(unique(t))
+    glist <- sort(unique(group))
+  }
+
 
   # data from first period
   ifelse(panel,
