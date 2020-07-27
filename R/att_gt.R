@@ -167,12 +167,6 @@ att_gt <- function(yname,
   tt <- attgt.results$tt
   inffunc1 <- attgt.results$inf.func
 
-  # drop anywhere where ATT is NA because of unbalanced panel
-  notna <- !is.na(att)
-  group <- group[notna]
-  att <- att[notna]
-  tt <- tt[notna]
-  inffunc1 <- inffunc1[, notna]
 
 
   # estimate variance
@@ -194,7 +188,7 @@ att_gt <- function(yname,
 
     bout <- mboot(inffunc1, DIDparams=dp)
     bres <- bout$bres
-    V <- bout$V
+    V[!is.na(V)] <- bout$V
   }
 
 
@@ -217,7 +211,11 @@ att_gt <- function(yname,
     message("No pre-treatment periods to test")
     W  <- NULL
     Wpval <- NULL
-  } else if (det(preV) == 0) {
+  } else if(sum(is.na(preV))) {
+      warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
+      W <- NULL
+      Wpval <- NULL
+    } else if (det(preV) == 0) {
     # singluar covariance matrix for pre-treatment periods
     warning("Not returning pre-test Wald statistic due to singular covariance matrix")
     W <- NULL
