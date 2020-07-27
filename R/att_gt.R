@@ -168,6 +168,7 @@ att_gt <- function(yname,
   inffunc1 <- attgt.results$inf.func
 
 
+
   # estimate variance
   # this is analogous to cluster robust standard errors that
   # are clustered at the unit level
@@ -187,7 +188,7 @@ att_gt <- function(yname,
 
     bout <- mboot(inffunc1, DIDparams=dp)
     bres <- bout$bres
-    V <- bout$V
+    V[!is.na(V)] <- bout$V
   }
 
 
@@ -210,7 +211,11 @@ att_gt <- function(yname,
     message("No pre-treatment periods to test")
     W  <- NULL
     Wpval <- NULL
-  } else if (det(preV) == 0) {
+  } else if(sum(is.na(preV))) {
+      warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
+      W <- NULL
+      Wpval <- NULL
+    } else if (det(preV) == 0) {
     # singluar covariance matrix for pre-treatment periods
     warning("Not returning pre-test Wald statistic due to singular covariance matrix")
     W <- NULL
