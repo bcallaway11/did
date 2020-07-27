@@ -24,9 +24,10 @@
 #'  at least three periods. (the initial period when \code{e=0} as well as the
 #'  next two periods when \code{e=1} and the \code{e=2}).  This ensures that
 #'  the composition of groups does not change when event time changes.
+#' @param na.rm Logical value if we are to remove missing Values from analyses. Defaults is FALSE.
 #'
 #' @return AGGTEobj
 #' @export
-aggte <- function(MP, type="simple", balance.e=NULL) {
-  compute.aggte(MP, type, balance.e)
+aggte <- function(MP, type="simple", balance.e=NULL, na.rm = FALSE) {
+  compute.aggte(MP, type, balance.e, na.rm)
 }

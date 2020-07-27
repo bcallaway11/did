@@ -30,7 +30,8 @@ mboot <- function(inf.func, DIDparams) {
   ifelse(panel,
          dta <- data[ data[,tname]==tlist[1], ],
          dta <- data)
-
+  # Make sure inf.func is matrix because we need this for computing n below
+  inf.func <- as.matrix(inf.func)
   n <- nrow(inf.func) # this adjusts automatically to panel vs. repeated cross sections
 
   # if include id as variable to cluster on
@@ -74,7 +75,7 @@ mboot <- function(inf.func, DIDparams) {
   ndg.dim <- (base::colSums(bres) != 0)
   # If NA, set it to false
   ndg.dim[is.na(ndg.dim)] <- FALSE
-  bres <- bres[ , ndg.dim, drop = FALSE]
+  bres <- as.matrix(bres[ , ndg.dim])
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
   V <- cov(bres)

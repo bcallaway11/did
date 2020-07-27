@@ -4,7 +4,7 @@
 \alias{aggte}
 \title{Aggregate Group-Time Average Treatment Effects}
 \usage{
-aggte(MP, type = "simple", balance.e = NULL)
+aggte(MP, type = "simple", balance.e = NULL, na.rm = FALSE)
 }
 \arguments{
 \item{MP}{an MP object (i.e., the results of the \code{att_gt} method)}
@@ -28,6 +28,8 @@ the sample with respect to event time.  For example, if \code{balance.e=2},
 at least three periods. (the initial period when \code{e=0} as well as the
 next two periods when \code{e=1} and the \code{e=2}).  This ensures that
 the composition of groups does not change when event time changes.}
+
+\item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
 }
 \value{
 AGGTEobj
