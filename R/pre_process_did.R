@@ -102,6 +102,10 @@ pre_process_did <- function(yname,
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
 
+    # Check if idname is unique by tname
+    n_id_year = sum(table(data[, idname], data[, tname])>1)
+    if (n_id_year > 0) stop("The value of idname must be the unique (by tname)")
+
     # make sure first.treat doesn't change across periods for particular individuals
     if (!all(sapply( split(data, data[,idname]), function(df) {
       length(unique(df[,first.treat.name]))==1
