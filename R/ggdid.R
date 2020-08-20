@@ -37,6 +37,8 @@ ggdid <- function(object, ...) {
 #'  value on the x-axis.  The default is 1.
 #' @param ncol The number of columns to include in the resulting plot.  The
 #'  default is 1.
+#' @param legend Whether or not to include a legend (which will indicate color
+#'  of pre- and post-treatment estimates).  Default is \code{TRUE}.
 #'
 #' @export
 ggdid.MP <- function(object,
@@ -46,6 +48,7 @@ ggdid.MP <- function(object,
                      title="Group",
                      xgap=1,
                      ncol=1,
+                     legend=TRUE,
                      ...) {
 
   mpobj <- object
@@ -68,7 +71,7 @@ ggdid.MP <- function(object,
 
   mplots <- lapply(g, function(g) {
     thisdta <- subset(results, group==g)
-    gplot(thisdta, ylim, xlab, ylab, title, xgap)
+    gplot(thisdta, ylim, xlab, ylab, title, xgap, legend)
   })
 
   do.call("ggarrange", c(mplots, ncol=ncol))
@@ -88,6 +91,7 @@ ggdid.AGGTEobj <- function(object,
                            ylab=NULL,
                            title="",
                            xgap=1,
+                           legend=TRUE,
                            ...) {
 
   if ( !(object$type %in% c("dynamic","selective","calendar")) ) {
@@ -107,9 +111,9 @@ ggdid.AGGTEobj <- function(object,
 
   if (object$type == "selective") {
     # alternative plot if selective treatment timing plot
-    p <- splot(results, ylim, xlab, ylab, title)
+    p <- splot(results, ylim, xlab, ylab, title, legend)
   } else {
-    p <- gplot(results, ylim, xlab, ylab, title, xgap)
+    p <- gplot(results, ylim, xlab, ylab, title, xgap, legend)
   }
   
   p

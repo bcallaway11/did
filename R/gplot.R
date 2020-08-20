@@ -11,7 +11,8 @@
 #' @keywords internal
 #'
 #' @export
-gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1) {
+gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
+                  legend=TRUE) {
   dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
 
   c.point <-  stats::qnorm(1 - ssresults$alp/2)
@@ -33,6 +34,10 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
     theme_bw() +
     theme(plot.title = element_text(color="darkgray", face="bold", size=8)) +
     theme(axis.title = element_text(color="darkgray", face="bold", size=8))
+
+  if (!legend) {
+    p  <- p + ggpubr::rremove("legend")
+  }
   
   p
 }
@@ -51,7 +56,8 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
 #' @keywords internal
 #'
 #' @export
-splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group") {
+splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group",
+                  legend=TRUE) {
 
   # names of variables are "weird" for this function because this code builds
   # on the same infrastructure as for plotting group-time average treatment
@@ -76,6 +82,11 @@ splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group") {
     theme(plot.title = element_text(color="darkgray", face="bold", size=8)) +
     theme(axis.title = element_text(color="darkgray", face="bold", size=8)) +
     theme(legend.position="none")
+
+  
+  if (!legend) {
+    p  <- p + ggpubr::rremove("legend")
+  }
   
   p
 }
