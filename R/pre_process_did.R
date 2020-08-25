@@ -176,7 +176,7 @@ pre_process_did <- function(yname,
 
     # If drop all data, you do not have a panel.
     if (nrow(data)==0) {
-      error(paste0("All observations dropped to converte data to balanced panel. Consider setting `panel = FALSE' or revisit 'idname'."))
+      stop(paste0("All observations dropped to converte data to balanced panel. Consider setting `panel = FALSE' or revisit 'idname'."))
     }
 
     # create an n-row data.frame to hold the influence function later
@@ -199,7 +199,7 @@ pre_process_did <- function(yname,
 
     # If drop all data, you do not have a panel.
     if (nrow(data)==0) {
-      error(paste0("All observations dropped due to missing data problems."))
+      stop(paste0("All observations dropped due to missing data problems."))
     }
 
     # n-row data.frame to hold the influence function
