@@ -174,6 +174,11 @@ pre_process_did <- function(yname,
       warning(paste0("Dropped ", n.old-n, " observations while converting to balanced panel."))
     }
 
+    # If drop all data, you do not have a panel.
+    if (nrow(data)==0) {
+      error(paste0("All observations dropped to converte data to balanced panel. Consider setting `panel = FALSE' or revisit 'idname'."))
+    }
+
     # create an n-row data.frame to hold the influence function later
     #dta <- data[ data[,tname]==tlist[1], ]
     n <- nrow(data[ data[,tname]==tlist[1], ]) # use this for influence function
@@ -190,6 +195,11 @@ pre_process_did <- function(yname,
     if (nrow(data[keepers,]) < nrow(data)) {
       warning(paste0("Dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data."))
       data <- data[keepers,]
+    }
+
+    # If drop all data, you do not have a panel.
+    if (nrow(data)==0) {
+      error(paste0("All observations dropped due to missing data problems."))
     }
 
     # n-row data.frame to hold the influence function
