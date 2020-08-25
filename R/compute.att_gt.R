@@ -67,7 +67,7 @@ compute.att_gt <- function(dp) {
 
 
       # code to update pre-treatment time periods
-      if (glist[g]<=tlist[(t+1)]) {
+      if ((glist[g]<=tlist[(t+1)])) {
 
         # set an index for the pretreatment period
         # this recovers the right pre-treatment period for this group
