@@ -4,7 +4,16 @@
 \alias{ggdid.AGGTEobj}
 \title{Plot \code{AGGTEobj} objects}
 \usage{
-\method{ggdid}{AGGTEobj}(object, ylim = NULL, xlab = NULL, ylab = NULL, title = "", xgap = 1, ...)
+\method{ggdid}{AGGTEobj}(
+  object,
+  ylim = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  title = "",
+  xgap = 1,
+  legend = TRUE,
+  ...
+)
 }
 \arguments{
 \item{object}{either a \code{MP} object or \code{AGGTEobj} object}
@@ -21,6 +30,9 @@ the same across different plots}
 \item{xgap}{optional gap between the labels on the x-axis.  For example,
 \code{xgap=3} indicates that the labels should show up for every third
 value on the x-axis.  The default is 1.}
+
+\item{legend}{Whether or not to include a legend (which will indicate color
+of pre- and post-treatment estimates).  Default is \code{TRUE}.}
 
 \item{...}{other arguments}
 }

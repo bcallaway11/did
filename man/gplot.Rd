@@ -10,7 +10,8 @@ gplot(
   xlab = NULL,
   ylab = NULL,
   title = "Group",
-  xgap = 1
+  xgap = 1,
+  legend = TRUE
 )
 }
 \value{

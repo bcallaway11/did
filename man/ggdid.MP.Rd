@@ -12,6 +12,7 @@
   title = "Group",
   xgap = 1,
   ncol = 1,
+  legend = TRUE,
   ...
 )
 }
@@ -33,6 +34,9 @@ value on the x-axis.  The default is 1.}
 
 \item{ncol}{The number of columns to include in the resulting plot.  The
 default is 1.}
+
+\item{legend}{Whether or not to include a legend (which will indicate color
+of pre- and post-treatment estimates).  Default is \code{TRUE}.}
 
 \item{...}{other arguments}
 }

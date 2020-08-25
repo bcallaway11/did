@@ -4,7 +4,14 @@
 \alias{splot}
 \title{splot}
 \usage{
-splot(ssresults, ylim = NULL, xlab = NULL, ylab = NULL, title = "Group")
+splot(
+  ssresults,
+  ylim = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  title = "Group",
+  legend = TRUE
+)
 }
 \value{
 a \code{ggplot2} object
