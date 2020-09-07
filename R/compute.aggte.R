@@ -31,10 +31,10 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
 
 
   first.treat.name <- dp$first.treat.name
-  clustervars <- base::ifelse(base::is.null(clustervars), dp$clustervars, clustervars)
   data <- dp$data
   tname <- dp$tname
   idname <- dp$idname
+  clustervars <- base::ifelse(base::is.null(clustervars), dp$clustervars, clustervars)
   bstrap <- base::ifelse(base::is.null(bstrap), dp$bstrap, bstrap)
   biters <- base::ifelse(base::is.null(biters), dp$biters, biters)
   alp <- base::ifelse(base::is.null(alp), dp$alp, alp)
@@ -42,6 +42,14 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
   tlist <- dp$tlist
   glist <- dp$glist
   panel <- dp$panel
+
+  # overwrite MP objects (so we can actually compute bootstrap)
+  MP$DIDparams$clustervars <- clustervars
+  MP$DIDparams$bstrap <- bstrap
+  MP$DIDparams$biters <- biters
+  MP$DIDparams$alp <- alp
+  MP$DIDparams$cband <- cband
+
 
   if(na.rm){
     notna <- !is.na(att)
