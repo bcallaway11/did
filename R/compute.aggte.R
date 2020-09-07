@@ -49,6 +49,7 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
   MP$DIDparams$biters <- biters
   MP$DIDparams$alp <- alp
   MP$DIDparams$cband <- cband
+  dp <- MP$DIDparams
 
 
   if(na.rm){
