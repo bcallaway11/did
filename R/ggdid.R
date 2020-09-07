@@ -74,7 +74,7 @@ ggdid.MP <- function(object,
     gplot(thisdta, ylim, xlab, ylab, title, xgap, legend)
   })
 
-  do.call("ggpubr::ggarrange", c(mplots, ncol=ncol))
+  do.call("ggarrange", c(mplots, ncol=ncol))
 }
 
 
