@@ -55,5 +55,13 @@ aggte <- function(MP,
                   alp = NULL,
                   clustervars = NULL
                   ) {
-  compute.aggte(MP, type, balance.e, na.rm, bstrap, cband, biters, clustervars, alp)
+  compute.aggte(MP,
+                type,
+                balance.e,
+                na.rm,
+                bstrap,
+                biters,
+                cband,
+                alp,
+                clustervars)
 }
