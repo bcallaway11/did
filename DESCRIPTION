@@ -11,6 +11,7 @@ Imports:
     BMisc (>= 1.4.1),
     MASS,
     pbapply,
+    ggpubr,
     stats,
     ggplot2,
     gridExtra,

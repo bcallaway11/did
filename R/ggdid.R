@@ -74,7 +74,7 @@ ggdid.MP <- function(object,
     gplot(thisdta, ylim, xlab, ylab, title, xgap, legend)
   })
 
-  do.call("ggarrange", c(mplots, ncol=ncol))
+  do.call("ggpubr::ggarrange", c(mplots, ncol=ncol))
 }
 
 
@@ -97,7 +97,7 @@ ggdid.AGGTEobj <- function(object,
   if ( !(object$type %in% c("dynamic","selective","calendar")) ) {
     stop(paste0("Plot method not available for this type of aggregation"))
   }
-  
+
   post.treat <- 1*(object$egt >= 0)
   results <- cbind.data.frame(year=object$egt,
                               att=object$att.egt,
@@ -115,6 +115,6 @@ ggdid.AGGTEobj <- function(object,
   } else {
     p <- gplot(results, ylim, xlab, ylab, title, xgap, legend)
   }
-  
+
   p
 }
