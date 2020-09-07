@@ -11,7 +11,12 @@
 #' @keywords internal
 #'
 #' @export
-compute.aggte <- function(MP, type="simple", balance.e=NULL, na.rm = FALSE) {
+compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
+                          bstrap = NULL,
+                          biters = NULL,
+                          cband = NULL,
+                          alp = NULL,
+                          clustervars = NULL) {
 
   #-----------------------------------------------------------------------------
   # unpack MP object
@@ -26,14 +31,14 @@ compute.aggte <- function(MP, type="simple", balance.e=NULL, na.rm = FALSE) {
 
 
   first.treat.name <- dp$first.treat.name
-  clustervars <- dp$clustervars
+  clustervars <- base::ifelse(base::is.null(clustervars), dp$clustervars, clustervars)
   data <- dp$data
   tname <- dp$tname
   idname <- dp$idname
-  bstrap <- dp$bstrap
-  biters <- dp$biters
-  alp <- dp$alp
-  cband <- dp$cband
+  bstrap <- base::ifelse(base::is.null(bstrap), dp$bstrap, bstrap)
+  biters <- base::ifelse(base::is.null(biters), dp$biters, biters)
+  alp <- base::ifelse(base::is.null(alp), dp$alp, alp)
+  cband <-  base::ifelse(base::is.null(cband), dp$cband, cband)
   tlist <- dp$tlist
   glist <- dp$glist
   panel <- dp$panel

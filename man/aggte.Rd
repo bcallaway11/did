@@ -4,7 +4,17 @@
 \alias{aggte}
 \title{Aggregate Group-Time Average Treatment Effects}
 \usage{
-aggte(MP, type = "simple", balance.e = NULL, na.rm = FALSE)
+aggte(
+  MP,
+  type = "simple",
+  balance.e = NULL,
+  na.rm = FALSE,
+  bstrap = NULL,
+  biters = NULL,
+  cband = NULL,
+  alp = NULL,
+  clustervars = NULL
+)
 }
 \arguments{
 \item{MP}{an MP object (i.e., the results of the \code{att_gt} method)}
@@ -30,6 +40,27 @@ next two periods when \code{e=1} and the \code{e=2}).  This ensures that
 the composition of groups does not change when event time changes.}
 
 \item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
+
+\item{bstrap}{Boolean for whether or not to compute standard errors using
+the multiplier boostrap.  If standard errors are clustered, then one
+must set \code{bstrap=TRUE}. Default is value set in the MP object.  If bstrap is \code{FALSE}, then analytical
+standard errors are reported.}
+
+\item{biters}{The number of boostrap iterations to use.  The default is the value set in the MP object,
+and this is only applicable if \code{bstrap=TRUE}.}
+
+\item{cband}{Boolean for whether or not to compute a uniform confidence
+band that covers all of the group-time average treatment effects
+with fixed probability \code{1-alp}.  In order to compute uniform confidence
+bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
+the value set in the MP object}
+
+\item{alp}{the significance level, default is value set in the MP object.}
+
+\item{clustervars}{A vector of variables to cluster on.  At most, there
+can be two variables (otherwise will throw an error) and one of these
+must be the same as idname which allows for clustering at the individual
+level. Default is the variables set in the MP object}
 }
 \value{
 AGGTEobj
