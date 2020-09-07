@@ -17,6 +17,8 @@
 
 <!-- badges: end -->
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+** PACKAGE IS CURRENTLT BEING UPDATED. BE AWARE **
 The **did** package contains tools for computing average treatment effect parameters in a Difference in Differences setup allowing for
 
 -   More than two time periods
