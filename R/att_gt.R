@@ -201,7 +201,10 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
 
   # select which periods are pre-treatment
-  pre <- which(group[-zero_na_sd_entry] > tt[-zero_na_sd_entry])
+  pre <- which(group > tt)
+
+  # Drop group-periods that have variance equal to zero (singularity problems)
+  pre <- pre[!(pre %in% zero_na_sd_entry)]
 
   # pseudo-atts in pre-treatment periods
   preatt <- as.matrix(att[pre])
