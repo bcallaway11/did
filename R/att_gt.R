@@ -182,13 +182,16 @@ att_gt <- function(yname,
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
   }
 
+  # Identify entries of main diagonal V that are zero or NA
+  zero_na_sd_entry <- unique( c( base::which(base::diag(V)==0),  base::which(base::is.na(base::diag(V)))))
 
   # bootstrap variance matrix
   if (bstrap) {
 
     bout <- mboot(inffunc1, DIDparams=dp)
     bres <- bout$bres
-    V[!is.na(V)] <- bout$V
+    V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
+
   }
 
 
@@ -198,7 +201,7 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
 
   # select which periods are pre-treatment
-  pre <- which(group > tt)
+  pre <- which(group[-zero_na_sd_entry] > tt[-zero_na_sd_entry])
 
   # pseudo-atts in pre-treatment periods
   preatt <- as.matrix(att[pre])
