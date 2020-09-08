@@ -164,9 +164,6 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
 
     # get group specific ATTs
     # note: there are no estimated weights here
-    # Rule out groups without post-treatment periods
-    # FOR THE MOMENT, REPLACE IT BY ZERO
-
     selective.att.g <- sapply(glist, function(g) {
       # look at post-treatment periods for group g
       whichg <- which( (group == g) & (g <= t))
@@ -174,32 +171,23 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
       mean(attg)
     })
 
-    na.selective <- base::is.na(selective.att.g)
-    selective.att.g[na.selective] <- 0
-
     # get standard errors for each group specific ATT
     selective.se.inner <- lapply(glist, function(g) {
       whichg <- which( (group == g) & (g <= t))
-      inf.func.g <- get_agg_inf_func(att = att,
-                                     inffunc1 = inffunc1,
-                                     whichones = whichg,
-                                     weights.agg = pg[whichg]/sum(pg[whichg]),
+      inf.func.g <- get_agg_inf_func(att=att,
+                                     inffunc1=inffunc1,
+                                     whichones=whichg,
+                                     weights.agg=pg[whichg]/sum(pg[whichg]),
                                      wif=NULL)
       se.g <- getSE(inf.func.g, dp)
       list(inf.func=inf.func.g, se=se.g)
     })
-
-    # INFLUENCE FUNCTION AND SE equal to ZERO if NA
-    selective.se.inner$se.g[na.selective] <- 0
 
     # recover standard errors separately by group
     selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
 
     # recover influence function separately by group
     selective.inf.func.g <- as.matrix(simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,])
-
-    selective.inf.func.g[,na.selective] <- 0
-
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
