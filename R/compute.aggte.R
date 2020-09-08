@@ -191,13 +191,15 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
 
     # INFLUENCE FUNCTION AND SE equal to ZERO if NA
     selective.se.inner$se.g[na.selective] <- 0
-    selective.se.inner$inf.func.g[,na.selective] <- 0
 
     # recover standard errors separately by group
     selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
 
     # recover influence function separately by group
     selective.inf.func.g <- as.matrix(simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,])
+
+    selective.inf.func.g[,na.selective] <- 0
+
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
