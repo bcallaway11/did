@@ -34,11 +34,22 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
   data <- dp$data
   tname <- dp$tname
   idname <- dp$idname
-  clustervars <- base::ifelse(base::is.null(clustervars), dp$clustervars, clustervars)
-  bstrap <- base::ifelse(base::is.null(bstrap), dp$bstrap, bstrap)
-  biters <- base::ifelse(base::is.null(biters), dp$biters, biters)
-  alp <- base::ifelse(base::is.null(alp), dp$alp, alp)
-  cband <-  base::ifelse(base::is.null(cband), dp$cband, cband)
+  if(is.null(clustervars)){
+    clustervars <- dp$clustervars
+  }
+  if(is.null(bstrap)){
+    bstrap <- dp$bstrap
+  }
+  if(is.null(biters)){
+    biters <- dp$biters
+  }
+  if(is.null(alp)){
+    alp <- dp$alp
+  }
+  if(is.null(cband)){
+    cband <- dp$cband
+  }
+
   tlist <- dp$tlist
   glist <- dp$glist
   panel <- dp$panel
