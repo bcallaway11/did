@@ -165,7 +165,7 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
     # get group specific ATTs
     # note: there are no estimated weights here
     # Rule out groups without post-treatment periods
-    glist <- glist[(glist <= maxT)]
+    glist <- base::subset(glist, glist <= maxT)
 
     selective.att.g <- sapply(glist, function(g) {
       # look at post-treatment periods for group g
