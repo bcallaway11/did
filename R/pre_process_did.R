@@ -49,8 +49,14 @@ pre_process_did <- function(yname,
   # figure out the dates
   # list of dates from smallest to largest
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+
+  # Groups with treatment time bigger than max time period are considered to be never treated
+  asif_never_treated <- (data[,first.treat.name] > max(tlist))
+  data[asif_never_treated, first.treat.name] <- 0
+
   # list of treated groups (by time) from smallest to largest
   glist <- unique(data[,first.treat.name])[order(unique(data[,first.treat.name]))]
+
 
   # Check if there is a never treated group
   if ( length(glist[glist==0]) == 0) {
