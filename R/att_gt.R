@@ -190,7 +190,9 @@ att_gt <- function(yname,
 
     bout <- mboot(inffunc1, DIDparams=dp)
     bres <- bout$bres
-    V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
+    if(length(zero_na_sd_entry)>0) {
+      V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
+    }
 
   }
 
