@@ -148,7 +148,7 @@ att_gt <- function(yname,
                         printdetails=printdetails,
                         pl=pl,
                         cores=cores
-                        )
+  )
 
   #-----------------------------------------------------------------------------
   # Compute all ATT(g,t)
@@ -206,8 +206,9 @@ att_gt <- function(yname,
   pre <- which(group > tt)
 
   # Drop group-periods that have variance equal to zero (singularity problems)
-  pre <- pre[!(pre %in% zero_na_sd_entry)]
-
+  if(length(zero_na_sd_entry)>0){
+    pre <- pre[!(pre %in% zero_na_sd_entry)]
+  }
   # pseudo-atts in pre-treatment periods
   preatt <- as.matrix(att[pre])
 
@@ -220,10 +221,10 @@ att_gt <- function(yname,
     W  <- NULL
     Wpval <- NULL
   } else if(sum(is.na(preV))) {
-      warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
-      W <- NULL
-      Wpval <- NULL
-    } else if (det(preV) == 0) {
+    warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
+    W <- NULL
+    Wpval <- NULL
+  } else if (det(preV) == 0) {
     # singluar covariance matrix for pre-treatment periods
     warning("Not returning pre-test Wald statistic due to singular covariance matrix")
     W <- NULL
