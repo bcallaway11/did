@@ -192,6 +192,8 @@ att_gt <- function(yname,
     bres <- bout$bres
     if(length(zero_na_sd_entry)>0) {
       V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
+    } else {
+      V <- bout$V
     }
 
   }
