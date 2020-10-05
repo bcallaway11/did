@@ -189,9 +189,12 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
     # recover influence function separately by group
     selective.inf.func.g <- as.matrix(simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,])
 
-    # use multiplier boostrap (across groups) to get critical value
+    # use multiplier bootstrap (across groups) to get critical value
     # for constructing uniform confidence bands
-    selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
+    selective.crit.val <- NULL
+    if(dp$cband==TRUE){
+      selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
+    }
 
     # get overall att under selective treatment timing
     # (here use pgg instead of pg because we can just look at each group)
@@ -284,7 +287,11 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
 
     dynamic.se.e <- unlist(getListElement(dynamic.se.inner, "se"))
     dynamic.inf.func.e <- as.matrix(simplify2array(getListElement(dynamic.se.inner, "inf.func"))[,1,])
-    dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
+
+    dynamic.crit.val <- NULL
+    if(dp$cband==TRUE){
+      dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
+    }
 
     # get overall average treatment effect
     # by averaging over positive dynamics
@@ -354,7 +361,10 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
-    calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
+    calendar.crit.val <- NULL
+    if(dp$cband==TRUE){
+      calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
+    }
 
     # get overall att under calendar time effects
     # this is just average over all time periods
