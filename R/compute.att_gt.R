@@ -199,8 +199,8 @@ compute.att_gt <- function(dp) {
         # subgroup to estimate att(g,t)
         attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
 
-      } else { # repeated cross sections
-
+      } else { # repeated cross sections / unbalanced panel
+        
         # total number of observations
         n  <- nrow(data)
 
@@ -210,7 +210,11 @@ compute.att_gt <- function(dp) {
         # the right period but still not be part of the treated or control
         # group in that period here
         rightids <- disdat$rowid[ disdat$G==1 | disdat$C==1]
-        disidx <- (data$rowid %in% rightids)
+
+        # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
+        # with true repeated cross sections, but should pick up the right time periods
+        # only with unbalanced panel
+        disidx <- (data$rowid %in% rightids) & ( (data[,tname] == tlist[t+1]) | (data[,tname]==tlist[pret]))
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- thisdata[disidx,]
@@ -224,7 +228,7 @@ compute.att_gt <- function(dp) {
         Y <- disdat$y
         post <- 1*(disdat[,tname] == tlist[t+1])
         # num obs. for computing ATT(g,t), have to be careful here
-        n1 <- sum(G+C)
+        n1 <- sum(G+C) 
         w <- disdat$w
 
         # matrix of covariates

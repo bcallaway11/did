@@ -20,6 +20,8 @@ remotes::install_github("pedrohcgs/DRDID")
 library(BMisc)
 library(ggplot2)
 library(gridExtra)
+
+ncl <- 10
 ```
 
 # Slow Sims
@@ -33,7 +35,7 @@ These are relatively slow (there not that slow though) simulations to test if th
 reset.sim()
 te <- 1
 biters <- 100
-bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="Wpval", panel=FALSE), cl=3)
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="Wpval", panel=FALSE), cl=ncl)
 mean( bout )
 # expect to reject about 5% of the time
 
@@ -44,7 +46,7 @@ mean( bout )
 reset.sim()
 te <- 0
 biters <- 100
-bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband", bstrap=TRUE, cband=TRUE, panel=FALSE), cl=3)
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband", bstrap=TRUE, cband=TRUE, panel=FALSE), cl=ncl)
 mean( bout )
 # expect to cover all about 95% of the time
 
@@ -55,7 +57,7 @@ mean( bout )
 reset.sim()
 te <- 0
 biters <- 100
-bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="simple"), cl=3)
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="simple"), cl=ncl)
 mean(bout)
 # expect to reject that simple att = 0 about 5% of the time
 
@@ -67,7 +69,7 @@ reset.sim()
 te <- 0
 te.e <- 1:time.periods
 biters <- 100
-bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="dynamic"), cl=3)
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="dynamic"), cl=ncl)
 mean(bout)
 # expect to cover the truth about 95% of the time
 
@@ -77,20 +79,32 @@ mean(bout)
 reset.sim()
 te <- 0
 biters <- 100
-bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="notyettreated", control.group="notyettreated"))
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="notyettreated", control.group="notyettreated"), cl=ncl)
 mean( bout )
 # should reject about 5% of the time
 
 
+#-----------------------------------------------------------------------------
+# check inference for unbalanced panel
+# should cover about 95% of the time
+#-----------------------------------------------------------------------------
+biters <- 100
+time.periods <- 4
+reset.sim()
+te <- 0
 
+sim_unb_pan <- function() {
+  this_data <- build_sim_dataset()
+  this_data <- this_data[sample(1:nrow(this_data),  size=floor(.9*nrow(this_data))),]
+  res <- att_gt(yname="Y", xformla=~X, data=this_data, tname="period", idname="id",
+                gname="G", est_method="reg", 
+                panel=TRUE, allow_unbalanced_panel=TRUE)
+  cu <- res$att + res$c * sqrt(diag(res$V))/sqrt(res$n)
+  cl <- res$att - res$c * sqrt(diag(res$V))/sqrt(res$n)
+  covers0 <- 1*(all( (cu > 0) & (cl < 0)))
+  covers0
+}
 
-## # check if dynamic effects are working
-## te.e <- time.periods:1 / (time.periods/4)
-## te.bet.ind <- time.periods:1 / (time.periods/2)
-
-res <- sim(panel=FALSE, cband=TRUE, bstrap=TRUE)
-res
-ggdid(res)#, ylim=c(-2,14))
-ate <- aggte(res, type="dynamic")
-ggdid(ate)
+bout <- pbapply::pbsapply(1:biters, function(b) sim_unb_pan(), cl=ncl)
+mean(bout)
 ```

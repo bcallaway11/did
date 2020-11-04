@@ -43,16 +43,16 @@ data <- build_sim_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE)
+              gname="G", est_method="dr")
 res
 
 # reg
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE)
+              gname="G", est_method="reg")
 res
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE)
+              gname="G", est_method="ipw")
 res
 
 #-----------------------------------------------------------------------------
@@ -65,16 +65,16 @@ data <- build_ipw_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE)
+              gname="G", est_method="dr")
 res
 
 # reg
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE)
+              gname="G", est_method="reg")
 res
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE)
+              gname="G", est_method="ipw")
 res
 ```
 
@@ -92,7 +92,7 @@ reset.sim()
 data <- build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE)
+              gname="G", est_method="ipw")
 res
 
 summary(aggte(res, type="simple"))
@@ -114,11 +114,11 @@ bett <- betu <- rep(0,time.periods)
 data <- build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~1, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE)
+              gname="G", est_method="dr")
 res
 
 res <- att_gt(yname="Y", xformla=~1, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE)
+              gname="G", est_method="reg")
 res
 ```
 
@@ -134,16 +134,16 @@ data <- build_sim_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="dr", panel=FALSE)
 res
 
 # reg
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="reg", panel=FALSE)
 res
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="ipw", panel=FALSE)
 res
 
 #-----------------------------------------------------------------------------
@@ -155,16 +155,16 @@ data <- build_ipw_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="dr", panel=FALSE)
 res
 
 # reg
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="reg", panel=FALSE)
 res
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="ipw", panel=FALSE)
 res
 
 #-----------------------------------------------------------------------------
@@ -177,7 +177,7 @@ data <- build_sim_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              gname="G", est_method="dr", panel=FALSE)
 res
 
 summary(aggte(res))
@@ -195,8 +195,7 @@ summary(aggte(res, type="calendar"))
 # but estimate using panel=FALSE but setting an id which gives a way to incorporate 
 # unbalanced panel
 # test each estimation method with panel data
-# Expected results: treatment effects = 1, p-value for pre-test
-# uniformly distributed, ipw model is incorectly specified here
+# Expected results: treatment effects = 1, p-value for pre-test uniform[0,1]
 #-----------------------------------------------------------------------------
 time.periods <- 4
 reset.sim()
@@ -204,8 +203,7 @@ data <- build_sim_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE,
-			  panel=FALSE)
+              gname="G", est_method="dr", panel=FALSE)
 res
 
 
@@ -218,8 +216,7 @@ reset.sim()
 data <- build_ipw_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE,
-              panel=FALSE)
+              gname="G", est_method="ipw", panel=FALSE)
 res
 
 #-----------------------------------------------------------------------------
@@ -232,9 +229,26 @@ data <- build_ipw_dataset()
 data <- data[sample(1:nrow(data),  size=floor(.9*nrow(data))),]
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE,
-              panel=FALSE)
+              gname="G", est_method="dr", panel=TRUE, allow_unbalanced_panel=TRUE)
 res
+
+#-----------------------------------------------------------------------------
+# version that should error
+# have to have an idname if you use an unbalanced panel
+#-----------------------------------------------------------------------------
+reset.sim()
+data <- build_sim_dataset()
+data <- data[sample(1:nrow(data),  size=floor(.9*nrow(data))),]
+
+tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname=NULL,
+                       gname="G", est_method="reg", panel=TRUE, allow_unbalanced_panel=TRUE),
+         error=function(cond) {
+           message("expected error:")
+           message(cond)
+           message("\n")
+           return(NA)
+         })
+
 ```
 
 
@@ -250,8 +264,8 @@ data <- build_ipw_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="notyettreated",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              control_group="notyettreated",
+              gname="G", est_method="dr", panel=FALSE)
 res
 ```
 
@@ -266,8 +280,8 @@ data <- subset(data, G > 0) # drop nevertreated
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="notyettreated",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              control_group="notyettreated",
+              gname="G", est_method="dr", panel=FALSE)
 res
 ```
 
@@ -284,8 +298,8 @@ data <- subset(data, G > 0) # drop nevertreated
 
 # dr
 tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE),
+              control_group="nevertreated",
+              gname="G", est_method="dr", panel=FALSE),
          error=function(cond) {
            message("expected error:")
            message(cond)
@@ -309,8 +323,8 @@ te.e <- 1:time.periods
 data <- build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
+              control_group="nevertreated",
+              gname="G", est_method="reg", panel=FALSE)
 res
 summary(aggte(res, type="dynamic"))
 
@@ -325,8 +339,8 @@ te.bet.ind <- 1:time.periods
 data <- build_ipw_dataset(panel=FALSE)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="ipw", printdetails=FALSE, panel=FALSE)
+              control_group="nevertreated",
+              gname="G", est_method="ipw", panel=FALSE)
 res
 summary(aggte(res, type="selective"))
 
@@ -341,8 +355,8 @@ te.t <- thet + 1:time.periods
 data <- build_sim_dataset(panel=FALSE)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              control_group="nevertreated",
+              gname="G", est_method="dr", panel=FALSE)
 res
 summary(aggte(res, type="calendar"))
 
@@ -357,8 +371,8 @@ te.bet.ind <- 1:time.periods
 data <- build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="dr", printdetails=FALSE, panel=FALSE)
+              control_group="nevertreated",
+              gname="G", est_method="dr", panel=FALSE)
 res
 summary(aggte(res, type="dynamic"))
 summary(aggte(res, type="dynamic", balance.e=1))
@@ -381,8 +395,8 @@ data <- subset(data, G %in% c(0, keep.periods))
 data <- subset(data, period %in% keep.periods)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
+              control_group="nevertreated",
+              gname="G", est_method="reg", panel=FALSE)
 res
 summary(aggte(res, type="dynamic"))
 summary(aggte(res, type="selective"))
@@ -404,8 +418,8 @@ keep.groups <- c(3,5)
 data <- subset(data, G %in% c(0, keep.groups))
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="notyettreated",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
+              control_group="notyettreated",
+              gname="G", est_method="reg", panel=FALSE)
 res
 summary(aggte(res, type="dynamic", balance.e=0))
 summary(aggte(res, type="selective"))
@@ -426,8 +440,8 @@ data <- build_sim_dataset()
 data <- subset(data, period >= 2)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control.group="nevertreated",
-              first.treat.name="G", estMethod="reg", printdetails=FALSE, panel=FALSE)
+              control_group="nevertreated",
+              gname="G", est_method="reg", panel=FALSE)
 res
 ```
 
@@ -444,7 +458,7 @@ data <- build_sim_dataset()
 
 # dr
 tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="brant",
-                       first.treat.name="G", estMethod="dr", printdetails=FALSE),
+                       gname="G", est_method="dr"),
          error=function(cond) {
            message("expected error:")
            message(cond)
@@ -470,6 +484,6 @@ reset.sim()
 data <- build_sim_dataset(panel=TRUE)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              first.treat.name="G", estMethod=DRDID::drdid_imp_panel, printdetails=FALSE, panel=TRUE)
+              gname="G", est_method=DRDID::drdid_imp_panel, panel=TRUE)
 res
 ```

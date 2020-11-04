@@ -214,8 +214,8 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE, control.group="nevertreated
   
   # get results
   res <- att_gt(yname="Y", xformla=~X, data=ddf, tname="period", idname="id",
-                first.treat.name="G", estMethod="reg", printdetails=FALSE,
-                bstrap=bstrap, cband=cband, control.group=control.group,
+                gname="G", est_method="reg", 
+                bstrap=bstrap, cband=cband, control_group=control.group,
                 panel=panel)
 
 

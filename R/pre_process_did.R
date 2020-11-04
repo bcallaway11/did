@@ -61,9 +61,9 @@ pre_process_did <- function(yname,
 
   # Check if there is a never treated group
   if ( length(glist[glist==0]) == 0) {
-    if(control.group=="nevertreated"){
+    if(control_group=="nevertreated"){
       stop("There is no available never-treated group")
-      #stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group. Otherwise, select control.group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
+      #stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group. Otherwise, select control_group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
     } else {
       # no need to warn as this is expected case
       # warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group.")
@@ -164,8 +164,9 @@ pre_process_did <- function(yname,
 
   # if user specifies repeated cross sections,
   # set that it really is repeated cross sections
+  true_repeated_cross_sections <- FALSE
   if (!panel) {
-    true_repeated_cross_section <- TRUE
+    true_repeated_cross_sections <- TRUE
   }
   
   #-----------------------------------------------------------------------------

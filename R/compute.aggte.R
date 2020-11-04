@@ -30,7 +30,7 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
   n <- MP$n
 
 
-  first.treat.name <- dp$first.treat.name
+  gname <- dp$gname
   data <- dp$data
   tname <- dp$tname
   idname <- dp$idname
@@ -112,7 +112,7 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
-  pg <- sapply(originalglist, function(g) mean(weights.ind*(dta[,first.treat.name]==g)))
+  pg <- sapply(originalglist, function(g) mean(weights.ind*(dta[,gname]==g)))
 
   # length of this is equal to number of groups
   pgg <- pg
@@ -124,7 +124,7 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
   keepers <- which(group <= t)
 
   # n x 1 vector of group variable
-  G <-  unlist(lapply(dta[,first.treat.name], orig2t))
+  G <-  unlist(lapply(dta[,gname], orig2t))
 
   #-----------------------------------------------------------------------------
   # Compute the simple ATT summary
