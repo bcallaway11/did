@@ -187,6 +187,57 @@ summary(aggte(res, type="calendar"))
 ```
 
 
+## Unbalanced Panel Approach
+
+```{r}
+#-----------------------------------------------------------------------------
+# these are same test cases as for panel data
+# but estimate using panel=FALSE but setting an id which gives a way to incorporate 
+# unbalanced panel
+# test each estimation method with panel data
+# Expected results: treatment effects = 1, p-value for pre-test
+# uniformly distributed, ipw model is incorectly specified here
+#-----------------------------------------------------------------------------
+time.periods <- 4
+reset.sim()
+data <- build_sim_dataset()
+
+# dr
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              first.treat.name="G", estMethod="dr", printdetails=FALSE,
+			  panel=FALSE)
+res
+
+
+#-----------------------------------------------------------------------------
+# test each estimation method with panel data
+# Expected results: treatment effects = 1, p-value for pre-test
+# uniformly distributed, reg model is incorectly specified here
+#-----------------------------------------------------------------------------
+reset.sim()
+data <- build_ipw_dataset()
+
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              first.treat.name="G", estMethod="ipw", printdetails=FALSE,
+              panel=FALSE)
+res
+
+#-----------------------------------------------------------------------------
+# try it with an actual unbalanced panel
+# Expected results: treatment effects = 1, p-value for pre-test
+# uniformly distributed, reg model is incorectly specified here
+#-----------------------------------------------------------------------------
+reset.sim()
+data <- build_ipw_dataset()
+data <- data[sample(1:nrow(data),  size=floor(.9*nrow(data))),]
+
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              first.treat.name="G", estMethod="dr", printdetails=FALSE,
+              panel=FALSE)
+res
+```
+
+
 ## Test not-yet-treated as control
 
 ```{r}

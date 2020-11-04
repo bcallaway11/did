@@ -1,0 +1,7 @@
+Description of files in `tests` folder:
+
+- fast_sims.Rmd -- These are detailed simulations that our point estimates appear to be correct.  They run relatively quickly and are a good way to quickly to test code.
+
+- slow_sims.Rmd -- These are simulations to test the inference procedures of our approach (but do not include tests of the conditional moment pre-testing functions).  Therefore, these should be run, at least before releasing a new version of the package.
+
+- pretest_sims.Rmd -- These simulations are extremely slow.  They test the conditional pre-testing functions.  These functions do have some dependencies on the main code, but the dependencies are small.  These simulations only need to be run when changes to conditional pre-testing code have been made.
