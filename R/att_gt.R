@@ -10,7 +10,7 @@
 #' @param data The name of the data.frame that contains the data
 #' @param tname The name of the column containing the time periods
 #' @param idname The individual (cross-sectional unit) id name
-#' @param first.treat.name The name of the variable in \code{data} that
+#' @param gname The name of the variable in \code{data} that
 #'  contains the first period when a particular observation is treated.
 #'  This should be a positive number for all observations in treated groups.
 #'  It defines which "group" a unit belongs to.  It should be 0 for units
@@ -35,8 +35,9 @@
 #'  with fixed probability \code{1-alp}.  In order to compute uniform confidence
 #'  bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 #' \code{TRUE}.
-#' @param printdetails Boolean for showing detailed results or not
-#' @param pl Boolean for whether or not to use parallel processing
+#' @param print_details Whether or not to show details/progress of computations.
+#'   Default is \code{FALSE}.
+#' @param pl Whether or not to use parallel processing
 #'  (not implemented yet)
 #' @param cores The number of cores to use for parallel processing
 #'  (not implemented yet)
@@ -70,7 +71,13 @@
 #'  is using a panel dataset, the variable \code{idname} must
 #'  be set.  When \code{panel=FALSE}, the data is treated
 #'  as repeated cross sections.
-#' @param control.group Which units to use the control group.
+#' @param allow_unbalanced_panel Whether or not function should
+#'  "balance" the panel with respect to time and id.  The default
+#'  values if \code{FALSE} which means that \code{att_gt} will drop
+#'  all observations where data is not observed in all periods.
+#'  The advantage of this is that the computations are faster
+#'  (sometimes substantially).
+#' @param control_group Which units to use the control group.
 #'  The default is "nevertreated" which sets the control group
 #'  to be the group of units that never participate in the
 #'  treatment.  This group does not change across groups or
@@ -110,22 +117,26 @@
 #'  treatment effects
 #'
 #' @export
+
+
 att_gt <- function(yname,
                    tname,
                    idname=NULL,
-                   first.treat.name,
+                   gname,
                    xformla=NULL,
                    data,
                    panel=TRUE,
-                   control.group=c("nevertreated","notyettreated"),
+                   gname,
+                   allow_unbalanced_panel=FALSE,
+                   control_group=c("nevertreated","notyettreated"),
                    weightsname=NULL,
                    alp=0.05,
                    bstrap=TRUE,
                    cband=TRUE,
                    biters=1000,
                    clustervars=NULL,
-                   estMethod="dr",
-                   printdetails=TRUE,
+                   est_method="dr",
+                   print_details=FALSE,
                    pl=FALSE,
                    cores=1) {
 
@@ -133,19 +144,20 @@ att_gt <- function(yname,
   dp <- pre_process_did(yname=yname,
                         tname=tname,
                         idname=idname,
-                        first.treat.name=first.treat.name,
+                        gname=gname,
                         xformla=xformla,
                         data=data,
                         panel=panel,
-                        control.group=control.group,
+                        allow_unbalanced_panel=allow_unbalanced_panel,
+                        control_group=control_group,
                         weightsname=weightsname,
                         alp=alp,
                         bstrap=bstrap,
                         cband=cband,
                         biters=biters,
                         clustervars=clustervars,
-                        estMethod=estMethod,
-                        printdetails=printdetails,
+                        est_method=est_method,
+                        print_details=print_details,
                         pl=pl,
                         cores=cores
   )

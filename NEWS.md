@@ -23,6 +23,8 @@
 
   * Big improvement to website, vignettes, and code documentation
   
+  * New *experimental* code for dealing with unbalanced panels
+  
 # did 1.2.3
   * Corrected check problems
 

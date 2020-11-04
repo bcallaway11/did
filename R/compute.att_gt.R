@@ -26,11 +26,12 @@ compute.att_gt <- function(dp) {
   idname <- dp$idname
   xformla <- dp$xformla
   weightsname <- dp$weightsname
-  estMethod <- dp$estMethod
+  est_method <- dp$est_method
   panel <- dp$panel
-  printdetails <- dp$printdetails
-  control.group <- dp$control.group
-  first.treat.name <- dp$first.treat.name
+  true_repeated_cross_sections <- dp$true_repeated_cross_sections
+  print_details <- dp$print_details
+  control_group <- dp$control_group
+  gname <- dp$gname
   n  <- dp$n
   nT <- dp$nT
   nG <- dp$nG
@@ -40,7 +41,7 @@ compute.att_gt <- function(dp) {
   #-----------------------------------------------------------------------------
   # main computations
   #-----------------------------------------------------------------------------
-
+ 
   # will populate with all att(g,t)
   attgt.list <- list()
 
@@ -86,7 +87,7 @@ compute.att_gt <- function(dp) {
       }
 
       # print the details of which iteration we are on
-      if (printdetails) {
+      if (print_details) {
         cat(paste("current period:", tlist[(t+1)]), "\n")
         cat(paste("current group:", glist[g]), "\n")
         cat(paste("set pretreatment period to be", tlist[pret]), "\n")
@@ -107,29 +108,29 @@ compute.att_gt <- function(dp) {
       # kind of hack, but need it to count for repeated cross sections case
       thisdata <- data
 
-      nevertreated <- (control.group[1] == "nevertreated")
+      nevertreated <- (control_group[1] == "nevertreated")
       # sete up control group
       if(nevertreated){
         # use the "never treated" group as the control group
-        disdat$C <- 1*(disdat[,first.treat.name] == 0)
-        thisdata$C <- 1*(thisdata[,first.treat.name] == 0)
-        thisdata$G <- 1*(thisdata[,first.treat.name] == glist[g])
+        disdat$C <- 1*(disdat[,gname] == 0)
+        thisdata$C <- 1*(thisdata[,gname] == 0)
+        thisdata$G <- 1*(thisdata[,gname] == glist[g])
       }
       if(!nevertreated){
         # use "not yet treated as control"
         # that is, never treated + units that are eventually treated,
         # but not treated by the current period
-        disdat$C <- 1 * ((disdat[,first.treat.name] == 0) |
-                           ((disdat[,first.treat.name] > tlist[t+1]) &
-                              (disdat[,first.treat.name] != glist[g])))
-        thisdata$C <- 1*((thisdata[,first.treat.name] == 0) |
-                           ((thisdata[,first.treat.name] > tlist[t+1]) &
-                              (thisdata[,first.treat.name] != glist[g])))
-        thisdata$G <- 1*(thisdata[,first.treat.name] == glist[g])
+        disdat$C <- 1 * ((disdat[,gname] == 0) |
+                           ((disdat[,gname] > tlist[t+1]) &
+                              (disdat[,gname] != glist[g])))
+        thisdata$C <- 1*((thisdata[,gname] == 0) |
+                           ((thisdata[,gname] > tlist[t+1]) &
+                              (thisdata[,gname] != glist[g])))
+        thisdata$G <- 1*(thisdata[,gname] == glist[g])
       }
 
       # set up dummy for particular treated group
-      disdat$G <- 1*(disdat[,first.treat.name] == glist[g])
+      disdat$G <- 1*(disdat[,gname] == glist[g])
 
       if (panel) {
 
@@ -167,20 +168,20 @@ compute.att_gt <- function(dp) {
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
-        if (class(estMethod) == "function") {
+        if (class(est_method) == "function") {
           # user-specified function
-          attgt <- estMethod(y1=Ypost, y0=Ypre,
+          attgt <- est_method(y1=Ypost, y0=Ypre,
                              D=G,
                              covariates=covariates,
                              i.weights=w,
                              inffunc=TRUE)
-        } else if (estMethod == "ipw") {
+        } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
                                             covariates=covariates,
                                             i.weights=w,
                                             boot=FALSE, inffunc=TRUE)
-        } else if (estMethod == "reg") {
+        } else if (est_method == "reg") {
           # regression
           attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
                                         covariates=covariates,
@@ -233,15 +234,15 @@ compute.att_gt <- function(dp) {
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
-        if (class(estMethod) == "function") {
+        if (class(est_method) == "function") {
           # user-specified function
-          attgt <- estMethod(y=Y,
+          attgt <- est_method(y=Y,
                              post=post,
                              D=G,
                              covariates=covariates,
                              i.weights=w,
                              inffunc=TRUE)
-        } else if (estMethod == "ipw") {
+        } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_rc(y=Y,
                                          post=post,
@@ -249,7 +250,7 @@ compute.att_gt <- function(dp) {
                                          covariates=covariates,
                                          i.weights=w,
                                          boot=FALSE, inffunc=TRUE)
-        } else if (estMethod == "reg") {
+        } else if (est_method == "reg") {
           # regression
           attgt <- DRDID::reg_did_rc(y=Y,
                                      post=post,
