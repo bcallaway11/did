@@ -21,7 +21,8 @@ library(BMisc)
 library(ggplot2)
 library(gridExtra)
 
-ncl <- 10
+ncl <- 2
+time.periods <- 4
 ```
 
 # Slow Sims
