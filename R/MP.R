@@ -10,6 +10,7 @@
 #'  bands. Otherwise it reports the critival value based on pointwise normal
 #'  approximation.
 #' @param V the variance matrix for group-time average treatment effects
+#' @param se standard errors for group-time average treatment effects
 #' @param inffunc the influence function for estimating group-time average treatment effects
 #' @param n the number of observations
 #' @param W the Wald statistic for pre-testing the common trends assumption
@@ -22,8 +23,8 @@
 #'
 #' @return MP object
 #' @export
-MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05, DIDparams=NULL) {
-  out <- list(group=group, t=t, att=att, V=V, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp, DIDparams=DIDparams)
+MP <- function(group, t, att, V, se, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05, DIDparams=NULL) {
+  out <- list(group=group, t=t, att=att, V=V, se=se, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp, DIDparams=DIDparams)
   class(out) <- "MP"
   out
 }
@@ -38,7 +39,7 @@ MP <- function(group, t, att, V, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=N
 #' @export
 summary.MP <- function(object, ...) {
   mpobj <- object
-  out <- cbind(mpobj$group, mpobj$t, mpobj$att, sqrt(diag(mpobj$V)/mpobj$n))
+  out <- cbind(mpobj$group, mpobj$t, mpobj$att, mpobj$se)#sqrt(diag(mpobj$V)/mpobj$n))
   citation()
   colnames(out) <- c("group", "time", "att","se")
   cat("\n")

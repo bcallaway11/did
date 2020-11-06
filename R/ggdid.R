@@ -12,10 +12,10 @@ ggdid <- function(object, ...) {
 
 
 ## #' @param type the type of plot, should be one of "attgt", "dynamic",
-## #'  "selective", "calendar", "dynsel".  "attgt" is the default and plots
+## #'  "group", "calendar", "dynsel".  "attgt" is the default and plots
 ## #'  all group-time average treatment effects separately by group (including
 ## #'  pre-treatment time periods); "dynamic" plots dynamic treatment effects --
-## #'  these are the same as event studies; "selective" plots average effects
+## #'  these are the same as event studies; "group" plots average effects
 ## #'  of the treatment separately by group (which allows for selective treatment
 ## #'  timing); "calendar" plots average treatment effects by time period; and
 ## #'  "dynsel" plots dynamic effects allowing for selective treatment timing
@@ -94,7 +94,7 @@ ggdid.AGGTEobj <- function(object,
                            legend=TRUE,
                            ...) {
 
-  if ( !(object$type %in% c("dynamic","selective","calendar")) ) {
+  if ( !(object$type %in% c("dynamic","group","calendar")) ) {
     stop(paste0("Plot method not available for this type of aggregation"))
   }
 
@@ -103,14 +103,15 @@ ggdid.AGGTEobj <- function(object,
                               att=object$att.egt,
                               att.se=object$se.egt,
                               post=as.factor(post.treat))
-  results$c <- object$crit.val.egt
+  results$c <- ifelse(is.null(object$crit.val.egt), abs(qnorm(.025)), object$crit.val.egt)
 
   if (title == "") {
-    title <- ifelse(object$type=="selective", "Average Effect by Group", ifelse(object$type=="dynamic", "Average Effect by Length of Exposure", "Average Effect by Time Period"))
+    # get title right depending on which aggregation 
+    title <- ifelse(object$type=="group", "Average Effect by Group", ifelse(object$type=="dynamic", "Average Effect by Length of Exposure", "Average Effect by Time Period"))
   }
 
-  if (object$type == "selective") {
-    # alternative plot if selective treatment timing plot
+  if (object$type == "group") {
+    # alternative plot if selective/group treatment timing plot
     p <- splot(results, ylim, xlab, ylab, title, legend)
   } else {
     p <- gplot(results, ylim, xlab, ylab, title, xgap, legend)

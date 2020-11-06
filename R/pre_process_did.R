@@ -250,7 +250,10 @@ pre_process_did <- function(yname,
       # set rowid to idname for repeated cross section/unbalanced
       data$rowid <- data[, idname]
     }
-    n <- nrow(data)
+
+    # n is uniques number of observations
+    # this is different for repeated cross sections and unbalanced panel
+    n <- length(unique(data[,idname]))
   }
 
   # Update tlist and glist because of data handling

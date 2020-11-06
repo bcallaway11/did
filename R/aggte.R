@@ -2,17 +2,18 @@
 #'
 #' @description A function to take group-time average treatment effects
 #'  and aggregate them into a smaller number of parameters.  There are
-#'  several possible aggregations including "simple", "dynamic", "selective",
+#'  several possible aggregations including "simple", "dynamic", "group",
 #'  and "calendar."
 #'
 #' @param MP an MP object (i.e., the results of the \code{att_gt} method)
 #' @param type Which type of aggregated treatment effect parameter to compute.
-#'   The default is "simple" (this just computes a weighted average of all
+#'   One option is "simple" (this just computes a weighted average of all
 #'   group-time average treatment effects with weights proportional to group
 #'   size).  Other options are "dynamic" (this computes average effects across
 #'   different lengths of exposure to the treatment and is similar to an
 #'   "event study"; here the overall effect averages the effect of the
-#'   treatment across all positive lengths of exposure); "selective" (this
+#'   treatment across all positive lengths of exposure); "group" (this
+#'   is the default option and
 #'   computes average treatment effects across different groups; here
 #'   the overall effect averages the effect across different groups); and
 #'   "calendar" (this computes average treatment effects across different
@@ -46,7 +47,7 @@
 #' @return AGGTEobj
 #' @export
 aggte <- function(MP,
-                  type = "simple",
+                  type = "group",
                   balance.e = NULL,
                   na.rm = FALSE,
                   bstrap = NULL,

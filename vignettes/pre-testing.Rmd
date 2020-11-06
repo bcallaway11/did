@@ -26,11 +26,17 @@ library(ggpubr)
 ```
 
 
-Another very appealing feature of many DID applications with multiple periods is that the researcher can pre-test the parallel trends assumptions.
+## Introduction
 
-The idea here is simple: although one can not test whether parallel trends itself holds, one can check if it holds in periods before treated units actually become treated.
+This vignette provides a discussion of how to conduct pre-tests in DID setups using the **did** package
 
-Importantly, this is just a pre-test; it is different from an actual test.  Whether or not the parallel trends assumption holds in pre-treatment periods does not actually tell you if it holds in the current period (and this is when you need it to hold!).  It is certainly possible for the identifying assumptions to hold in previous periods but not hold in current periods; it is also possible for identifying assumptions to be violated in previous periods but for them to hold in current periods.  That being said, the right way to think about a pre-test is as (potentially strong) piece of evidence on the validity of the DID design in a particular application.
+* One very appealing feature of many DID applications with multiple periods is that the researcher can pre-test the parallel trends assumptions.
+
+    * The idea here is simple: although one can not test whether parallel trends itself holds, one can check if it holds in periods before treated units actually become treated.
+
+    * Importantly, this is just a pre-test; it is different from an actual test.  Whether or not the parallel trends assumption holds in pre-treatment periods does not actually tell you if it holds in the current period (and this is when you need it to hold!).  It is certainly possible for the identifying assumptions to hold in previous periods but not hold in current periods; it is also possible for identifying assumptions to be violated in previous periods but for them to hold in current periods.  That being said, the right way to think about a pre-test is as (potentially strong) piece of evidence on the validity of the DID design in a particular application.
+
+* In this vignette, we demonstrate that the approach used in the **did** package for pre-testing may work substantially better than the more common "event study regression"
 
 ## Common Approaches to Pre-Testing in Applications
 
@@ -149,18 +155,23 @@ We can compare this to what happens using the `did` package:
 
 ```{r}
 # estimate group-group time average treatment effects
-did.att.gt <- att_gt("Y", "period", "id", "G", data=data,
-                     printdetails=FALSE, bstrap=FALSE, cband=FALSE)
-summary(did.att.gt)
+did_att_gt <- att_gt(yname="Y",
+                     tname="period",
+                     idname="id",
+                     gname="G",
+                     data=data,
+                     bstrap=FALSE,
+                     cband=FALSE)
+summary(did_att_gt)
 
 # plot them
-ggdid(did.att.gt)
+ggdid(did_att_gt)
 
 # aggregate them into event study plot
-did.es <- aggte(did.att.gt, type="dynamic")
+did_es <- aggte(did_att_gt, type="dynamic")
 
 # plot the event study
-ggdid(did.es)
+ggdid(did_es)
 ```
 
 Overall, everything looks good using either approach.  (Just to keep things fair, we report pointwise confidence intervals for group-time average treatment effects, but it is easy to get uniform confidence bands by adding the options `bstrap=TRUE, cband=TRUE` to the call to `att_gt`.)
@@ -168,7 +179,7 @@ Overall, everything looks good using either approach.  (Just to keep things fair
 
 #### Pitfall: Selective Treatment Timing
 
-Abraham and Sun (2018) point out a major limitation of event study regressions:  when there is **selective treatment timing** the $\mu_l$ end up being weighted averages of treatment effects *across different lengths of exposures*.
+Sun and Abraham (2020) point out a major limitation of event study regressions:  when there is **selective treatment timing** the $\mu_l$ end up being weighted averages of treatment effects *across different lengths of exposures*.
 
 **Selective treatment timing** means that individuals in different groups experience systematically different effects of participating in the treatment from individuals in other groups.  For example, there would be selective treatment timing if individuals choose to be treated in earlier periods if they tend to experience larger benefits from participating in the treatment.  This sort of selective treatment timing is likely to be present in many applications in economics / policy evaluation.
 
@@ -234,6 +245,8 @@ library(plm)
 es <- plm(Y ~ Dtmin3 + Dtmin2 + Dt0 + Dt1 + Dt2, data=data, model="within", effect="twoways", index=c("id","period"))
 
 summary(es)
+```
+
 
 ```{r, echo=FALSE}
 #-----------------------------------------------------------------------------
@@ -272,7 +285,12 @@ We can compare this to what happens using the `did` package:
 
 ```{r}
 # estimate group-group time average treatment effects
-did.att.gt <- att_gt("Y", "period", "id", "G", data=data, printdetails=FALSE)
+did.att.gt <- att_gt(yname="Y",
+                     tname="period",
+                     idnam="id",
+                     gname="G",
+                     data=data
+                     )
 summary(did.att.gt)
 
 # plot them
@@ -296,7 +314,7 @@ Even when one includes covariates to estimate group-time average treatment effec
 The `did` package contains an additional pre-test for the conditional parallel trends assumption in the `conditional_did_pretest` function.
 
 ```{r eval=FALSE}
-# not run yet
+# not run (this code can be substantially slower)
 reset.sim()
 set.seed(1814)
 nt <- 1000
@@ -310,8 +328,8 @@ cdp
 
 * Abadie, Alberto. "Semiparametric difference-in-differences estimators." The Review of Economic Studies 72.1 (2005): 1-19.
 
-* Abraham, Sarah, and Liyang Sun. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Available at SSRN 3158747 (2018).
+* Callaway, Brantly, and Pedro HC Sant'Anna. "Difference-in-differences with multiple time periods." Available at SSRN 3148250 (2020).
 
-* Callaway, Brantly, and Pedro HC Sant'Anna. "Difference-in-differences with multiple time periods." Available at SSRN 3148250 (2019).
+* Heckman, James J., Hidehiko Ichimura, and Petra Todd. "Matching as an econometric evaluation estimator." The Review of Economic Studies 65.2 (1998): 261-294.
 
-* Heckman, James J., Hidehiko Ichimura, and Petra Todd. "Matching as an econometric evaluation estimator." The review of economic studies 65.2 (1998): 261-294.
+* Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Available at SSRN 3158747 (2020).

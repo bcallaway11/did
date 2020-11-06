@@ -180,11 +180,16 @@ att_gt <- function(yname,
 
 
 
+  # analytical standard errors
   # estimate variance
   # this is analogous to cluster robust standard errors that
   # are clustered at the unit level
+
+  # note to self: this def. won't work with unbalanced panel,
+  # but it is always ignored b/c bstrap has to be true in that case
   n <- dp$n
   V <- t(inffunc1)%*%inffunc1/n
+  se <- sqrt(diag(V)/n)
 
   # if clustering along another dimension...we require using the
   # bootstrap (in principle, could come up with analytical standard
@@ -203,13 +208,13 @@ att_gt <- function(yname,
     bres <- bout$bres
     if(length(zero_na_sd_entry)>0) {
       V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
+      se[-zero_na_sd_entry] <- bout$se
     } else {
       V <- bout$V
+      se <- bout$se
     }
-
-  }
-
-
+  } 
+    
 
   #-----------------------------------------------------------------------------
   # compute Wald pre-test
@@ -274,6 +279,6 @@ att_gt <- function(yname,
   }
 
   # Return this list
-  return(MP(group=group, t=tt, att=att, V=V, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
+  return(MP(group=group, t=tt, att=att, V=V, se=se, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
 
 }

@@ -11,7 +11,10 @@
 #' @keywords internal
 #'
 #' @export
-compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
+compute.aggte <- function(MP,
+                          type = "group",
+                          balance.e = NULL,
+                          na.rm = FALSE,
                           bstrap = NULL,
                           biters = NULL,
                           cband = NULL,
@@ -157,10 +160,10 @@ compute.aggte <- function(MP, type = "simple", balance.e = NULL, na.rm = FALSE,
   }
 
   #-----------------------------------------------------------------------------
-  # Compute the selective treatment timing estimators
+  # Compute the group (i.e., selective) treatment timing estimators
   #-----------------------------------------------------------------------------
 
-  if (type == "selective") {
+  if (type == "group") {
 
     # get group specific ATTs
     # note: there are no estimated weights here

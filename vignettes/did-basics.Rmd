@@ -26,21 +26,53 @@ library(ggpubr)
 ```
 
 
-This vignette discusses the basics of using Difference-in-Differences (DID) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the `did` package.
+# Introduction
+
+This vignette discusses the basics of using Difference-in-Differences (DID) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the **did** package.
+
+* The **did** package allows for multiple periods and variation in treatment timing
+
+* The **did** package allows for parallel trends assumption to hold conditional on covariates
+
+* Treatment effect estimates coming from the **did** package do not suffer from any of the drawbacks associated with two-way fixed effects regressions or event study regressions when there are multiple periods / variation in treatment timing
+
+* The **did** package can deliver disaggregated *group-time average treatment effects* as well as event-study type estimates (treatment effects parameters corresponding to different lengths of exposure to the treatment) and overall treatment effect estimates.
+
+* Computations with the **did** package are fast.  All the code in this vignette runs in just a few seconds.
+
+We use some notation in this vignette that is fully explained in our [Introduction to DID with Multiple Time Periods](multi-periods.html) vignette.
 
 # Examples with simulated data
 
-Let's start with a really simple example with simulated data.  Here, there are going to be 4 time periods.  There are 4000 units in the treated group that are randomly (uniformly) assigned to first participate in the treatment (a *group*) in each time period.  And there are 4000 never treated units.  The data generating process for untreated and treated potential outcomes is given by
+Let's start with a really simple example with simulated data.  Here, there are going to be 4 time periods.  There are 4000 units in the treated group that are randomly (with equal probability) assigned to first participate in the treatment (a *group*) in each time period.  And there are 4000 never treated units.  The data generating process for untreated potential outcomes
 
 $$
   Y_{it}(0) = \theta_t + \eta_i + X_i'\beta_t + v_{it}
 $$
 
-$$
-  Y_{it}(1) = \theta_t + \eta_i + X_i'\beta_t + u_{it}
-$$
+This is an example of the sort of model for untreated potential outcomes that is compatible with a conditional parallel trends assumption.  In particular,
 
-where $\theta_t = \beta_t = t$ for $t=1,\ldots,4$, $\eta_i \sim N(G_i, 1)$ where $G_i$ is which group an individual belongs to, $X_i \sim N( \mu_{D_i}, 1)$ where $\mu_{D_i} = 1$ for never treated units and 0 otherwise, $v_{it} \sim N(0,1)$, and $u_{it} \sim N(0,1)$.  Also, all random variables are drawn independently of each other.  In this setup $ATT(g,t) = 0$ for all groups and time periods.
+* We consider the case where $\eta_i$ can be distributed differently across groups.  This means that comparisons of outcomes in levels between treated and untreated units will not deliver an average treatment effect parameter.
+
+* Next, notice that  $$ \Delta Y_{it}(0) = (\theta_t - \theta_{t-1}) + X_i'(\beta_t - \beta_{t-1}) + \Delta v_{it} $$  
+
+    so that the path of outcomes depends on covariates.  And, in general, unconditional parallel trends is not valid in this setup unless either (i) the distribution of covariates is the same across groups, or (ii) $\beta_t = \beta{t-1} = \cdots$ (so that the path of untreated potential outcomes doesn't actually depend on covariates)
+  
+* In order to think about treatment effects, we also use the following model for treated potential outcomes  $$
+    Y_{it}(g) = Y_{it}(0)  + \mathbf{1}\{t \geq g\} (e+1) + ( u_{it} - v_{it})  $$  
+
+    where $e := t-g$ is the event time (i.e., the difference between the current time period and the time when a unit becomes treated), and the last term just allows for the error terms to be different for treated and untreated potential outcomes.  It immediately follows that  $$ATT(g,t) = e+1 $$  
+
+    In other words, the average effect of participating in the treatment for units in group $g$ is equal to their length of exposure plus one.
+  
+* For the simulations, we also set 
+
+    * $\theta_t = \beta_t = t$ for $t=1,\ldots,4$
+	* $\eta_i \sim N(G_i, 1)$ where $G_i$ is which group an individual belongs to, 
+	* $X_i \sim N( \mu_{D_i}, 1)$ where $\mu_{D_i} = 1$ for never treated units and 0 otherwise, 
+	* $v_{it} \sim N(0,1)$, and $u_{it} \sim N(0,1)$.  
+	* Also, all random variables are drawn independently of each other.  
+
 
 ## Estimating Group-Time Average Treatment Effects
 
@@ -58,6 +90,9 @@ set.seed(1814)
 # generate dataset with 4 time periods
 time.periods <- 4
 
+# add dynamic effects
+te.e <- 1:time.periods
+
 # generate data set with these parameters
 data <- build_sim_dataset()
 
@@ -74,10 +109,9 @@ The main function to estimate group-time average treatment effects is the `att_g
 example.attgt <- att_gt(yname="Y",
                         tname="period",
                         idname="id",
-                        first.treat.name="G",
+                        gname="G",
                         xformla=~X,
-                        data=data,
-                        printdetails=FALSE
+                        data=data
                         )
 
 # summarize the results
@@ -100,24 +134,8 @@ The above discussion covered only the most basic case for using the `did` packag
 
 ### Adjustments for Multiple Hypothesis Testing
 
-By default, the `did` package reports analytical standard errors and 95\% *pointwise* confidence intervals in plots.  However, it is usually a better practice to report uniform confidence bands in plots of group-time average treatment effects with multiple time periods -- these are confidence bands that are robust to multiple hypothesis testing.
+By default, the `did` package reports uniform confidence bands in plots of group-time average treatment effects with multiple time periods -- these are confidence bands that are robust to multiple hypothesis testing [essentially, the idea here is to use the same standard errors but make an adjustment to the critical value to account for multiple testing -- in the example in this section, the critical value for a 95\% uniform confidence band is `r round(example.attgt$c, 2)` instead of 1.96].  You can turn this off and compute analtyical standard errors and corresponding figures with *pointwise* confidence intervals by setting `bstrap=FALSE, cband=FALSE` in the call to `att_gt`...but we don't recommend it!
 
-To report uniform confidence bands requires the bootstrap; and to get these in practice, set the options `bstrap=TRUE, cband=TRUE`.
-
-```{r eval=FALSE}
-  example.attgt.mh <- att_gt(yname="Y",
-                        tname="period",
-                        idname="id",
-                        first.treat.name="G",
-                        xformla=~X,
-                        data=data,
-                        printdetails=FALSE,
-                        bstrap=TRUE,
-                        cband=TRUE
-                        )
-  ## plot (not shown, but will result in somewhat wider confidence bands)
-  ggdid(example.attgt.mh)
-```
 
 ### Aggregating group-time average treatment effects
 
@@ -125,16 +143,18 @@ In many applications, there can be a large number of groups and time periods.  I
 
 #### Simple Aggregation
 
-The default approach is to just return a weighted average of all group-time average treatment effects with weights proportional to the group size.
+One idea that is likely to immediately come to mind is to just return a weighted average of all group-time average treatment effects with weights proportional to the group size.  This is available by calling the `aggte` function with `type=simple`.
 
 ```{r}
-agg.simple <- aggte(example.attgt)
+agg.simple <- aggte(example.attgt, type="simple")
 summary(agg.simple)
 ```
 
+This sort of aggregation immediately avoids the negative weights issue that two-way fixed effects regressions can suffer from, but we often think that there are better alternatives.
+
 #### Dynamic Effects and Event Studies
 
-The most common alternative approach is to aggregate group-time effects into an event study plot.  To do this
+One of the most common alternative approach is to aggregate group-time effects into an event study plot.  Group-time average treatment effects can immediately be averaged into average treatment effects at different lengths of exposure to the treatment using the following code:
 
 ```{r}
 agg.es <- aggte(example.attgt, type="dynamic")
@@ -144,18 +164,22 @@ ggdid(agg.es)
 
 In this figure, the x-axis is the length of exposure to the treatment.  Length of exposure equal to 0 provides the average effect of participating in the treatment across groups in the time period when they first participate in the treatment.  Length of exposure equal to -1 corresponds to the time period before groups first participate in the treatment, and length of exposure equal to 1 corresponds to the first time period after initial exposure to the treatment.
 
-Not much interesting is going on here...as there are no dynamics and the effect is equal to 0 in all time periods.
+As we would expect based on the data that we generated, it looks like parallel trends holds in pre-treatment periods and the effect of participating in the treatment is increasing with length of exposure ot the treatment.
 
-#### Selective Treatment Timing / Group-Specific Effects
+The Overall ATT here averages the average treatment effects across all lengths of exposure to the treatment.
 
-Another idea is to look at average effects specific to each group.  To do this
+#### Group-Specific Effects
+
+Another idea is to look at average effects specific to each group.  It is also straightforward to aggregate group-time average treatment effects into group-specific average treatment effects using the following code:
 ```{r}
-agg.gs <- aggte(example.attgt, type="selective")
+agg.gs <- aggte(example.attgt, type="group")
 summary(agg.gs)
 ggdid(agg.gs)
 ```
 
-In this figure, the x-axis is categorized by group.  They y-axis provides estimates of the average effect of participating in the treatment for units in each group averaged across all time periods after that group becomes treated.
+In this figure, the y-axis is categorized by group.  The x-axis provides estimates of the average effect of participating in the treatment for units in each group averaged across all time periods after that group becomes treated.  In our example, the average effect of participating in the treatment is largest for group 2 -- this is because the effect of treatment here increases with length of exposure to the treatment, and they are the group that is exposed to the treatment for the longest.
+
+The Overall ATT averages the group-specific treatment effects across groups.  In our view, this parameter is a leading choice as an overall summary effect of participating in the treatment. It is the average effect of participating in the treatment that was experienced across all units that participate in the treatment in any period.  In this sense, it has a similar interpretation to the ATT in the textbook case where there are exactly two periods and two groups.
 
 #### Calendar Time Effects
 
@@ -175,7 +199,7 @@ Small group sizes can sometimes cause estimation problems in the `did` package. 
 
 In addition, statistical inference, particularly on group-time average treatment may become more tenuous with small groups.  For example, the effective sample size for estimating the change in outcomes over time for individuals in a particular group is equal to the number of observations in that group and asymptotic results are unlikely to provide good approximations to the sampling distribution of group-time average treatment effects when the number of units in a group is small.
 
-A reasonable alternative approach in this case is to just focus on aggregated treatment effect paramaters (i.e., to run `aggte(..., type="selective")` or `aggte(...,type="dynamic")`).  For each of these cases, the effective sample size is the total number of units that are ever treated.  As long as the total number of ever treated units is "large" (which should be the case for any DID application), then the statistical inference results provided by the `did` package should be reliable.
+A reasonable alternative approach in this case is to just focus on aggregated treatment effect paramaters (i.e., to run `aggte(..., type="group")` or `aggte(...,type="dynamic")`).  For each of these cases, the effective sample size is the total number of units that are ever treated.  As long as the total number of ever treated units is "large" (which should be the case for any DID application), then the statistical inference results provided by the `did` package should be reliable.
 
 ### Selecting Alternative Control Groups
 
@@ -183,14 +207,13 @@ By default, the `did` package uses the group of units that never participate in 
 
 ```{r eval=FALSE}
 example.attgt.altcontrol <- att_gt(yname="Y",
-                        tname="period",
-                        idname="id",
-                        first.treat.name="G",
-                        xformla=~X,
-                        data=data,
-                        printdetails=FALSE,
-                        control.group="notyettreated"			
-                        )
+                                   tname="period",
+                                   idname="id",
+                                   gname="G",
+                                   xformla=~X,
+                                   data=data,
+                                   control_group="notyettreated"			
+                                   )
 summary(example.attgt.altcontrol)
 ```
 
@@ -198,24 +221,27 @@ summary(example.attgt.altcontrol)
 
 The `did` package can also work with repeated cross section rather than panel data.  If the data is repeated cross sections, simply set the option `panel=FALSE`.  In this case, `idname` is also ignored.  From a usage standpoint, everything else is identical to the case with panel data.
 
+### Unbalanced Panel Data
+
+By default, the `did` package takes in a panel data and, if it is not balanced, coerces it into being a balanced panel by dropping units with observations that are missing in any time period.  However, if the user specifies the option `allow_unbalanced_panel=TRUE`, then the `did` package will not coerce the data into being balanced.  Practically, the main cost here is that the computation time will increase in this case (perhaps substantially).  We also recommend that users think carefully about why they have an unbalanced panel before proceeding this direction as well.
+
 ### Alternative Estimation Methods
 
 The `did` package implements all the $2 \times 2$ DID estimators that are in the `DRDID` package.  By default, the `did` package uses "doubly robust" estimators that are based on first step linear regressions for the outcome variable and logit for the generalized propensity score.  The other options are "ipw" for inverse probability weighting and "reg" for regression.
 
 ```{r eval=FALSE}
 example.attgt.reg <- att_gt(yname="Y",
-                        tname="period",
-                        idname="id",
-                        first.treat.name="G",
-                        xformla=~X,
-                        data=data,
-                        printdetails=FALSE,
-                        estMethod="reg"
-                        )
+                            tname="period",
+                            idname="id",
+                            gname="G",
+                            xformla=~X,
+                            data=data,
+                            est_method="reg"
+                            )
 summary(example.attgt.reg)
 ```
 
-The argument `estMethod` is also available to pass in a custom function for estimating DID with 2 periods and 2 groups.  [See its documentation for more details](references/att_gt).  **Fair Warning:** this is very advanced use of the `did` package and should be done with caution.
+The argument `est_method` is also available to pass in a custom function for estimating DID with 2 periods and 2 groups.  [See its documentation for more details](references/att_gt).  **Fair Warning:** this is very advanced use of the `did` package and should be done with caution.
 
 # An example with real data
 
@@ -233,7 +259,7 @@ head(mpdta)
 
 In particular applications, the dataset should look like this with the key parts being:
 
-* The dataset should be in *long* format -- each row corresponds to a particular unit at a particular point in time.  Sometimes panel data is in *wide* format -- each row contains all the information about a particular unit in all time periods.  To convert from wide to long in `R`, one can use the `tidyr::gather` function.  [Here is an example](http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/) 
+* The dataset should be in *long* format -- each row corresponds to a particular unit at a particular point in time.  Sometimes panel data is in *wide* format -- each row contains all the information about a particular unit in all time periods.  To convert from wide to long in `R`, one can use the `tidyr::pivot_longer` function.  [Here is an example](http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/) 
 
 * There needs to be an id variable.  In `mpdta`, it is the variable `countyreal`.  This should not vary over time for particular units.  The name of this variable is passed to methods in the `did` package by setting, for example, `idname="countyreal"`  
 
@@ -241,7 +267,7 @@ In particular applications, the dataset should look like this with the key parts
 
 * In this application, the outcome is `lemp`.  The name of this variable is passed to methods in the `did` package by setting, for example, `yname="lemp"`
 
-* There needs to be a group variable.  In `mpdta`, it is the variable `first.treat`.  This is the time period when an individual first becomes treated.   *For individuals that are never treated, this variable should be set equal to 0.*  The name of this variable is passed to methods in the `did` package by setting, for example, `first.treat.name="first.treat"`
+* There needs to be a group variable.  In `mpdta`, it is the variable `first.treat`.  This is the time period when an individual first becomes treated.   *For individuals that are never treated, this variable should be set equal to 0.*  The name of this variable is passed to methods in the `did` package by setting, for example, `gname="first.treat"`
 
 * The `did` package allows for incorporating covariates so that the parallel trends assumption holds only after conditioning on these covariates.  In `mpdta`, `lpop` is the log of county population.  The `did` package requires that covariates be time-invariant.  For time varying covariates like county population, the `did` package sets the value of the covariate to be equal to the value of the covariate in the first time period.  Covariates are passed as a formula to the `did` package by setting, for example, `xformla=~lpop`.  For estimators under unconditional parallel trends, the `xformla` argument can be left blank or can be set as `xformla=~1` to only include a constant.
 
@@ -258,14 +284,11 @@ We'll consider two cases.  For the first case, we won't condition on any covaria
 # estimate group-time average treatment effects without covariates
 # set bstrap=TRUE and cband=TRUE to get uniform confidence bands
 mw.attgt <- att_gt(yname="lemp",
-                   first.treat.name="first.treat",
+                   gname="first.treat",
                    idname="countyreal",
                    tname="year",
                    xformla=~1,
                    data=mpdta,
-                   bstrap=TRUE,
-                   cband=TRUE,
-                   printdetails=FALSE
                    )
 
 # summarize the results
@@ -303,14 +326,11 @@ Finally, we can run all the same results including a covariate.  In this applica
 
 ```{r eval=FALSE}
 mw.attgt.X <- att_gt(yname="lemp",
-                   first.treat.name="first.treat",
+                   gname="first.treat",
                    idname="countyreal",
                    tname="year",
                    xformla=~lpop,
                    data=mpdta,
-                   bstrap=TRUE,
-                   cband=TRUE,
-                   printdetails=FALSE
                    )
 ```
 
@@ -319,7 +339,8 @@ mw.attgt.X <- att_gt(yname="lemp",
 
 We update this section with common issues that people run into when using the `did` package.  Please feel free to contact us with questions or comments.
 
-* In the case with panel data, the `did` package "balances" the panel by dropping individual units which do not have observations in each time period.
-
 * The `did` package is only built to handle staggered treatment adoption designs.  This means that once an individual becomes treated, they remain treated in all subsequent periods.
 
+## Bugs
+
+We also welcome (and encourage) users to report any bugs / difficulties they have using our code.

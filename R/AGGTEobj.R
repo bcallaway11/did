@@ -66,10 +66,10 @@ summary.AGGTEobj <- function(object, ...) {
   cat("\n\n")
 
   # handle cases depending on type
-  if (object$type %in% c("selective","dynamic","calendar")) {
+  if (object$type %in% c("group","dynamic","calendar")) {
 
     if (object$type=="dynamic") { c1name <- "event time"; cat("Dynamic Effects:") }
-    if (object$type=="selective") { c1name <- "group"; cat("Group Effects:") }
+    if (object$type=="group") { c1name <- "group"; cat("Group Effects:") }
     if (object$type=="calendar") { c1name <- "time"; cat("Time Effects:") }
     out2 <- cbind(object$egt, object$att.egt, object$se.egt)
     colnames(out2) <- c(c1name, "att", "se")

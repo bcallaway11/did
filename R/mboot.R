@@ -25,6 +25,7 @@ mboot <- function(inf.func, DIDparams) {
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
+  true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
 
   # just get n obsevations (for clustering below...)
   ifelse(panel,
@@ -32,14 +33,29 @@ mboot <- function(inf.func, DIDparams) {
          dta <- data)
   # Make sure inf.func is matrix because we need this for computing n below
   inf.func <- as.matrix(inf.func)
-  n <- nrow(inf.func) # this adjusts automatically to panel vs. repeated cross sections
 
-  # if include id as variable to cluster on
-  # drop it as we do this automatically
-  if (idname %in% clustervars) {
-    clustervars <- clustervars[-which(clustervars==idname)]
+  # set correct number of units
+  n <- ifelse(!panel & !true_repeated_cross_sections,
+              length(unique(data[,idname])), # unbalanced panel
+              nrow(inf.func)) # balanced panel or repeated cross sections
+
+  if (panel | true_repeated_cross_sections) {
+    # if include id as variable to cluster on
+    # drop it as we do this automatically
+    if (idname %in% clustervars) {
+      clustervars <- clustervars[-which(clustervars==idname)]
+    }
+  } else if (!true_repeated_cross_sections) {
+    # if unbalanced panel, then we have to cluster on idname
+    # (not sure if totally safe), but here we assume that
+    # clustervars would only potentially include more aggregated
+    # clustering than just using id (i.e. clustering at state level
+    # always would cluster at individual level)
+    if (is.null(clustervars)) {
+      clustervars <- idname
+    }
   }
-
+    
   # we can only handle up to 2-way clustering
   # (in principle could do more, but not high priority now)
   if (length(clustervars) > 1) {

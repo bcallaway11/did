@@ -53,7 +53,13 @@ compute.att_gt <- function(dp) {
 
   # 3-dimensional array which will store influence function
   # across groups and times
-  inffunc <- array(data=0, dim=c(nG,nT,n))
+  # with balanced panel, 3rd dimension is equal to N
+  # otherwise, total number of rows in the data
+  if(panel) {
+    inffunc <- array(data=0, dim=c(nG,nT,n))
+  } else {
+    inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
+  }
 
   # loop over groups
   for (g in 1:nG) {
