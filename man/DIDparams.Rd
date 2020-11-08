@@ -8,21 +8,22 @@ DIDparams(
   yname,
   tname,
   idname = NULL,
-  first.treat.name,
+  gname,
   xformla = NULL,
   data,
-  control.group,
+  control_group,
   weightsname = NULL,
   alp = 0.05,
   bstrap = T,
   biters = 1000,
   clustervars = NULL,
   cband = T,
-  printdetails = TRUE,
+  print_details = TRUE,
   pl = FALSE,
   cores = 1,
-  estMethod = "dr",
+  est_method = "dr",
   panel = TRUE,
+  true_repeated_cross_sections,
   n = NULL,
   nG = NULL,
   nT = NULL,
@@ -37,7 +38,7 @@ DIDparams(
 
 \item{idname}{The individual (cross-sectional unit) id name}
 
-\item{first.treat.name}{The name of the variable in \code{data} that
+\item{gname}{The name of the variable in \code{data} that
 contains the first period when a particular observation is treated.
 This should be a positive number for all observations in treated groups.
 It defines which "group" a unit belongs to.  It should be 0 for units
@@ -51,7 +52,7 @@ to the 2x2 DID estimator chosen in \code{estMethod}.}
 
 \item{data}{The name of the data.frame that contains the data}
 
-\item{control.group}{Which units to use the control group.
+\item{control_group}{Which units to use the control group.
 The default is "nevertreated" which sets the control group
 to be the group of units that never participate in the
 treatment.  This group does not change across groups or
@@ -89,15 +90,16 @@ level.}
  bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \code{TRUE}.}
 
-\item{printdetails}{Boolean for showing detailed results or not}
+\item{print_details}{Whether or not to show details/progress of computations.
+Default is \code{FALSE}.}
 
-\item{pl}{Boolean for whether or not to use parallel processing
+\item{pl}{Whether or not to use parallel processing
 (not implemented yet)}
 
 \item{cores}{The number of cores to use for parallel processing
 (not implemented yet)}
 
-\item{estMethod}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
+\item{est_method}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the \code{DRDID} package.  Other built-in methods
 include "ipw" for inverse probability weighting and "reg" for
 first step regression estimators.  The user can also pass their
@@ -123,6 +125,10 @@ particular point in time.  The default is TRUE.  When
 is using a panel dataset, the variable \code{idname} must
 be set.  When \code{panel=FALSE}, the data is treated
 as repeated cross sections.}
+
+\item{true_repeated_cross_sections}{Whether or not the data really
+is repeated cross sections.  (We include this because unbalanced
+panel code runs through the repeated cross sections code)}
 
 \item{n}{The number of observations.  This is equal to the
 number of units (which may be different from the number

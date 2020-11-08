@@ -237,6 +237,32 @@ compute.att_gt <- function(dp) {
         n1 <- sum(G+C) 
         w <- disdat$w
 
+        skip_this_att_gt <- FALSE
+        if ( sum(G*post) == 0 ) {
+          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t+1]))
+          skip_this_att_gt <- TRUE
+        }
+        if ( sum(G*(1-post)) == 0) {
+          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t]))
+          skip_this_att_gt <- TRUE
+        }
+        if (sum(C*post) == 0) {
+          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t+1]))
+          skip_this_att_gt <- TRUE
+        }
+        if (sum(C*(1-post)) == 0) {
+          warning(paste0("No availabe control units for group ", glist[g], " in time period ", tlist[t]))
+          skip_this_att_gt <- TRUE
+        }
+
+        if (skip_this_att_gt) {
+          attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+1)], post=post.treat)
+          inffunc[g,t,] <- NA
+          counter <- counter+1
+          next
+        }
+          
+
         # matrix of covariates
         covariates <- model.matrix(xformla, data=disdat)
 

@@ -41,7 +41,7 @@
 #'  (not implemented yet)
 #' @param cores The number of cores to use for parallel processing
 #'  (not implemented yet)
-#' @param estMethod the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
+#' @param est_method the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 #' approach in the \code{DRDID} package.  Other built-in methods
 #' include "ipw" for inverse probability weighting and "reg" for
 #' first step regression estimators.  The user can also pass their
@@ -97,20 +97,18 @@
 #' out1 <- att_gt(yname="lemp",
 #'                tname="year",
 #'                idname="countyreal",
-#'                first.treat.name="first.treat",
+#'                gname="first.treat",
 #'                xformla=~lpop,
-#'                data=mpdta,
-#'                printdetails=FALSE)
+#'                data=mpdta)
 #' summary(out1)
 #'
 #' # without covariates
 #' out2 <- att_gt(yname="lemp",
 #'                tname="year",
 #'                idname="countyreal",
-#'                first.treat.name="first.treat",
+#'                gname="first.treat",
 #'                xformla=NULL,
-#'                data=mpdta,
-#'                printdetails=FALSE)
+#'                data=mpdta)
 #' summary(out2)
 #'
 #' @return an \code{\link{MP}} object containing all the results for group-time average
@@ -208,7 +206,7 @@ att_gt <- function(yname,
     bres <- bout$bres
     if(length(zero_na_sd_entry)>0) {
       V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
-      se[-zero_na_sd_entry] <- bout$se
+      se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
     } else {
       V <- bout$V
       se <- bout$se

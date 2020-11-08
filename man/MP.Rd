@@ -9,6 +9,7 @@ MP(
   t,
   att,
   V,
+  se,
   c,
   inffunc,
   n = NULL,
@@ -28,6 +29,8 @@ MP(
 period \code{t}}
 
 \item{V}{the variance matrix for group-time average treatment effects}
+
+\item{se}{standard errors for group-time average treatment effects}
 
 \item{c}{simulataneous critical value if one is obtaining simultaneous confidence
 bands. Otherwise it reports the critival value based on pointwise normal

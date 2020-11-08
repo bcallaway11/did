@@ -8,19 +8,19 @@ conditional_did_pretest(
   yname,
   tname,
   idname = NULL,
-  first.treat.name,
+  gname,
   xformla = NULL,
   data,
   panel = TRUE,
-  control.group = c("nevertreated", "notyettreated"),
+  control_group = c("nevertreated", "notyettreated"),
   weightsname = NULL,
   alp = 0.05,
   bstrap = FALSE,
   cband = FALSE,
   biters = 1000,
   clustervars = NULL,
-  estMethod = "dr",
-  printdetails = TRUE,
+  est_method = "dr",
+  print_details = TRUE,
   pl = FALSE,
   cores = 1
 )
@@ -32,7 +32,7 @@ conditional_did_pretest(
 
 \item{idname}{The individual (cross-sectional unit) id name}
 
-\item{first.treat.name}{The name of the variable in \code{data} that
+\item{gname}{The name of the variable in \code{data} that
 contains the first period when a particular observation is treated.
 This should be a positive number for all observations in treated groups.
 It defines which "group" a unit belongs to.  It should be 0 for units
@@ -54,7 +54,7 @@ is using a panel dataset, the variable \code{idname} must
 be set.  When \code{panel=FALSE}, the data is treated
 as repeated cross sections.}
 
-\item{control.group}{Which units to use the control group.
+\item{control_group}{Which units to use the control group.
 The default is "nevertreated" which sets the control group
 to be the group of units that never participate in the
 treatment.  This group does not change across groups or
@@ -92,7 +92,7 @@ can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
 level.}
 
-\item{estMethod}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
+\item{est_method}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the \code{DRDID} package.  Other built-in methods
 include "ipw" for inverse probability weighting and "reg" for
 first step regression estimators.  The user can also pass their
@@ -111,9 +111,10 @@ The function can return other things as well, but these are
 the only two that are required. \code{estMethod} is only used
 if covariates are included.}
 
-\item{printdetails}{Boolean for showing detailed results or not}
+\item{print_details}{Whether or not to show details/progress of computations.
+Default is \code{FALSE}.}
 
-\item{pl}{Boolean for whether or not to use parallel processing
+\item{pl}{Whether or not to use parallel processing
 (not implemented yet)}
 
 \item{cores}{The number of cores to use for parallel processing
@@ -132,7 +133,7 @@ data(mpdta)
 pre.test <- conditional_did_pretest(yname="lemp",
                                     tname="year",
                                     idname="countyreal",
-                                    first.treat.name="first.treat",
+                                    gname="first.treat",
                                     xformla=~lpop,
                                     data=mpdta)
 summary(pre.test)
