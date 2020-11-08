@@ -180,3 +180,14 @@ group_effects <- aggte(out, type="group")
 summary(group)
 ```
 
+## Additional Resources
+
+We have provided several more vignettes that may be helpful for using the **did** package
+
+* [Getting Started with the did Package](articles/did-basics.html)
+
+* [Introduction to DID with Multiple Time Periods](articles/multi-period-did.html)
+
+* [Pre-Testing in a DID Setup using the did Package](articles/pre-testing.html)
+
+* [Writing Extensions to the did Package](articles/extensions.html)
