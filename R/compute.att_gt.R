@@ -56,9 +56,13 @@ compute.att_gt <- function(dp) {
   # with balanced panel, 3rd dimension is equal to N
   # otherwise, total number of rows in the data
   if(panel) {
-    inffunc <- array(data=0, dim=c(nG,nT,n))
+    #inffunc <- array(data=0, dim=c(nG,nT,n))
+    inffunc <- matrix(data=0, nrow=n, ncol=nG*(nT-1))
+    #inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
   } else {
-    inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
+    #inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
+    inffunc <- matrix(data=0, nrow=n, ncol=nG*(nT-1))
+    #inffunc <- Matrix::Matrix(data=0,nrow=nrow(data), ncol=nG*(nT-1), sparse=TRUE)
   }
 
   # loop over groups
@@ -257,7 +261,7 @@ compute.att_gt <- function(dp) {
 
         if (skip_this_att_gt) {
           attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+1)], post=post.treat)
-          inffunc[g,t,] <- NA
+          inffunc[,counter] <- NA
           counter <- counter+1
           next
         }
@@ -322,7 +326,8 @@ compute.att_gt <- function(dp) {
       inf.func[disidx] <- attgt$att.inf.func
 
       # save it in influence function matrix
-      inffunc[g,t,] <- inf.func
+      # inffunc[g,t,] <- inf.func
+      inffunc[,counter] <- inf.func
 
       # update counter
       counter <- counter+1

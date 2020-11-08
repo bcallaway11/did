@@ -59,21 +59,20 @@ The **did** package also contains a number of functions for pre-testing the para
 
 There has been a lot of recent work on DID with multiple time periods.  The **did** package implements the ideas in
 
-* Callaway, Brantly, and Pedro HC Sant\'Anna. Difference-in-differences with multiple time periods. Available at SSRN 3148250 (2019).
+* Callaway, Brantly, and Pedro HC Sant\'Anna. Difference-in-differences with multiple time periods. Available at SSRN 3148250 (2020).
 
 **Other methodological papers on DID with multiple time periods include**
 
-* Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing. No. w25018. National Bureau of Economic Research, 2018.
+* Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing. No. w25018. National Bureau of Economic Research, 2019.
 
-* de Chaisemartin, Clément, and Xavier d'Haultfoeuille. Two-way fixed effects estimators with heterogeneous treatment effects. No. w25904. National Bureau of Economic Research, 2019.
+* De Chaisemartin, Clement, and Xavier d'Haultfoeuille. "Two-way fixed effects estimators with heterogeneous treatment effects." American Economic Review 110.9 (2020): 2964-96.
 
-* Abraham, Sarah, and Liyang Sun. Estimating dynamic treatment effects in event studies with heterogeneous treatment effects. Available at SSRN 3158747 (2018).
+* Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Available at SSRN 3158747 (2020).
 
 **Higher level discussions of issues are available in**
 
 * [Our approach to DID with multiple time periods](articles/multi-period-did.html)
 
-* [Baker, Andrew. Difference-in-Differences Methodology. (2019)](https://andrewcbaker.netlify.com/2019/09/25/difference-in-differences-methodology/)
 
 ## Installation
 
@@ -116,13 +115,12 @@ To estimate group-time average treatment effects, use the **att_gt** function
 
 ```{r}
 out <- att_gt(yname="lemp",
-              first.treat.name="first.treat",
+              gname="first.treat",
               idname="countyreal",
               tname="year",
               xformla=~1,
               data=mpdta,
-              estMethod="reg",
-              printdetails=FALSE,
+              est_method="reg"
               )
 ```
 
@@ -145,7 +143,7 @@ library(ggplot2)
 ggdid(out, ylim=c(-.25,.1))
 ```
 
-The red dots in the plot are pre-treatment group-time average treatment effects .  Here they are provided with 95\% pointwise confidence intervals. These are the estimates that can be interpreted as a pre-test (up to some caveats about multiple hypothesis testing). The blue dots are post-treatment group-time average treatment effects.  Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
+The red dots in the plot are pre-treatment group-time average treatment effects .  Here they are provided with 95\% uniform confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects.  Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
 
 **Event Studies**
 
@@ -169,3 +167,16 @@ ggdid(es)
 ```
 
 The figure here is very similar to the group-time average treatment effects.  Red dots are pre-treatment periods, blue dots are post-treatment periods.  The difference is that the x-axis is in event time.
+
+**Overall Effect of Participating in the Treatment**
+
+The event study above reported an overall effect of participating in the treatment.  This was computed by averaging the average effects computed at each length of exposure.
+
+In many cases, a more general purpose overall treatment effect parameter is give by computing the average treatment effect for each group, and then averaging across groups.  This sort of procedure provides an average treatment effect parameter with avery similar interpretation to the Average Treatment Effect on the Treated (ATT) in the two period and two group case.
+
+To compute this overall average treatment effect parameter, use
+```{r}
+group_effects <- aggte(out, type="group")
+summary(group)
+```
+

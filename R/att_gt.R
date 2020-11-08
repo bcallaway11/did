@@ -174,7 +174,7 @@ att_gt <- function(yname,
   group <- attgt.results$group
   att <- attgt.results$att
   tt <- attgt.results$tt
-  inffunc1 <- attgt.results$inf.func
+  inffunc <- attgt.results$inf.func
 
 
 
@@ -186,7 +186,7 @@ att_gt <- function(yname,
   # note to self: this def. won't work with unbalanced panel,
   # but it is always ignored b/c bstrap has to be true in that case
   n <- dp$n
-  V <- t(inffunc1)%*%inffunc1/n
+  V <- t(inffunc)%*%inffunc/n
   se <- sqrt(diag(V)/n)
 
   # if clustering along another dimension...we require using the
@@ -197,12 +197,12 @@ att_gt <- function(yname,
   }
 
   # Identify entries of main diagonal V that are zero or NA
-  zero_na_sd_entry <- unique( c( base::which(base::diag(V)==0),  base::which(base::is.na(base::diag(V)))))
+  zero_na_sd_entry <- unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
 
   # bootstrap variance matrix
   if (bstrap) {
 
-    bout <- mboot(inffunc1, DIDparams=dp)
+    bout <- mboot(inffunc, DIDparams=dp)
     bres <- bout$bres
     if(length(zero_na_sd_entry)>0) {
       V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
@@ -277,6 +277,6 @@ att_gt <- function(yname,
   }
 
   # Return this list
-  return(MP(group=group, t=tt, att=att, V=V, se=se, c=cval, inffunc=inffunc1, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
+  return(MP(group=group, t=tt, att=att, V=V, se=se, c=cval, inffunc=inffunc, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
 
 }

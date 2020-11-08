@@ -16,7 +16,11 @@ process_attgt <- function(attgt.results.list) {
   nT <- length(unique(unlist(getListElement(attgt.list, "year"))))
   # pick up number of observations from the influence function
   # this will be flexible for panel or repeated cross sections
-  n <- length(inffunc[1,1,]) 
+
+  #n <- length(inffunc[1,1,]) 
+
+  n <- length(inffunc[,1])
+
   # create vectors to hold the results
   group <- c()
   att <- c()
@@ -26,7 +30,8 @@ process_attgt <- function(attgt.results.list) {
   # matrix to hold influence function
   # (note: this is relying on having a balanced panel,
   # which we do currently enforce)
-  inffunc1 <- matrix(0, ncol=nG*nT, nrow=n) 
+
+  #inffunc1 <- matrix(0, ncol=nG*nT, nrow=n) 
 
   # populate result vectors and matrices
   for (f in 1:nG) {
@@ -34,10 +39,10 @@ process_attgt <- function(attgt.results.list) {
       group[i] <- attgt.list[[i]]$group
       tt[i] <- attgt.list[[i]]$year
       att[i] <- attgt.list[[i]]$att
-      inffunc1[,i] <- inffunc[f,s,]
+      #inffunc1[,i] <- inffunc[f,s,]
       i <- i+1
     }
   }
 
-  list(group=group, att=att, tt=tt, inf.func=inffunc1)
+  list(group=group, att=att, tt=tt, inf.func=inffunc)
 }
