@@ -25,6 +25,8 @@
   
   * New *experimental* code for dealing with unbalanced panels
   
+  * Allow for event studies to be computed over subsets of event times
+  
 # did 1.2.3
   * Corrected check problems
 

@@ -23,7 +23,7 @@ library(gridExtra)
 
 ncl <- 10
 time.periods <- 4
-biters <- 250
+biters <- 200
 ```
 
 # Inference Test Results
@@ -90,6 +90,31 @@ mean( bout )
 
 ```{r}
 #-----------------------------------------------------------------------------
+# test inference when dropping some event times
+# should reject about 5\%
+#-----------------------------------------------------------------------------
+time.periods <- 4
+reset.sim()
+te <- 0
+te.e <- 1:time.periods
+
+sim_dyn_pan <- function() {
+  this_data <- build_sim_dataset()
+  res <- att_gt(yname="Y", xformla=~X, data=this_data, tname="period", idname="id",
+                gname="G", est_method="dr")
+  dyn.res <- aggte(res, type="dynamic", min_e=-1)
+  # pre-test
+
+  t_stat <- dyn.res$att[1] / dyn.res$se.egt[1]
+  abs(t_stat) > qnorm(.975)
+}
+
+bout <- pbapply::pbsapply(1:biters, function(b) sim_dyn_pan(), cl=ncl)
+mean(bout)
+```
+
+```{r}
+#-----------------------------------------------------------------------------
 # check inference for unbalanced panel
 # should cover about 95% of the time
 #-----------------------------------------------------------------------------
@@ -100,7 +125,7 @@ te <- 0
 
 sim_unb_pan <- function() {
   this_data <- build_sim_dataset()
-  #this_data <- this_data[sample(1:nrow(this_data),  size=floor(.9*nrow(this_data))),]
+  this_data <- this_data[sample(1:nrow(this_data),  size=floor(.9*nrow(this_data))),]
   res <- att_gt(yname="Y", xformla=~X, data=this_data, tname="period", idname="id",
                 gname="G", est_method="reg", 
                 panel=TRUE, allow_unbalanced_panel=TRUE)

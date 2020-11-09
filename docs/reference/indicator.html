@@ -97,7 +97,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/bcallaway11/did/">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -112,7 +117,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>indicator</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/bcallaway11/did/blob/master/R/conditional_did_pretest.R'><code>R/conditional_did_pretest.R</code></a></small>
     <div class="hidden name"><code>indicator.Rd</code></div>
     </div>
 
@@ -120,7 +125,7 @@
     <p>indicator weighting function</p>
     </div>
 
-    <pre class="usage"><span class='fu'>indicator</span>(<span class='no'>X</span>, <span class='no'>u</span>)</pre>
+    <pre class="usage"><span class='fu'>indicator</span><span class='op'>(</span><span class='va'>X</span>, <span class='va'>u</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -140,10 +145,12 @@
     <p>numeric vector</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span>(<span class='no'>mpdta</span>)
-<span class='no'>dta</span> <span class='kw'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/subset.html'>subset</a></span>(<span class='no'>mpdta</span>, <span class='no'>year</span><span class='kw'>==</span><span class='fl'>2007</span>)
-<span class='no'>X</span> <span class='kw'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.matrix.html'>model.matrix</a></span>(~<span class='no'>lpop</span>, <span class='kw'>data</span><span class='kw'>=</span><span class='no'>dta</span>)
-<span class='no'>X</span> <span class='kw'>&lt;-</span> <span class='fu'>indicator</span>(<span class='no'>X</span>, <span class='no'>X</span>[<span class='fl'>1</span>,])</div></pre>
+    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='va'>dta</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/subset.html'>subset</a></span><span class='op'>(</span><span class='va'>mpdta</span>, <span class='va'>year</span><span class='op'>==</span><span class='fl'>2007</span><span class='op'>)</span>
+<span class='va'>X</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/stats/model.matrix.html'>model.matrix</a></span><span class='op'>(</span><span class='op'>~</span><span class='va'>lpop</span>, data<span class='op'>=</span><span class='va'>dta</span><span class='op'>)</span>
+<span class='va'>X</span> <span class='op'>&lt;-</span> <span class='fu'>indicator</span><span class='op'>(</span><span class='va'>X</span>, <span class='va'>X</span><span class='op'>[</span><span class='fl'>1</span>,<span class='op'>]</span><span class='op'>)</span>
+
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
@@ -159,7 +166,7 @@
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>

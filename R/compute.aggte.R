@@ -13,7 +13,9 @@
 #' @export
 compute.aggte <- function(MP,
                           type = "group",
-                          balance.e = NULL,
+                          balance_e = NULL,
+                          min_e = -Inf,
+                          max_e = Inf,
                           na.rm = FALSE,
                           bstrap = NULL,
                           biters = NULL,
@@ -248,21 +250,19 @@ compute.aggte <- function(MP,
     eseq <- unique(originalt - originalgroup)
     eseq <- eseq[order(eseq)]
 
-    # if the user specifies balance.e, then we are going to
+    # if the user specifies balance_e, then we are going to
     # drop some event times and some groups; if not, we just
     # keep everything (that is what this variable is for)
     include.balanced.gt <- rep(TRUE, length(originalgroup))
 
     # if we balance the sample with resepect to event time
-    if (!is.null(balance.e)) {
-      eseq <- eseq[ (eseq <= balance.e) & (eseq >= balance.e - t2orig(maxT) + t2orig(1))]
-      include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance.e)
+    if (!is.null(balance_e)) {
+      eseq <- eseq[ (eseq <= balance_e) & (eseq >= balance_e - t2orig(maxT) + t2orig(1))]
+      include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance_e)
     }
 
-    # these are not currently used, but if we want to trim
-    # out some lengths of exposure, we could use this
-    # eseq <- eseq[ (eseq >= mine) & (eseq <= maxe) ]
-    # note that they would still be included in estimating overall effects
+    # only looks at some event times 
+     eseq <- eseq[ (eseq >= min_e) & (eseq <= max_e) ]
 
     # compute atts that are specific to each event time
     dynamic.att.e <- sapply(eseq, function(e) {

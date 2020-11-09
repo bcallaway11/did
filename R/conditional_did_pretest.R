@@ -21,33 +21,35 @@
 #'
 #' @return an \code{\link{MP.TEST}} object
 #' @export
-conditional_did_pretest <- function(yname, 
-                   tname,
-                   idname=NULL,
-                   gname,
-                   xformla=NULL,
-                   data,
-                   panel=TRUE,
-                   control_group=c("nevertreated","notyettreated"),
-                   weightsname=NULL,
-                   alp=0.05,
-                   bstrap=FALSE,
-                   cband=FALSE,
-                   biters=1000,
-                   clustervars=NULL,
-                   est_method="dr",
-                   print_details=TRUE,
-                   pl=FALSE,
-                   cores=1) {
-
+conditional_did_pretest <- function(yname,
+                                    tname,
+                                    idname=NULL,
+                                    gname,
+                                    xformla=NULL,
+                                    data,
+                                    panel=TRUE,
+                                    allow_unbalanced_panel=FALSE,
+                                    control_group=c("nevertreated","notyettreated"),
+                                    weightsname=NULL,
+                                    alp=0.05,
+                                    bstrap=TRUE,
+                                    cband=TRUE,
+                                    biters=1000,
+                                    clustervars=NULL,
+                                    est_method="ipw",
+                                    print_details=FALSE,
+                                    pl=FALSE,
+                                    cores=1) {
+  
   # this is a DIDparams object
-  dp <- pre_process_did(yname=yname, 
+  dp <- pre_process_did(yname=yname,
                         tname=tname,
                         idname=idname,
                         gname=gname,
                         xformla=xformla,
                         data=data,
                         panel=panel,
+                        allow_unbalanced_panel=allow_unbalanced_panel,
                         control_group=control_group,
                         weightsname=weightsname,
                         alp=alp,
@@ -59,7 +61,8 @@ conditional_did_pretest <- function(yname,
                         print_details=print_details,
                         pl=pl,
                         cores=cores
-                        )
+  )
+
 
   data <- dp$data
   tlist <- dp$tlist
@@ -78,10 +81,15 @@ conditional_did_pretest <- function(yname,
   # the only option that will work with current setup
   # is indicator so hard-code it here
   weightfun <- indicator
+
+
+  if (allow_unbalanced_panel) {
+    stop("Conditional pre-test not currently supported for unbalanced panel.")
+  }
   
   # create dataset with n observations;
   # recover covariates from this dataset
-  ifelse(panel,
+  ifelse(panel & (allow_unbalanced_panel==FALSE),
          dta <- data[ data[,tname]==tlist[1], ],
          dta <- data
          )
@@ -112,7 +120,7 @@ conditional_did_pretest <- function(yname,
     # set new parameters to pass to call to compute.att_gt
     thisdp <- dp
     thisdp$data <- thisdata
-    thisdp$printdetails <- FALSE
+    thisdp$print_details <- FALSE
 
     # compute the test statistic with call to compute.att_gt
     Jres <- compute.att_gt(thisdp)

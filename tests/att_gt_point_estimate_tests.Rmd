@@ -376,7 +376,7 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               gname="G", est_method="dr", panel=FALSE)
 res
 summary(aggte(res, type="dynamic"))
-summary(aggte(res, type="dynamic", balance.e=1))
+summary(aggte(res, type="dynamic", balance_e=1))
 ```
 
 
@@ -422,7 +422,7 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="notyettreated",
               gname="G", est_method="reg", panel=FALSE)
 res
-summary(aggte(res, type="dynamic", balance.e=0))
+summary(aggte(res, type="dynamic", balance_e=0))
 summary(aggte(res, type="group"))
 summary(aggte(res, type="calendar"))
 ```
@@ -444,6 +444,24 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="nevertreated",
               gname="G", est_method="reg", panel=FALSE)
 res
+```
+
+## Test Dropping Some Event Times
+```{r}
+#-----------------------------------------------------------------------------
+# *test dynamic effects*
+# expected result: te=length of exposure
+#-----------------------------------------------------------------------------
+reset.sim()
+te <- 0
+te.e <- 1:time.periods
+data <- build_sim_dataset()
+
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+              control_group="nevertreated",
+              gname="G", est_method="dr", panel=FALSE)
+res
+summary(aggte(res, type="dynamic", min_e=-1, max_e=1))
 ```
 
 

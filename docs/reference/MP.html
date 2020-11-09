@@ -97,7 +97,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/bcallaway11/did/">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -112,7 +117,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>MP</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/bcallaway11/did/blob/master/R/MP.R'><code>R/MP.R</code></a></small>
     <div class="hidden name"><code>MP.Rd</code></div>
     </div>
 
@@ -120,20 +125,21 @@
     <p>Multi-period objects that hold results for group-time average treatment effects</p>
     </div>
 
-    <pre class="usage"><span class='fu'>MP</span>(
-  <span class='no'>group</span>,
-  <span class='no'>t</span>,
-  <span class='no'>att</span>,
-  <span class='no'>V</span>,
-  <span class='no'>c</span>,
-  <span class='no'>inffunc</span>,
-  <span class='kw'>n</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>W</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>Wpval</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>aggte</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
-  <span class='kw'>DIDparams</span> <span class='kw'>=</span> <span class='kw'>NULL</span>
-)</pre>
+    <pre class="usage"><span class='fu'>MP</span><span class='op'>(</span>
+  <span class='va'>group</span>,
+  <span class='va'>t</span>,
+  <span class='va'>att</span>,
+  <span class='va'>V</span>,
+  <span class='va'>se</span>,
+  <span class='va'>c</span>,
+  <span class='va'>inffunc</span>,
+  n <span class='op'>=</span> <span class='cn'>NULL</span>,
+  W <span class='op'>=</span> <span class='cn'>NULL</span>,
+  Wpval <span class='op'>=</span> <span class='cn'>NULL</span>,
+  aggte <span class='op'>=</span> <span class='cn'>NULL</span>,
+  alp <span class='op'>=</span> <span class='fl'>0.05</span>,
+  DIDparams <span class='op'>=</span> <span class='cn'>NULL</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -154,6 +160,10 @@ period <code>t</code></p></td>
     <tr>
       <th>V</th>
       <td><p>the variance matrix for group-time average treatment effects</p></td>
+    </tr>
+    <tr>
+      <th>se</th>
+      <td><p>standard errors for group-time average treatment effects</p></td>
     </tr>
     <tr>
       <th>c</th>
@@ -212,7 +222,7 @@ of the call to <code><a href='att_gt.html'>att_gt</a></code> or <code><a href='c
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>

@@ -13,9 +13,11 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
+library(did)
+library(ggpubr)
+data(mpdta)
 fldr <- "~/Dropbox/did/R/"
 sapply(paste0(fldr,list.files(fldr)), source)
-remotes::install_github("bcallaway11/DRDID")
 library(BMisc)
 ```
 
@@ -96,7 +98,7 @@ The following is a simplified example of the effect of states increasing their m
 * [More detailed examples are also available](articles/did-basics)
 
 A subset of the data is available in the package and can be loaded by
-```{r}
+```{r eval=FALSE}
   library(did)
   data(mpdta)
 ```
@@ -177,8 +179,10 @@ In many cases, a more general purpose overall treatment effect parameter is give
 To compute this overall average treatment effect parameter, use
 ```{r}
 group_effects <- aggte(out, type="group")
-summary(group)
+summary(group_effects)
 ```
+
+Of particular interest is the `Overall ATT` in the results.  Here, we estimate that increasing the minimum wage decreased teen employment by 3.1\% and the effect is marginally statistically significant.
 
 ## Additional Resources
 

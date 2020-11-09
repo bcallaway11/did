@@ -61,7 +61,7 @@ compute.att_gt <- function(dp) {
     #inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
   } else {
     #inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
-    inffunc <- matrix(data=0, nrow=n, ncol=nG*(nT-1))
+    inffunc <- matrix(data=0, nrow=nrow(data), ncol=nG*(nT-1))
     #inffunc <- Matrix::Matrix(data=0,nrow=nrow(data), ncol=nG*(nT-1), sparse=TRUE)
   }
 

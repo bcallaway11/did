@@ -1,10 +1,10 @@
 pandoc: 1.19.2.4
-pkgdown: 1.5.0
+pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
   did-basics: did-basics.html
   extensions: extensions.html
   multi-period-did: multi-period-did.html
   pre-testing: pre-testing.html
-last_built: 2020-07-04T18:00Z
+last_built: 2020-11-09T16:36Z
 

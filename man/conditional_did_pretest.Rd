@@ -12,15 +12,16 @@ conditional_did_pretest(
   xformla = NULL,
   data,
   panel = TRUE,
+  allow_unbalanced_panel = FALSE,
   control_group = c("nevertreated", "notyettreated"),
   weightsname = NULL,
   alp = 0.05,
-  bstrap = FALSE,
-  cband = FALSE,
+  bstrap = TRUE,
+  cband = TRUE,
   biters = 1000,
   clustervars = NULL,
-  est_method = "dr",
-  print_details = TRUE,
+  est_method = "ipw",
+  print_details = FALSE,
   pl = FALSE,
   cores = 1
 )
@@ -53,6 +54,13 @@ particular point in time.  The default is TRUE.  When
 is using a panel dataset, the variable \code{idname} must
 be set.  When \code{panel=FALSE}, the data is treated
 as repeated cross sections.}
+
+\item{allow_unbalanced_panel}{Whether or not function should
+"balance" the panel with respect to time and id.  The default
+values if \code{FALSE} which means that \code{att_gt} will drop
+all observations where data is not observed in all periods.
+The advantage of this is that the computations are faster
+(sometimes substantially).}
 
 \item{control_group}{Which units to use the control group.
 The default is "nevertreated" which sets the control group

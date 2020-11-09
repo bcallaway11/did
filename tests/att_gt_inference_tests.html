@@ -11,7 +11,7 @@
 
 <meta name="author" content="Brantly Callaway and Pedro H.C. Sant'Anna" />
 
-<meta name="date" content="2020-11-06" />
+<meta name="date" content="2020-11-09" />
 
 <title>Tests that inference procedures are working correctly for ATT(g,t)</title>
 
@@ -189,7 +189,7 @@ summary {
 
 <h1 class="title toc-ignore">Tests that inference procedures are working correctly for ATT(g,t)</h1>
 <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
-<h4 class="date">2020-11-06</h4>
+<h4 class="date">2020-11-09</h4>
 
 </div>
 
@@ -204,7 +204,7 @@ reset.sim()
 te &lt;- 1
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;Wpval&quot;, panel=FALSE), cl=ncl)
 mean( bout )
-#&gt; [1] 0.036
+#&gt; [1] 0.07
 # expect to reject about 5% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check if uniform confidence bands are working
@@ -213,7 +213,7 @@ reset.sim()
 te &lt;- 0
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;cband&quot;, bstrap=TRUE, cband=TRUE, panel=FALSE), cl=ncl)
 mean( bout )
-#&gt; [1] 0.944
+#&gt; [1] 0.93
 # expect to cover all about 95% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check if simple att is working
@@ -234,7 +234,7 @@ bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;dynamic&quot;,
                                                     bstrap=TRUE,
                                                     cband=TRUE), cl=ncl)
 mean(bout)
-#&gt; [1] 0.968
+#&gt; [1] 0.95
 # expect to cover the truth about 95% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check not yet treated as control
@@ -243,8 +243,31 @@ reset.sim()
 te &lt;- 0
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;notyettreated&quot;, control.group=&quot;notyettreated&quot;), cl=ncl)
 mean( bout )
-#&gt; [1] 0.056
+#&gt; [1] 0.045
 # should reject about 5% of the time</code></pre>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# test inference when dropping some event times
+# should reject about 5\%
+#-----------------------------------------------------------------------------
+time.periods &lt;- 4
+reset.sim()
+te &lt;- 0
+te.e &lt;- 1:time.periods
+
+sim_dyn_pan &lt;- function() {
+  this_data &lt;- build_sim_dataset()
+  res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=this_data, tname=&quot;period&quot;, idname=&quot;id&quot;,
+                gname=&quot;G&quot;, est_method=&quot;dr&quot;)
+  dyn.res &lt;- aggte(res, type=&quot;dynamic&quot;, min_e=-1)
+  # pre-test
+
+  t_stat &lt;- dyn.res$att[1] / dyn.res$se.egt[1]
+  abs(t_stat) &gt; qnorm(.975)
+}
+
+bout &lt;- pbapply::pbsapply(1:biters, function(b) sim_dyn_pan(), cl=ncl)
+mean(bout)
+#&gt; [1] 0.04</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check inference for unbalanced panel
 # should cover about 95% of the time
@@ -256,7 +279,7 @@ te &lt;- 0
 
 sim_unb_pan &lt;- function() {
   this_data &lt;- build_sim_dataset()
-  #this_data &lt;- this_data[sample(1:nrow(this_data),  size=floor(.9*nrow(this_data))),]
+  this_data &lt;- this_data[sample(1:nrow(this_data),  size=floor(.9*nrow(this_data))),]
   res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=this_data, tname=&quot;period&quot;, idname=&quot;id&quot;,
                 gname=&quot;G&quot;, est_method=&quot;reg&quot;, 
                 panel=TRUE, allow_unbalanced_panel=TRUE)
@@ -268,7 +291,7 @@ sim_unb_pan &lt;- function() {
 
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim_unb_pan(), cl=ncl)
 mean(bout)
-#&gt; [1] 0.972</code></pre>
+#&gt; [1] 0.95</code></pre>
 </div>
 
 

@@ -9,7 +9,7 @@
 
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
 
-[![](https://img.shields.io/badge/devel%20version-1.3.0-blue.svg)](https://github.com/bcallaway11/did)
+[![](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://github.com/bcallaway11/did)
 
 [![](https://img.shields.io/github/languages/code-size/bcallaway11/did.svg)](https://github.com/bcallaway11/did)
 
@@ -17,10 +17,6 @@
 
 <!-- badges: end -->
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
-**PACKAGE IS CURRENTLT BEING UPDATED. BE AWARE**
-
-
 The **did** package contains tools for computing average treatment effect parameters in a Difference in Differences setup allowing for
 
 -   More than two time periods
@@ -42,21 +38,19 @@ Getting Started
 
 There has been a lot of recent work on DID with multiple time periods. The **did** package implements the ideas in
 
--   Callaway, Brantly, and Pedro HC Sant'Anna. Difference-in-differences with multiple time periods. Available at SSRN 3148250 (2019).
+-   Callaway, Brantly, and Pedro HC Sant'Anna. Difference-in-differences with multiple time periods. Available at SSRN 3148250 (2020).
 
 **Other methodological papers on DID with multiple time periods include**
 
--   Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing. No. w25018. National Bureau of Economic Research, 2018.
+-   Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing. No. w25018. National Bureau of Economic Research, 2019.
 
--   de Chaisemartin, Clément, and Xavier d'Haultfoeuille. Two-way fixed effects estimators with heterogeneous treatment effects. No. w25904. National Bureau of Economic Research, 2019.
+-   De Chaisemartin, Clement, and Xavier d'Haultfoeuille. "Two-way fixed effects estimators with heterogeneous treatment effects." American Economic Review 110.9 (2020): 2964-96.
 
--   Abraham, Sarah, and Liyang Sun. Estimating dynamic treatment effects in event studies with heterogeneous treatment effects. Available at SSRN 3158747 (2018).
+-   Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Available at SSRN 3158747 (2020).
 
 **Higher level discussions of issues are available in**
 
 -   [Our approach to DID with multiple time periods](articles/multi-period-did.html)
-
--   [Baker, Andrew. Difference-in-Differences Methodology. (2019)](https://andrewcbaker.netlify.com/2019/09/25/difference-in-differences-methodology/)
 
 Installation
 ------------
@@ -85,12 +79,6 @@ A subset of the data is available in the package and can be loaded by
 
 ``` r
   library(did)
-#> 
-#> Attaching package: 'did'
-#> The following objects are masked _by_ '.GlobalEnv':
-#> 
-#>     compute.aggte, ggdid, gplot, indicator, MP, mp.spatt,
-#>     mp.spatt.test, MP.TEST
   data(mpdta)
 ```
 
@@ -108,13 +96,12 @@ To estimate group-time average treatment effects, use the **att\_gt** function
 
 ``` r
 out <- att_gt(yname="lemp",
-              first.treat.name="first.treat",
+              gname="first.treat",
               idname="countyreal",
               tname="year",
               xformla=~1,
               data=mpdta,
-              estMethod="reg",
-              printdetails=FALSE,
+              est_method="reg"
               )
 ```
 
@@ -123,27 +110,27 @@ out <- att_gt(yname="lemp",
 ``` r
 summary(out)
 #> 
-#> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2019. 
+#> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2020. 
 #> 
 #> 
 #> 
-#>  group   time          att          se
-#> ------  -----  -----------  ----------
-#>   2004   2004   -0.0105032   0.0232510
-#>   2004   2005   -0.0704232   0.0309848
-#>   2004   2006   -0.1372587   0.0364357
-#>   2004   2007   -0.1008114   0.0343592
-#>   2006   2004    0.0065201   0.0233268
-#>   2006   2005   -0.0027508   0.0195586
-#>   2006   2006   -0.0045946   0.0177552
-#>   2006   2007   -0.0412245   0.0202292
-#>   2007   2004    0.0305067   0.0150336
-#>   2007   2005   -0.0027259   0.0163958
-#>   2007   2006   -0.0310871   0.0178775
-#>   2007   2007   -0.0260544   0.0166554
+#> | group| time|        att|        se|
+#> |-----:|----:|----------:|---------:|
+#> |  2004| 2004| -0.0105032| 0.0236655|
+#> |  2004| 2005| -0.0704232| 0.0321237|
+#> |  2004| 2006| -0.1372587| 0.0379082|
+#> |  2004| 2007| -0.1008114| 0.0366244|
+#> |  2006| 2004|  0.0065201| 0.0221145|
+#> |  2006| 2005| -0.0027508| 0.0191619|
+#> |  2006| 2006| -0.0045946| 0.0166724|
+#> |  2006| 2007| -0.0412245| 0.0201639|
+#> |  2007| 2004|  0.0305067| 0.0162415|
+#> |  2007| 2005| -0.0027259| 0.0159968|
+#> |  2007| 2006| -0.0310871| 0.0187626|
+#> |  2007| 2007| -0.0260544| 0.0171699|
 #> 
 #> 
-#> P-value for pre-test of DID assumption:  0.16812
+#> P-value for pre-test of parallel trends assumption:  0.18204
 ```
 
 This provides estimates of group-time average treatment effects for all groups in all time periods. Group-time average treatment effects are identified when `g <= t` (these are post-treatment time periods for each group), but **summary** reports them even in periods when `g > t` -- these can be used a pre-test for the parallel trends assumption. The `p-value for pre-test of DID assumption` is for a Wald pre-test of the parallel trends assumption. Here the parallel trends assumption would not be rejected at conventional significance levels.
@@ -156,7 +143,7 @@ ggdid(out, ylim=c(-.25,.1))
 
 ![](man/figures/README-unnamed-chunk-8-1.png)
 
-The red dots in the plot are pre-treatment group-time average treatment effects . Here they are provided with 95% pointwise confidence intervals. These are the estimates that can be interpreted as a pre-test (up to some caveats about multiple hypothesis testing). The blue dots are post-treatment group-time average treatment effects. Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
+The red dots in the plot are pre-treatment group-time average treatment effects . Here they are provided with 95% uniform confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects. Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
 
 **Event Studies**
 
@@ -173,28 +160,28 @@ Just like for group-time average treatment effects, these can be summarized and 
 ``` r
 summary(es)
 #> 
-#> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2019. 
+#> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2020. 
 #> 
 #> Overall ATT:  
 #> 
 #> 
-#>         att         se
-#> -----------  ---------
-#>  -0.0772398   0.019965
+#> |        att|        se|
+#> |----------:|---------:|
+#> | -0.0772398| 0.0211097|
 #> 
 #> 
 #> Dynamic Effects:
 #> 
 #> 
-#>  event time          att          se
-#> -----------  -----------  ----------
-#>          -3    0.0305067   0.0150336
-#>          -2   -0.0005631   0.0132916
-#>          -1   -0.0244587   0.0142364
-#>           0   -0.0199318   0.0118264
-#>           1   -0.0509574   0.0168935
-#>           2   -0.1372587   0.0364357
-#>           3   -0.1008114   0.0343592
+#> | event time|        att|        se|
+#> |----------:|----------:|---------:|
+#> |         -3|  0.0305067| 0.0146065|
+#> |         -2| -0.0005631| 0.0127567|
+#> |         -1| -0.0244587| 0.0145721|
+#> |          0| -0.0199318| 0.0122406|
+#> |          1| -0.0509574| 0.0172770|
+#> |          2| -0.1372587| 0.0401527|
+#> |          3| -0.1008114| 0.0365839|
 ```
 
 The column `event time` is for each group relative to when they first participate in the treatment. To give some examples, `event time=0` corresponds to the *on impact* effect, and `event time=-1` is the *effect* in the period before a unit becomes treated (checking that this is equal to 0 is potentially useful as a pre-test).
@@ -208,3 +195,48 @@ ggdid(es)
 ![](man/figures/README-unnamed-chunk-11-1.png)
 
 The figure here is very similar to the group-time average treatment effects. Red dots are pre-treatment periods, blue dots are post-treatment periods. The difference is that the x-axis is in event time.
+
+**Overall Effect of Participating in the Treatment**
+
+The event study above reported an overall effect of participating in the treatment. This was computed by averaging the average effects computed at each length of exposure.
+
+In many cases, a more general purpose overall treatment effect parameter is give by computing the average treatment effect for each group, and then averaging across groups. This sort of procedure provides an average treatment effect parameter with avery similar interpretation to the Average Treatment Effect on the Treated (ATT) in the two period and two group case.
+
+To compute this overall average treatment effect parameter, use
+
+``` r
+group_effects <- aggte(out, type="group")
+summary(group_effects)
+#> 
+#> Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2020. 
+#> 
+#> Overall ATT:  
+#> 
+#> 
+#> |        att|        se|
+#> |----------:|---------:|
+#> | -0.0310183| 0.0125848|
+#> 
+#> 
+#> Group Effects:
+#> 
+#> 
+#> | group|        att|        se|
+#> |-----:|----------:|---------:|
+#> |  2004| -0.0797491| 0.0302426|
+#> |  2006| -0.0229095| 0.0173542|
+#> |  2007| -0.0260544| 0.0175499|
+```
+
+Additional Resources
+--------------------
+
+We have provided several more vignettes that may be helpful for using the **did** package
+
+-   [Getting Started with the did Package](articles/did-basics.html)
+
+-   [Introduction to DID with Multiple Time Periods](articles/multi-period-did.html)
+
+-   [Pre-Testing in a DID Setup using the did Package](articles/pre-testing.html)
+
+-   [Writing Extensions to the did Package](articles/extensions.html)

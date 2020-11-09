@@ -48,7 +48,7 @@
 
 <meta property="og:title" content="Compute Group-Time Average Treatment Effects — compute.att_gt" />
 <meta property="og:description" content="compute.att_gt does the main work for computing
- mutliperiod group-time average treatment effects" />
+ multiperiod group-time average treatment effects" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -98,7 +98,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/bcallaway11/did/">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -113,16 +118,16 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Compute Group-Time Average Treatment Effects</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/bcallaway11/did/blob/master/R/compute.att_gt.R'><code>R/compute.att_gt.R</code></a></small>
     <div class="hidden name"><code>compute.att_gt.Rd</code></div>
     </div>
 
     <div class="ref-description">
     <p><code>compute.att_gt</code> does the main work for computing
- mutliperiod group-time average treatment effects</p>
+ multiperiod group-time average treatment effects</p>
     </div>
 
-    <pre class="usage"><span class='fu'>compute.att_gt</span>(<span class='no'>dp</span>)</pre>
+    <pre class="usage"><span class='fu'>compute.att_gt</span><span class='op'>(</span><span class='va'>dp</span><span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -137,7 +142,7 @@
 
     <p>a list with length equal to the number of groups times the
  number of time periods; each element of the list contains an
- object that contains group-time average treamtent effect as well
+ object that contains group-time average treatment effect as well
  as which group it is for and which time period it is for. It also exports
  the influence function which is used externally to compute
  standard errors.</p>
@@ -157,7 +162,7 @@
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>

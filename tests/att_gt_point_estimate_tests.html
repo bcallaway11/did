@@ -11,7 +11,7 @@
 
 <meta name="author" content="Brantly Callaway and Pedro H.C. Sant'Anna" />
 
-<meta name="date" content="2020-11-06" />
+<meta name="date" content="2020-11-09" />
 
 <title>Fast Test Cases for did Package</title>
 
@@ -189,7 +189,7 @@ summary {
 
 <h1 class="title toc-ignore">Fast Test Cases for did Package</h1>
 <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
-<h4 class="date">2020-11-06</h4>
+<h4 class="date">2020-11-09</h4>
 
 </div>
 
@@ -213,71 +213,71 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9411178| 0.0604894|
-#&gt; |     2|    3|  0.8795617| 0.0596772|
-#&gt; |     2|    4|  0.9289874| 0.0608738|
-#&gt; |     3|    2|  0.0041402| 0.0569597|
-#&gt; |     3|    3|  0.9075211| 0.0550610|
-#&gt; |     3|    4|  0.9541552| 0.0587470|
-#&gt; |     4|    2| -0.0646469| 0.0544430|
-#&gt; |     4|    3| -0.0191239| 0.0587567|
-#&gt; |     4|    4|  1.0383038| 0.0601311|
+#&gt; |     2|    2|  1.0256499| 0.0548854|
+#&gt; |     2|    3|  1.0026525| 0.0544019|
+#&gt; |     2|    4|  0.9029996| 0.0547484|
+#&gt; |     3|    2| -0.0049059| 0.0547047|
+#&gt; |     3|    3|  1.0299217| 0.0546579|
+#&gt; |     3|    4|  0.9856506| 0.0538521|
+#&gt; |     4|    2| -0.0300030| 0.0603610|
+#&gt; |     4|    3|  0.1061095| 0.0588067|
+#&gt; |     4|    4|  0.9597406| 0.0564683|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.44993
+#&gt; P-value for pre-test of parallel trends assumption:  0.27694
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;reg&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9446455| 0.0530216|
-#&gt; |     2|    3|  0.8844395| 0.0526931|
-#&gt; |     2|    4|  0.9156774| 0.0509634|
-#&gt; |     3|    2|  0.0076497| 0.0595628|
-#&gt; |     3|    3|  0.9090643| 0.0536022|
-#&gt; |     3|    4|  0.9387348| 0.0552026|
-#&gt; |     4|    2| -0.0611241| 0.0548922|
-#&gt; |     4|    3| -0.0176763| 0.0551391|
-#&gt; |     4|    4|  1.0206960| 0.0567480|
+#&gt; |     2|    2|  1.0231644| 0.0486767|
+#&gt; |     2|    3|  0.9871262| 0.0532260|
+#&gt; |     2|    4|  0.8875735| 0.0512931|
+#&gt; |     3|    2| -0.0079814| 0.0565760|
+#&gt; |     3|    3|  1.0166679| 0.0545477|
+#&gt; |     3|    4|  0.9724119| 0.0510342|
+#&gt; |     4|    2| -0.0350380| 0.0551890|
+#&gt; |     4|    3|  0.0923220| 0.0540881|
+#&gt; |     4|    4|  0.9594519| 0.0561175|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.45263
+#&gt; P-value for pre-test of parallel trends assumption:  0.40947
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;ipw&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9527723| 0.0586934|
-#&gt; |     2|    3|  0.9025099| 0.0710267|
-#&gt; |     2|    4|  0.9637777| 0.0988382|
-#&gt; |     3|    2|  0.0154710| 0.0611295|
-#&gt; |     3|    3|  0.9185011| 0.0590986|
-#&gt; |     3|    4|  0.9766485| 0.0736320|
-#&gt; |     4|    2| -0.0558417| 0.0620953|
-#&gt; |     4|    3| -0.0105912| 0.0625674|
-#&gt; |     4|    4|  1.0472508| 0.0601616|
+#&gt; |     2|    2|  1.0125755| 0.0620569|
+#&gt; |     2|    3|  0.9765770| 0.0736525|
+#&gt; |     2|    4|  0.8638852| 0.0932380|
+#&gt; |     3|    2| -0.0207306| 0.0660033|
+#&gt; |     3|    3|  1.0141856| 0.0589394|
+#&gt; |     3|    4|  0.9541327| 0.0698950|
+#&gt; |     4|    2| -0.0230936| 0.0682740|
+#&gt; |     4|    3|  0.1129801| 0.0617168|
+#&gt; |     4|    4|  0.9666312| 0.0634355|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.66954
+#&gt; P-value for pre-test of parallel trends assumption:  0.29775
 
 #-----------------------------------------------------------------------------
 # test each estimation method with panel data
@@ -292,71 +292,71 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|       att|        se|
-#&gt; |-----:|----:|---------:|---------:|
-#&gt; |     2|    2| 1.0565289| 0.0753019|
-#&gt; |     2|    3| 0.9849974| 0.0770647|
-#&gt; |     2|    4| 1.0233349| 0.0795194|
-#&gt; |     3|    2| 0.0979172| 0.0739585|
-#&gt; |     3|    3| 0.9824187| 0.0750976|
-#&gt; |     3|    4| 1.0622094| 0.0685393|
-#&gt; |     4|    2| 0.0338679| 0.0695876|
-#&gt; |     4|    3| 0.0001732| 0.0737216|
-#&gt; |     4|    4| 1.0180920| 0.0739815|
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |     2|    2|  1.0497106| 0.0673243|
+#&gt; |     2|    3|  1.0150575| 0.0714119|
+#&gt; |     2|    4|  1.0027051| 0.0693088|
+#&gt; |     3|    2|  0.0839894| 0.0699945|
+#&gt; |     3|    3|  0.9242722| 0.0666752|
+#&gt; |     3|    4|  0.9314438| 0.0690236|
+#&gt; |     4|    2|  0.0169743| 0.0733287|
+#&gt; |     4|    3| -0.0649370| 0.0723251|
+#&gt; |     4|    4|  0.9442317| 0.0701005|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.59472
+#&gt; P-value for pre-test of parallel trends assumption:  0.43346
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;reg&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|       att|        se|
-#&gt; |-----:|----:|---------:|---------:|
-#&gt; |     2|    2| 1.0568875| 0.0679984|
-#&gt; |     2|    3| 0.9869139| 0.0717585|
-#&gt; |     2|    4| 1.0247603| 0.0760482|
-#&gt; |     3|    2| 0.0988096| 0.0707127|
-#&gt; |     3|    3| 0.9859805| 0.0731924|
-#&gt; |     3|    4| 1.0652073| 0.0741558|
-#&gt; |     4|    2| 0.0349864| 0.0695433|
-#&gt; |     4|    3| 0.0045079| 0.0698439|
-#&gt; |     4|    4| 1.0176555| 0.0715521|
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |     2|    2|  1.0491621| 0.0692024|
+#&gt; |     2|    3|  1.0125772| 0.0707892|
+#&gt; |     2|    4|  1.0000089| 0.0689127|
+#&gt; |     3|    2|  0.0829423| 0.0684551|
+#&gt; |     3|    3|  0.9201855| 0.0698800|
+#&gt; |     3|    4|  0.9268351| 0.0706777|
+#&gt; |     4|    2|  0.0153046| 0.0719226|
+#&gt; |     4|    3| -0.0725003| 0.0727979|
+#&gt; |     4|    4|  0.9431113| 0.0645177|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.57557
+#&gt; P-value for pre-test of parallel trends assumption:  0.44828
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;ipw&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|       att|        se|
-#&gt; |-----:|----:|---------:|---------:|
-#&gt; |     2|    2| 1.0663768| 0.0731759|
-#&gt; |     2|    3| 1.0056344| 0.0788646|
-#&gt; |     2|    4| 1.0535271| 0.0805336|
-#&gt; |     3|    2| 0.1037605| 0.0817032|
-#&gt; |     3|    3| 0.9888205| 0.0728060|
-#&gt; |     3|    4| 1.0742809| 0.0785053|
-#&gt; |     4|    2| 0.0553411| 0.0781882|
-#&gt; |     4|    3| 0.0236988| 0.0717979|
-#&gt; |     4|    4| 1.0389270| 0.0760819|
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |     2|    2|  1.0381161| 0.0666811|
+#&gt; |     2|    3|  0.9913283| 0.0737497|
+#&gt; |     2|    4|  0.9654584| 0.0679693|
+#&gt; |     3|    2|  0.0780094| 0.0679430|
+#&gt; |     3|    3|  0.9180137| 0.0727617|
+#&gt; |     3|    4|  0.9182136| 0.0720880|
+#&gt; |     4|    2|  0.0139004| 0.0705948|
+#&gt; |     4|    3| -0.0681541| 0.0747783|
+#&gt; |     4|    4|  0.9406480| 0.0717871|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.52719</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.47922</code></pre>
 </div>
 <div id="tests-with-2-periods" class="section level2">
 <h2>Tests with 2 periods</h2>
@@ -374,78 +374,78 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
 #&gt; No pre-treatment periods to test
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|       att|        se|
-#&gt; |-----:|----:|---------:|---------:|
-#&gt; |     2|    2| 0.9324321| 0.0516909|
+#&gt; | group| time|      att|        se|
+#&gt; |-----:|----:|--------:|---------:|
+#&gt; |     2|    2| 1.044214| 0.0523102|
 
 summary(aggte(res, type=&quot;simple&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |       att|        se|
-#&gt; |---------:|---------:|
-#&gt; | 0.9324321| 0.0514374|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 1.044214| 0.0509609|
 summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |       att|        se|
-#&gt; |---------:|---------:|
-#&gt; | 0.9324321| 0.0514633|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 1.044214| 0.0553785|
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
 #&gt; 
 #&gt; 
-#&gt; | group|       att|        se|
-#&gt; |-----:|---------:|---------:|
-#&gt; |     2| 0.9324321| 0.0535061|
+#&gt; | group|      att|        se|
+#&gt; |-----:|--------:|---------:|
+#&gt; |     2| 1.044214| 0.0542356|
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |       att|        se|
-#&gt; |---------:|---------:|
-#&gt; | 0.9324321| 0.0478382|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 1.044214| 0.0530241|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
 #&gt; 
 #&gt; 
-#&gt; | event time|       att|        se|
-#&gt; |----------:|---------:|---------:|
-#&gt; |          0| 0.9324321| 0.0520482|
+#&gt; | event time|      att|        se|
+#&gt; |----------:|--------:|---------:|
+#&gt; |          0| 1.044214| 0.0551101|
 summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |       att|        se|
-#&gt; |---------:|---------:|
-#&gt; | 0.9324321| 0.0494584|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 1.044214| 0.0522286|
 #&gt; 
 #&gt; 
 #&gt; Time Effects:
 #&gt; 
 #&gt; 
-#&gt; | time|       att|        se|
-#&gt; |----:|---------:|---------:|
-#&gt; |    2| 0.9324321| 0.0531535|</code></pre>
+#&gt; | time|      att|        se|
+#&gt; |----:|--------:|---------:|
+#&gt; |    2| 1.044214| 0.0497779|</code></pre>
 </div>
 <div id="test-no-covariates" class="section level2">
 <h2>Test no covariates</h2>
@@ -463,47 +463,47 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~1, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.7875322| 0.0830173|
-#&gt; |     2|    3|  0.6984606| 0.1023596|
-#&gt; |     2|    4|  0.5627204| 0.1314025|
-#&gt; |     3|    2| -0.0016273| 0.0495274|
-#&gt; |     3|    3|  1.0118660| 0.1043897|
-#&gt; |     3|    4|  1.0940929| 0.1355825|
-#&gt; |     4|    2|  0.0050716| 0.0499269|
-#&gt; |     4|    3| -0.0521188| 0.0490213|
-#&gt; |     4|    4|  0.9301596| 0.1288883|
+#&gt; |     2|    2|  0.9852466| 0.0818452|
+#&gt; |     2|    3|  1.0024546| 0.1037905|
+#&gt; |     2|    4|  1.0613799| 0.1349696|
+#&gt; |     3|    2| -0.0059487| 0.0524567|
+#&gt; |     3|    3|  0.9634283| 0.1116061|
+#&gt; |     3|    4|  0.9687954| 0.1369216|
+#&gt; |     4|    2| -0.0666053| 0.0463697|
+#&gt; |     4|    3|  0.0611544| 0.0480527|
+#&gt; |     4|    4|  1.1857146| 0.1420066|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.72589
+#&gt; P-value for pre-test of parallel trends assumption:  0.51496
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~1, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;reg&quot;)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.7875322| 0.0828367|
-#&gt; |     2|    3|  0.6984606| 0.0999267|
-#&gt; |     2|    4|  0.5627204| 0.1335989|
-#&gt; |     3|    2| -0.0016273| 0.0469712|
-#&gt; |     3|    3|  1.0118660| 0.1068321|
-#&gt; |     3|    4|  1.0940929| 0.1389936|
-#&gt; |     4|    2|  0.0050716| 0.0519575|
-#&gt; |     4|    3| -0.0521188| 0.0485839|
-#&gt; |     4|    4|  0.9301596| 0.1333729|
+#&gt; |     2|    2|  0.9852466| 0.0782082|
+#&gt; |     2|    3|  1.0024546| 0.1046131|
+#&gt; |     2|    4|  1.0613799| 0.1333920|
+#&gt; |     3|    2| -0.0059487| 0.0525242|
+#&gt; |     3|    3|  0.9634283| 0.1084260|
+#&gt; |     3|    4|  0.9687954| 0.1383305|
+#&gt; |     4|    2| -0.0666053| 0.0505664|
+#&gt; |     4|    3|  0.0611544| 0.0505685|
+#&gt; |     4|    4|  1.1857146| 0.1292361|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.73028</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.54422</code></pre>
 </div>
 <div id="test-repeated-cross-sections" class="section level2">
 <h2>Test Repeated Cross Sections</h2>
@@ -519,71 +519,71 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9570850| 0.1528954|
-#&gt; |     2|    3|  0.7740900| 0.1509735|
-#&gt; |     2|    4|  0.8673734| 0.1616225|
-#&gt; |     3|    2| -0.0461893| 0.1630183|
-#&gt; |     3|    3|  0.8393035| 0.1619903|
-#&gt; |     3|    4|  1.0161616| 0.1657603|
-#&gt; |     4|    2|  0.0627590| 0.1698434|
-#&gt; |     4|    3| -0.0097157| 0.1560151|
-#&gt; |     4|    4|  0.7872412| 0.1714098|
+#&gt; |     2|    2|  0.9151974| 0.1748173|
+#&gt; |     2|    3|  1.2269940| 0.1607636|
+#&gt; |     2|    4|  1.2156104| 0.1530311|
+#&gt; |     3|    2| -0.0741366| 0.1623482|
+#&gt; |     3|    3|  1.1385131| 0.1691667|
+#&gt; |     3|    4|  1.0580184| 0.1731775|
+#&gt; |     4|    2| -0.0286079| 0.1812111|
+#&gt; |     4|    3|  0.1299928| 0.1946017|
+#&gt; |     4|    4|  1.1816174| 0.1575212|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.94505
+#&gt; P-value for pre-test of parallel trends assumption:  0.86428
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;reg&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9732974| 0.2009557|
-#&gt; |     2|    3|  0.7971855| 0.2356145|
-#&gt; |     2|    4|  0.7167793| 0.2499876|
-#&gt; |     3|    2| -0.1275293| 0.1926126|
-#&gt; |     3|    3|  0.8668716| 0.2688320|
-#&gt; |     3|    4|  1.1215051| 0.2976898|
-#&gt; |     4|    2|  0.1091504| 0.2101967|
-#&gt; |     4|    3| -0.1122995| 0.2528321|
-#&gt; |     4|    4|  0.6457348| 0.3539431|
+#&gt; | group| time|       att|        se|
+#&gt; |-----:|----:|---------:|---------:|
+#&gt; |     2|    2| 1.1759911| 0.2260765|
+#&gt; |     2|    3| 1.1235509| 0.2480750|
+#&gt; |     2|    4| 1.5062514| 0.2643315|
+#&gt; |     3|    2| 0.0754333| 0.2119323|
+#&gt; |     3|    3| 1.2041756| 0.3066409|
+#&gt; |     3|    4| 0.9285568| 0.3285516|
+#&gt; |     4|    2| 0.0229630| 0.2103069|
+#&gt; |     4|    3| 0.0886530| 0.2744827|
+#&gt; |     4|    4| 1.2011172| 0.3735660|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.80194
+#&gt; P-value for pre-test of parallel trends assumption:  0.9602
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;ipw&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.0230219| 0.2532487|
-#&gt; |     2|    3|  0.9619900| 0.2882755|
-#&gt; |     2|    4|  0.7831819| 0.3511448|
-#&gt; |     3|    2| -0.0442654| 0.2412196|
-#&gt; |     3|    3|  1.0855747| 0.3300843|
-#&gt; |     3|    4|  1.2206167| 0.3814906|
-#&gt; |     4|    2|  0.1682755| 0.2214533|
-#&gt; |     4|    3|  0.1152842| 0.3503187|
-#&gt; |     4|    4|  0.3906657| 0.4400717|
+#&gt; |     2|    2|  1.2843780| 0.4086578|
+#&gt; |     2|    3|  1.1404110| 0.4131702|
+#&gt; |     2|    4|  2.0094623| 0.4363450|
+#&gt; |     3|    2|  0.1309026| 0.3858512|
+#&gt; |     3|    3|  1.0974574| 0.4344727|
+#&gt; |     3|    4|  1.2515188| 0.5303633|
+#&gt; |     4|    2|  0.2387488| 0.5035485|
+#&gt; |     4|    3| -0.0448745| 0.6305179|
+#&gt; |     4|    4|  1.7556422| 0.6041378|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.73427
+#&gt; P-value for pre-test of parallel trends assumption:  0.92628
 
 #-----------------------------------------------------------------------------
 # test repeated cross sections, ipw sims
@@ -597,71 +597,71 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.5799047| 0.2231605|
-#&gt; |     2|    3|  0.7511391| 0.2090378|
-#&gt; |     2|    4|  0.8639996| 0.2092250|
-#&gt; |     3|    2| -0.1598888| 0.2162097|
-#&gt; |     3|    3|  1.0139873| 0.2321006|
-#&gt; |     3|    4|  1.2159563| 0.2110274|
-#&gt; |     4|    2| -0.2944487| 0.2341780|
-#&gt; |     4|    3|  0.1937862| 0.2435285|
-#&gt; |     4|    4|  1.1761104| 0.2166160|
+#&gt; |     2|    2|  1.1710865| 0.2040473|
+#&gt; |     2|    3|  0.6958023| 0.1973674|
+#&gt; |     2|    4|  0.7847213| 0.2019139|
+#&gt; |     3|    2|  0.3928238| 0.2101146|
+#&gt; |     3|    3|  0.6134734| 0.2009428|
+#&gt; |     3|    4|  0.4977217| 0.1758176|
+#&gt; |     4|    2|  0.1245664| 0.2114955|
+#&gt; |     4|    3| -0.2382500| 0.2043234|
+#&gt; |     4|    4|  0.8827014| 0.2112112|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.62577
+#&gt; P-value for pre-test of parallel trends assumption:  0.18572
 
 # reg
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;reg&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.4540344| 0.2536174|
-#&gt; |     2|    3|  0.6507338| 0.3182787|
-#&gt; |     2|    4|  0.5644635| 0.3069674|
-#&gt; |     3|    2| -0.1478434| 0.2440601|
-#&gt; |     3|    3|  1.4550803| 0.3169910|
-#&gt; |     3|    4|  1.5096559| 0.3288905|
-#&gt; |     4|    2| -0.1592256| 0.2504304|
-#&gt; |     4|    3|  0.3283071| 0.3057967|
-#&gt; |     4|    4|  1.0610739| 0.4043532|
+#&gt; |     2|    2|  1.0211401| 0.2669540|
+#&gt; |     2|    3|  0.3723530| 0.2992312|
+#&gt; |     2|    4|  0.4121604| 0.3299481|
+#&gt; |     3|    2|  0.4364109| 0.2755810|
+#&gt; |     3|    3|  0.7848957| 0.3240220|
+#&gt; |     3|    4|  0.4877782| 0.3733058|
+#&gt; |     4|    2|  0.1843219| 0.2401769|
+#&gt; |     4|    3| -0.6812043| 0.3233767|
+#&gt; |     4|    4|  1.1203997| 0.3856232|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.74242
+#&gt; P-value for pre-test of parallel trends assumption:  0.08377
 
 res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;, idname=&quot;id&quot;,
               gname=&quot;G&quot;, est_method=&quot;ipw&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.4584578| 0.3123555|
-#&gt; |     2|    3|  0.9311769| 0.3944284|
-#&gt; |     2|    4|  0.0796123| 0.4129369|
-#&gt; |     3|    2| -0.1578676| 0.2996601|
-#&gt; |     3|    3|  1.7641095| 0.4427152|
-#&gt; |     3|    4|  0.8214522| 0.4455444|
-#&gt; |     4|    2| -0.1697886| 0.3192248|
-#&gt; |     4|    3|  0.6328709| 0.4706273|
-#&gt; |     4|    4| -0.1186211| 0.6072362|
+#&gt; |     2|    2|  1.2384856| 0.2934811|
+#&gt; |     2|    3|  0.5087762| 0.3294938|
+#&gt; |     2|    4|  0.3954203| 0.3957283|
+#&gt; |     3|    2|  0.6953272| 0.3011022|
+#&gt; |     3|    3|  0.6407449| 0.3905618|
+#&gt; |     3|    4|  0.0867325| 0.4542555|
+#&gt; |     4|    2|  0.4683428| 0.3000581|
+#&gt; |     4|    3| -0.8452641| 0.4299110|
+#&gt; |     4|    4|  0.8212938| 0.5160544|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.60625
+#&gt; P-value for pre-test of parallel trends assumption:  0.05142
 
 #-----------------------------------------------------------------------------
 # test repeated cross sections, test aggregations
@@ -676,35 +676,35 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  2.1388295| 0.1630234|
-#&gt; |     2|    3|  3.0492303| 0.1576260|
-#&gt; |     2|    4|  4.2867301| 0.1565050|
-#&gt; |     3|    2|  0.1083457| 0.1628453|
-#&gt; |     3|    3|  1.9110747| 0.1541713|
-#&gt; |     3|    4|  2.8733613| 0.1695437|
-#&gt; |     4|    2| -0.0066445| 0.1702129|
-#&gt; |     4|    3| -0.1474353| 0.1634557|
-#&gt; |     4|    4|  2.1561526| 0.1577746|
+#&gt; |     2|    2|  2.1467935| 0.1499070|
+#&gt; |     2|    3|  3.1310071| 0.1656410|
+#&gt; |     2|    4|  3.9821369| 0.1734924|
+#&gt; |     3|    2| -0.0730590| 0.1656501|
+#&gt; |     3|    3|  2.0546835| 0.1602469|
+#&gt; |     3|    4|  3.1616104| 0.1646085|
+#&gt; |     4|    2|  0.1044575| 0.1563774|
+#&gt; |     4|    3|  0.0004766| 0.1482769|
+#&gt; |     4|    4|  1.9260038| 0.1529849|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.58477
+#&gt; P-value for pre-test of parallel trends assumption:  0.76264
 
 summary(aggte(res))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 2.561863| 0.0825519|
+#&gt; | 2.543861| 0.0862685|
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
@@ -712,19 +712,19 @@ summary(aggte(res))
 #&gt; 
 #&gt; | group|      att|        se|
 #&gt; |-----:|--------:|---------:|
-#&gt; |     2| 3.158263| 0.1275207|
-#&gt; |     3| 2.392218| 0.1501917|
-#&gt; |     4| 2.156153| 0.1469977|
+#&gt; |     2| 3.086646| 0.1327937|
+#&gt; |     3| 2.608147| 0.1470019|
+#&gt; |     4| 1.926004| 0.1660520|
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 3.106538| 0.0970903|
+#&gt; | 3.057067| 0.1001414|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -732,21 +732,21 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt; | event time|        att|        se|
 #&gt; |----------:|----------:|---------:|
-#&gt; |         -2| -0.0066445| 0.1678753|
-#&gt; |         -1| -0.0239505| 0.1045671|
-#&gt; |          0|  2.0710103| 0.0802292|
-#&gt; |          1|  2.9618746| 0.1127576|
-#&gt; |          2|  4.2867301| 0.1629694|
+#&gt; |         -2|  0.1044575| 0.1559585|
+#&gt; |         -1| -0.0356811| 0.1022399|
+#&gt; |          0|  2.0431883| 0.0786534|
+#&gt; |          1|  3.1458755| 0.1086499|
+#&gt; |          2|  3.9821369| 0.1658142|
 summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |      att|       se|
-#&gt; |--------:|--------:|
-#&gt; | 2.561863| 0.083719|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 2.543861| 0.0882019|
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
@@ -754,19 +754,19 @@ summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
 #&gt; | group|      att|        se|
 #&gt; |-----:|--------:|---------:|
-#&gt; |     2| 3.158263| 0.1375946|
-#&gt; |     3| 2.392218| 0.1434292|
-#&gt; |     4| 2.156153| 0.1509032|
+#&gt; |     2| 3.086646| 0.1279081|
+#&gt; |     3| 2.608147| 0.1418726|
+#&gt; |     4| 1.926004| 0.1561838|
 summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |      att|        se|
-#&gt; |--------:|---------:|
-#&gt; | 2.574799| 0.0894365|
+#&gt; |     att|        se|
+#&gt; |-------:|---------:|
+#&gt; | 2.58763| 0.0934431|
 #&gt; 
 #&gt; 
 #&gt; Time Effects:
@@ -774,9 +774,9 @@ summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
 #&gt; | time|      att|        se|
 #&gt; |----:|--------:|---------:|
-#&gt; |    2| 2.138829| 0.1518282|
-#&gt; |    3| 2.480152| 0.1219155|
-#&gt; |    4| 3.105415| 0.1102205|</code></pre>
+#&gt; |    2| 2.146793| 0.1750641|
+#&gt; |    3| 2.592845| 0.1251908|
+#&gt; |    4| 3.023250| 0.1198834|</code></pre>
 </div>
 <div id="unbalanced-panel-approach" class="section level2">
 <h2>Unbalanced Panel Approach</h2>
@@ -797,24 +797,24 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, allow_unbalanced_panel=TRUE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.0529733| 0.0577862|
-#&gt; |     2|    3|  0.9592369| 0.0574278|
-#&gt; |     2|    4|  1.0697260| 0.0586025|
-#&gt; |     3|    2| -0.0434260| 0.0613519|
-#&gt; |     3|    3|  1.0034231| 0.0621020|
-#&gt; |     3|    4|  0.9898846| 0.0529381|
-#&gt; |     4|    2|  0.0751710| 0.0570673|
-#&gt; |     4|    3| -0.0748947| 0.0554168|
-#&gt; |     4|    4|  0.9883307| 0.0548471|
+#&gt; |     2|    2|  1.0379140| 0.0550031|
+#&gt; |     2|    3|  1.0064240| 0.0603074|
+#&gt; |     2|    4|  1.1441564| 0.0608603|
+#&gt; |     3|    2| -0.0294924| 0.0632964|
+#&gt; |     3|    3|  0.9400601| 0.0598139|
+#&gt; |     3|    4|  1.0350756| 0.0570133|
+#&gt; |     4|    2|  0.0678196| 0.0580418|
+#&gt; |     4|    3| -0.0933805| 0.0587022|
+#&gt; |     4|    4|  1.0985637| 0.0568918|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.22042
+#&gt; P-value for pre-test of parallel trends assumption:  0.27635
 
 
 #-----------------------------------------------------------------------------
@@ -829,24 +829,24 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;ipw&quot;, allow_unbalanced_panel=TRUE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.0485802| 0.0737642|
-#&gt; |     2|    3|  1.0091507| 0.0749463|
-#&gt; |     2|    4|  0.9830581| 0.0747461|
-#&gt; |     3|    2|  0.1830662| 0.0754094|
-#&gt; |     3|    3|  0.8063800| 0.0738155|
-#&gt; |     3|    4|  0.8557821| 0.0814584|
-#&gt; |     4|    2| -0.0396267| 0.0823222|
-#&gt; |     4|    3|  0.0099731| 0.0796140|
-#&gt; |     4|    4|  1.0356820| 0.0776479|
+#&gt; |     2|    2|  0.9110009| 0.0717097|
+#&gt; |     2|    3|  1.0183641| 0.0725413|
+#&gt; |     2|    4|  0.9270381| 0.0795976|
+#&gt; |     3|    2|  0.0048731| 0.0770308|
+#&gt; |     3|    3|  0.9725925| 0.0773179|
+#&gt; |     3|    4|  0.9694150| 0.0802832|
+#&gt; |     4|    2| -0.0868255| 0.0829005|
+#&gt; |     4|    3|  0.0892374| 0.0766933|
+#&gt; |     4|    4|  0.9137586| 0.0766291|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.01895
+#&gt; P-value for pre-test of parallel trends assumption:  0.50404
 
 #-----------------------------------------------------------------------------
 # try it with an actual unbalanced panel
@@ -861,24 +861,24 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=TRUE, allow_unbalanced_panel=TRUE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|       att|        se|
-#&gt; |-----:|----:|---------:|---------:|
-#&gt; |     2|    2| 1.0645973| 0.0798874|
-#&gt; |     2|    3| 1.0541331| 0.0795983|
-#&gt; |     2|    4| 0.9488001| 0.0855659|
-#&gt; |     3|    2| 0.0238626| 0.0849278|
-#&gt; |     3|    3| 1.0823482| 0.0841357|
-#&gt; |     3|    4| 0.8896476| 0.0790198|
-#&gt; |     4|    2| 0.0973477| 0.0905194|
-#&gt; |     4|    3| 0.0643667| 0.0825876|
-#&gt; |     4|    4| 0.8015971| 0.0813908|
+#&gt; | group| time|        att|        se|
+#&gt; |-----:|----:|----------:|---------:|
+#&gt; |     2|    2|  0.9205018| 0.0849605|
+#&gt; |     2|    3|  0.8904256| 0.0761811|
+#&gt; |     2|    4|  0.8765590| 0.0788400|
+#&gt; |     3|    2| -0.0308950| 0.0778351|
+#&gt; |     3|    3|  0.9200197| 0.0757255|
+#&gt; |     3|    4|  1.0524569| 0.0773510|
+#&gt; |     4|    2| -0.0941925| 0.0817376|
+#&gt; |     4|    3| -0.0202626| 0.0858717|
+#&gt; |     4|    4|  1.0431965| 0.0852311|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.29337
+#&gt; P-value for pre-test of parallel trends assumption:  0.4776
 
 #-----------------------------------------------------------------------------
 # version that should error
@@ -915,24 +915,24 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.0438353| 0.1791576|
-#&gt; |     2|    3|  1.0725706| 0.2141316|
-#&gt; |     2|    4|  0.9854206| 0.1962276|
-#&gt; |     3|    2|  0.1597712| 0.2098300|
-#&gt; |     3|    3|  1.0245228| 0.2268475|
-#&gt; |     3|    4|  0.8829662| 0.2148177|
-#&gt; |     4|    2| -0.0823568| 0.2077057|
-#&gt; |     4|    3|  0.1143883| 0.2132210|
-#&gt; |     4|    4|  0.8418081| 0.2204312|
+#&gt; | group| time|       att|        se|
+#&gt; |-----:|----:|---------:|---------:|
+#&gt; |     2|    2| 0.9895777| 0.1916475|
+#&gt; |     2|    3| 1.0854423| 0.2387740|
+#&gt; |     2|    4| 1.0825843| 0.1914909|
+#&gt; |     3|    2| 0.0497273| 0.2358837|
+#&gt; |     3|    3| 1.0364250| 0.2179620|
+#&gt; |     3|    4| 1.0310101| 0.2064917|
+#&gt; |     4|    2| 0.0417089| 0.2176401|
+#&gt; |     4|    3| 0.0345957| 0.1948870|
+#&gt; |     4|    4| 1.1798978| 0.2124136|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.83366</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.98164</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # test not yet treated as control in case w/o never treated group
 # Expected result: te=1, p-value for pre-test U[0,1]
@@ -947,19 +947,19 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9986282| 0.0809670|
-#&gt; |     2|    3|  0.9353054| 0.0906168|
-#&gt; |     3|    2| -0.0525781| 0.0864056|
-#&gt; |     3|    3|  1.0267371| 0.0882469|
+#&gt; | group| time|       att|        se|
+#&gt; |-----:|----:|---------:|---------:|
+#&gt; |     2|    2| 0.9569971| 0.0780273|
+#&gt; |     2|    3| 0.9803164| 0.0932395|
+#&gt; |     3|    2| 0.0465172| 0.0874852|
+#&gt; |     3|    3| 0.9807236| 0.0860840|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.53806</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.60634</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # test nevertreated as control in case w/o never treated group
 # Expected result: te=1, p-value for pre-test U[0,1], error on no never treated
@@ -1000,34 +1000,34 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;reg&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  0.9659690| 0.0968264|
-#&gt; |     2|    3|  2.0419190| 0.1067439|
-#&gt; |     2|    4|  3.0015269| 0.1285214|
-#&gt; |     3|    2|  0.0245716| 0.0980917|
-#&gt; |     3|    3|  0.9669550| 0.1279661|
-#&gt; |     3|    4|  1.9605146| 0.1428006|
-#&gt; |     4|    2| -0.0016763| 0.1063067|
-#&gt; |     4|    3|  0.0320989| 0.1364751|
-#&gt; |     4|    4|  0.9591764| 0.1879572|
+#&gt; |     2|    2|  1.0301513| 0.1043903|
+#&gt; |     2|    3|  2.0356465| 0.1185751|
+#&gt; |     2|    4|  3.0109452| 0.1359719|
+#&gt; |     3|    2|  0.0901394| 0.0971811|
+#&gt; |     3|    3|  0.9983674| 0.1383122|
+#&gt; |     3|    4|  1.9121857| 0.1428472|
+#&gt; |     4|    2| -0.0639099| 0.1018480|
+#&gt; |     4|    3|  0.0001919| 0.1382318|
+#&gt; |     4|    4|  1.0024538| 0.1836486|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.98926
+#&gt; P-value for pre-test of parallel trends assumption:  0.66988
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 1.989046| 0.0721512|
+#&gt; | 1.998317| 0.0786835|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -1035,11 +1035,11 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt; | event time|        att|        se|
 #&gt; |----------:|----------:|---------:|
-#&gt; |         -2| -0.0016763| 0.1057945|
-#&gt; |         -1|  0.0282467| 0.0803109|
-#&gt; |          0|  0.9641176| 0.0793500|
-#&gt; |          1|  2.0014934| 0.0987234|
-#&gt; |          2|  3.0015269| 0.1302576|
+#&gt; |         -2| -0.0639099| 0.1028902|
+#&gt; |         -1|  0.0457048| 0.0861901|
+#&gt; |          0|  1.0103343| 0.0846247|
+#&gt; |          1|  1.9736714| 0.0971011|
+#&gt; |          2|  3.0109452| 0.1382380|
 
 
 #-----------------------------------------------------------------------------
@@ -1056,34 +1056,34 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;ipw&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  2.1467793| 0.3591203|
-#&gt; |     2|    3|  1.4392523| 0.3680550|
-#&gt; |     2|    4|  1.7016497| 0.4338616|
-#&gt; |     3|    2|  0.0937302| 0.3010590|
-#&gt; |     3|    3|  5.2521050| 0.4526752|
-#&gt; |     3|    4|  5.7185533| 0.5275465|
-#&gt; |     4|    2| -0.2933301| 0.3376946|
-#&gt; |     4|    3| -0.7141741| 0.4578361|
-#&gt; |     4|    4| 12.6491554| 0.6471124|
+#&gt; |     2|    2|  2.3667988| 0.3399562|
+#&gt; |     2|    3|  1.9350635| 0.4044893|
+#&gt; |     2|    4|  1.9386626| 0.4264599|
+#&gt; |     3|    2|  0.0325176| 0.3057516|
+#&gt; |     3|    3|  5.4256057| 0.4786715|
+#&gt; |     3|    4|  6.1739886| 0.5292138|
+#&gt; |     4|    2|  0.1173829| 0.3068820|
+#&gt; |     4|    3| -0.4438935| 0.4770605|
+#&gt; |     4|    4| 12.1393325| 0.7015609|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.0767
+#&gt; P-value for pre-test of parallel trends assumption:  0.82087
 summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 6.695507| 0.2828364|
+#&gt; | 6.656841| 0.2835748|
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
@@ -1091,9 +1091,9 @@ summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
 #&gt; | group|       att|        se|
 #&gt; |-----:|---------:|---------:|
-#&gt; |     2|  1.762560| 0.3149225|
-#&gt; |     3|  5.485329| 0.4139849|
-#&gt; |     4| 12.649155| 0.6195998|
+#&gt; |     2|  2.080175| 0.3319018|
+#&gt; |     3|  5.799797| 0.4501781|
+#&gt; |     4| 12.139333| 0.7197829|
 
 
 #-----------------------------------------------------------------------------
@@ -1110,34 +1110,34 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.8824015| 0.1566591|
-#&gt; |     2|    3|  2.8431964| 0.1459038|
-#&gt; |     2|    4|  3.6889655| 0.1576496|
-#&gt; |     3|    2| -0.0005132| 0.1522709|
-#&gt; |     3|    3|  2.9089415| 0.1523175|
-#&gt; |     3|    4|  3.9590921| 0.1527723|
-#&gt; |     4|    2| -0.0365190| 0.1504809|
-#&gt; |     4|    3|  0.0255006| 0.1593112|
-#&gt; |     4|    4|  3.8437255| 0.1480935|
+#&gt; |     2|    2|  2.0601448| 0.1553677|
+#&gt; |     2|    3|  2.8208320| 0.1612116|
+#&gt; |     2|    4|  3.9632756| 0.1540170|
+#&gt; |     3|    2| -0.2041342| 0.1438046|
+#&gt; |     3|    3|  2.8494932| 0.1634638|
+#&gt; |     3|    4|  4.0611433| 0.1574047|
+#&gt; |     4|    2| -0.0417942| 0.1650724|
+#&gt; |     4|    3| -0.0207388| 0.1485401|
+#&gt; |     4|    4|  3.9891825| 0.1594055|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.99554
+#&gt; P-value for pre-test of parallel trends assumption:  0.56863
 summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 2.863022| 0.0836861|
+#&gt; | 2.966614| 0.0897627|
 #&gt; 
 #&gt; 
 #&gt; Time Effects:
@@ -1145,9 +1145,9 @@ summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
 #&gt; | time|      att|        se|
 #&gt; |----:|--------:|---------:|
-#&gt; |    2| 1.882402| 0.1482608|
-#&gt; |    3| 2.876069| 0.1151470|
-#&gt; |    4| 3.830594| 0.1011037|
+#&gt; |    2| 2.060145| 0.1502368|
+#&gt; |    3| 2.835163| 0.1268814|
+#&gt; |    4| 4.004534| 0.1101653|
 
 #-----------------------------------------------------------------------------
 # test balancing with respect to length of exposure
@@ -1164,34 +1164,34 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  2.9149450| 0.1029630|
-#&gt; |     2|    3|  3.9602281| 0.1001014|
-#&gt; |     2|    4|  4.9585735| 0.1024549|
-#&gt; |     3|    2| -0.0256675| 0.0809690|
-#&gt; |     3|    3|  7.0517495| 0.1238216|
-#&gt; |     3|    4|  8.0327809| 0.1189507|
-#&gt; |     4|    2| -0.0315616| 0.0812464|
-#&gt; |     4|    3| -0.0380338| 0.0812081|
-#&gt; |     4|    4| 13.0161418| 0.1550393|
+#&gt; |     2|    2|  3.0556745| 0.1007635|
+#&gt; |     2|    3|  3.9904126| 0.1011609|
+#&gt; |     2|    4|  4.8951712| 0.0988834|
+#&gt; |     3|    2| -0.0055168| 0.0822162|
+#&gt; |     3|    3|  7.0350136| 0.1254332|
+#&gt; |     3|    4|  8.0110801| 0.1221147|
+#&gt; |     4|    2|  0.1204426| 0.0823052|
+#&gt; |     4|    3| -0.1378551| 0.0799841|
+#&gt; |     4|    4| 12.7540730| 0.1545980|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.86178
+#&gt; P-value for pre-test of parallel trends assumption:  0.25417
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 6.183689| 0.0609323|
+#&gt; | 6.165609| 0.0637264|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -1199,21 +1199,21 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt; | event time|        att|        se|
 #&gt; |----------:|----------:|---------:|
-#&gt; |         -2| -0.0315616| 0.0786380|
-#&gt; |         -1| -0.0317419| 0.0530435|
-#&gt; |          0|  7.5969927| 0.0773216|
-#&gt; |          1|  5.9954999| 0.0824721|
-#&gt; |          2|  4.9585735| 0.1032382|
-summary(aggte(res, type=&quot;dynamic&quot;, balance.e=1))
+#&gt; |         -2|  0.1204426| 0.0872591|
+#&gt; |         -1| -0.0734815| 0.0519559|
+#&gt; |          0|  7.6435957| 0.0803271|
+#&gt; |          1|  5.9580598| 0.0794045|
+#&gt; |          2|  4.8951712| 0.0930516|
+summary(aggte(res, type=&quot;dynamic&quot;, balance_e=1))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 5.488913| 0.0694382|
+#&gt; | 5.480578| 0.0646598|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -1221,9 +1221,9 @@ summary(aggte(res, type=&quot;dynamic&quot;, balance.e=1))
 #&gt; 
 #&gt; | event time|        att|        se|
 #&gt; |----------:|----------:|---------:|
-#&gt; |         -1| -0.0256675| 0.0729890|
-#&gt; |          0|  4.9823268| 0.0762982|
-#&gt; |          1|  5.9954999| 0.0797182|</code></pre>
+#&gt; |         -1| -0.0055168| 0.0817076|
+#&gt; |          0|  5.0030963| 0.0780259|
+#&gt; |          1|  5.9580598| 0.0819908|</code></pre>
 </div>
 <div id="test-unequally-spaced-periods" class="section level2">
 <h2>Test Unequally Spaced Periods</h2>
@@ -1245,34 +1245,34 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;reg&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.0216180| 0.1374133|
-#&gt; |     2|    5|  3.9939993| 0.2039231|
-#&gt; |     2|    7|  5.9510459| 0.2414513|
-#&gt; |     5|    2|  0.0256422| 0.1346163|
-#&gt; |     5|    5|  0.9774190| 0.2444351|
-#&gt; |     5|    7|  2.9729573| 0.2961349|
-#&gt; |     7|    2| -0.0793909| 0.1338028|
-#&gt; |     7|    5|  0.0943697| 0.2460444|
-#&gt; |     7|    7|  0.8672013| 0.3513266|
+#&gt; |     2|    2|  0.9816357| 0.1384932|
+#&gt; |     2|    5|  4.0650894| 0.2173812|
+#&gt; |     2|    7|  5.9441305| 0.2558003|
+#&gt; |     5|    2|  0.1036705| 0.1378187|
+#&gt; |     5|    5|  1.0058932| 0.2492725|
+#&gt; |     5|    7|  3.0092864| 0.3129034|
+#&gt; |     7|    2|  0.0480386| 0.1347603|
+#&gt; |     7|    5| -0.0059472| 0.2458315|
+#&gt; |     7|    7|  0.9735550| 0.3877779|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.92622
+#&gt; P-value for pre-test of parallel trends assumption:  0.87127
 summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |      att|       se|
-#&gt; |--------:|--------:|
-#&gt; | 3.468804| 0.137814|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 3.501404| 0.1425255|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -1280,53 +1280,53 @@ summary(aggte(res, type=&quot;dynamic&quot;))
 #&gt; 
 #&gt; | event time|        att|        se|
 #&gt; |----------:|----------:|---------:|
-#&gt; |         -5| -0.0793909| 0.1271196|
-#&gt; |         -3|  0.0256422| 0.1295825|
-#&gt; |         -2|  0.0943697| 0.2454807|
-#&gt; |          0|  0.9572120| 0.1396415|
-#&gt; |          2|  2.9729573| 0.3034144|
-#&gt; |          3|  3.9939993| 0.2251539|
-#&gt; |          5|  5.9510459| 0.2642389|
+#&gt; |         -5|  0.0480386| 0.1427361|
+#&gt; |         -3|  0.1036705| 0.1350966|
+#&gt; |         -2| -0.0059472| 0.2574567|
+#&gt; |          0|  0.9871113| 0.1490282|
+#&gt; |          2|  3.0092864| 0.2820383|
+#&gt; |          3|  4.0650894| 0.2116460|
+#&gt; |          5|  5.9441305| 0.2666964|
 summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 2.204226| 0.1581438|
+#&gt; | 2.227717| 0.1657764|
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
 #&gt; 
 #&gt; 
-#&gt; | group|       att|        se|
-#&gt; |-----:|---------:|---------:|
-#&gt; |     2| 3.6555544| 0.1739226|
-#&gt; |     5| 1.9751881| 0.2226348|
-#&gt; |     7| 0.8672013| 0.3506180|
+#&gt; | group|      att|        se|
+#&gt; |-----:|--------:|---------:|
+#&gt; |     2| 3.663619| 0.1678790|
+#&gt; |     5| 2.007590| 0.2221333|
+#&gt; |     7| 0.973555| 0.3939254|
 summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
-#&gt; |      att|      se|
-#&gt; |--------:|-------:|
-#&gt; | 2.257021| 0.11832|
+#&gt; |      att|        se|
+#&gt; |--------:|---------:|
+#&gt; | 2.275373| 0.1104873|
 #&gt; 
 #&gt; 
 #&gt; Time Effects:
 #&gt; 
 #&gt; 
-#&gt; | time|      att|        se|
-#&gt; |----:|--------:|---------:|
-#&gt; |    2| 1.021618| 0.1316520|
-#&gt; |    5| 2.485709| 0.1524419|
-#&gt; |    7| 3.263735| 0.1884414|</code></pre>
+#&gt; | time|       att|        se|
+#&gt; |----:|---------:|---------:|
+#&gt; |    2| 0.9816357| 0.1328950|
+#&gt; |    5| 2.5354913| 0.1638064|
+#&gt; |    7| 3.3089907| 0.1848371|</code></pre>
 </div>
 <div id="test-unequally-spaced-first-treatment-timing" class="section level2">
 <h2>Test Unequally Spaced First Treatment Timing</h2>
@@ -1347,33 +1347,33 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;reg&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     3|    2| -0.0093064| 0.1245680|
-#&gt; |     3|    3|  1.0171632| 0.1562905|
-#&gt; |     3|    4|  2.0405355| 0.1627467|
-#&gt; |     3|    5|  2.9975493| 0.1788148|
-#&gt; |     5|    2|  0.0038019| 0.1044493|
-#&gt; |     5|    3|  0.0459636| 0.1510362|
-#&gt; |     5|    4| -0.0121842| 0.1882479|
-#&gt; |     5|    5|  1.0145250| 0.2475816|
+#&gt; |     3|    2|  0.0393614| 0.1305069|
+#&gt; |     3|    3|  1.0055062| 0.1527879|
+#&gt; |     3|    4|  1.9472380| 0.1736195|
+#&gt; |     3|    5|  3.0065149| 0.1780433|
+#&gt; |     5|    2| -0.0371067| 0.1091588|
+#&gt; |     5|    3|  0.0462368| 0.1417886|
+#&gt; |     5|    4| -0.0129854| 0.1860380|
+#&gt; |     5|    5|  1.0310132| 0.2327041|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.99657
-summary(aggte(res, type=&quot;dynamic&quot;, balance.e=0))
+#&gt; P-value for pre-test of parallel trends assumption:  0.99278
+summary(aggte(res, type=&quot;dynamic&quot;, balance_e=0))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 1.015812| 0.1435105|
+#&gt; | 1.018268| 0.1336588|
 #&gt; 
 #&gt; 
 #&gt; Dynamic Effects:
@@ -1381,20 +1381,20 @@ summary(aggte(res, type=&quot;dynamic&quot;, balance.e=0))
 #&gt; 
 #&gt; | event time|        att|        se|
 #&gt; |----------:|----------:|---------:|
-#&gt; |         -3|  0.0038019| 0.1146128|
-#&gt; |         -2|  0.0459636| 0.1489297|
-#&gt; |         -1| -0.0107805| 0.1129684|
-#&gt; |          0|  1.0158118| 0.1395175|
+#&gt; |         -3| -0.0371067| 0.1089709|
+#&gt; |         -2|  0.0462368| 0.1335481|
+#&gt; |         -1|  0.0131719| 0.1098171|
+#&gt; |          0|  1.0182676| 0.1341181|
 summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 1.504197| 0.1429611|
+#&gt; | 1.508421| 0.1401577|
 #&gt; 
 #&gt; 
 #&gt; Group Effects:
@@ -1402,18 +1402,18 @@ summary(aggte(res, type=&quot;group&quot;))
 #&gt; 
 #&gt; | group|      att|        se|
 #&gt; |-----:|--------:|---------:|
-#&gt; |     3| 2.018416| 0.1353327|
-#&gt; |     5| 1.014525| 0.2371104|
+#&gt; |     3| 1.986420| 0.1455977|
+#&gt; |     5| 1.031013| 0.2174783|
 summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; Overall ATT:  
 #&gt; 
 #&gt; 
 #&gt; |      att|        se|
 #&gt; |--------:|---------:|
-#&gt; | 1.687912| 0.1293841|
+#&gt; | 1.657169| 0.1168528|
 #&gt; 
 #&gt; 
 #&gt; Time Effects:
@@ -1421,9 +1421,9 @@ summary(aggte(res, type=&quot;calendar&quot;))
 #&gt; 
 #&gt; | time|      att|        se|
 #&gt; |----:|--------:|---------:|
-#&gt; |    3| 1.017163| 0.1598469|
-#&gt; |    4| 2.040535| 0.1718180|
-#&gt; |    5| 2.006037| 0.1535822|</code></pre>
+#&gt; |    3| 1.005506| 0.1642056|
+#&gt; |    4| 1.947238| 0.1690617|
+#&gt; |    5| 2.018764| 0.1551988|</code></pre>
 </div>
 <div id="test-some-units-treated-in-first-period" class="section level2">
 <h2>Test Some Units Treated in First Period</h2>
@@ -1443,19 +1443,74 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=&quot;reg&quot;, panel=FALSE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|       att|        se|
 #&gt; |-----:|----:|---------:|---------:|
-#&gt; |     3|    3| 1.0332481| 0.1293235|
-#&gt; |     3|    4| 1.0358326| 0.1533788|
-#&gt; |     4|    3| 0.0026560| 0.1391064|
-#&gt; |     4|    4| 0.9830625| 0.1699657|
+#&gt; |     3|    3| 0.9713945| 0.1380706|
+#&gt; |     3|    4| 1.0989331| 0.1505980|
+#&gt; |     4|    3| 0.0374323| 0.1300313|
+#&gt; |     4|    4| 1.0196570| 0.1706806|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.98446</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.77717</code></pre>
+</div>
+<div id="test-dropping-some-event-times" class="section level2">
+<h2>Test Dropping Some Event Times</h2>
+<pre class="r"><code>#-----------------------------------------------------------------------------
+# *test dynamic effects*
+# expected result: te=length of exposure
+#-----------------------------------------------------------------------------
+reset.sim()
+te &lt;- 0
+te.e &lt;- 1:time.periods
+data &lt;- build_sim_dataset()
+
+res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&quot;,
+              control_group=&quot;nevertreated&quot;,
+              gname=&quot;G&quot;, est_method=&quot;dr&quot;, panel=FALSE)
+res
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
+#&gt; 
+#&gt; 
+#&gt; 
+#&gt; | group| time|       att|        se|
+#&gt; |-----:|----:|---------:|---------:|
+#&gt; |     2|    2| 0.9444164| 0.0827749|
+#&gt; |     2|    3| 1.9553211| 0.0845958|
+#&gt; |     2|    4| 3.0393418| 0.0772749|
+#&gt; |     3|    2| 0.0511098| 0.0828445|
+#&gt; |     3|    3| 0.9882213| 0.0852481|
+#&gt; |     3|    4| 1.9533190| 0.0808322|
+#&gt; |     4|    2| 0.0123607| 0.0807742|
+#&gt; |     4|    3| 0.0931276| 0.0858104|
+#&gt; |     4|    4| 0.8951112| 0.0755044|
+#&gt; 
+#&gt; 
+#&gt; P-value for pre-test of parallel trends assumption:  0.48876
+summary(aggte(res, type=&quot;dynamic&quot;, min_e=-1, max_e=1))
+#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
+#&gt; 
+#&gt; Overall ATT:  
+#&gt; 
+#&gt; 
+#&gt; |     att|        se|
+#&gt; |-------:|---------:|
+#&gt; | 1.44815| 0.0427443|
+#&gt; 
+#&gt; 
+#&gt; Dynamic Effects:
+#&gt; 
+#&gt; 
+#&gt; | event time|       att|        se|
+#&gt; |----------:|---------:|---------:|
+#&gt; |         -1| 0.0725889| 0.0487533|
+#&gt; |          0| 0.9419396| 0.0418868|
+#&gt; |          1| 1.9543615| 0.0559630|</code></pre>
 </div>
 <div id="misc-error-handling-tests" class="section level2">
 <h2>Misc error handling tests</h2>
@@ -1498,24 +1553,24 @@ res &lt;- att_gt(yname=&quot;Y&quot;, xformla=~X, data=data, tname=&quot;period&
               gname=&quot;G&quot;, est_method=DRDID::drdid_imp_panel, panel=TRUE)
 res
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  &quot;Difference-in-Differences with Multiple Time Periods.&quot; Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |     2|    2|  1.0767137| 0.0581438|
-#&gt; |     2|    3|  1.0772842| 0.0563235|
-#&gt; |     2|    4|  1.1111261| 0.0578493|
-#&gt; |     3|    2|  0.0269933| 0.0579511|
-#&gt; |     3|    3|  0.9775461| 0.0557560|
-#&gt; |     3|    4|  1.0624961| 0.0625534|
-#&gt; |     4|    2| -0.0625187| 0.0577376|
-#&gt; |     4|    3|  0.1387415| 0.0586729|
-#&gt; |     4|    4|  1.0161419| 0.0583028|
+#&gt; |     2|    2|  1.0336920| 0.0612131|
+#&gt; |     2|    3|  1.1489702| 0.0551562|
+#&gt; |     2|    4|  1.0486803| 0.0538875|
+#&gt; |     3|    2| -0.0190180| 0.0573797|
+#&gt; |     3|    3|  1.0660838| 0.0579586|
+#&gt; |     3|    4|  1.0549023| 0.0614621|
+#&gt; |     4|    2|  0.0377188| 0.0576203|
+#&gt; |     4|    3|  0.0061596| 0.0583017|
+#&gt; |     4|    4|  0.9672593| 0.0578023|
 #&gt; 
 #&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.06744</code></pre>
+#&gt; P-value for pre-test of parallel trends assumption:  0.7776</code></pre>
 </div>
 </div>
 

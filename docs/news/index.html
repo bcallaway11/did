@@ -96,7 +96,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/bcallaway11/did/">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -111,7 +116,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
       <h1 data-toc-skip>Changelog <small></small></h1>
-      
+      <small>Source: <a href='https://github.com/bcallaway11/did/blob/master/NEWS.md'><code>NEWS.md</code></a></small>
     </div>
 
     <div id="did-2-0-0" class="section level1">
@@ -125,12 +130,13 @@
 <li><p>Deprecated <strong>mp.spatt</strong> function and replaced it with <strong>conditional_did_pretest</strong> function</p></li>
 <li><p>New <strong>estMethod</strong> parameter. Can call any function for 2x2 DID in the <strong>DRDID</strong> package (default is now doubly robust estimation, but inverse probability weights and regression estimators are also supported) as well as provide custom 2x2 DID estimators</p></li>
 <li><p>Bug fixes for including groups that are <em>already treated</em> in the first period</p></li>
-<li><p>Allow for user to select control group â either <em>never treated</em> or <em>not yet treated</em></p></li>
+<li><p>Allow for user to select control group – either <em>never treated</em> or <em>not yet treated</em></p></li>
 <li><p>Add functionality for uniform confidence bands for all aggregated treatment effect parameters</p></li>
 <li><p>Introduced dynamic effects in pre-treatment periods. These allow for users to report event study plots that are common that include pre-treatment periods and are common in applied work. The event study plots in the <strong>did</strong> package are robust to selective treatment timing (unlike standard regression event study plots)</p></li>
 <li><p>Support for using repeated cross sections data instead of panel data is much improved</p></li>
 <li><p>Support for using sampling weights is much improved</p></li>
 <li><p>Big improvement to website, vignettes, and code documentation</p></li>
+<li><p>New <em>experimental</em> code for dealing with unbalanced panels</p></li>
 </ul>
 </div>
     <div id="did-1-2-3" class="section level1">
@@ -220,7 +226,7 @@
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>

@@ -98,7 +98,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/bcallaway11/did/">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -113,7 +118,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Pre-Test of Conditional Parallel Trends Assumption</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/bcallaway11/did/blob/master/R/conditional_did_pretest.R'><code>R/conditional_did_pretest.R</code></a></small>
     <div class="hidden name"><code>conditional_did_pretest.Rd</code></div>
     </div>
 
@@ -122,26 +127,27 @@
  assumpition holding in all pre-treatment time periods for all groups</p>
     </div>
 
-    <pre class="usage"><span class='fu'>conditional_did_pretest</span>(
-  <span class='no'>yname</span>,
-  <span class='no'>tname</span>,
-  <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='no'>first.treat.name</span>,
-  <span class='kw'>xformla</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='no'>data</span>,
-  <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>control.group</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='st'>"nevertreated"</span>, <span class='st'>"notyettreated"</span>),
-  <span class='kw'>weightsname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
-  <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
-  <span class='kw'>clustervars</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>estMethod</span> <span class='kw'>=</span> <span class='st'>"dr"</span>,
-  <span class='kw'>printdetails</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>1</span>
-)</pre>
+    <pre class="usage"><span class='fu'>conditional_did_pretest</span><span class='op'>(</span>
+  <span class='va'>yname</span>,
+  <span class='va'>tname</span>,
+  idname <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>gname</span>,
+  xformla <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>data</span>,
+  panel <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  allow_unbalanced_panel <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  control_group <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nevertreated"</span>, <span class='st'>"notyettreated"</span><span class='op'>)</span>,
+  weightsname <span class='op'>=</span> <span class='cn'>NULL</span>,
+  alp <span class='op'>=</span> <span class='fl'>0.05</span>,
+  bstrap <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  cband <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  biters <span class='op'>=</span> <span class='fl'>1000</span>,
+  clustervars <span class='op'>=</span> <span class='cn'>NULL</span>,
+  est_method <span class='op'>=</span> <span class='st'>"ipw"</span>,
+  print_details <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  pl <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  cores <span class='op'>=</span> <span class='fl'>1</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -159,7 +165,7 @@
       <td><p>The individual (cross-sectional unit) id name</p></td>
     </tr>
     <tr>
-      <th>first.treat.name</th>
+      <th>gname</th>
       <td><p>The name of the variable in <code>data</code> that
 contains the first period when a particular observation is treated.
 This should be a positive number for all observations in treated groups.
@@ -189,7 +195,16 @@ be set.  When <code>panel=FALSE</code>, the data is treated
 as repeated cross sections.</p></td>
     </tr>
     <tr>
-      <th>control.group</th>
+      <th>allow_unbalanced_panel</th>
+      <td><p>Whether or not function should
+"balance" the panel with respect to time and id.  The default
+values if <code>FALSE</code> which means that <code>att_gt</code> will drop
+all observations where data is not observed in all periods.
+The advantage of this is that the computations are faster
+(sometimes substantially).</p></td>
+    </tr>
+    <tr>
+      <th>control_group</th>
       <td><p>Which units to use the control group.
 The default is "nevertreated" which sets the control group
 to be the group of units that never participate in the
@@ -241,7 +256,7 @@ must be the same as idname which allows for clustering at the individual
 level.</p></td>
     </tr>
     <tr>
-      <th>estMethod</th>
+      <th>est_method</th>
       <td><p>the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the <code>DRDID</code> package.  Other built-in methods
 include "ipw" for inverse probability weighting and "reg" for
@@ -262,12 +277,13 @@ the only two that are required. <code>estMethod</code> is only used
 if covariates are included.</p></td>
     </tr>
     <tr>
-      <th>printdetails</th>
-      <td><p>Boolean for showing detailed results or not</p></td>
+      <th>print_details</th>
+      <td><p>Whether or not to show details/progress of computations.
+Default is <code>FALSE</code>.</p></td>
     </tr>
     <tr>
       <th>pl</th>
-      <td><p>Boolean for whether or not to use parallel processing
+      <td><p>Whether or not to use parallel processing
 (not implemented yet)</p></td>
     </tr>
     <tr>
@@ -285,16 +301,18 @@ if covariates are included.</p></td>
     <p>Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2019).</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='kw'>if</span> (<span class='fl'>FALSE</span>) {
-<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span>(<span class='no'>mpdta</span>)
-<span class='no'>pre.test</span> <span class='kw'>&lt;-</span> <span class='fu'>conditional_did_pretest</span>(<span class='kw'>yname</span><span class='kw'>=</span><span class='st'>"lemp"</span>,
-                                    <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
-                                    <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>,
-                                    <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-                                    <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>,
-                                    <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>)
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>pre.test</span>)
-}</div></pre>
+    <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='va'>pre.test</span> <span class='op'>&lt;-</span> <span class='fu'>conditional_did_pretest</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+                                    tname<span class='op'>=</span><span class='st'>"year"</span>,
+                                    idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
+                                    gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
+                                    xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,
+                                    data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>pre.test</span><span class='op'>)</span>
+<span class='op'>}</span>
+
+</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
@@ -310,7 +328,7 @@ if covariates are included.</p></td>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>

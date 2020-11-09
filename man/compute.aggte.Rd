@@ -7,7 +7,9 @@
 compute.aggte(
   MP,
   type = "group",
-  balance.e = NULL,
+  balance_e = NULL,
+  min_e = -Inf,
+  max_e = Inf,
   na.rm = FALSE,
   bstrap = NULL,
   biters = NULL,
@@ -33,12 +35,20 @@ the overall effect averages the effect across different groups); and
 time periods; here the overall effect averages the effect across each
 time period).}
 
-\item{balance.e}{If set (and if one computes dynamic effects), it balances
+\item{balance_e}{If set (and if one computes dynamic effects), it balances
 the sample with respect to event time.  For example, if \code{balance.e=2},
 \code{aggte} will drop groups that are not exposed to treatment for
 at least three periods. (the initial period when \code{e=0} as well as the
 next two periods when \code{e=1} and the \code{e=2}).  This ensures that
 the composition of groups does not change when event time changes.}
+
+\item{min_e}{For event studies, this is the smallest event time to compute
+dynamic effects for.  By default, \code{min_e = -Inf} so that effects at
+all lengths of exposure are computed.}
+
+\item{max_e}{For event studies, this is the largest event time to compute
+dynamic effects for.  By default, \code{max_e = Inf} so that effects at
+all lengths of exposure are computed.}
 
 \item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
 

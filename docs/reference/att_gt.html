@@ -101,7 +101,12 @@
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
-        
+        <li>
+  <a href="https://github.com/bcallaway11/did/">
+    <span class="fab fa fab fa-github fa-lg"></span>
+     
+  </a>
+</li>
       </ul>
       
     </div><!--/.nav-collapse -->
@@ -116,7 +121,7 @@
   <div class="col-md-9 contents">
     <div class="page-header">
     <h1>Group-Time Average Treatment Effects</h1>
-    
+    <small class="dont-index">Source: <a href='https://github.com/bcallaway11/did/blob/master/R/att_gt.R'><code>R/att_gt.R</code></a></small>
     <div class="hidden name"><code>att_gt.Rd</code></div>
     </div>
 
@@ -128,26 +133,27 @@
  See Callaway and Sant'Anna (2019) for a detailed description.</p>
     </div>
 
-    <pre class="usage"><span class='fu'>att_gt</span>(
-  <span class='no'>yname</span>,
-  <span class='no'>tname</span>,
-  <span class='kw'>idname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='no'>first.treat.name</span>,
-  <span class='kw'>xformla</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='no'>data</span>,
-  <span class='kw'>panel</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>control.group</span> <span class='kw'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span>(<span class='st'>"nevertreated"</span>, <span class='st'>"notyettreated"</span>),
-  <span class='kw'>weightsname</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>alp</span> <span class='kw'>=</span> <span class='fl'>0.05</span>,
-  <span class='kw'>bstrap</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>cband</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>biters</span> <span class='kw'>=</span> <span class='fl'>1000</span>,
-  <span class='kw'>clustervars</span> <span class='kw'>=</span> <span class='kw'>NULL</span>,
-  <span class='kw'>estMethod</span> <span class='kw'>=</span> <span class='st'>"dr"</span>,
-  <span class='kw'>printdetails</span> <span class='kw'>=</span> <span class='fl'>TRUE</span>,
-  <span class='kw'>pl</span> <span class='kw'>=</span> <span class='fl'>FALSE</span>,
-  <span class='kw'>cores</span> <span class='kw'>=</span> <span class='fl'>1</span>
-)</pre>
+    <pre class="usage"><span class='fu'>att_gt</span><span class='op'>(</span>
+  <span class='va'>yname</span>,
+  <span class='va'>tname</span>,
+  idname <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>gname</span>,
+  xformla <span class='op'>=</span> <span class='cn'>NULL</span>,
+  <span class='va'>data</span>,
+  panel <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  allow_unbalanced_panel <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  control_group <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nevertreated"</span>, <span class='st'>"notyettreated"</span><span class='op'>)</span>,
+  weightsname <span class='op'>=</span> <span class='cn'>NULL</span>,
+  alp <span class='op'>=</span> <span class='fl'>0.05</span>,
+  bstrap <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  cband <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  biters <span class='op'>=</span> <span class='fl'>1000</span>,
+  clustervars <span class='op'>=</span> <span class='cn'>NULL</span>,
+  est_method <span class='op'>=</span> <span class='st'>"dr"</span>,
+  print_details <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  pl <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  cores <span class='op'>=</span> <span class='fl'>1</span>
+<span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
     <table class="ref-arguments">
@@ -165,7 +171,7 @@
       <td><p>The individual (cross-sectional unit) id name</p></td>
     </tr>
     <tr>
-      <th>first.treat.name</th>
+      <th>gname</th>
       <td><p>The name of the variable in <code>data</code> that
 contains the first period when a particular observation is treated.
 This should be a positive number for all observations in treated groups.
@@ -195,7 +201,16 @@ be set.  When <code>panel=FALSE</code>, the data is treated
 as repeated cross sections.</p></td>
     </tr>
     <tr>
-      <th>control.group</th>
+      <th>allow_unbalanced_panel</th>
+      <td><p>Whether or not function should
+"balance" the panel with respect to time and id.  The default
+values if <code>FALSE</code> which means that <code>att_gt</code> will drop
+all observations where data is not observed in all periods.
+The advantage of this is that the computations are faster
+(sometimes substantially).</p></td>
+    </tr>
+    <tr>
+      <th>control_group</th>
       <td><p>Which units to use the control group.
 The default is "nevertreated" which sets the control group
 to be the group of units that never participate in the
@@ -247,7 +262,7 @@ must be the same as idname which allows for clustering at the individual
 level.</p></td>
     </tr>
     <tr>
-      <th>estMethod</th>
+      <th>est_method</th>
       <td><p>the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the <code>DRDID</code> package.  Other built-in methods
 include "ipw" for inverse probability weighting and "reg" for
@@ -268,30 +283,19 @@ the only two that are required. <code>estMethod</code> is only used
 if covariates are included.</p></td>
     </tr>
     <tr>
-      <th>printdetails</th>
-      <td><p>Boolean for showing detailed results or not</p></td>
+      <th>print_details</th>
+      <td><p>Whether or not to show details/progress of computations.
+Default is <code>FALSE</code>.</p></td>
     </tr>
     <tr>
       <th>pl</th>
-      <td><p>Boolean for whether or not to use parallel processing
+      <td><p>Whether or not to use parallel processing
 (not implemented yet)</p></td>
     </tr>
     <tr>
       <th>cores</th>
       <td><p>The number of cores to use for parallel processing
 (not implemented yet)</p></td>
-    </tr>
-    <tr>
-      <th>nevertreated</th>
-      <td><p>did currently provides two possibilities for the
-control group.  The first one is to use the group of units that are never
-participate in the treatment.  This is the default behavior and occurs
-when nevertreated=TRUE.  In the case where there is no group that is never
-treated, att_gt will use the group that is treated in the last period and
-provide a warning.  The other possible control group is the "not yet
-treated" group.  This is a larger group and includes both never treated
-units and units that have not yet (but eventually will) participate in the
-treatment.  This control group changes across different time periods.</p></td>
     </tr>
     </table>
 
@@ -304,66 +308,66 @@ treatment.  This control group changes across different time periods.</p></td>
     <p>Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2019).</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span>(<span class='no'>mpdta</span>)
+    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
 
 <span class='co'># with covariates</span>
-<span class='no'>out1</span> <span class='kw'>&lt;-</span> <span class='fu'>att_gt</span>(<span class='kw'>yname</span><span class='kw'>=</span><span class='st'>"lemp"</span>,
-               <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
-               <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>,
-               <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-               <span class='kw'>xformla</span><span class='kw'>=</span>~<span class='no'>lpop</span>,
-               <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-               <span class='kw'>printdetails</span><span class='kw'>=</span><span class='fl'>FALSE</span>)
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>out1</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+<span class='va'>out1</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+               tname<span class='op'>=</span><span class='st'>"year"</span>,
+               idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
+               gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
+               xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,
+               data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out1</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |  2004| 2004| -0.0145297| 0.0226607|
-#&gt; |  2004| 2005| -0.0764219| 0.0283565|
-#&gt; |  2004| 2006| -0.1404483| 0.0364580|
-#&gt; |  2004| 2007| -0.1069039| 0.0325640|
-#&gt; |  2006| 2004| -0.0004721| 0.0214717|
-#&gt; |  2006| 2005| -0.0062025| 0.0180831|
-#&gt; |  2006| 2006|  0.0009606| 0.0186749|
-#&gt; |  2006| 2007| -0.0412939| 0.0189712|
-#&gt; |  2007| 2004|  0.0267278| 0.0139154|
-#&gt; |  2007| 2005| -0.0045766| 0.0153420|
-#&gt; |  2007| 2006| -0.0284475| 0.0190183|
-#&gt; |  2007| 2007| -0.0287814| 0.0152676|
+#&gt; |  2004| 2004| -0.0145297| 0.0234360|
+#&gt; |  2004| 2005| -0.0764219| 0.0295915|
+#&gt; |  2004| 2006| -0.1404483| 0.0396214|
+#&gt; |  2004| 2007| -0.1069039| 0.0329276|
+#&gt; |  2006| 2004| -0.0004721| 0.0216973|
+#&gt; |  2006| 2005| -0.0062025| 0.0188501|
+#&gt; |  2006| 2006|  0.0009606| 0.0192293|
+#&gt; |  2006| 2007| -0.0412939| 0.0184792|
+#&gt; |  2007| 2004|  0.0267278| 0.0142760|
+#&gt; |  2007| 2005| -0.0045766| 0.0158822|
+#&gt; |  2007| 2006| -0.0284475| 0.0195889|
+#&gt; |  2007| 2007| -0.0287814| 0.0160767|
 #&gt; 
 #&gt; 
 #&gt; P-value for pre-test of parallel trends assumption:  0.2816
 #&gt; </div><div class='input'>
 <span class='co'># without covariates</span>
-<span class='no'>out2</span> <span class='kw'>&lt;-</span> <span class='fu'>att_gt</span>(<span class='kw'>yname</span><span class='kw'>=</span><span class='st'>"lemp"</span>,
-               <span class='kw'>tname</span><span class='kw'>=</span><span class='st'>"year"</span>,
-               <span class='kw'>idname</span><span class='kw'>=</span><span class='st'>"countyreal"</span>,
-               <span class='kw'>first.treat.name</span><span class='kw'>=</span><span class='st'>"first.treat"</span>,
-               <span class='kw'>xformla</span><span class='kw'>=</span><span class='kw'>NULL</span>,
-               <span class='kw'>data</span><span class='kw'>=</span><span class='no'>mpdta</span>,
-               <span class='kw'>printdetails</span><span class='kw'>=</span><span class='fl'>FALSE</span>)
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span>(<span class='no'>out2</span>)</div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2019. 
+<span class='va'>out2</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+               tname<span class='op'>=</span><span class='st'>"year"</span>,
+               idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
+               gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
+               xformla<span class='op'>=</span><span class='cn'>NULL</span>,
+               data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out2</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; 
+#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
 #&gt; 
 #&gt; 
 #&gt; | group| time|        att|        se|
 #&gt; |-----:|----:|----------:|---------:|
-#&gt; |  2004| 2004| -0.0105032| 0.0243713|
-#&gt; |  2004| 2005| -0.0704232| 0.0302442|
-#&gt; |  2004| 2006| -0.1372587| 0.0359944|
-#&gt; |  2004| 2007| -0.1008114| 0.0341743|
-#&gt; |  2006| 2004|  0.0065201| 0.0235350|
-#&gt; |  2006| 2005| -0.0027508| 0.0195871|
-#&gt; |  2006| 2006| -0.0045946| 0.0181290|
-#&gt; |  2006| 2007| -0.0412245| 0.0210160|
-#&gt; |  2007| 2004|  0.0305067| 0.0156425|
-#&gt; |  2007| 2005| -0.0027259| 0.0164817|
-#&gt; |  2007| 2006| -0.0310871| 0.0177132|
-#&gt; |  2007| 2007| -0.0260544| 0.0163590|
+#&gt; |  2004| 2004| -0.0105032| 0.0251163|
+#&gt; |  2004| 2005| -0.0704232| 0.0323822|
+#&gt; |  2004| 2006| -0.1372587| 0.0401488|
+#&gt; |  2004| 2007| -0.1008114| 0.0365631|
+#&gt; |  2006| 2004|  0.0065201| 0.0253512|
+#&gt; |  2006| 2005| -0.0027508| 0.0198927|
+#&gt; |  2006| 2006| -0.0045946| 0.0190476|
+#&gt; |  2006| 2007| -0.0412245| 0.0219010|
+#&gt; |  2007| 2004|  0.0305067| 0.0157973|
+#&gt; |  2007| 2005| -0.0027259| 0.0165378|
+#&gt; |  2007| 2006| -0.0310871| 0.0178558|
+#&gt; |  2007| 2007| -0.0260544| 0.0163004|
 #&gt; 
 #&gt; 
 #&gt; P-value for pre-test of parallel trends assumption:  0.19331
@@ -384,7 +388,7 @@ treatment.  This control group changes across different time periods.</p></td>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.5.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
 </div>
 
       </footer>
