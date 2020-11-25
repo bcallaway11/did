@@ -7,7 +7,7 @@
 
   * Deprecated **mp.spatt** function and replaced it with **conditional_did_pretest** function
 
-  * New **estMethod** parameter.  Can call any function for 2x2 DID in the **DRDID** package (default is now doubly robust estimation, but inverse probability weights and regression estimators are also supported) as well as provide custom 2x2 DID estimators
+  * New **est_method** parameter.  Can call any function for 2x2 DID in the **DRDID** package (default is now doubly robust estimation, but inverse probability weights and regression estimators are also supported) as well as provide custom 2x2 DID estimators
 
   * Bug fixes for including groups that are *already treated* in the first period
 

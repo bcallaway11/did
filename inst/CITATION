@@ -19,6 +19,6 @@ bibentry(
                ),
   year     = "2020",
   note     = note,
-  url      = "https://bcallaway11.github.io/did",
+  url      = "https://bcallaway11.github.io/did/",
   header   = "To cite the did R package:"
 )

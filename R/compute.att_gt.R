@@ -175,9 +175,47 @@ compute.att_gt <- function(dp) {
         covariates <- model.matrix(xformla, data=disdat)
 
         #-----------------------------------------------------------------------------
+        # more checks for enough observations in each group
+
+        # if using custom estimation method, skip this part
+        custom_est_method <- class(est_method) == "function"
+
+        if (!custom_est_method) {
+          pscore_problems_likely <- FALSE
+          reg_problems_likely <- FALSE
+
+          # checks for pscore based methods
+          if (est_method %in% c("dr", "ipw")) {
+            preliminary_logit <- glm(G ~ -1 + covariates, family=binomial(link=logit))
+            preliminary_pscores <- predict(preliminary_logit, type="response")
+            if (max(preliminary_pscores) >= 0.999) {
+              pscore_problems_likely <- TRUE
+              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t+1]))
+            }
+          }
+
+          # check if can run regression using control units
+          if (est_method %in% c("dr", "reg")) {
+            control_covs <- covariates[G==0,,drop=FALSE]
+            #if (determinant(t(control_covs)%*%control_covs, logarithm=FALSE)$modulus < .Machine$double.eps) {
+            if ( rcond(t(control_covs)%*%control_covs) < .Machine$double.eps) {
+              reg_problems_likely <- TRUE
+              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t+1], " to run specified regression"))
+            }
+          }
+
+          if (reg_problems_likely | pscore_problems_likely) {
+            attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+1)], post=post.treat)
+            inffunc[,counter] <- NA
+            counter <- counter+1
+            next
+          }
+        }
+        
+        #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
-
+        
         if (class(est_method) == "function") {
           # user-specified function
           attgt <- est_method(y1=Ypost, y0=Ypre,
@@ -241,6 +279,8 @@ compute.att_gt <- function(dp) {
         n1 <- sum(G+C) 
         w <- disdat$w
 
+        #-----------------------------------------------------------------------------
+        # checks to make sure that we have enough observations
         skip_this_att_gt <- FALSE
         if ( sum(G*post) == 0 ) {
           warning(paste0("No units in group ", glist[g], " in time period ", tlist[t+1]))

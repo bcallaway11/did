@@ -17,8 +17,9 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
-fldr <- "~/Dropbox/did/R/"
-sapply(paste0(fldr,list.files(fldr)), source)
+#fldr <- "~/Dropbox/did/R/"
+#sapply(paste0(fldr,list.files(fldr)), source)
+library(did)
 library(DRDID)
 library(BMisc)
 library(ggplot2)

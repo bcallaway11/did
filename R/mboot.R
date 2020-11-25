@@ -88,9 +88,10 @@ mboot <- function(inf.func, DIDparams) {
   ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
 
   # Non-degenerate dimensions
-  ndg.dim <- (base::colSums(bres) != 0)
+  # ndg.dim <- (base::colSums(bres) != 0)
+  ndg.dim <- !is.na(colSums(bres))
   # If NA, set it to false
-  ndg.dim[is.na(ndg.dim)] <- FALSE
+  #ndg.dim[is.na(ndg.dim)] <- FALSE
   bres <- as.matrix(bres[ , ndg.dim])
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases)

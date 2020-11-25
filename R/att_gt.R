@@ -197,13 +197,14 @@ att_gt <- function(yname,
   }
 
   # Identify entries of main diagonal V that are zero or NA
-  zero_na_sd_entry <- unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
+  zero_na_sd_entry <- unique(which(is.na(diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
 
   # bootstrap variance matrix
   if (bstrap) {
 
     bout <- mboot(inffunc, DIDparams=dp)
     bres <- bout$bres
+    #zero_na_sd_entry <- unique(c(zero_na_sd_entry, which(bout$se==0)))
     if(length(zero_na_sd_entry)>0) {
       V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
       se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
@@ -211,8 +212,8 @@ att_gt <- function(yname,
       V <- bout$V
       se <- bout$se
     }
-  } 
-    
+  }
+
 
   #-----------------------------------------------------------------------------
   # compute Wald pre-test
@@ -240,7 +241,7 @@ att_gt <- function(yname,
     warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
     W <- NULL
     Wpval <- NULL
-  } else if (det(preV) == 0) {
+  } else if (rcond(preV) <= .Machine$double.eps) {
     # singluar covariance matrix for pre-treatment periods
     warning("Not returning pre-test Wald statistic due to singular covariance matrix")
     W <- NULL

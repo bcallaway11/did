@@ -128,7 +128,7 @@
 <li><p>Deprecated <strong>mp.spatt</strong> function and replaced it with <strong>att_gt</strong> function</p></li>
 <li><p>Calling <strong>att_gt</strong> is similar to calling <strong>mp.spatt</strong>; instead of formula for outcome of the form <code>y~treat</code>, now just pass the name of the outcome variable</p></li>
 <li><p>Deprecated <strong>mp.spatt</strong> function and replaced it with <strong>conditional_did_pretest</strong> function</p></li>
-<li><p>New <strong>estMethod</strong> parameter. Can call any function for 2x2 DID in the <strong>DRDID</strong> package (default is now doubly robust estimation, but inverse probability weights and regression estimators are also supported) as well as provide custom 2x2 DID estimators</p></li>
+<li><p>New <strong>est_method</strong> parameter. Can call any function for 2x2 DID in the <strong>DRDID</strong> package (default is now doubly robust estimation, but inverse probability weights and regression estimators are also supported) as well as provide custom 2x2 DID estimators</p></li>
 <li><p>Bug fixes for including groups that are <em>already treated</em> in the first period</p></li>
 <li><p>Allow for user to select control group – either <em>never treated</em> or <em>not yet treated</em></p></li>
 <li><p>Add functionality for uniform confidence bands for all aggregated treatment effect parameters</p></li>
@@ -137,6 +137,7 @@
 <li><p>Support for using sampling weights is much improved</p></li>
 <li><p>Big improvement to website, vignettes, and code documentation</p></li>
 <li><p>New <em>experimental</em> code for dealing with unbalanced panels</p></li>
+<li><p>Allow for event studies to be computed over subsets of event times</p></li>
 </ul>
 </div>
     <div id="did-1-2-3" class="section level1">
