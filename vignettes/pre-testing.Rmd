@@ -59,7 +59,7 @@ And $\mu_l$ is interpreted as the effect of treatment for different lengths of e
 ### Pitfalls with Event Study Regressions
 
 ```{r echo=FALSE}
-source("~/Dropbox/did/tests/setup_sims.R")
+source("setup_sims.R")
 time.periods <- 4
 reset.sim()
 bett <- betu <- rep(0, time.periods)

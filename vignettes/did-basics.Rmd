@@ -80,7 +80,7 @@ This is an example of the sort of model for untreated potential outcomes that is
 **Building the dataset**
 
 ```{r echo=FALSE}
-source("~/Dropbox/did/tests/setup_sims.R")
+source("setup_sims.R")
 time.periods <- 4
 reset.sim()
 te <- 0

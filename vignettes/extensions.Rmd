@@ -65,19 +65,10 @@ To start with, we want to point out that the important part for this vignette is
 
 * We'll write a simplified version of the code -- it will not be as fast as the code in the **did** package, but it will demonstrate that it is relatively straightforward to write the code for modified versions of our approach.  [BTW, the code below is not too slow either, basically things will run with a few thousand observations in a couple minutes rather than a couple seconds.]
 
-```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
-fldr <- "~/Dropbox/did/R/"
-sapply(paste0(fldr,list.files(fldr)), source)
-library(DRDID)
-library(BMisc)
-library(ggplot2)
-library(ggpubr)
-```
-
 To start with, we've constructed a dataset (called `data`) that has anticipation.  All groups follow parallel trends (in the absence of treatment) except in the period immediately before treatment.  In those periods, outcomes for individuals who participate in the treatment "dip" -- here, they decrease by 1 in the pre-treatment period.  In post-treatment periods, the effect of participating in the treatment is equal to 1.  This is simulated data, but it has features that would be common in, for example, an application evaluating the effect of a job training program.
 
 ```{r echo=FALSE}
-source("~/Dropbox/did/tests/setup_sims.R")
+source("setup_sims.R")
 time.periods <- 5
 reset.sim()
 te <- 0
