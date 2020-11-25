@@ -21,7 +21,8 @@ Imports:
     utils,
     plm,
     DRDID,
-    Matrix
+    Matrix,
+    codetools
 RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 Suggests: 
