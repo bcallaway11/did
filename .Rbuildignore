@@ -9,3 +9,5 @@
 ^CRAN-RELEASE$
 ^tests$
 ^pkgdown$
+^doc$
+^Meta$

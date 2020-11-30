@@ -12,7 +12,8 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  cache = TRUE
 )
 ```
 
@@ -283,7 +284,6 @@ We'll consider two cases.  For the first case, we won't condition on any covaria
 
 ```{r}
 # estimate group-time average treatment effects without covariates
-# set bstrap=TRUE and cband=TRUE to get uniform confidence bands
 mw.attgt <- att_gt(yname="lemp",
                    gname="first.treat",
                    idname="countyreal",
