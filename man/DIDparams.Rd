@@ -12,6 +12,7 @@ DIDparams(
   xformla = NULL,
   data,
   control_group,
+  anticipation = 0,
   weightsname = NULL,
   alp = 0.05,
   bstrap = T,
@@ -28,7 +29,8 @@ DIDparams(
   nG = NULL,
   nT = NULL,
   tlist = NULL,
-  glist = NULL
+  glist = NULL,
+  call = NULL
 )
 }
 \arguments{
@@ -63,6 +65,10 @@ in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
 participated yet.}
+
+\item{anticipation}{The number of time periods before participating
+in the treatment where units can anticipate participating in the
+treatment and therefore it can affect their untreated potential outcomes}
 
 \item{weightsname}{The name of the column containing the sampling weights.
 If not set, all observations have same weight.}
@@ -141,6 +147,8 @@ of rows in a panel dataset).}
 \item{tlist}{a vector containing each time period}
 
 \item{glist}{a vector containing each group}
+
+\item{call}{Function call to att_gt}
 }
 \description{
 Object to hold did parameters that are passed across functions

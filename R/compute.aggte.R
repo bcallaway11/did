@@ -5,6 +5,7 @@
 #'
 #' @inheritParams att_gt
 #' @inheritParams aggte
+#' @param call The function call to aggte
 #'
 #' @return \code{\link{AGGTEobj}} object
 #'
@@ -21,7 +22,8 @@ compute.aggte <- function(MP,
                           biters = NULL,
                           cband = NULL,
                           alp = NULL,
-                          clustervars = NULL) {
+                          clustervars = NULL,
+                          call = NULL) {
 
   #-----------------------------------------------------------------------------
   # unpack MP object
@@ -79,7 +81,6 @@ compute.aggte <- function(MP,
   }
 
   if((na.rm == FALSE) && base::anyNA(att)) stop("Missing values at att_gt found. If you want to remove these, set `na.rm = TRUE'.")
-
 
   # data from first period
   ifelse(panel,
@@ -158,7 +159,9 @@ compute.aggte <- function(MP,
     return(AGGTEobj(overall.att = simple.att,
                     overall.se = simple.se,
                     type = type,
-                    inf.function = list(simple.att = simple.if)))
+                    inf.function = list(simple.att = simple.if),
+                    call=call,
+                    DIDparams=dp))
   }
 
   #-----------------------------------------------------------------------------
@@ -179,11 +182,11 @@ compute.aggte <- function(MP,
     # get standard errors for each group specific ATT
     selective.se.inner <- lapply(glist, function(g) {
       whichg <- which( (group == g) & (g <= t))
-      inf.func.g <- get_agg_inf_func(att=att,
+      inf.func.g <- as.numeric(get_agg_inf_func(att=att,
                                      inffunc1=inffunc1,
                                      whichones=whichg,
                                      weights.agg=pg[whichg]/sum(pg[whichg]),
-                                     wif=NULL)
+                                     wif=NULL))
       se.g <- getSE(inf.func.g, dp)
       list(inf.func=inf.func.g, se=se.g)
     })
@@ -192,7 +195,7 @@ compute.aggte <- function(MP,
     selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
 
     # recover influence function separately by group
-    selective.inf.func.g <- as.matrix(simplify2array(getListElement(selective.se.inner, "inf.func"))[,1,])
+    selective.inf.func.g <- simplify2array(getListElement(selective.se.inner, "inf.func"))
 
     # use multiplier bootstrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -230,7 +233,9 @@ compute.aggte <- function(MP,
                     se.egt=selective.se.g,
                     crit.val.egt=selective.crit.val,
                     inf.function = list(selective.inf.func.g = selective.inf.func.g,
-                                        selective.inf.func = selective.inf.func)))
+                                        selective.inf.func = selective.inf.func),
+                    call=call,
+                    DIDparams=dp))
 
   }
 
@@ -279,17 +284,17 @@ compute.aggte <- function(MP,
       whiche <- which( (originalt - originalgroup == e) & (include.balanced.gt) )
       pge <- pg[whiche]/(sum(pg[whiche]))
       wif.e <- wif(whiche, pg, weights.ind, G, group)
-      inf.func.e <- get_agg_inf_func(att=att,
+      inf.func.e <- as.numeric(get_agg_inf_func(att=att,
                                      inffunc1=inffunc1,
                                      whichones=whiche,
                                      weights.agg=pge,
-                                     wif=wif.e)
+                                     wif=wif.e))
       se.e <- getSE(inf.func.e, dp)
       list(inf.func=inf.func.e, se=se.e)
     })
 
     dynamic.se.e <- unlist(getListElement(dynamic.se.inner, "se"))
-    dynamic.inf.func.e <- as.matrix(simplify2array(getListElement(dynamic.se.inner, "inf.func"))[,1,])
+    dynamic.inf.func.e <- simplify2array(getListElement(dynamic.se.inner, "inf.func"))
 
     dynamic.crit.val <- NULL
     if(dp$cband==TRUE){
@@ -315,8 +320,13 @@ compute.aggte <- function(MP,
                     se.egt=dynamic.se.e,
                     crit.val.egt=dynamic.crit.val,
                     inf.function = list(dynamic.inf.func.e = dynamic.inf.func.e,
-                                        dynamic.inf.func = dynamic.inf.func)
-    ))
+                                        dynamic.inf.func = dynamic.inf.func),
+                    call=call,
+                    min_e=min_e,
+                    max_e=max_e,
+                    balance_e=balance_e,
+                    DIDparams=dp
+                    ))
   }
 
   #-----------------------------------------------------------------------------
@@ -347,11 +357,11 @@ compute.aggte <- function(MP,
                    weights.ind=weights.ind,
                    G=G,
                    group=group)
-      inf.func.t <- get_agg_inf_func(att=att,
+      inf.func.t <- as.numeric(get_agg_inf_func(att=att,
                                      inffunc1=inffunc1,
                                      whichones=whicht,
                                      weights.agg=pg[whicht]/sum(pg[whicht]),
-                                     wif=wif.t)
+                                     wif=wif.t))
       se.t <- getSE(inf.func.t, dp)
       list(inf.func=inf.func.t, se=se.t)
     })
@@ -360,7 +370,7 @@ compute.aggte <- function(MP,
     calendar.se.t <- unlist(getListElement(calendar.se.inner, "se"))
 
     # recover influence function separately by time
-    calendar.inf.func.t <- as.matrix(simplify2array(getListElement(calendar.se.inner, "inf.func"))[,1,])
+    calendar.inf.func.t <- simplify2array(getListElement(calendar.se.inner, "inf.func"))
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -391,7 +401,10 @@ compute.aggte <- function(MP,
                     se.egt=calendar.se.t,
                     crit.val.egt=calendar.crit.val,
                     inf.function = list(calendar.inf.func.t = calendar.inf.func.t,
-                                        calendar.inf.func = calendar.inf.func)))
+                                        calendar.inf.func = calendar.inf.func),
+                    call=call,
+                    DIDparams=dp
+                    ))
 
   }
 

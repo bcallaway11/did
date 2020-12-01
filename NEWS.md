@@ -23,9 +23,11 @@
 
   * Big improvement to website, vignettes, and code documentation
   
-  * New *experimental* code for dealing with unbalanced panels
+  * Code for dealing with unbalanced panels
   
   * Allow for event studies to be computed over subsets of event times
+  
+  * Allow for treatment anticipation via *anticipation* argument
   
 # did 1.2.3
   * Corrected check problems

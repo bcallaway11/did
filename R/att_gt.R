@@ -88,6 +88,9 @@
 #'  never treated units, but it includes additional units that
 #'  eventually participate in the treatment, but have not
 #'  participated yet.
+#' @param anticipation The number of time periods before participating
+#'  in the treatment where units can anticipate participating in the
+#'  treatment and therefore it can affect their untreated potential outcomes
 #' @references Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2019).
 #'
 #' @examples
@@ -126,6 +129,7 @@ att_gt <- function(yname,
                    panel=TRUE,
                    allow_unbalanced_panel=FALSE,
                    control_group=c("nevertreated","notyettreated"),
+                   anticipation=0,
                    weightsname=NULL,
                    alp=0.05,
                    bstrap=TRUE,
@@ -147,6 +151,7 @@ att_gt <- function(yname,
                         panel=panel,
                         allow_unbalanced_panel=allow_unbalanced_panel,
                         control_group=control_group,
+                        anticipation=anticipation,
                         weightsname=weightsname,
                         alp=alp,
                         bstrap=bstrap,
@@ -156,7 +161,8 @@ att_gt <- function(yname,
                         est_method=est_method,
                         print_details=print_details,
                         pl=pl,
-                        cores=cores
+                        cores=cores,
+                        call=match.call()
   )
 
   #-----------------------------------------------------------------------------
@@ -186,8 +192,8 @@ att_gt <- function(yname,
   # note to self: this def. won't work with unbalanced panel,
   # but it is always ignored b/c bstrap has to be true in that case
   n <- dp$n
-  V <- t(inffunc)%*%inffunc/n
-  se <- sqrt(diag(V)/n)
+  V <- Matrix::t(inffunc)%*%inffunc/n
+  se <- sqrt(Matrix::diag(V)/n)
 
   # if clustering along another dimension...we require using the
   # bootstrap (in principle, could come up with analytical standard
@@ -197,7 +203,7 @@ att_gt <- function(yname,
   }
 
   # Identify entries of main diagonal V that are zero or NA
-  zero_na_sd_entry <- unique(which(is.na(diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
+  zero_na_sd_entry <- unique(which(is.na(Matrix::diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
 
   # bootstrap variance matrix
   if (bstrap) {
@@ -278,6 +284,6 @@ att_gt <- function(yname,
   }
 
   # Return this list
-  return(MP(group=group, t=tt, att=att, V=V, se=se, c=cval, inffunc=inffunc, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
+  return(MP(group=group, t=tt, att=att, V_analytical=V, se=se, c=cval, inffunc=inffunc, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
 
 }

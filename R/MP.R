@@ -9,7 +9,7 @@
 #' @param c simulataneous critical value if one is obtaining simultaneous confidence
 #'  bands. Otherwise it reports the critival value based on pointwise normal
 #'  approximation.
-#' @param V the variance matrix for group-time average treatment effects
+#' @param V_analytical Analytical variance matrix for group-time average treatment effects
 #' @param se standard errors for group-time average treatment effects
 #' @param inffunc the influence function for estimating group-time average treatment effects
 #' @param n the number of observations
@@ -23,8 +23,8 @@
 #'
 #' @return MP object
 #' @export
-MP <- function(group, t, att, V, se, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05, DIDparams=NULL) {
-  out <- list(group=group, t=t, att=att, V=V, se=se, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp, DIDparams=DIDparams)
+MP <- function(group, t, att, V_analytical, se, c, inffunc, n=NULL, W=NULL, Wpval=NULL, aggte=NULL, alp = 0.05, DIDparams=NULL) {
+  out <- list(group=group, t=t, att=att, V_analytical=V_analytical, se=se, c=c, inffunc=inffunc, n=n, W=W, Wpval=Wpval, aggte=aggte, alp = alp, DIDparams=DIDparams)
   class(out) <- "MP"
   out
 }
@@ -39,16 +39,85 @@ MP <- function(group, t, att, V, se, c, inffunc, n=NULL, W=NULL, Wpval=NULL, agg
 #' @export
 summary.MP <- function(object, ...) {
   mpobj <- object
-  out <- cbind(mpobj$group, mpobj$t, mpobj$att, mpobj$se)#sqrt(diag(mpobj$V)/mpobj$n))
-  citation()
-  colnames(out) <- c("group", "time", "att","se")
+
+  # call
   cat("\n")
-  print(knitr::kable(out))
+  cat("Call:\n")
+  print(mpobj$DIDparams$call)
+  cat("\n")
+
+  # citation
+  citation()
+  cat("\n")
+  
+  # group time average treatment effects
+  cat("Group-Time Average Treatment Effects:\n")
+
+  cband_text1a <- paste0(100*(1-mpobj$alp),"% ")
+  cband_text1b <- ifelse(mpobj$DIDparams$cband, "Simult. ", "Pointwise ")
+  cband_text1 <- paste0("[", cband_text1a, cband_text1b)
+
+  cband_lower <- mpobj$att - mpobj$c*mpobj$se
+  cband_upper <- mpobj$att + mpobj$c*mpobj$se
+  
+  sig <- (cband_upper < 0) | (cband_lower > 0)
+  sig_text <- ifelse(sig, "*", "")
+  
+  out <- cbind.data.frame(mpobj$group, mpobj$t, mpobj$att, mpobj$se, cband_lower, cband_upper)
+  out <- round(out,4)
+  out <- cbind.data.frame(out, sig_text)
+
+  
+  colnames(out) <- c("Group", "Time", "ATT(g,t)","Std. Error", cband_text1, "Conf. Band]", "")
+  print(out, row.names=FALSE)
+  cat("---\n")
+  cat("Signif. codes: `*' confidence band does not cover 0")
   cat("\n\n")
+
+  # report pre-test
   if (!is.null(mpobj$Wpval)) {
     cat("P-value for pre-test of parallel trends assumption:  ")
     cat(as.character(mpobj$Wpval))
-    cat("\n\n")
+    cat("\n")
+  }
+  
+
+  
+  # set control group text
+  control_group <- mpobj$DIDparams$control_group
+  control_group_text <- NULL
+  if (control_group == "nevertreated") {
+    control_group_text <- "Never Treated"
+  } else if (control_group == "notyettreated") {
+    control_group_text <- "Not Yet Treated"
+  }
+
+  if (!is.null(control_group)) {
+    cat("Control Group:  ")
+    cat(control_group_text)
+    cat(",  ")
+  }
+
+  # anticipation periods
+  cat("Anticipation Periods:  ")
+  cat(mpobj$DIDparams$anticipation)
+  cat("\n")
+
+  # estimation method text
+  est_method <- mpobj$DIDparams$est_method
+  if (class(est_method)=="character") {
+    est_method_text <- est_method
+    if (est_method == "dr") {
+      est_method_text <- "Doubly Robust"
+    } else if (est_method == "ipw") {
+      est_method_text <- "Inverse Probability Weighting"
+    } else if (est_method == "reg") {
+      est_method_text <- "Outcome Regression"
+    }
+    
+    cat("Estimation Method:  ")
+    cat(est_method_text)
+    cat("\n")
   }
 }
 

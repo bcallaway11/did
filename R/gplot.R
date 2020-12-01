@@ -15,7 +15,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
                   legend=TRUE) {
   dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
 
-  c.point <-  stats::qnorm(1 - ssresults$alp/2)
+  c.point <-  qnorm(1 - ssresults$alp/2)
 
   p <- ggplot(ssresults,
               aes(x=as.numeric(year), y=att, ymin=(att-c*att.se),

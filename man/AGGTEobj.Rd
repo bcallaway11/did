@@ -12,7 +12,12 @@ AGGTEobj(
   att.egt = NULL,
   se.egt = NULL,
   crit.val.egt = NULL,
-  inf.function = NULL
+  inf.function = NULL,
+  min_e = NULL,
+  max_e = NULL,
+  balance_e = NULL,
+  call = NULL,
+  DIDparams = NULL
 )
 }
 \arguments{
@@ -38,6 +43,25 @@ bands for dynamic effects, selective treatment timing, or time period
 effects.}
 
 \item{inf.function}{The influence function of the chosen aggregated parameters}
+
+\item{min_e}{For event studies, this is the smallest event time to compute
+dynamic effects for.  By default, \code{min_e = -Inf} so that effects at
+all lengths of exposure are computed.}
+
+\item{max_e}{For event studies, this is the largest event time to compute
+dynamic effects for.  By default, \code{max_e = Inf} so that effects at
+all lengths of exposure are computed.}
+
+\item{balance_e}{If set (and if one computes dynamic effects), it balances
+the sample with respect to event time.  For example, if \code{balance.e=2},
+\code{aggte} will drop groups that are not exposed to treatment for
+at least three periods. (the initial period when \code{e=0} as well as the
+next two periods when \code{e=1} and the \code{e=2}).  This ensures that
+the composition of groups does not change when event time changes.}
+
+\item{call}{The function call to aggte}
+
+\item{DIDparams}{A DIDparams object}
 }
 \value{
 an AGGTEobj

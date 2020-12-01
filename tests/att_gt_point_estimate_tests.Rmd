@@ -464,6 +464,68 @@ res
 summary(aggte(res, type="dynamic", min_e=-1, max_e=1))
 ```
 
+## Test anticipation
+```{r}
+#-----------------------------------------------------------------------------
+# *test dynamic effects*
+# expected result: te=length of exposure - 1 (w/ one period -1 anticipation)
+#-----------------------------------------------------------------------------
+time.periods <- 5
+reset.sim()
+te <- 0
+te.e <- -1:(time.periods-2)
+data <- build_sim_dataset()
+data$G <- data$G + 1 # add anticipation
+
+
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+              idname="id",
+              control_group="nevertreated",
+              gname="G", est_method="dr",
+              print_details=TRUE,
+              anticipation=1
+              )
+res
+summary(aggte(res, type="dynamic"))
+
+#-----------------------------------------------------------------------------
+# incorrectly ignore anticipation, dynamic effects are incorrect due to ignoring
+# anticipation
+#-----------------------------------------------------------------------------
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+              idname="id",
+              control_group="nevertreated",
+              gname="G", est_method="dr",
+              print_details=TRUE,
+              anticipation=0
+              )
+res
+summary(aggte(res, type="dynamic"))
+```
+
+## Change significance level
+```{r}
+time.periods <- 4
+reset.sim()
+data <- build_sim_dataset()
+
+# dr
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="dr", alp=0.01)
+res
+```
+
+## Report Pointwise Confidence Interval
+```{r}
+time.periods <- 4
+reset.sim()
+data <- build_sim_dataset()
+
+# dr
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="dr", alp=0.01, cband=FALSE)
+res
+```
 
 ## Misc error handling tests
 

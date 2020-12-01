@@ -31,6 +31,7 @@ compute.att_gt <- function(dp) {
   true_repeated_cross_sections <- dp$true_repeated_cross_sections
   print_details <- dp$print_details
   control_group <- dp$control_group
+  anticipation <- dp$anticipation
   gname <- dp$gname
   n  <- dp$n
   nT <- dp$nT
@@ -57,12 +58,12 @@ compute.att_gt <- function(dp) {
   # otherwise, total number of rows in the data
   if(panel) {
     #inffunc <- array(data=0, dim=c(nG,nT,n))
-    inffunc <- matrix(data=0, nrow=n, ncol=nG*(nT-1))
-    #inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
+    #inffunc <- matrix(data=0, nrow=n, ncol=nG*(nT-1))
+    inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
   } else {
     #inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
-    inffunc <- matrix(data=0, nrow=nrow(data), ncol=nG*(nT-1))
-    #inffunc <- Matrix::Matrix(data=0,nrow=nrow(data), ncol=nG*(nT-1), sparse=TRUE)
+    #inffunc <- matrix(data=0, nrow=nrow(data), ncol=nG*(nT-1))
+    inffunc <- Matrix::Matrix(data=0,nrow=nrow(data), ncol=nG*(nT-1), sparse=TRUE)
   }
 
   # loop over groups
@@ -83,7 +84,7 @@ compute.att_gt <- function(dp) {
         # set an index for the pretreatment period
         # this recovers the right pre-treatment period for this group
         # it is the most recent pre-treatment period (g-1)
-        pret <- utils::tail(which(tlist < glist[g]),1)
+        pret <- utils::tail(which( (tlist+anticipation) < glist[g]),1)
 
         # print a warning message if there are no pre-treatment period
         if (length(pret) == 0) {
@@ -160,7 +161,7 @@ compute.att_gt <- function(dp) {
         disdat <- disdat[disidx,]
 
         # drop missing factors
-        disdat <- base::droplevels(disdat)
+        disdat <- droplevels(disdat)
 
         # give short names for data in this iteration
         G <- disdat$G

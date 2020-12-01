@@ -65,6 +65,9 @@ aggte <- function(MP,
                   alp = NULL,
                   clustervars = NULL
                   ) {
+
+  call <- match.call()
+  
   compute.aggte(MP = MP,
                 type = type,
                 balance_e = balance_e,
@@ -75,5 +78,6 @@ aggte <- function(MP,
                 biters = biters,
                 cband = cband,
                 alp = alp,
-                clustervars = clustervars)
+                clustervars = clustervars,
+                call = call)
 }

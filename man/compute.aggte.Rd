@@ -15,7 +15,8 @@ compute.aggte(
   biters = NULL,
   cband = NULL,
   alp = NULL,
-  clustervars = NULL
+  clustervars = NULL,
+  call = NULL
 )
 }
 \arguments{
@@ -74,6 +75,8 @@ and this is only applicable if \code{bstrap=TRUE}.}
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
 level.}
+
+\item{call}{The function call to aggte}
 }
 \value{
 \code{\link{AGGTEobj}} object

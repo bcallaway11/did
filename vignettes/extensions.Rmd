@@ -35,7 +35,7 @@ This vignette provides an example of extending the ideas of the **did** package 
 
 * In this vignette, we demonstrate how to do difference in differences when individuals anticipate participating in the treatment and potentially adjust their behavior before they participate.
 
-* This setup falls outside of the cases covered (at the moment) in the **did** package.  But it is straightforward (and instructive) to extend the ideas of the **did** package to this case.  This vignette's primary purpose is to show a simplified version of the coed in the **did** package that would be straightforward to borrow/modify for one-off applications DID applications that do not conform exactly to the expected setup in the **did** package.  You will see that it's not too complicated!
+* ~~This setup falls outside of the cases covered (at the moment) in the **did** package.~~ (**Update:** we now have treatment anticipation in the **did** package using the `anticipation` argument, but we still think this is a useful exercise!)  But it is straightforward (and instructive) to extend the ideas of the **did** package to this case.  This vignette's primary purpose is to show a simplified version of the coed in the **did** package that would be straightforward to borrow/modify for one-off applications DID applications that do not conform exactly to the expected setup in the **did** package.  You will see that it's not too complicated!
 
 * For this vignette, there's some math.  The notation may be self-explanatory, but see our [Introduction to DID with Multiple Time Periods](multi-period-did.html) for precise explanations of the notation.
 

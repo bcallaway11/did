@@ -3,6 +3,7 @@
 #' @description Object to hold did parameters that are passed across functions
 #'
 #' @inheritParams att_gt
+#' @inheritParams pre_process_did
 #' @param n The number of observations.  This is equal to the
 #'  number of units (which may be different from the number
 #'  of rows in a panel dataset).
@@ -22,6 +23,7 @@ DIDparams <- function(yname,
                    xformla=NULL,
                    data,
                    control_group,
+                   anticipation=0,
                    weightsname=NULL,
                    alp=0.05,
                    bstrap=T,
@@ -38,7 +40,8 @@ DIDparams <- function(yname,
                    nG=NULL,
                    nT=NULL,
                    tlist=NULL,
-                   glist=NULL) {
+                   glist=NULL,
+                   call=NULL) {
 
   out <- list(yname=yname,
               tname=tname,
@@ -47,6 +50,7 @@ DIDparams <- function(yname,
               xformla=xformla,
               data=data,
               control_group=control_group,
+              anticipation=anticipation,
               weightsname=weightsname,
               alp=alp,
               bstrap=bstrap,
@@ -63,7 +67,8 @@ DIDparams <- function(yname,
               nG=nG,
               nT=nT,
               tlist=tlist,
-              glist=glist)
+              glist=glist,
+              call=call)
   class(out) <- "DIDparams"
   out
 }

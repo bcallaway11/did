@@ -14,6 +14,7 @@ pre_process_did(
   panel = TRUE,
   allow_unbalanced_panel,
   control_group = c("nevertreated", "notyettreated"),
+  anticipation = 0,
   weightsname = NULL,
   alp = 0.05,
   bstrap = FALSE,
@@ -23,7 +24,8 @@ pre_process_did(
   est_method = "dr",
   print_details = TRUE,
   pl = FALSE,
-  cores = 1
+  cores = 1,
+  call = NULL
 )
 }
 \arguments{
@@ -73,6 +75,10 @@ in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
 participated yet.}
+
+\item{anticipation}{The number of time periods before participating
+in the treatment where units can anticipate participating in the
+treatment and therefore it can affect their untreated potential outcomes}
 
 \item{weightsname}{The name of the column containing the sampling weights.
 If not set, all observations have same weight.}
@@ -127,6 +133,8 @@ Default is \code{FALSE}.}
 
 \item{cores}{The number of cores to use for parallel processing
 (not implemented yet)}
+
+\item{call}{Function call to att_gt}
 }
 \value{
 a \code{\link{DIDparams}} object

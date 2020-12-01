@@ -8,7 +8,7 @@ MP(
   group,
   t,
   att,
-  V,
+  V_analytical,
   se,
   c,
   inffunc,
@@ -28,7 +28,7 @@ MP(
 \item{att}{the group-average treatment effect for group \code{group} and time
 period \code{t}}
 
-\item{V}{the variance matrix for group-time average treatment effects}
+\item{V_analytical}{Analytical variance matrix for group-time average treatment effects}
 
 \item{se}{standard errors for group-time average treatment effects}
 

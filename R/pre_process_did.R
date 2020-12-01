@@ -5,6 +5,7 @@
 #'  data is in proper format / try to throw helpful error messages.
 #'
 #' @inheritParams att_gt
+#' @param call Function call to att_gt
 #'
 #' @return a \code{\link{DIDparams}} object
 #'
@@ -18,6 +19,7 @@ pre_process_did <- function(yname,
                             panel = TRUE,
                             allow_unbalanced_panel,
                             control_group = c("nevertreated","notyettreated"),
+                            anticipation = 0,
                             weightsname = NULL,
                             alp = 0.05,
                             bstrap = FALSE,
@@ -27,7 +29,8 @@ pre_process_did <- function(yname,
                             est_method = "dr",
                             print_details = TRUE,
                             pl = FALSE,
-                            cores = 1) {
+                            cores = 1,
+                            call = NULL) {
   #-----------------------------------------------------------------------------
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
@@ -37,7 +40,6 @@ pre_process_did <- function(yname,
   # make sure dataset is a data.frame
   # this gets around RStudio's default of reading data as tibble
   if (!all( class(data) == "data.frame")) {
-    #warning("class of data object was not data.frame; converting...")
     data <- as.data.frame(data)
   }
   # weights if null
@@ -58,7 +60,6 @@ pre_process_did <- function(yname,
   # list of treated groups (by time) from smallest to largest
   glist <- unique(data[,gname])[order(unique(data[,gname]))]
 
-
   # Check if there is a never treated group
   if ( length(glist[glist==0]) == 0) {
     if(control_group=="nevertreated"){
@@ -69,7 +70,7 @@ pre_process_did <- function(yname,
       # warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group.")
 
       # Drop all time periods with time periods >= latest treated
-      data <- base::subset(data,(data[,tname] < max(glist)))
+      data <- subset(data,(data[,tname] < max(glist)))
       # Replace last treated time with zero
       lines.gmax <- data[,gname]==max(glist)
       data[lines.gmax,gname] <- 0
@@ -86,7 +87,7 @@ pre_process_did <- function(yname,
 
   # drop groups treated in the first period or before
   first.period <- tlist[1]
-  glist <- glist[glist > first.period]
+  glist <- glist[glist > first.period + anticipation]
 
   # check for groups treated in the first period and drop these
   nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
@@ -268,7 +269,7 @@ pre_process_did <- function(yname,
 
   # drop groups treated in the first period or before
   first.period <- tlist[1]
-  glist <- glist[glist > first.period]
+  glist <- glist[glist > first.period + anticipation]
 
   # How many time periods
   nT <- length(tlist)
@@ -285,6 +286,7 @@ pre_process_did <- function(yname,
                   xformla=xformla,
                   data=data,
                   control_group=control_group,
+                  anticipation=anticipation,
                   weightsname=weightsname,
                   alp=alp,
                   bstrap=bstrap,
@@ -301,5 +303,6 @@ pre_process_did <- function(yname,
                   nG=nG,
                   nT=nT,
                   tlist=tlist,
-                  glist=glist)
+                  glist=glist,
+                  call=call)
 }

@@ -7,6 +7,8 @@
 #'
 #' @description An object for holding aggregated treatment effect parameters.
 #'
+#' @inheritParams aggte
+#' @inheritParams compute.aggte
 #' @param overall.att The estimated overall ATT
 #' @param overall.se Standard error for overall ATT
 #' @param type Which type of aggregated treatment effect parameter.
@@ -22,6 +24,7 @@
 #'  bands for dynamic effects, selective treatment timing, or time period
 #'  effects.
 #' @param inf.function The influence function of the chosen aggregated parameters
+#' @param DIDparams A DIDparams object
 #'
 #' @return an AGGTEobj
 #' @export
@@ -32,7 +35,12 @@ AGGTEobj <- function(overall.att = NULL,
                      att.egt = NULL,
                      se.egt = NULL,
                      crit.val.egt = NULL,
-                     inf.function = NULL) {
+                     inf.function = NULL,
+                     min_e = NULL,
+                     max_e = NULL,
+                     balance_e = NULL,
+                     call=NULL,
+                     DIDparams=NULL) {
 
   out <- list(overall.att = overall.att,
               overall.se = overall.se,
@@ -41,7 +49,12 @@ AGGTEobj <- function(overall.att = NULL,
               att.egt = att.egt,
               se.egt = se.egt,
               crit.val.egt = crit.val.egt,
-              inf.function = inf.function)
+              inf.function = inf.function,
+              min_e = min_e,
+              max_e = max_e,
+              balance_e = balance_e,
+              call = call,
+              DIDparams = DIDparams)
 
   class(out)  <- "AGGTEobj"
   out
@@ -56,24 +69,97 @@ AGGTEobj <- function(overall.att = NULL,
 #'
 #' @export
 summary.AGGTEobj <- function(object, ...) {
-  out1 <- cbind(object$overall.att, object$overall.se)
+
+  # call
+  cat("\n")
+  cat("Call:\n")
+  print(object$call)
+  cat("\n")
+
+  #citation
   citation()
   cat("\n")
-  cat("Overall ATT:  ")
-  colnames(out1) <- c("att","se")
+
+  # overall estimates
+  alp <- object$DIDparams$alp
+  pointwise_cval <- qnorm(1-alp/2)
+  overall_cband_upper <- object$overall.att + pointwise_cval*object$overall.se
+  overall_cband_lower <- object$overall.att - pointwise_cval*object$overall.se
+  out1 <- cbind.data.frame(object$overall.att, object$overall.se, overall_cband_lower, overall_cband_upper)
+  out1 <- round(out1, 4)
+  overall_sig <- (overall_cband_upper < 0) | (overall_cband_lower > 0)
+  overall_sig_text <- ifelse(overall_sig, "*", "")
+  out1 <- cbind.data.frame(out1, overall_sig_text)
   cat("\n")
-  print(knitr::kable(out1))
+  cat("Overall ATT:  \n")
+  colnames(out1) <- c("ATT","Std. Error","    [95% ", "Conf. Int.]","")
+  print(out1, row.names=FALSE)
   cat("\n\n")
 
   # handle cases depending on type
   if (object$type %in% c("group","dynamic","calendar")) {
 
+    # header
     if (object$type=="dynamic") { c1name <- "event time"; cat("Dynamic Effects:") }
     if (object$type=="group") { c1name <- "group"; cat("Group Effects:") }
     if (object$type=="calendar") { c1name <- "time"; cat("Time Effects:") }
-    out2 <- cbind(object$egt, object$att.egt, object$se.egt)
-    colnames(out2) <- c(c1name, "att", "se")
+
     cat("\n")
-    print(knitr::kable(out2))
+    cband_text1a <- paste0(100*(1-object$DIDparams$alp),"% ")
+    cband_text1b <- ifelse(object$DIDparams$cband, "Simult. ", "Pointwise ")
+    cband_text1 <- paste0("[", cband_text1a, cband_text1b)
+
+    cband_lower <- object$att - object$crit.val*object$se
+    cband_upper <- object$att + object$crit.val*object$se
+    
+    sig <- (cband_upper < 0) | (cband_lower > 0)
+    sig_text <- ifelse(sig, "*", "")
+    
+    out2 <- cbind.data.frame(object$egt, object$att.egt, object$se.egt, cband_lower, cband_upper)
+    out2 <- round(out2, 4)
+    out2 <- cbind.data.frame(out2, sig_text)
+
+    colnames(out2) <- c(c1name, "ATT","Std. Error", cband_text1, "Conf. Band]", "")
+    print(out2, row.names=FALSE)
+  }
+  cat("---\n")
+  cat("Signif. codes: `*' confidence band does not cover 0")
+  cat("\n\n")
+  
+  # set control group text
+  control_group <- object$DIDparams$control_group
+  control_group_text <- NULL
+  if (control_group == "nevertreated") {
+    control_group_text <- "Never Treated"
+  } else if (control_group == "notyettreated") {
+    control_group_text <- "Not Yet Treated"
+  }
+
+  if (!is.null(control_group)) {
+    cat("Control Group:  ")
+    cat(control_group_text)
+    cat(",  ")
+  }
+
+  # anticipation periods
+  cat("Anticipation Periods:  ")
+  cat(object$DIDparams$anticipation)
+  cat("\n")
+
+  # estimation method text
+  est_method <- object$DIDparams$est_method
+  if (class(est_method)=="character") {
+    est_method_text <- est_method
+    if (est_method == "dr") {
+      est_method_text <- "Doubly Robust"
+    } else if (est_method == "ipw") {
+      est_method_text <- "Inverse Probability Weighting"
+    } else if (est_method == "reg") {
+      est_method_text <- "Outcome Regression"
+    }
+    
+    cat("Estimation Method:  ")
+    cat(est_method_text)
+    cat("\n")  
   }
 }
