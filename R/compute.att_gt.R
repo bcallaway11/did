@@ -84,7 +84,7 @@ compute.att_gt <- function(dp) {
         # set an index for the pretreatment period
         # this recovers the right pre-treatment period for this group
         # it is the most recent pre-treatment period (g-1)
-        pret <- utils::tail(which( (tlist+anticipation) < glist[g]),1)
+        pret <- tail(which( (tlist+anticipation) < glist[g]),1)
 
         # print a warning message if there are no pre-treatment period
         if (length(pret) == 0) {

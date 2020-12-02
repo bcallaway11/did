@@ -13,16 +13,14 @@ Imports:
     MASS,
     pbapply,
     ggpubr,
-    lattice,
     stats,
     ggplot2,
     gridExtra,
     knitr,
     utils,
     plm,
-    DRDID,
     Matrix,
-    codetools
+    DRDID
 RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 Suggests: 
