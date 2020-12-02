@@ -62,11 +62,11 @@ ggdid.MP <- function(object,
   results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))
   results$att <- mpobj$att
   n <- mpobj$n
-  results$att.se <- sqrt(diag(mpobj$V)/n)
+  results$att.se <- mpobj$se #sqrt(diag(mpobj$V)/n)
   results$post <- as.factor(1*(results$year >= results$group))
   results$year <- as.factor(results$year)
   results$c <- mpobj$c
-  vcovatt <- mpobj$V/n
+  #vcovatt <- mpobj$V/n
   alp <- mpobj$alp
 
   mplots <- lapply(g, function(g) {

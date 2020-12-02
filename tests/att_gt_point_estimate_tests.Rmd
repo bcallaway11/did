@@ -477,7 +477,25 @@ te.e <- -1:(time.periods-2)
 data <- build_sim_dataset()
 data$G <- data$G + 1 # add anticipation
 
+#-----------------------------------------------------------------------------
+# will get results wrong due to anticipation effect for g=6
+# which shows up in the comparison group
+# this will only affect g=5 with 1 period anticipation
+#-----------------------------------------------------------------------------
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+              idname="id",
+              control_group="nevertreated",
+              gname="G", est_method="dr",
+              print_details=TRUE,
+              anticipation=1
+              )
+res
+summary(aggte(res, type="dynamic"))
 
+#-----------------------------------------------------------------------------
+# drop last time period and results should be correct
+#-----------------------------------------------------------------------------
+data <- subset(data, period < time.periods)
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               idname="id",
               control_group="nevertreated",
