@@ -14,4 +14,5 @@
 #' @import gridExtra
 #' @import DRDID
 #' @import plm
+#' @import Matrix
 NULL
