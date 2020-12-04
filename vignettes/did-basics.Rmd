@@ -73,8 +73,8 @@ This is an example of a very simple model for untreated potential outcomes that 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
 library(did)
 # Source the currently version of the did package (based on our Dropbox)
-fldr <- here::here("R/")
-sapply(paste0(fldr,list.files(fldr)), source)
+#fldr <- here::here("R/")
+#sapply(paste0(fldr,list.files(fldr)), source)
 # Source simulation designs
 source(here::here("vignettes/setup_sims.R"))
 ```
@@ -285,7 +285,7 @@ Next, we walk through a straightforward, but realistic way to use the `did` pack
 
 We'll consider two cases.  For the first case, we will not condition on any covariates.  For the second, we will condition on the log of county population (in a "real" application, one might want to condition on more covariates).
 
-```{r}
+```{r, fig.width=12,fig.height=8, fig.align='center'}
 # estimate group-time average treatment effects without covariates
 mw.attgt <- att_gt(yname = "lemp",
                    gname = "first.treat",
@@ -323,7 +323,7 @@ One potential issue with these dynamic effect estimators is that the composition
 One way to combat this is to balance the sample by (i) only including groups that are exposed to the treatment for at least a certain number of time periods and (ii) only look at dynamic effects in those time periods.  In the `did` package, one can do this by specifying the `balance_e` option.  Here, we set `balance_e = 1` -- what this does is to only consider groups of states that
 are treated in 2004 and 2006 (so we can compute event-study-type parameters for them for $e=0,1$), drops the group treated in 2007 (as we can not compute the event-study-type parameter with $e=1$ for this group)), and then only looks at instantaneous average effects and the average effect one period after states raised the minimum wage.
 
-```{r}
+```{r, fig.width=12,fig.height=8, fig.align='center'}
 mw.dyn.balance <- aggte(mw.attgt, type = "dynamic", balance_e=1)
 summary(mw.dyn.balance)
 ggdid(mw.dyn.balance, ylim = c(-.3,.3))
