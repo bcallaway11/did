@@ -126,10 +126,19 @@ summary(example_attgt)
 The summary of `example_attgt` provides estimates of the group-time average treatment effects in the column labeled `att`, and the corresponding bootstrapped-based standard errors are given in the column `se`.  The corresponding groups and times are given in the columns `group` and `time`.  Under the no-anticipation and parallel trends assumptions, group-time average treatment effects are identified in periods when $t \geq g$ (i.e., post-treatment periods for each group).  The table also reports pseudo group-time average treatment effects when $t < g$ (i.e., pre-treatment periods for group $g$).  These can be used as a pre-test for the parallel trends assumption (as long as we assume that the no-anticipation assumption indeed holds).  In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results.  [A much more detailed discussion of using the **did** package for pre-testing is available here](pre-testing).
 
 Next, we'll demonstrate how to plot group-time average treatment effects.  To plot these, use the `ggdid` function which builds off the `ggplot2` package.
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r, eval=FALSE}
 # plot the results
 ggdid(example_attgt)
 ```
+
+```{r, echo=FALSE}
+p <- ggdid(example_attgt)
+ggsave(plot=p, filename="did-basics-fig1.png", device="png", width=8, height=10)
+```
+
+<center>
+![](did-basics-fig1.png){ width=90% }
+</center>
 
 The resulting figure is one that contains separate plots for each group.  Notice in the figure above, the first plot is labeled "Group 2", the second "Group 3", etc.  Then, the figure contains estimates of group-time average treatment effects for each group in each time period along with a simultaneous confidence interval.  The red dots in the plots are pre-treatment pseudo group-time average treatment effects and are most useful for pre-testing the parallel trends assumption.  The blue dots are post-treatment group-time average treatment effects and should be interpreted as the average effect of participating in the treatment for units in a particular group at a particular point in time.
 
@@ -151,8 +160,8 @@ In many applications, there can be a large number of groups and time periods.  I
 One idea that is likely to immediately come to mind is to just return a weighted average of all group-time average treatment effects with weights proportional to the group size.  This is available by calling the `aggte` function with `type = simple`.
 
 ```{r}
-agg.simple <- aggte(example_attgt, type = "simple")
-summary(agg.simple)
+#agg.simple <- aggte(example_attgt, type = "simple")
+#summary(agg.simple)
 ```
 
 This sort of aggregation immediately avoids the negative weights issue that two-way fixed effects regressions can suffer from, but we often think that *there are better alternatives*. In particular, this `simple` aggregation tends to overweight the effect of early-treated groups simply because we observe more of them during post-treatment periods.  We think there are likely to be better alternatives in most applications.

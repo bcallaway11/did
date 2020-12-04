@@ -91,7 +91,7 @@ The main thing to notice here:
 
 Next, a bit more code
 
-```{r}
+```{r, fig.width=12,fig.height=8, fig.align='center'}
 #-----------------------------------------------------------------------------
 # modify the dataset a bit so that we can run an event study
 #-----------------------------------------------------------------------------
@@ -152,7 +152,7 @@ You will notice that everything looks good here.  The pre-test performs well (th
 
 We can compare this to what happens using the `did` package:
 
-```{r}
+```{r, fig.width=12,fig.height=8, fig.align='center'}
 # estimate group-group time average treatment effects
 did_att_gt <- att_gt(yname="Y",
                      tname="period",
@@ -266,7 +266,7 @@ cmat <- data.frame(coefs=coefs, ses=ses, exposure=exposure)
 ```
 
 
-```{r}
+```{r, fig.width=12,fig.height=8, fig.align='center'}
 # run through same code as before...omitted
 
 # new event study plot
@@ -282,7 +282,7 @@ In contrast to the last case, it is clear that things have gone wrong here.  **P
 
 We can compare this to what happens using the `did` package:
 
-```{r}
+```{r, fig.width=12,fig.height=8, fig.align='center'}
 # estimate group-group time average treatment effects
 did.att.gt <- att_gt(yname="Y",
                      tname="period",

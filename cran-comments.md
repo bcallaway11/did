@@ -1,6 +1,6 @@
 ## Test environments
 
-* local Ubuntu 18.04, R 3.6.2
+* local Ubuntu 20.04, R 4.0.3
 * win-builder (devel and release)
 * R-hub (Windows Server, Ubuntu Linux, Fedora Linux)
 
@@ -11,14 +11,14 @@
 There was 1 NOTE:
 
 * checking CRAN incoming feasibility ... NOTE
-  Maintainer: 'Brantly Callaway <bmcallaw@olemiss.edu>'
+  Maintainer: 'Brantly Callaway <brantly.callaway@uga.edu>'
 
   New maintainer:
-    Brantly Callaway <bmcallaw@olemiss.edu>
+    Brantly Callaway <brantly.callaway@uga.edu>
   Old maintainer(s):
-    Brantly Callaway <brantly.callaway@temple.edu>
+    Brantly Callaway <bmcallaw@olemiss.edu.edu>
     
-  I have moved from Temple University to the University of Mississippi, and this updates to my new email address.
+  I have moved from the University of Mississippi to the University of Georgia, and this updates to my new email address.
 
 ## Downstream dependencies
 
@@ -26,4 +26,4 @@ There was 1 NOTE:
 
 ## Additional Comments
 
-* package had been removed from CRAN, this version fixes CRAN check that was failing
+* None

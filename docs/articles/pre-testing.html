@@ -236,7 +236,7 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>,<span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" width="700"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" width="1152" style="display: block; margin: auto;"></p>
 <p>You will notice that everything looks good here. The pre-test performs well (the caveat to this is that the standard errors are “pointwise” and would be better to have uniform confidence bands though this does not seem to be standard practice in applications).</p>
 <p>We can compare this to what happens using the <code>did</code> package:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -276,7 +276,7 @@
 
 <span class="co"># plot them</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_att_gt</span><span class="op">)</span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-5-1.png" width="1152" style="display: block; margin: auto;"></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R">
 <span class="co"># aggregate them into event study plot</span>
@@ -284,7 +284,7 @@
 
 <span class="co"># plot the event study</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_es</span><span class="op">)</span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-5-2.png" width="700"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-5-2.png" width="1152" style="display: block; margin: auto;"></p>
 <p>Overall, everything looks good using either approach. (Just to keep things fair, we report pointwise confidence intervals for group-time average treatment effects, but it is easy to get uniform confidence bands by setting the options <code>bstrap=TRUE, cband=TRUE</code> to the call to <code>att_gt</code>.)</p>
 </div>
 <div id="pitfall-selective-treatment-timing" class="section level4">
@@ -354,7 +354,7 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>,<span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-12-1.png" width="1152" style="display: block; margin: auto;"></p>
 <p>In contrast to the last case, it is clear that things have gone wrong here. <strong>Parallel trends holds in all time periods and for all groups here</strong>, but the event study regression incorrectly rejects that parallel trends holds – this is due to the selective treatment timing.</p>
 <p>We can compare this to what happens using the <code>did</code> package:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -393,7 +393,7 @@
 
 <span class="co"># plot them</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.att.gt</span><span class="op">)</span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-13-1.png" width="700"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-13-1.png" width="1152" style="display: block; margin: auto;"></p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R">
 <span class="co"># aggregate them into event study plot</span>
@@ -401,7 +401,7 @@
 
 <span class="co"># plot the event study</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.es</span><span class="op">)</span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-13-2.png" width="700"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-13-2.png" width="1152" style="display: block; margin: auto;"></p>
 <p>This is the correct performance (up to aforementioned caveats about multiple hypothesis testing).</p>
 </div>
 </div>

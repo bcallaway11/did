@@ -123,15 +123,15 @@
 <p>Here is what the data looks like</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
-<span class="co">#&gt; [1] 35990</span>
+<span class="co">#&gt; [1] 36040</span>
 <span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
-<span class="co">#&gt;       G         X id period         Y treat</span>
-<span class="co">#&gt; 1     0 -1.455896  1      1 6.3505881     1</span>
-<span class="co">#&gt; 8001  0 -1.455896  1      2 4.9144204     1</span>
-<span class="co">#&gt; 16001 0 -1.455896  1      3 8.1528474     1</span>
-<span class="co">#&gt; 24001 0 -1.455896  1      4 8.0134666     1</span>
-<span class="co">#&gt; 32001 0 -1.455896  1      5 0.2189903     1</span>
-<span class="co">#&gt; 4     0 -1.524973  4      1 6.0770719     1</span></code></pre></div>
+<span class="co">#&gt;       G          X id period        Y treat</span>
+<span class="co">#&gt; 1     3 0.01027314  1      1 5.233312     1</span>
+<span class="co">#&gt; 8001  3 0.01027314  1      2 3.867681     1</span>
+<span class="co">#&gt; 16001 3 0.01027314  1      3 6.740012     1</span>
+<span class="co">#&gt; 24001 3 0.01027314  1      4 9.691236     1</span>
+<span class="co">#&gt; 32001 3 0.01027314  1      5 9.986472     1</span>
+<span class="co">#&gt; 2     4 1.07817401  2      1 5.216177     1</span></code></pre></div>
 <p>where <code>G</code> defines the period when an individual first becomes treated, <code>X</code> is a covariate but we’ll ignore it (parallel trends holds in this example without having to condition on <code>X</code>), and <code>Y</code> is the outcome.</p>
 <p>As a first step, we’ll try estimating the effect of participating in the treatment (focus on dynamic effects as in an event study plot) while just ignoring the possibility of anticipation.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -156,18 +156,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group-Time Average Treatment Effects:</span>
 <span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;      3    2  -1.0981     0.0843       -1.3405     -0.8557 *</span>
-<span class="co">#&gt;      3    3   2.0308     0.0632        1.8491      2.2125 *</span>
-<span class="co">#&gt;      3    4   2.0830     0.0871        1.8325      2.3336 *</span>
-<span class="co">#&gt;      3    5   2.1084     0.1159        1.7751      2.4418 *</span>
-<span class="co">#&gt;      4    2  -0.0247     0.0578       -0.1908      0.1415  </span>
-<span class="co">#&gt;      4    3  -1.1987     0.1335       -1.5827     -0.8148 *</span>
-<span class="co">#&gt;      4    4   1.9572     0.0653        1.7694      2.1450 *</span>
-<span class="co">#&gt;      4    5   2.0717     0.1017        1.7792      2.3641 *</span>
-<span class="co">#&gt;      5    2   0.0635     0.0543       -0.0926      0.2195  </span>
-<span class="co">#&gt;      5    3  -0.0201     0.0496       -0.1627      0.1226  </span>
-<span class="co">#&gt;      5    4  -0.9697     0.1507       -1.4032     -0.5361 *</span>
-<span class="co">#&gt;      5    5   2.1604     0.0731        1.9502      2.3706 *</span>
+<span class="co">#&gt;      3    2  -0.9124     0.0824       -1.1464     -0.6783 *</span>
+<span class="co">#&gt;      3    3   2.0250     0.0653        1.8394      2.2105 *</span>
+<span class="co">#&gt;      3    4   2.0462     0.0932        1.7814      2.3110 *</span>
+<span class="co">#&gt;      3    5   2.2706     0.1201        1.9296      2.6117 *</span>
+<span class="co">#&gt;      4    2  -0.0634     0.0543       -0.2176      0.0908  </span>
+<span class="co">#&gt;      4    3  -0.9618     0.1279       -1.3252     -0.5985 *</span>
+<span class="co">#&gt;      4    4   1.9479     0.0668        1.7580      2.1377 *</span>
+<span class="co">#&gt;      4    5   2.1556     0.0938        1.8893      2.4219 *</span>
+<span class="co">#&gt;      5    2  -0.1334     0.0529       -0.2836      0.0167  </span>
+<span class="co">#&gt;      5    3   0.1144     0.0526       -0.0349      0.2636  </span>
+<span class="co">#&gt;      5    4  -1.3016     0.1659       -1.7726     -0.8305 *</span>
+<span class="co">#&gt;      5    5   2.1522     0.0699        1.9538      2.3506 *</span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -179,9 +179,10 @@
 <span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">attgt.ignoredip</span>, <span class="st">"dynamic"</span><span class="op">)</span><span class="op">)</span>
 
 <span class="co"># add actual treatment effects to the plot</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
 <span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind.data.frame</a></span><span class="op">(</span>e <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>,<span class="fl">2</span><span class="op">)</span>, att.e <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="op">-</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span>
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu">geom_line</span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu">geom_point</span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
 <span class="va">p</span></code></pre></div>
 <p><img src="extensions_files/figure-html/unnamed-chunk-4-1.png" width="1152" style="display: block; margin: auto;"></p>
 <p>In the figure, the blue line is the “truth”. You can see that anticipation leads to two things. First, it leads to rejecting the parallel trends assumptions – you can correctly visualize the anticipation effects here and this is quite helpful for understanding what is going on. Second, however, the anticipation effects feed into the treatment effect estimates. Here, we over-estimate the effect of participating in the treatment due to the anticipation. Also, note that this example is really simple, and it would be easy to come up with cases where the results were much more complicated by anticipation.</p>
@@ -327,20 +328,20 @@
 <code class="sourceCode R"><span class="va">anticipation.results</span> <span class="op">&lt;-</span> <span class="fu">compute.attgt</span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
 <span class="va">anticipation.results</span>
 <span class="co">#&gt; $attgt.results</span>
-<span class="co">#&gt;   group        att time.period</span>
-<span class="co">#&gt; 1     3  0.9326914           3</span>
-<span class="co">#&gt; 2     3  0.9849351           4</span>
-<span class="co">#&gt; 3     4 -1.2233670           3</span>
-<span class="co">#&gt; 4     4  0.7584847           4</span>
-<span class="co">#&gt; 5     5  0.0434000           3</span>
-<span class="co">#&gt; 6     5 -0.9897316           4</span>
+<span class="co">#&gt;   group         att time.period</span>
+<span class="co">#&gt; 1     3  1.11260794           3</span>
+<span class="co">#&gt; 2     3  1.13387457           4</span>
+<span class="co">#&gt; 3     4 -1.02522546           3</span>
+<span class="co">#&gt; 4     4  0.98606859           4</span>
+<span class="co">#&gt; 5     5 -0.01906691           3</span>
+<span class="co">#&gt; 6     5 -1.18717846           4</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; $dyn.results</span>
-<span class="co">#&gt;    e      att.e</span>
-<span class="co">#&gt; 1 -2  0.0434000</span>
-<span class="co">#&gt; 2 -1 -1.1060340</span>
-<span class="co">#&gt; 3  0  0.8466769</span>
-<span class="co">#&gt; 4  1  0.9849351</span></code></pre></div>
+<span class="co">#&gt;    e       att.e</span>
+<span class="co">#&gt; 1 -2 -0.01906691</span>
+<span class="co">#&gt; 2 -1 -1.10800143</span>
+<span class="co">#&gt; 3  0  1.05148165</span>
+<span class="co">#&gt; 4  1  1.13387457</span></code></pre></div>
 <p>Finally, let’s compute some standard errors using the nonparametric bootstrap (which is different from the multiplier bootstrap that we use in the <em>did</em> package); we’ll just focus on the dynamic effects estimator</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># the number of bootstrap iterations</span>
@@ -368,14 +369,14 @@
 <span class="va">dyn.results</span><span class="op">$</span><span class="va">att.se</span> <span class="op">&lt;-</span> <span class="va">boot.se</span></code></pre></div>
 <p>Finally, we can translate these into a plot. [One last thing here, to keep things very simple, we are going to plot pointwise confidence intervals, but we strongly suggest computing simultaneous confidence bands in practice.]</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu">ggplot</span><span class="op">(</span>data<span class="op">=</span><span class="va">dyn.results</span>, <span class="fu">aes</span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu">geom_line</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu">geom_point</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu">geom_errorbar</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu">theme_bw</span><span class="op">(</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">dyn.results</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span>
 
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu">geom_line</span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu">aes</span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu">geom_point</span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu">aes</span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
 <span class="va">p</span></code></pre></div>
 <p><img src="extensions_files/figure-html/unnamed-chunk-6-1.png" width="700"></p>
 <p>Here, the black line is our estimate and the blue line is the “truth”. You can immediately see that we get things right here when we account for anticipation. The only other thing to notice is that we do not estimate dynamic effects at as many different lengths of exposure, but that is the price to pay for accounting for anticipation.</p>

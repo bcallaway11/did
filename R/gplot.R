@@ -32,8 +32,8 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
     xlab("") +
     ggtitle(paste(title, unique(ssresults$group))) +
     theme_bw() +
-    theme(plot.title = element_text(color="darkgray", face="bold", size=8)) +
-    theme(axis.title = element_text(color="darkgray", face="bold", size=8))
+    theme(plot.title = element_text(color="darkgray", face="bold", size=12)) +
+    theme(axis.title = element_text(color="darkgray", face="bold", size=12))
 
   if (!legend) {
     p  <- p + ggpubr::rremove("legend")

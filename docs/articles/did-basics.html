@@ -484,7 +484,7 @@
 <span class="co"># plot the results</span>
 <span class="co"># set ylim so that all plots have the same scale along y-axis</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.attgt</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-14-1.png" width="700"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-14-1.png" width="1152" style="display: block; margin: auto;"></p>
 <p>There are a few things to notice in this case</p>
 <ul>
 <li><p>There does not appear to be much evidence against the parallel trends assumption. One fails to reject using the Wald test reported in <code>summary</code>; likewise the uniform confidence bands cover 0 in all pre-treatment periods.</p></li>
@@ -552,7 +552,7 @@
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class="co">#&gt; Estimation Method:  Doubly Robust</span>
 <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn.balance</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-16-1.png" width="700"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-16-1.png" width="1152" style="display: block; margin: auto;"></p>
 <p>Finally, we can run all the same results including a covariate. In this application the results turn out to be nearly identical, and here we provide just the code for estimating the group-time average treatment effects while including covariates. The other steps are otherwise the same.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">mw.attgt.X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,

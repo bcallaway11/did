@@ -112,6 +112,7 @@ summary(attgt.ignoredip)
 p <- ggdid(aggte(attgt.ignoredip, "dynamic"))
 
 # add actual treatment effects to the plot
+library(ggplot2)
 truth <- cbind.data.frame(e = seq(-3,2), att.e = c(0,0,-1,1,1,1))
 p <- p + geom_line(data = truth, aes(x = e, y = att.e), inherit.aes = FALSE, color = "blue")
 p <- p + geom_point(data = truth, aes(x = e, y = att.e), inherit.aes = FALSE, color = "blue")
