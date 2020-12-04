@@ -192,10 +192,10 @@ compute.aggte <- function(MP,
     })
 
     # recover standard errors separately by group
-    selective.se.g <- unlist(getListElement(selective.se.inner, "se"))
+    selective.se.g <- unlist(BMisc::getListElement(selective.se.inner, "se"))
 
     # recover influence function separately by group
-    selective.inf.func.g <- simplify2array(getListElement(selective.se.inner, "inf.func"))
+    selective.inf.func.g <- simplify2array(BMisc::getListElement(selective.se.inner, "inf.func"))
 
     # use multiplier bootstrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -293,8 +293,8 @@ compute.aggte <- function(MP,
       list(inf.func=inf.func.e, se=se.e)
     })
 
-    dynamic.se.e <- unlist(getListElement(dynamic.se.inner, "se"))
-    dynamic.inf.func.e <- simplify2array(getListElement(dynamic.se.inner, "inf.func"))
+    dynamic.se.e <- unlist(BMisc::getListElement(dynamic.se.inner, "se"))
+    dynamic.inf.func.e <- simplify2array(BMisc::getListElement(dynamic.se.inner, "inf.func"))
 
     dynamic.crit.val <- NULL
     if(dp$cband==TRUE){
@@ -367,10 +367,10 @@ compute.aggte <- function(MP,
     })
 
     # recover standard errors separately by time
-    calendar.se.t <- unlist(getListElement(calendar.se.inner, "se"))
+    calendar.se.t <- unlist(BMisc::getListElement(calendar.se.inner, "se"))
 
     # recover influence function separately by time
-    calendar.inf.func.t <- simplify2array(getListElement(calendar.se.inner, "inf.func"))
+    calendar.inf.func.t <- simplify2array(BMisc::getListElement(calendar.se.inner, "inf.func"))
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands

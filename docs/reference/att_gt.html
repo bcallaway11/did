@@ -143,6 +143,7 @@
   panel <span class='op'>=</span> <span class='cn'>TRUE</span>,
   allow_unbalanced_panel <span class='op'>=</span> <span class='cn'>FALSE</span>,
   control_group <span class='op'>=</span> <span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"nevertreated"</span>, <span class='st'>"notyettreated"</span><span class='op'>)</span>,
+  anticipation <span class='op'>=</span> <span class='fl'>0</span>,
   weightsname <span class='op'>=</span> <span class='cn'>NULL</span>,
   alp <span class='op'>=</span> <span class='fl'>0.05</span>,
   bstrap <span class='op'>=</span> <span class='cn'>TRUE</span>,
@@ -184,7 +185,7 @@ in the untreated group.</p></td>
 model.  It should be of the form <code>~ X1 + X2</code>.  Default
 is NULL which is equivalent to <code>xformla=~1</code>.  This is
 used to create a matrix of covariates which is then passed
-to the 2x2 DID estimator chosen in <code>estMethod</code>.</p></td>
+to the 2x2 DID estimator chosen in <code>est_method</code>.</p></td>
     </tr>
     <tr>
       <th>data</th>
@@ -222,6 +223,12 @@ in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
 participated yet.</p></td>
+    </tr>
+    <tr>
+      <th>anticipation</th>
+      <td><p>The number of time periods before participating
+in the treatment where units can anticipate participating in the
+treatment and therefore it can affect their untreated potential outcomes</p></td>
     </tr>
     <tr>
       <th>weightsname</th>
@@ -279,7 +286,7 @@ covariates.  The function should return a list that includes
 <code>ATT</code> (an estimated average treatment effect), and
 <code>inf.func</code> (an <code>n</code> x <code>1</code> influence function).
 The function can return other things as well, but these are
-the only two that are required. <code>estMethod</code> is only used
+the only two that are required. <code>est_method</code> is only used
 if covariates are included.</p></td>
     </tr>
     <tr>
@@ -309,7 +316,78 @@ Default is <code>FALSE</code>.</p></td>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
-
+<span class='fu'><a href='https://rdrr.io/r/base/search.html'>search</a></span><span class='op'>(</span><span class='op'>)</span>
+</div><div class='output co'>#&gt;  [1] ".GlobalEnv"        "package:did"       "package:stats"    
+#&gt;  [4] "package:graphics"  "package:grDevices" "package:utils"    
+#&gt;  [7] "package:datasets"  "package:methods"   "Autoloads"        
+#&gt; [10] "tools:callr"       "package:base"     </div><div class='input'><span class='va'>lpa</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/libPaths.html'>.libPaths</a></span><span class='op'>(</span><span class='op'>)</span>
+<span class='va'>lpa</span>
+</div><div class='output co'>#&gt; [1] "/tmp/RtmpsoGnZl/temp_libpath1416f6692a0f3"    
+#&gt; [2] "/home/brant/R/x86_64-pc-linux-gnu-library/4.0"
+#&gt; [3] "/usr/local/lib/R/site-library"                
+#&gt; [4] "/usr/lib/R/site-library"                      
+#&gt; [5] "/usr/lib/R/library"                           </div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>lpa</span>, <span class='kw'>function</span><span class='op'>(</span><span class='va'>lp</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/base/list.files.html'>list.files</a></span><span class='op'>(</span><span class='va'>lp</span><span class='op'>)</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; $`/tmp/RtmpsoGnZl/temp_libpath1416f6692a0f3`
+#&gt; [1] "did"
+#&gt; 
+#&gt; $`/home/brant/R/x86_64-pc-linux-gnu-library/4.0`
+#&gt;   [1] "abind"         "askpass"       "assertthat"    "backports"    
+#&gt;   [5] "badger"        "base64enc"     "bdsmatrix"     "BH"           
+#&gt;   [9] "BiocManager"   "BMisc"         "brew"          "brio"         
+#&gt;  [13] "broom"         "callr"         "car"           "carData"      
+#&gt;  [17] "cellranger"    "cli"           "clipr"         "colorspace"   
+#&gt;  [21] "commonmark"    "conquer"       "corrplot"      "covr"         
+#&gt;  [25] "cowplot"       "cpp11"         "crayon"        "crosstalk"    
+#&gt;  [29] "curl"          "data.table"    "desc"          "devtools"     
+#&gt;  [33] "did"           "diffobj"       "digest"        "dlstats"      
+#&gt;  [37] "downlit"       "dplyr"         "DRDID"         "DT"           
+#&gt;  [41] "ellipsis"      "evaluate"      "fansi"         "farver"       
+#&gt;  [45] "forcats"       "Formula"       "fs"            "gbRd"         
+#&gt;  [49] "generics"      "ggplot2"       "ggpubr"        "ggrepel"      
+#&gt;  [53] "ggsci"         "ggsignif"      "gh"            "git2r"        
+#&gt;  [57] "gitcreds"      "glue"          "gridExtra"     "gtable"       
+#&gt;  [61] "haven"         "here"          "highr"         "hms"          
+#&gt;  [65] "htmltools"     "htmlwidgets"   "httr"          "ini"          
+#&gt;  [69] "isoband"       "jsonlite"      "knitr"         "labeling"     
+#&gt;  [73] "later"         "lazyeval"      "lifecycle"     "lme4"         
+#&gt;  [77] "lmtest"        "magrittr"      "maptools"      "markdown"     
+#&gt;  [81] "MatrixModels"  "matrixStats"   "maxLik"        "memoise"      
+#&gt;  [85] "mime"          "minqa"         "miscTools"     "munsell"      
+#&gt;  [89] "nloptr"        "openssl"       "openxlsx"      "parsedate"    
+#&gt;  [93] "pbapply"       "pbkrtest"      "pillar"        "pkgbuild"     
+#&gt;  [97] "pkgconfig"     "pkgdown"       "pkgload"       "plm"          
+#&gt; [101] "polynom"       "praise"        "prettyunits"   "processx"     
+#&gt; [105] "progress"      "promises"      "ps"            "purrr"        
+#&gt; [109] "quantreg"      "R6"            "ragg"          "rappdirs"     
+#&gt; [113] "rbibutils"     "rcmdcheck"     "RColorBrewer"  "Rcpp"         
+#&gt; [117] "RcppArmadillo" "RcppEigen"     "Rdpack"        "readr"        
+#&gt; [121] "readxl"        "rematch"       "rematch2"      "remotes"      
+#&gt; [125] "rex"           "rhub"          "rio"           "rlang"        
+#&gt; [129] "rmarkdown"     "roxygen2"      "rprojroot"     "rstatix"      
+#&gt; [133] "rstudioapi"    "rvcheck"       "rversions"     "sandwich"     
+#&gt; [137] "scales"        "sessioninfo"   "sp"            "SparseM"      
+#&gt; [141] "statmod"       "stringi"       "stringr"       "sys"          
+#&gt; [145] "systemfonts"   "testthat"      "textshaping"   "tibble"       
+#&gt; [149] "tidyr"         "tidyselect"    "tinytex"       "trust"        
+#&gt; [153] "usethis"       "utf8"          "uuid"          "vctrs"        
+#&gt; [157] "viridisLite"   "waldo"         "whisker"       "whoami"       
+#&gt; [161] "withr"         "xfun"          "xml2"          "xopen"        
+#&gt; [165] "yaml"          "zip"           "zoo"          
+#&gt; 
+#&gt; $`/usr/local/lib/R/site-library`
+#&gt; character(0)
+#&gt; 
+#&gt; $`/usr/lib/R/site-library`
+#&gt; character(0)
+#&gt; 
+#&gt; $`/usr/lib/R/library`
+#&gt;  [1] "base"         "boot"         "class"        "cluster"      "codetools"   
+#&gt;  [6] "compiler"     "datasets"     "foreign"      "graphics"     "grDevices"   
+#&gt; [11] "grid"         "KernSmooth"   "lattice"      "MASS"         "Matrix"      
+#&gt; [16] "methods"      "mgcv"         "nlme"         "nnet"         "parallel"    
+#&gt; [21] "rpart"        "spatial"      "splines"      "stats"        "stats4"      
+#&gt; [26] "survival"     "tcltk"        "tools"        "translations" "utils"       
+#&gt; </div><div class='input'>
 <span class='co'># with covariates</span>
 <span class='va'>out1</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
                tname<span class='op'>=</span><span class='st'>"year"</span>,
@@ -319,28 +397,32 @@ Default is <code>FALSE</code>.</p></td>
                data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out1</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
+#&gt; Call:
+#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
+#&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta)
 #&gt; 
+#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
-#&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |  2004| 2004| -0.0145297| 0.0234360|
-#&gt; |  2004| 2005| -0.0764219| 0.0295915|
-#&gt; |  2004| 2006| -0.1404483| 0.0396214|
-#&gt; |  2004| 2007| -0.1069039| 0.0329276|
-#&gt; |  2006| 2004| -0.0004721| 0.0216973|
-#&gt; |  2006| 2005| -0.0062025| 0.0188501|
-#&gt; |  2006| 2006|  0.0009606| 0.0192293|
-#&gt; |  2006| 2007| -0.0412939| 0.0184792|
-#&gt; |  2007| 2004|  0.0267278| 0.0142760|
-#&gt; |  2007| 2005| -0.0045766| 0.0158822|
-#&gt; |  2007| 2006| -0.0284475| 0.0195889|
-#&gt; |  2007| 2007| -0.0287814| 0.0160767|
-#&gt; 
+#&gt; Group-Time Average Treatment Effects:
+#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
+#&gt;   2004 2004  -0.0145     0.0234       -0.0761      0.0470  
+#&gt;   2004 2005  -0.0764     0.0296       -0.1541      0.0013  
+#&gt;   2004 2006  -0.1404     0.0396       -0.2445     -0.0364 *
+#&gt;   2004 2007  -0.1069     0.0329       -0.1934     -0.0204 *
+#&gt;   2006 2004  -0.0005     0.0217       -0.0575      0.0565  
+#&gt;   2006 2005  -0.0062     0.0189       -0.0557      0.0433  
+#&gt;   2006 2006   0.0010     0.0192       -0.0495      0.0515  
+#&gt;   2006 2007  -0.0413     0.0185       -0.0898      0.0072  
+#&gt;   2007 2004   0.0267     0.0143       -0.0108      0.0642  
+#&gt;   2007 2005  -0.0046     0.0159       -0.0463      0.0371  
+#&gt;   2007 2006  -0.0284     0.0196       -0.0799      0.0230  
+#&gt;   2007 2007  -0.0288     0.0161       -0.0710      0.0134  
+#&gt; ---
+#&gt; Signif. codes: `*' confidence band does not cover 0
 #&gt; 
 #&gt; P-value for pre-test of parallel trends assumption:  0.2816
-#&gt; </div><div class='input'>
+#&gt; Control Group:  Never Treated,  Anticipation Periods:  0
+#&gt; Estimation Method:  Doubly Robust</div><div class='input'>
 <span class='co'># without covariates</span>
 <span class='va'>out2</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
                tname<span class='op'>=</span><span class='st'>"year"</span>,
@@ -350,28 +432,32 @@ Default is <code>FALSE</code>.</p></td>
                data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out2</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; 
-#&gt; Reference: Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
+#&gt; Call:
+#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
+#&gt;     gname = "first.treat", xformla = NULL, data = mpdta)
 #&gt; 
+#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
 #&gt; 
-#&gt; 
-#&gt; | group| time|        att|        se|
-#&gt; |-----:|----:|----------:|---------:|
-#&gt; |  2004| 2004| -0.0105032| 0.0251163|
-#&gt; |  2004| 2005| -0.0704232| 0.0323822|
-#&gt; |  2004| 2006| -0.1372587| 0.0401488|
-#&gt; |  2004| 2007| -0.1008114| 0.0365631|
-#&gt; |  2006| 2004|  0.0065201| 0.0253512|
-#&gt; |  2006| 2005| -0.0027508| 0.0198927|
-#&gt; |  2006| 2006| -0.0045946| 0.0190476|
-#&gt; |  2006| 2007| -0.0412245| 0.0219010|
-#&gt; |  2007| 2004|  0.0305067| 0.0157973|
-#&gt; |  2007| 2005| -0.0027259| 0.0165378|
-#&gt; |  2007| 2006| -0.0310871| 0.0178558|
-#&gt; |  2007| 2007| -0.0260544| 0.0163004|
-#&gt; 
+#&gt; Group-Time Average Treatment Effects:
+#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
+#&gt;   2004 2004  -0.0105     0.0251       -0.0770      0.0560  
+#&gt;   2004 2005  -0.0704     0.0324       -0.1562      0.0154  
+#&gt;   2004 2006  -0.1373     0.0401       -0.2436     -0.0309 *
+#&gt;   2004 2007  -0.1008     0.0366       -0.1977     -0.0039 *
+#&gt;   2006 2004   0.0065     0.0254       -0.0606      0.0737  
+#&gt;   2006 2005  -0.0028     0.0199       -0.0555      0.0499  
+#&gt;   2006 2006  -0.0046     0.0190       -0.0551      0.0459  
+#&gt;   2006 2007  -0.0412     0.0219       -0.0992      0.0168  
+#&gt;   2007 2004   0.0305     0.0158       -0.0113      0.0724  
+#&gt;   2007 2005  -0.0027     0.0165       -0.0465      0.0411  
+#&gt;   2007 2006  -0.0311     0.0179       -0.0784      0.0162  
+#&gt;   2007 2007  -0.0261     0.0163       -0.0692      0.0171  
+#&gt; ---
+#&gt; Signif. codes: `*' confidence band does not cover 0
 #&gt; 
 #&gt; P-value for pre-test of parallel trends assumption:  0.19331
-#&gt; </div><div class='input'>
+#&gt; Control Group:  Never Treated,  Anticipation Periods:  0
+#&gt; Estimation Method:  Doubly Robust</div><div class='input'>
 </div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

@@ -57,13 +57,13 @@
 #' \code{ATT} (an estimated average treatment effect), and
 #' \code{inf.func} (an \code{n} x \code{1} influence function).
 #' The function can return other things as well, but these are
-#' the only two that are required. \code{estMethod} is only used
+#' the only two that are required. \code{est_method} is only used
 #' if covariates are included.
 #' @param xformla A formula for the covariates to include in the
 #'  model.  It should be of the form \code{~ X1 + X2}.  Default
 #'  is NULL which is equivalent to \code{xformla=~1}.  This is
 #'  used to create a matrix of covariates which is then passed
-#'  to the 2x2 DID estimator chosen in \code{estMethod}.
+#'  to the 2x2 DID estimator chosen in \code{est_method}.
 #' @param panel Whether or not the data is a panel dataset.
 #'  The panel dataset should be provided in long format -- that
 #'  is, where each row corresponds to a unit observed at a
@@ -95,6 +95,10 @@
 #'
 #' @examples
 #' data(mpdta)
+#' search()
+#' lpa <- .libPaths()
+#' lpa
+#' sapply(lpa, function(lp) list.files(lp))
 #'
 #' # with covariates
 #' out1 <- att_gt(yname="lemp",

@@ -150,7 +150,7 @@ conditional_did_pretest <- function(yname,
   })
 
   # grab an array of the influence function for the test statistic
-  Jinf.func <- simplify2array(getListElement(out, "inf.func"))
+  Jinf.func <- simplify2array(BMisc::getListElement(out, "inf.func"))
 
   # get the test statistic for all values of g,t,x
   J.inner <- sapply(out, function(o) o$J)

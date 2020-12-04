@@ -150,7 +150,7 @@ pre_process_did <- function(yname,
 
   # how many in each group before give warning
   # 5 is just a buffer, could pick something else, but seems to work fine
-  reqsize <- length(rhs.vars(xformla)) + 5
+  reqsize <- length(BMisc::rhs.vars(xformla)) + 5
 
   # which groups to warn about
   gsize <- subset(gsize, x < reqsize) # x is name of column from aggregate

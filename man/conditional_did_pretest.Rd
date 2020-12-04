@@ -43,7 +43,7 @@ in the untreated group.}
 model.  It should be of the form \code{~ X1 + X2}.  Default
 is NULL which is equivalent to \code{xformla=~1}.  This is
 used to create a matrix of covariates which is then passed
-to the 2x2 DID estimator chosen in \code{estMethod}.}
+to the 2x2 DID estimator chosen in \code{est_method}.}
 
 \item{data}{The name of the data.frame that contains the data}
 
@@ -116,7 +116,7 @@ covariates.  The function should return a list that includes
 \code{ATT} (an estimated average treatment effect), and
 \code{inf.func} (an \code{n} x \code{1} influence function).
 The function can return other things as well, but these are
-the only two that are required. \code{estMethod} is only used
+the only two that are required. \code{est_method} is only used
 if covariates are included.}
 
 \item{print_details}{Whether or not to show details/progress of computations.

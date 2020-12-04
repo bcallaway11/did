@@ -178,7 +178,7 @@ in the untreated group.</p></td>
 model.  It should be of the form <code>~ X1 + X2</code>.  Default
 is NULL which is equivalent to <code>xformla=~1</code>.  This is
 used to create a matrix of covariates which is then passed
-to the 2x2 DID estimator chosen in <code>estMethod</code>.</p></td>
+to the 2x2 DID estimator chosen in <code>est_method</code>.</p></td>
     </tr>
     <tr>
       <th>data</th>
@@ -273,7 +273,7 @@ covariates.  The function should return a list that includes
 <code>ATT</code> (an estimated average treatment effect), and
 <code>inf.func</code> (an <code>n</code> x <code>1</code> influence function).
 The function can return other things as well, but these are
-the only two that are required. <code>estMethod</code> is only used
+the only two that are required. <code>est_method</code> is only used
 if covariates are included.</p></td>
     </tr>
     <tr>

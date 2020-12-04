@@ -12,8 +12,8 @@
 process_attgt <- function(attgt.results.list) {
   attgt.list <- attgt.results.list$attgt
   inffunc <- attgt.results.list$inffunc
-  nG <- length(unique(unlist(getListElement(attgt.list, "group"))))
-  nT <- length(unique(unlist(getListElement(attgt.list, "year"))))
+  nG <- length(unique(unlist(BMisc::getListElement(attgt.list, "group"))))
+  nT <- length(unique(unlist(BMisc::getListElement(attgt.list, "year"))))
   # pick up number of observations from the influence function
   # this will be flexible for panel or repeated cross sections
 

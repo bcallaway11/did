@@ -1,10 +1,10 @@
 ---
-title: "Pre-Testing in a DID Setup using the did Package"
+title: "Pre-Testing in a DiD Setup using the did Package"
 author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Pre-Testing in a DID Setup using the did Package}
+  %\VignetteIndexEntry{Pre-Testing in a DiD Setup using the did Package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,27 +18,26 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
-#fldr <- "~/Dropbox/did/R/"
-#sapply(paste0(fldr,list.files(fldr)), source)
 library(did)
-library(DRDID)
-library(BMisc)
-library(ggplot2)
-library(ggpubr)
+# Source the currently version of the did package (based on our Dropbox)
+fldr <- here::here("R/")
+sapply(paste0(fldr,list.files(fldr)), source)
+# Source simulation designs
+source(here::here("vignettes/setup_sims.R"))
 ```
 
 
 ## Introduction
 
-This vignette provides a discussion of how to conduct pre-tests in DID setups using the **did** package
+This vignette provides a discussion of how to conduct pre-tests in DiD setups using the **did** package
 
-* One very appealing feature of many DID applications with multiple periods is that the researcher can pre-test the parallel trends assumptions.
+* One appealing feature of many DiD applications with multiple periods is that the researcher can pre-test the parallel trends assumptions.
 
-    * The idea here is simple: although one can not test whether parallel trends itself holds, one can check if it holds in periods before treated units actually become treated.
+    * The idea here is simple: although one can not always test whether parallel trends itself holds, one can check if it holds in periods before treated units actually become treated.
 
-    * Importantly, this is just a pre-test; it is different from an actual test.  Whether or not the parallel trends assumption holds in pre-treatment periods does not actually tell you if it holds in the current period (and this is when you need it to hold!).  It is certainly possible for the identifying assumptions to hold in previous periods but not hold in current periods; it is also possible for identifying assumptions to be violated in previous periods but for them to hold in current periods.  That being said, the right way to think about a pre-test is as (potentially strong) piece of evidence on the validity of the DID design in a particular application.
+    * Importantly, this is just a pre-test; it is different from an actual test.  Whether or not the parallel trends assumption holds in pre-treatment periods does not actually tell you if it holds in the current period (and this is when you need it to hold!).  It is certainly possible for the identifying assumptions to hold in previous periods but not hold in current periods; it is also possible for identifying assumptions to be violated in previous periods but for them to hold in current periods.  That being said, we view the pre-test as a piece of evidence on the credibility of the DiD design in a particular application.
 
-* In this vignette, we demonstrate that the approach used in the **did** package for pre-testing may work substantially better than the more common "event study regression"
+* In this vignette, we demonstrate that the approach used in the **did** package for pre-testing may work substantially better than the more common "event study regression".
 
 ## Common Approaches to Pre-Testing in Applications
 
@@ -47,7 +46,7 @@ $$
   Y_{it} = \theta_t + \eta_i + \sum_{l=-\mathcal{T}}^{\mathcal{T}-1} D_{it}^l \mu_l + v_{it}
 $$
 
-where $D_{it}^l = 1$ if individual $i$ has been exposed to the treatment for $l$ periods in period $t$, and $D_{it}^l = 0$ otherwise.  To be clear here, it is helpul to give some examples.  Suppose individual $i$ becomes treated in period 3.  Then,
+where $D_{it}^l = 1$ if individual $i$ has been exposed to the treatment for $l$ periods in period $t$, and $D_{it}^l = 0$ otherwise.  To be clear here, it is helpful to give some examples.  Suppose individual $i$ becomes treated in period 3.  Then,
 
 * $D_{it}^0 = 1$ when $t=3$ and is equal to 0 in other time periods
 
@@ -55,12 +54,11 @@ where $D_{it}^l = 1$ if individual $i$ has been exposed to the treatment for $l$
 
 * $D_{it}^{-2} = 1$ when $t=1$ and is equal to 0 in other time periods.
 
-And $\mu_l$ is interpreted as the effect of treatment for different lengths of exposure to the treatment.  Typically, $\mu_{-1}$ is normalized to be equal to 0, and we follow that convention here.  It is very common to interpret estimated $\mu_l$'s with $l < 0$ as a way to pre-test the parallel trends assumption.
+And $\mu_l$ is interpreted as the effect of treatment for different lengths of exposure to the treatment.  Typically, $\mu_{-1}$ is normalized to be equal to 0, and we follow that convention here.  It is common to interpret estimated $\mu_l$'s with $l < 0$ as a way to pre-test the parallel trends assumption.
 
 ### Pitfalls with Event Study Regressions
 
 ```{r echo=FALSE}
-source("setup_sims.R")
 time.periods <- 4
 reset.sim()
 bett <- betu <- rep(0, time.periods)
@@ -141,7 +139,6 @@ exposure <- -(time.periods-1):(time.periods-2)
 cmat <- data.frame(coefs=coefs, ses=ses, exposure=exposure)
 
 library(ggplot2)
-library(gridExtra)
 
 ggplot(data=cmat, mapping=aes(y=coefs, x=exposure)) +
   geom_line(linetype="dashed") +
@@ -176,7 +173,7 @@ did_es <- aggte(did_att_gt, type="dynamic")
 ggdid(did_es)
 ```
 
-Overall, everything looks good using either approach.  (Just to keep things fair, we report pointwise confidence intervals for group-time average treatment effects, but it is easy to get uniform confidence bands by adding the options `bstrap=TRUE, cband=TRUE` to the call to `att_gt`.)
+Overall, everything looks good using either approach.  (Just to keep things fair, we report pointwise confidence intervals for group-time average treatment effects, but it is easy to get uniform confidence bands by setting the options `bstrap=TRUE, cband=TRUE` to the call to `att_gt`.)
 
 
 #### Pitfall: Selective Treatment Timing
@@ -309,7 +306,7 @@ This is the correct performance (up to aforementioned caveats about multiple hyp
 
 ## Conditional Moment Tests
 
-Another main use case for the `did` package is when the parallel trends assumptions holds after conditioning on some covariates.  This is likely to be important in many applications.  For example, to evaluate the effect of participating in a job training program on earnings, it is likely to important to condition on an individual's education.  This would be true if (i) the distribution of education is different for individuals that participate in job training relative to those that don't (this is very likely to hold as people that participate in job training tend to have less education than those who do not), and (ii) if the path of earnings (absent participating in job training) depends on an individual's education.  See Heckman, Ichimura, and Todd (1998) and Abadie (2005) for more discussion.
+Another main use case for the `did` package is when the parallel trends assumptions holds after conditioning on some covariates.  This is likely to be important in many applications.  For example, to evaluate the effect of participating in a job training program on earnings, it is likely to be important to condition on an individual's education.  This would be true if (i) the distribution of education is different for individuals that participate in job training relative to those that don't (this is very likely to hold as people that participate in job training tend to have less education than those who do not), and (ii) if the path of earnings (absent participating in job training) depends on an individual's education.  See Heckman, Ichimura, and Todd (1998) and Abadie (2005) for more discussion.
 
 Even when one includes covariates to estimate group-time average treatment effects, pre-tests based only on group-time average treatment effects can fail to detect some violations of the parallel trends assumption.  To give an example, suppose that the only covariate is binary variable for an individual's sex.  Pre-tests based on group-time average treatment effects could fail to detect violations of the conditional parallel trends assumption in cases where it is violated in one direction for men and in the other direction for women.
 
@@ -330,7 +327,7 @@ cdp
 
 * Abadie, Alberto. "Semiparametric difference-in-differences estimators." The Review of Economic Studies 72.1 (2005): 1-19.
 
-* Callaway, Brantly, and Pedro HC Sant'Anna. "Difference-in-differences with multiple time periods." Available at SSRN 3148250 (2020).
+* Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Forthcoming at the Journal of Econometrics (2020).
 
 * Heckman, James J., Hidehiko Ichimura, and Petra Todd. "Matching as an econometric evaluation estimator." The Review of Economic Studies 65.2 (1998): 261-294.
 

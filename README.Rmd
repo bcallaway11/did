@@ -41,7 +41,7 @@ library(BMisc)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-The **did** package contains tools for computing average treatment effect parameters in a Difference in Differences setup allowing for
+The **did** package contains tools for computing average treatment effect parameters in a Difference-in-Differences setup allowing for
 
 * More than two time periods
 
@@ -53,27 +53,19 @@ The **did** package contains tools for computing average treatment effect parame
 
 The main parameters are **group-time average treatment effects**.  These are the average treatment effect for a particular group (group is defined by treatment timing) in a particular time period.  These parameters are a natural generalization of the average treatment effect on the treated (ATT) which is identified in the textbook case with two periods and two groups to the case with multiple periods.
 
-Group-time average treatment effects are also natural building blocks for more aggregated treatment effect parameters such as overall treatment effects or event study plots.
+Group-time average treatment effects are also natural building blocks for more aggregated treatment effect parameters such as overall treatment effects or event-study-type estimands.
 
-The **did** package also contains a number of functions for pre-testing the parallel trends assumption.
 
 ## Getting Started
 
-There has been a lot of recent work on DID with multiple time periods.  The **did** package implements the ideas in
+There has been some recent work on DiD with multiple time periods.  The **did** package implements the framework put forward in
 
-* Callaway, Brantly, and Pedro HC Sant\'Anna. Difference-in-differences with multiple time periods. Available at SSRN 3148250 (2020).
+* Callaway, Brantly, and Pedro H.C. Sant\'Anna. Difference-in-differences with multiple time periods. Forthcoming at the Journal of Econometrics (2020).
 
-**Other methodological papers on DID with multiple time periods include**
-
-* Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing. No. w25018. National Bureau of Economic Research, 2019.
-
-* De Chaisemartin, Clement, and Xavier d'Haultfoeuille. "Two-way fixed effects estimators with heterogeneous treatment effects." American Economic Review 110.9 (2020): 2964-96.
-
-* Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Available at SSRN 3158747 (2020).
 
 **Higher level discussions of issues are available in**
 
-* [Our approach to DID with multiple time periods](articles/multi-period-did.html)
+* [Our approach to DiD with multiple time periods](articles/multi-period-did.html)
 
 
 ## Installation
@@ -93,9 +85,9 @@ devtools::install_github("bcallaway11/did")
 
 ## A short example
 
-The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2019).
+The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2020).
 
-* [More detailed examples are also available](articles/did-basics)
+* [More detailed examples are also available](articles/did-basics.html)
 
 A subset of the data is available in the package and can be loaded by
 ```{r eval=FALSE}
@@ -116,13 +108,13 @@ The dataset contains 500 observations of county-level teen employment rates from
 To estimate group-time average treatment effects, use the **att_gt** function
 
 ```{r}
-out <- att_gt(yname="lemp",
-              gname="first.treat",
-              idname="countyreal",
-              tname="year",
-              xformla=~1,
-              data=mpdta,
-              est_method="reg"
+out <- att_gt(yname = "lemp",
+              gname = "first.treat",
+              idname = "countyreal",
+              tname = "year",
+              xformla = ~1,
+              data = mpdta,
+              est_method = "reg"
               )
 ```
 
@@ -132,7 +124,7 @@ out <- att_gt(yname="lemp",
 summary(out)
 ```
 
-This provides estimates of group-time average treatment effects for all groups in all time periods.  Group-time average treatment effects are identified when `g <= t` (these are post-treatment time periods for each group), but **summary** reports them even in periods when `g > t` -- these can be used a pre-test for the parallel trends assumption.  The `p-value for pre-test of DID assumption` is for a Wald pre-test of the parallel trends assumption.  Here the parallel trends assumption would not be rejected at conventional significance levels.
+This provides estimates of group-time average treatment effects for all groups in all time periods.  Group-time average treatment effects are identified when ` t >= g` (these are post-treatment time periods for each group), but **summary** reports them even in periods when `t < g` -- these can be used to pre-test for the parallel trends assumption.  The `P-value for pre-test of parallel trends assumption` is for a Wald pre-test of the parallel trends assumption.  Here the parallel trends assumption would not be rejected at conventional significance levels.
 
 It is often also convenient to plot the group-time average treatment effects.  This can be done using the **ggdid** command:
 
@@ -142,10 +134,10 @@ library(ggplot2)
 ```
 
 ```{r}
-ggdid(out, ylim=c(-.25,.1))
+ggdid(out, ylim = c(-.25,.1))
 ```
 
-The red dots in the plot are pre-treatment group-time average treatment effects .  Here they are provided with 95\% uniform confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects.  Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
+The red dots in the plot are pre-treatment group-time average treatment effects .  Here they are provided with 95\% simultaneous confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects.  Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
 
 **Event Studies**
 
@@ -153,10 +145,10 @@ Although in the current example it is pretty easy to directly interpret the grou
 
 To make an event study plot in the **did** package, one can use the **aggte** function
 ```{r}
-es <- aggte(out, type="dynamic")
+es <- aggte(out, type = "dynamic")
 ```
 
-Just like for group-time average treatment effects, these can be summarized and plotted.  And then one can summarize these
+Just like for group-time average treatment effects, these can be summarized and plotted.  First, the summary
 ```{r}
 summary(es)
 ```
@@ -174,11 +166,11 @@ The figure here is very similar to the group-time average treatment effects.  Re
 
 The event study above reported an overall effect of participating in the treatment.  This was computed by averaging the average effects computed at each length of exposure.
 
-In many cases, a more general purpose overall treatment effect parameter is give by computing the average treatment effect for each group, and then averaging across groups.  This sort of procedure provides an average treatment effect parameter with avery similar interpretation to the Average Treatment Effect on the Treated (ATT) in the two period and two group case.
+In many cases, a more general purpose overall treatment effect parameter is give by computing the average treatment effect for each group, and then averaging across groups.  This sort of procedure provides an average treatment effect parameter with a very similar interpretation to the Average Treatment Effect on the Treated (ATT) in the two period and two group case.
 
 To compute this overall average treatment effect parameter, use
 ```{r}
-group_effects <- aggte(out, type="group")
+group_effects <- aggte(out, type = "group")
 summary(group_effects)
 ```
 
@@ -190,8 +182,8 @@ We have provided several more vignettes that may be helpful for using the **did*
 
 * [Getting Started with the did Package](articles/did-basics.html)
 
-* [Introduction to DID with Multiple Time Periods](articles/multi-period-did.html)
+* [Introduction to DiD with Multiple Time Periods](articles/multi-period-did.html)
 
-* [Pre-Testing in a DID Setup using the did Package](articles/pre-testing.html)
+* [Pre-Testing in a DiD Setup using the did Package](articles/pre-testing.html)
 
 * [Writing Extensions to the did Package](articles/extensions.html)

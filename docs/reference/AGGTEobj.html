@@ -137,7 +137,12 @@ An object for holding aggregated treatment effect parameters." />
   att.egt <span class='op'>=</span> <span class='cn'>NULL</span>,
   se.egt <span class='op'>=</span> <span class='cn'>NULL</span>,
   crit.val.egt <span class='op'>=</span> <span class='cn'>NULL</span>,
-  inf.function <span class='op'>=</span> <span class='cn'>NULL</span>
+  inf.function <span class='op'>=</span> <span class='cn'>NULL</span>,
+  min_e <span class='op'>=</span> <span class='cn'>NULL</span>,
+  max_e <span class='op'>=</span> <span class='cn'>NULL</span>,
+  balance_e <span class='op'>=</span> <span class='cn'>NULL</span>,
+  call <span class='op'>=</span> <span class='cn'>NULL</span>,
+  DIDparams <span class='op'>=</span> <span class='cn'>NULL</span>
 <span class='op'>)</span></pre>
 
     <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
@@ -181,6 +186,35 @@ effects.</p></td>
     <tr>
       <th>inf.function</th>
       <td><p>The influence function of the chosen aggregated parameters</p></td>
+    </tr>
+    <tr>
+      <th>min_e</th>
+      <td><p>For event studies, this is the smallest event time to compute
+dynamic effects for.  By default, <code>min_e = -Inf</code> so that effects at
+all lengths of exposure are computed.</p></td>
+    </tr>
+    <tr>
+      <th>max_e</th>
+      <td><p>For event studies, this is the largest event time to compute
+dynamic effects for.  By default, <code>max_e = Inf</code> so that effects at
+all lengths of exposure are computed.</p></td>
+    </tr>
+    <tr>
+      <th>balance_e</th>
+      <td><p>If set (and if one computes dynamic effects), it balances
+the sample with respect to event time.  For example, if <code>balance.e=2</code>,
+<code>aggte</code> will drop groups that are not exposed to treatment for
+at least three periods. (the initial period when <code>e=0</code> as well as the
+next two periods when <code>e=1</code> and the <code>e=2</code>).  This ensures that
+the composition of groups does not change when event time changes.</p></td>
+    </tr>
+    <tr>
+      <th>call</th>
+      <td><p>The function call to aggte</p></td>
+    </tr>
+    <tr>
+      <th>DIDparams</th>
+      <td><p>A DIDparams object</p></td>
     </tr>
     </table>
 
