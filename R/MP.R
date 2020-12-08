@@ -6,8 +6,8 @@
 #' @param t which time period a group-time average treatment effect is for
 #' @param att the group-average treatment effect for group \code{group} and time
 #'  period \code{t}
-#' @param c simulataneous critical value if one is obtaining simultaneous confidence
-#'  bands. Otherwise it reports the critival value based on pointwise normal
+#' @param c simultaneous critical value if one is obtaining simultaneous confidence
+#'  bands. Otherwise it reports the critical value based on pointwise normal
 #'  approximation.
 #' @param V_analytical Analytical estimator for the asymptotic variance-covariance matrix for group-time average treatment effects
 #' @param se standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.

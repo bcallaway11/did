@@ -4,7 +4,7 @@
 #'  conditional parallel trends assumption
 #'
 #' @param CvM Cramer von Mises test statistic
-#' @param CvMb a vector of boostrapped Cramer von Mises test statistics
+#' @param CvMb a vector of bootstrapped Cramer von Mises test statistics
 #' @param CvMcval CvM critical value
 #' @param CvMpval p-value for CvM test
 #' @param KS Kolmogorov-Smirnov test statistic

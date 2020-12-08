@@ -2,7 +2,7 @@
 % Please edit documentation in R/mp.spatt.R
 \name{mp.spatt}
 \alias{mp.spatt}
-\title{Group-Time Average Treatment Effects with Mulitple Periods}
+\title{Group-Time Average Treatment Effects with Multiple Periods}
 \usage{
 mp.spatt(...)
 }

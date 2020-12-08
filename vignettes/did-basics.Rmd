@@ -203,7 +203,7 @@ Small group sizes can sometimes cause estimation problems in the `did` package. 
 
 In addition, statistical inference, particularly on group-time average treatment may become more tenuous with small groups.  For example, the effective sample size for estimating the change in outcomes over time for individuals in a particular group is equal to the number of observations in that group and asymptotic results are unlikely to provide good approximations to the sampling distribution of group-time average treatment effects when the number of units in a group is small. In these cases, one should be very cautious about interpreting the $ATT(g,t)$ results for these small groups.
 
-A reasonable alternative approach in this case is to just focus on aggregated treatment effect paramaters (i.e., to run `aggte(..., type = "group")` or `aggte(...,type = "dynamic")`).  For each of these cases, the effective sample size is the total number of units that are ever treated.  As long as the total number of ever treated units is "large" (which should be the case for many DiD application), then the statistical inference results provided by the `did` package should be more stable.
+A reasonable alternative approach in this case is to just focus on aggregated treatment effect parameters (i.e., to run `aggte(..., type = "group")` or `aggte(...,type = "dynamic")`).  For each of these cases, the effective sample size is the total number of units that are ever treated.  As long as the total number of ever treated units is "large" (which should be the case for many DiD application), then the statistical inference results provided by the `did` package should be more stable.
 
 ### Selecting Alternative Control Groups
 

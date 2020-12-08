@@ -1,7 +1,7 @@
 #' @title Pre-Test of Conditional Parallel Trends Assumption
 #'
 #' @description An integrated moments test for the conditional parallel trends
-#'  assumpition holding in all pre-treatment time periods for all groups
+#'  assumption holding in all pre-treatment time periods for all groups
 #'
 #' @inheritParams att_gt
 #'

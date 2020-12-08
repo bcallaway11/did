@@ -20,7 +20,7 @@ MP.TEST(
 \arguments{
 \item{CvM}{Cramer von Mises test statistic}
 
-\item{CvMb}{a vector of boostrapped Cramer von Mises test statistics}
+\item{CvMb}{a vector of bootstrapped Cramer von Mises test statistics}
 
 \item{CvMcval}{CvM critical value}
 

@@ -1,7 +1,7 @@
 #' @title Multiplier Bootstrap
 #'
 #' @description A function to take an influence function and use the
-#'  multiplier bootsrap to compute standard errors and critical values for
+#'  multiplier bootstrap to compute standard errors and critical values for
 #'  uniform confidence bands.
 #'
 #' @param inf.func an influence function

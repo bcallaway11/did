@@ -1,4 +1,4 @@
-#' @title Group-Time Average Treatment Effects with Mulitple Periods
+#' @title Group-Time Average Treatment Effects with Multiple Periods
 #'
 #' @description Deprecated function for computing group-time average treatment effects
 #'

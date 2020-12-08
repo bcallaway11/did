@@ -32,8 +32,8 @@ period \code{t}}
 
 \item{se}{standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.}
 
-\item{c}{simulataneous critical value if one is obtaining simultaneous confidence
-bands. Otherwise it reports the critival value based on pointwise normal
+\item{c}{simultaneous critical value if one is obtaining simultaneous confidence
+bands. Otherwise it reports the critical value based on pointwise normal
 approximation.}
 
 \item{inffunc}{the influence function for estimating group-time average treatment effects}

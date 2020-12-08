@@ -1,4 +1,4 @@
-#' @title Compute Aggregated Treatment Effect Paramaters
+#' @title Compute Aggregated Treatment Effect Parameters
 #'
 #' @description Does the heavy lifting on computing aggregated group-time
 #'  average treatment effects

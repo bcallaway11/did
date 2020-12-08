@@ -2,7 +2,7 @@
 % Please edit documentation in R/compute.aggte.R
 \name{compute.aggte}
 \alias{compute.aggte}
-\title{Compute Aggregated Treatment Effect Paramaters}
+\title{Compute Aggregated Treatment Effect Parameters}
 \usage{
 compute.aggte(
   MP,
@@ -54,13 +54,13 @@ all lengths of exposure are computed.}
 \item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
+the multiplier bootstrap.  If standard errors are clustered, then one
 must set \code{bstrap=TRUE}. Default is \code{TRUE} (in addition, cband
 is also by default \code{TRUE} indicating that uniform confidence bands
 will be returned.  If bstrap is \code{FALSE}, then analytical
 standard errors are reported.}
 
-\item{biters}{The number of boostrap iterations to use.  The default is 1000,
+\item{biters}{The number of bootstrap iterations to use.  The default is 1000,
 and this is only applicable if \code{bstrap=TRUE}.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
