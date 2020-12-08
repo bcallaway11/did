@@ -11,10 +11,6 @@
 #' @inheritParams compute.aggte
 #' @param overall.att The estimated overall ATT
 #' @param overall.se Standard error for overall ATT
-#' @param type Which type of aggregated treatment effect parameter.
-#'  Possibilities are "simple" (the default), "dynamic" (for dynamic effects /
-#'  event studies), "selective" (for selective treatment timing / group
-#'  specific treatment effects), and "calendar" (for time effects)
 #' @param egt Holds the length of exposure (for dynamic effects), the
 #'  group (for selective treatment timing), or the time period (for calendar
 #'  time effects)

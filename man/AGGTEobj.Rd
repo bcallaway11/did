@@ -25,10 +25,19 @@ AGGTEobj(
 
 \item{overall.se}{Standard error for overall ATT}
 
-\item{type}{Which type of aggregated treatment effect parameter.
-Possibilities are "simple" (the default), "dynamic" (for dynamic effects /
-event studies), "selective" (for selective treatment timing / group
-specific treatment effects), and "calendar" (for time effects)}
+\item{type}{Which type of aggregated treatment effect parameter to compute.
+One option is "simple" (this just computes a weighted average of all
+group-time average treatment effects with weights proportional to group
+size).  Other options are "dynamic" (this computes average effects across
+different lengths of exposure to the treatment and is similar to an
+"event study"; here the overall effect averages the effect of the
+treatment across all positive lengths of exposure); "group" (this
+is the default option and
+computes average treatment effects across different groups; here
+the overall effect averages the effect across different groups); and
+"calendar" (this computes average treatment effects across different
+time periods; here the overall effect averages the effect across each
+time period).}
 
 \item{egt}{Holds the length of exposure (for dynamic effects), the
 group (for selective treatment timing), or the time period (for calendar

@@ -266,14 +266,14 @@ compute.attgt <- function(dta) {
 
 Now, we have a function to compute group-time average treatment effects and dynamic effects.  Let's use it on the data that we have
 
-```{r antests, cache=TRUE}
+```{r}
 anticipation.results <- compute.attgt(dta)
 anticipation.results
 ```
 
 Finally, let's compute some standard errors using the nonparametric bootstrap (which is different and much slower than the multiplier bootstrap that we use in the *did* package); we'll just focus on the dynamic effects estimator
 
-```{r bootstrap, cache=TRUE}
+```{r bootstrap, eval=FALSE}
 # the number of bootstrap iterations
 biters <- 100
 
@@ -301,7 +301,7 @@ dyn.results$att.se <- boot.se
 
 Finally, we can translate these into a plot.  [One last thing here, to keep things very simple, we are going to plot pointwise confidence intervals, but we strongly suggest computing simultaneous confidence bands in practice.]
 
-```{r, fig.width=8, fig.height=5, fig.align='center', out.width="90%", dpi = 200}
+```{r, eval=FALSE}
 p <- ggplot(data=dyn.results, aes(x=e, y=att.e)) +
   geom_line() +
   geom_point() +
@@ -313,6 +313,8 @@ p <- p + geom_point(data=truth, aes(x=e, y=att.e), inherit.aes=FALSE, color="blu
 p
 
 ```
+
+![](extensions_anticipation.png){ width=90% }
 
 Here, the black line is our estimate and the blue line is the "truth".  You can immediately see that we get things right here when we account for anticipation.  The only other thing to notice is that we do not estimate dynamic effects at as many different lengths of exposure, but that is the price to pay for accounting for anticipation.
 

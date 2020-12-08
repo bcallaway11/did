@@ -3,7 +3,7 @@ note <- sprintf("R package version %s", meta$Version)
 bibentry(bibtype = "Article",
          title = "Difference-in-differences with multiple time periods",
          author = c(person("Brantly","Callaway"),
-                    person("Pedro", "Sant\'Anna")),
+                    person("Pedro H.C.", "Sant\'Anna")),
          year = "2020",
          journal = "Forthcoming at the Journal of Econometrics",
          url = "https://arxiv.org/abs/1803.09015",
@@ -15,7 +15,7 @@ bibentry(
   bibtype  = "Misc",
   title    = "did: Difference in Differences",
   author   = c(person("Brantly", "Callaway"),
-               person("Pedro", "Sant\'Anna")
+               person("Pedro H.C.", "Sant\'Anna")
                ),
   year     = "2020",
   note     = note,
