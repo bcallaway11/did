@@ -146,10 +146,6 @@ an \code{\link{MP}} object containing all the results for group-time average
 }
 \examples{
 data(mpdta)
-search()
-lpa <- .libPaths()
-lpa
-sapply(lpa, function(lp) list.files(lp))
 
 # with covariates
 out1 <- att_gt(yname="lemp",

@@ -111,12 +111,12 @@
 <h2 class="hasAnchor">
 <a href="#installation" class="anchor"></a>Installation</h2>
 <p>You can install <strong>did</strong> from CRAN with:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html">install.packages</a></span><span class="op">(</span><span class="st">"did"</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html">install.packages</a></span><span class="op">(</span><span class="st">"did"</span><span class="op">)</span></code></pre></div>
 <p>or get the latest version from github with:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit">
-<span class="co"># install.packages("devtools")</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org//reference/remote-reexports.html">install_github</a></span><span class="op">(</span><span class="st">"bcallaway11/did"</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># install.packages("devtools")</span>
+<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org//reference/remote-reexports.html">install_github</a></span><span class="op">(</span><span class="st">"bcallaway11/did"</span><span class="op">)</span></code></pre></div>
 </div>
 <div id="a-short-example" class="section level2">
 <h2 class="hasAnchor">
@@ -126,9 +126,9 @@
 <li><a href="articles/did-basics.html">More detailed examples are also available</a></li>
 </ul>
 <p>A subset of the data is available in the package and can be loaded by</p>
-<div class="sourceCode" id="cb3"><pre class="downlit">
-  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://bcallaway11.github.io/did/">did</a></span><span class="op">)</span>
-  <span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R">  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://bcallaway11.github.io/did/">did</a></span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></code></pre></div>
 <p>The dataset contains 500 observations of county-level teen employment rates from 2003-2007. Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for more details). The important variables in the dataset are</p>
 <ul>
 <li><p><strong>lemp</strong> This is the log of county-level teen employment. It is the outcome variable</p></li>
@@ -137,18 +137,18 @@
 <li><p><strong>countyreal</strong> This is an id number for each county and provides the individual identifier in this panel data context</p></li>
 </ul>
 <p>To estimate group-time average treatment effects, use the <strong>att_gt</strong> function</p>
-<div class="sourceCode" id="cb4"><pre class="downlit">
-<span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,
               gname <span class="op">=</span> <span class="st">"first.treat"</span>,
               idname <span class="op">=</span> <span class="st">"countyreal"</span>,
               tname <span class="op">=</span> <span class="st">"year"</span>,
               xformla <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,
               data <span class="op">=</span> <span class="va">mpdta</span>,
               est_method <span class="op">=</span> <span class="st">"reg"</span>
-              <span class="op">)</span></pre></div>
+              <span class="op">)</span></code></pre></div>
 <p><strong>att_gt</strong> returns a class <strong>MP</strong> object. This has a lot of information, but most importantly is has estimates of the group-time average treatment effects and their standard errors. To see these, we can call the <strong>summary</strong> function</p>
-<div class="sourceCode" id="cb5"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
 <span class="co">#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
@@ -175,21 +175,21 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.19578</span>
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Outcome Regression</span></pre></div>
+<span class="co">#&gt; Estimation Method:  Outcome Regression</span></code></pre></div>
 <p>This provides estimates of group-time average treatment effects for all groups in all time periods. Group-time average treatment effects are identified when <code>t &gt;= g</code> (these are post-treatment time periods for each group), but <strong>summary</strong> reports them even in periods when <code>t &lt; g</code> – these can be used to pre-test for the parallel trends assumption. The <code>P-value for pre-test of parallel trends assumption</code> is for a Wald pre-test of the parallel trends assumption. Here the parallel trends assumption would not be rejected at conventional significance levels.</p>
 <p>It is often also convenient to plot the group-time average treatment effects. This can be done using the <strong>ggdid</strong> command:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit">
-<span class="fu"><a href="reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">out</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.25</span>,<span class="fl">.1</span><span class="op">)</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">out</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.25</span>,<span class="fl">.1</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p><img src="reference/figures/README-unnamed-chunk-8-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>The red dots in the plot are pre-treatment group-time average treatment effects . Here they are provided with 95% simultaneous confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects. Under the parallel trends assumption, these can be interpreted as policy effects – here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.</p>
 <p><strong>Event Studies</strong></p>
 <p>Although in the current example it is pretty easy to directly interpret the group-time average treatment effects, there are many cases where it is convenient to aggregate the group-time average treatment effects into a small number of parameters. A main type of aggregation is into an <em>event study</em> plot.</p>
 <p>To make an event study plot in the <strong>did</strong> package, one can use the <strong>aggte</strong> function</p>
-<div class="sourceCode" id="cb7"><pre class="downlit">
-<span class="va">es</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">es</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></code></pre></div>
 <p>Just like for group-time average treatment effects, these can be summarized and plotted. First, the summary</p>
-<div class="sourceCode" id="cb8"><pre class="downlit">
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">es</span><span class="op">)</span>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">es</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
 <span class="co">#&gt; aggte(MP = out, type = "dynamic")</span>
@@ -215,19 +215,19 @@
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Outcome Regression</span></pre></div>
+<span class="co">#&gt; Estimation Method:  Outcome Regression</span></code></pre></div>
 <p>The column <code>event time</code> is for each group relative to when they first participate in the treatment. To give some examples, <code>event time=0</code> corresponds to the <em>on impact</em> effect, and <code>event time=-1</code> is the <em>effect</em> in the period before a unit becomes treated (checking that this is equal to 0 is potentially useful as a pre-test).</p>
 <p>To plot the event study, use <strong>ggdid</strong></p>
-<div class="sourceCode" id="cb9"><pre class="downlit">
-<span class="fu"><a href="reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">es</span><span class="op">)</span></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">es</span><span class="op">)</span></code></pre></div>
 <p><img src="reference/figures/README-unnamed-chunk-11-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>The figure here is very similar to the group-time average treatment effects. Red dots are pre-treatment periods, blue dots are post-treatment periods. The difference is that the x-axis is in event time.</p>
 <p><strong>Overall Effect of Participating in the Treatment</strong></p>
 <p>The event study above reported an overall effect of participating in the treatment. This was computed by averaging the average effects computed at each length of exposure.</p>
 <p>In many cases, a more general purpose overall treatment effect parameter is give by computing the average treatment effect for each group, and then averaging across groups. This sort of procedure provides an average treatment effect parameter with a very similar interpretation to the Average Treatment Effect on the Treated (ATT) in the two period and two group case.</p>
 <p>To compute this overall average treatment effect parameter, use</p>
-<div class="sourceCode" id="cb10"><pre class="downlit">
-<span class="va">group_effects</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">group_effects</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">group_effects</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
@@ -250,7 +250,7 @@
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Outcome Regression</span></pre></div>
+<span class="co">#&gt; Estimation Method:  Outcome Regression</span></code></pre></div>
 <p>Of particular interest is the <code>Overall ATT</code> in the results. Here, we estimate that increasing the minimum wage decreased teen employment by 3.1% and the effect is marginally statistically significant.</p>
 </div>
 <div id="additional-resources" class="section level2">

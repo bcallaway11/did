@@ -71,14 +71,14 @@
 
       
 
-      </header><script src="pre-testing_files/accessible-code-block-0.0.1/empty-anchor.js"></script><link href="pre-testing_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
+      </header><link href="pre-testing_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
 <script src="pre-testing_files/anchor-sections-1.0/anchor-sections.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Pre-Testing in a DiD Setup using the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 class="date">2020-12-06</h4>
+            <h4 class="date">2020-12-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/pre-testing.Rmd"><code>vignettes/pre-testing.Rmd</code></a></small>
       <div class="hidden name"><code>pre-testing.Rmd</code></div>
@@ -122,8 +122,8 @@
 <h4 class="hasAnchor">
 <a href="#best-case-scenario-for-pre-testing" class="anchor"></a>Best Case Scenario for Pre-Testing</h4>
 <p>First, let’s start with a case where an event study regression is going to work well for pre-testing the parallel trends assumption</p>
-<div class="sourceCode" id="cb1"><pre class="downlit">
-<span class="co"># generate dataset with 4 time periods</span>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># generate dataset with 4 time periods</span>
 <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fl">4</span>
 
 <span class="co"># generate dynamic effects</span>
@@ -141,14 +141,14 @@
 <span class="co">#&gt; 16001 2 0.530541  1      3  9.482624     1</span>
 <span class="co">#&gt; 24001 2 0.530541  1      4 10.288278     1</span>
 <span class="co">#&gt; 2     4 1.123550  2      1  3.252148     1</span>
-<span class="co">#&gt; 8002  4 1.123550  2      2  7.038382     1</span></pre></div>
+<span class="co">#&gt; 8002  4 1.123550  2      2  7.038382     1</span></code></pre></div>
 <p>The main thing to notice here:</p>
 <ul>
 <li>The dynamics are common across all groups. This is the case where an event-study regression will work.</li>
 </ul>
 <p>Next, a bit more code</p>
-<div class="sourceCode" id="cb2"><pre class="downlit">
-<span class="co">#-----------------------------------------------------------------------------</span>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co">#-----------------------------------------------------------------------------</span>
 <span class="co"># modify the dataset a bit so that we can run an event study</span>
 <span class="co">#-----------------------------------------------------------------------------</span>
 
@@ -237,12 +237,12 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> 
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>,<span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span></pre></div>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>You will notice that everything looks good here. The pre-test performs well (the caveat to this is that the standard errors are “pointwise” and would be better to have uniform confidence bands though this does not seem to be standard practice in applications).</p>
 <p>We can compare this to what happens using the <code>did</code> package:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit">
-<span class="co"># estimate group-group time average treatment effects</span>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># estimate group-group time average treatment effects</span>
 <span class="va">did_att_gt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname<span class="op">=</span><span class="st">"Y"</span>,
                      tname<span class="op">=</span><span class="st">"period"</span>,
                      idname<span class="op">=</span><span class="st">"id"</span>,
@@ -277,14 +277,14 @@
 <span class="co">#&gt; Estimation Method:  Doubly Robust</span>
 
 <span class="co"># plot them</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_att_gt</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_att_gt</span><span class="op">)</span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-5-1.png" width="90%" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb4"><pre class="downlit">
-<span class="co"># aggregate them into event study plot</span>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># aggregate them into event study plot</span>
 <span class="va">did_es</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">did_att_gt</span>, type<span class="op">=</span><span class="st">"dynamic"</span><span class="op">)</span>
 
 <span class="co"># plot the event study</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_es</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_es</span><span class="op">)</span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-6-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>Overall, everything looks good using either approach. (Just to keep things fair, we report pointwise confidence intervals for group-time average treatment effects, but it is easy to get uniform confidence bands by setting the options <code>bstrap=TRUE, cband=TRUE</code> to the call to <code>att_gt</code>.)</p>
 </div>
@@ -295,8 +295,8 @@
 <p><strong>Selective treatment timing</strong> means that individuals in different groups experience systematically different effects of participating in the treatment from individuals in other groups. For example, there would be selective treatment timing if individuals choose to be treated in earlier periods if they tend to experience larger benefits from participating in the treatment. This sort of selective treatment timing is likely to be present in many applications in economics / policy evaluation.</p>
 <p>Contrary to event study regressions, pre-tests based on group-time average treatment effects (or based on group-time average treatment effects that are aggregated into an event study plot) <strong>are still valid even in the presence of selective treatment timing</strong>.</p>
 <p>To see this in action, let’s keep the same example as before, but add selective treatment timing.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit">
-<span class="co"># generate dataset with 4 time periods</span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># generate dataset with 4 time periods</span>
 <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fl">4</span>
 
 <span class="co"># generate dynamic effects</span>
@@ -309,11 +309,11 @@
 <span class="co"># generate data set with these parameters</span>
 <span class="co"># (main thing: it generates a dataset that satisfies</span>
 <span class="co"># parallel trends in all periods...including pre-treatment)</span>
-<span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">build_sim_dataset</span><span class="op">(</span><span class="op">)</span></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit">
-<span class="co"># run through same code as in earlier example...omitted</span></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit">
-<span class="co"># run event study regression</span>
+<span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">build_sim_dataset</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># run through same code as in earlier example...omitted</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># run event study regression</span>
 <span class="co"># normalize effect to be 0 in pre-treatment period</span>
 <span class="va">es</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/plm/man/plm.html">plm</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">Dtmin3</span> <span class="op">+</span> <span class="va">Dtmin2</span> <span class="op">+</span> <span class="va">Dt0</span> <span class="op">+</span> <span class="va">Dt1</span> <span class="op">+</span> <span class="va">Dt2</span>, 
           data<span class="op">=</span><span class="va">data</span>, model<span class="op">=</span><span class="st">"within"</span>, effect<span class="op">=</span><span class="st">"twoways"</span>, 
@@ -346,9 +346,9 @@
 <span class="co">#&gt; Residual Sum of Squares: 58052</span>
 <span class="co">#&gt; R-Squared:      0.26925</span>
 <span class="co">#&gt; Adj. R-Squared: 0.025329</span>
-<span class="co">#&gt; F-statistic: 1544.28 on 5 and 20956 DF, p-value: &lt; 2.22e-16</span></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit">
-<span class="co"># run through same code as before...omitted</span>
+<span class="co">#&gt; F-statistic: 1544.28 on 5 and 20956 DF, p-value: &lt; 2.22e-16</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># run through same code as before...omitted</span>
 
 <span class="co"># new event study plot</span>
 <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">cmat</span>, mapping<span class="op">=</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>y<span class="op">=</span><span class="va">coefs</span>, x<span class="op">=</span><span class="va">exposure</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
@@ -356,12 +356,12 @@
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> 
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">coefs</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>,<span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span></pre></div>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-13-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>In contrast to the last case, it is clear that things have gone wrong here. <strong>Parallel trends holds in all time periods and for all groups here</strong>, but the event study regression incorrectly rejects that parallel trends holds – this is due to the selective treatment timing.</p>
 <p>We can compare this to what happens using the <code>did</code> package:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit">
-<span class="co"># estimate group-group time average treatment effects</span>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># estimate group-group time average treatment effects</span>
 <span class="va">did.att.gt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname<span class="op">=</span><span class="st">"Y"</span>,
                      tname<span class="op">=</span><span class="st">"period"</span>,
                      idnam<span class="op">=</span><span class="st">"id"</span>,
@@ -390,19 +390,19 @@
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.79832</span>
+<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.79239</span>
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class="co">#&gt; Estimation Method:  Doubly Robust</span>
 
 <span class="co"># plot them</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.att.gt</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.att.gt</span><span class="op">)</span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-14-1.png" width="90%" style="display: block; margin: auto;"></p>
-<div class="sourceCode" id="cb10"><pre class="downlit">
-<span class="co"># aggregate them into event study plot</span>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># aggregate them into event study plot</span>
 <span class="va">did.es</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">did.att.gt</span>, type<span class="op">=</span><span class="st">"dynamic"</span><span class="op">)</span>
 
 <span class="co"># plot the event study</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.es</span><span class="op">)</span></pre></div>
+<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.es</span><span class="op">)</span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-15-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>This is the correct performance (up to aforementioned caveats about multiple hypothesis testing).</p>
 </div>
@@ -414,14 +414,14 @@
 <p>Another main use case for the <code>did</code> package is when the parallel trends assumptions holds after conditioning on some covariates. This is likely to be important in many applications. For example, to evaluate the effect of participating in a job training program on earnings, it is likely to be important to condition on an individual’s education. This would be true if (i) the distribution of education is different for individuals that participate in job training relative to those that don’t (this is very likely to hold as people that participate in job training tend to have less education than those who do not), and (ii) if the path of earnings (absent participating in job training) depends on an individual’s education. See Heckman, Ichimura, and Todd (1998) and Abadie (2005) for more discussion.</p>
 <p>Even when one includes covariates to estimate group-time average treatment effects, pre-tests based only on group-time average treatment effects can fail to detect some violations of the parallel trends assumption. To give an example, suppose that the only covariate is binary variable for an individual’s sex. Pre-tests based on group-time average treatment effects could fail to detect violations of the conditional parallel trends assumption in cases where it is violated in one direction for men and in the other direction for women.</p>
 <p>The <code>did</code> package contains an additional pre-test for the conditional parallel trends assumption in the <code>conditional_did_pretest</code> function.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit">
-<span class="co"># not run (this code can be substantially slower)</span>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># not run (this code can be substantially slower)</span>
 <span class="fu">reset.sim</span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1814</span><span class="op">)</span>
 <span class="va">nt</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 <span class="va">nu</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 <span class="va">cdp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/conditional_did_pretest.html">conditional_did_pretest</a></span><span class="op">(</span><span class="st">"Y"</span>, <span class="st">"period"</span>, <span class="st">"id"</span>, <span class="st">"G"</span>, xformla<span class="op">=</span><span class="op">~</span><span class="va">X</span>, data<span class="op">=</span><span class="va">data</span><span class="op">)</span>
-<span class="va">cdp</span></pre></div>
+<span class="va">cdp</span></code></pre></div>
 </div>
 <div id="references" class="section level2">
 <h2 class="hasAnchor">
