@@ -545,6 +545,25 @@ res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
 res
 ```
 
+
+```{r}
+## some groups later than last treated period
+## plus missing groups
+time.periods <- 7
+reset.sim()
+data <- build_sim_dataset()
+data <- subset(data, period <= 4)
+missingG_ids <- sample(unique(data$id), size=10)
+data[data$id %in% missingG_ids,"G"] <- NA
+
+# dr
+res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="dr", cband=FALSE)
+res
+```
+
+
+
 ## Misc error handling tests
 
 ```{r}

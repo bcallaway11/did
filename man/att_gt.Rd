@@ -142,7 +142,7 @@ an \code{\link{MP}} object containing all the results for group-time average
  setups where there are more than two periods of data and allowing for
  treatment to occur at different points in time and allowing for
  treatment effect heterogeneity and dynamics.
- See Callaway and Sant'Anna (2019) for a detailed description.
+ See Callaway and Sant'Anna (2020) for a detailed description.
 }
 \examples{
 data(mpdta)
@@ -171,5 +171,5 @@ summary(out2)
 
 }
 \references{
-Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2019).
+Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015> (2020).
 }

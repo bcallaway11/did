@@ -6,5 +6,5 @@ utils::globalVariables(c("year","att","att.se","post","group","x"))
 #'
 #' @keywords internal
 citation <- function() {
-  cat("Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Working Paper <https://ssrn.com/abstract=3148250>, 2020. \n")
+  cat("Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. \n")
 }

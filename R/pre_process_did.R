@@ -54,11 +54,12 @@ pre_process_did <- function(yname,
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
 
   # Groups with treatment time bigger than max time period are considered to be never treated
-  asif_never_treated <- (data[,gname] > max(tlist))
+  asif_never_treated <- (data[,gname] > max(tlist, na.rm = TRUE))
+  asif_never_treated[is.na(asif_never_treated)] <- FALSE
   data[asif_never_treated, gname] <- 0
 
   # list of treated groups (by time) from smallest to largest
-  glist <- unique(data[,gname])[order(unique(data[,gname]))]
+  glist <- unique(data[,gname], )[order(unique(data[,gname]))]
 
   # Check if there is a never treated group
   if ( length(glist[glist==0]) == 0) {
@@ -70,9 +71,9 @@ pre_process_did <- function(yname,
       # warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group.")
 
       # Drop all time periods with time periods >= latest treated
-      data <- subset(data,(data[,tname] < max(glist)))
+      data <- subset(data,(data[,tname] < max(glist,  na.rm = TRUE)))
       # Replace last treated time with zero
-      lines.gmax <- data[,gname]==max(glist)
+      lines.gmax <- data[,gname]==max(glist, na.rm = TRUE)
       data[lines.gmax,gname] <- 0
 
       #figure out the dates
@@ -90,18 +91,15 @@ pre_process_did <- function(yname,
   glist <- glist[glist > first.period + anticipation]
 
   # check for groups treated in the first period and drop these
-  nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
+  # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
+  treated_first_period <- data[,gname]==first.period
+  treated_first_period[is.na(treated_first_period)] <- FALSE
+  nfirstperiod <- length(unique(data[treated_first_period,][,idname]))
   if ( nfirstperiod > 0 ) {
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period."))
     data <- data[ data[,gname] %in% c(0,glist), ]
   }
 
-
-
-  # check that time periods are numeric
-  #if (!is.numeric(tlist)) {
-  #  warning("not guaranteed to order time periods correctly if they are not numeric")
-  #}
 
   # make sure time periods are numeric
   if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
@@ -169,7 +167,7 @@ pre_process_did <- function(yname,
   if (!panel) {
     true_repeated_cross_sections <- TRUE
   }
-  
+
   #-----------------------------------------------------------------------------
   # setup data in panel case
   #-----------------------------------------------------------------------------
@@ -189,7 +187,7 @@ pre_process_did <- function(yname,
     } else {
 
       # this is the case where we coerce balanced panel
-      
+
       # check for complete cases
       keepers <- complete.cases(cbind.data.frame(data[,c(idname, tname, yname, gname)], model.matrix(xformla, data=data)))
       n <- length(unique(data[,idname]))
@@ -222,7 +220,7 @@ pre_process_did <- function(yname,
       }))) {
         stop("The value of first.treat must be the same across all periods for each particular individual.")
       }
-      
+
     }
   }
 

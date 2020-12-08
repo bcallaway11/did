@@ -4,7 +4,7 @@
 #'  setups where there are more than two periods of data and allowing for
 #'  treatment to occur at different points in time and allowing for
 #'  treatment effect heterogeneity and dynamics.
-#'  See Callaway and Sant'Anna (2019) for a detailed description.
+#'  See Callaway and Sant'Anna (2020) for a detailed description.
 #'
 #' @param yname The name of the outcome variable
 #' @param data The name of the data.frame that contains the data
@@ -91,14 +91,10 @@
 #' @param anticipation The number of time periods before participating
 #'  in the treatment where units can anticipate participating in the
 #'  treatment and therefore it can affect their untreated potential outcomes
-#' @references Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2019).
+#' @references Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015> (2020).
 #'
 #' @examples
 #' data(mpdta)
-#' search()
-#' lpa <- .libPaths()
-#' lpa
-#' sapply(lpa, function(lp) list.files(lp))
 #'
 #' # with covariates
 #' out1 <- att_gt(yname="lemp",
@@ -216,10 +212,10 @@ att_gt <- function(yname,
     bres <- bout$bres
     #zero_na_sd_entry <- unique(c(zero_na_sd_entry, which(bout$se==0)))
     if(length(zero_na_sd_entry)>0) {
-      V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
+      #V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
       se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
     } else {
-      V <- bout$V
+      #V <- bout$V
       se <- bout$se
     }
   }

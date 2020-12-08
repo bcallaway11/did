@@ -2,6 +2,13 @@ template:
   params:
     bootswatch: flatly
 
+authors:
+  Brantly Callaway:
+    href: https://bcallaway11.github.io/
+
+  Pedro H. C. Sant'Anna:
+    href: https://pedrohcgs.github.io/
+
 navbar:
   title: "did"
   left:
@@ -22,7 +29,10 @@ home:
 articles:
   - title: User Guides
     desc: >
-      These articles provide a general introduction to DID with multiple time periods, an introduction to the R **did** package for estimating treatment effects, and details on how to use the **did** package to pre-test the parallel trends assumption underlying the DID approach.  
+      These articles provide a general introduction to DiD with multiple time periods, an introduction to the R **did** package for estimating treatment effects,
+      and details on how to use the **did** package to pre-test the parallel trends assumption underlying the DiD approach. We also provide a discussion on how
+      one can build on the framework we put forward in Callaway and Sant'Anna (2020) and implemented in this package.
+
     contents:
     - multi-period-did
     - did-basics
@@ -30,16 +40,16 @@ articles:
     - extensions
 
 reference:
-  - title: "Difference in Differences Methods"
+  - title: "Difference-in-Differences Methods"
     desc: >
       Tools to compute average treatment effects, particularly in
       the case with multiple periods and variation in treatment timing
-    contents: 
+    contents:
       - att_gt
       - aggte
   - title: "Pre-Testing"
     desc: >
-      Tools to compute "pre-test" the DID assumption in the case where
+      Tools to compute "pre-test" the DiD assumption in the case where
       multiple periods are available
     contents:
       - conditional_did_pretest

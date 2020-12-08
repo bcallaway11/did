@@ -75,7 +75,7 @@ reset.sim()
 te <- 0
 te.e <- c(-1,rep(1,time.periods-1))
 bett <- betu <- rep(0,time.periods)
-#set.seed(1814)
+set.seed(12345)
 
 # generate data set with these parameters
 dta <- build_sim_dataset()
@@ -94,7 +94,7 @@ where `G` defines the period when an individual first becomes treated, `X` is a 
 
 As a first step, we'll try estimating the effect of participating in the treatment (focus on dynamic effects as in an event study plot) while just ignoring the possibility of anticipation.
 
-```{r, fig.width=12,fig.height=8, fig.align="center"}
+```{r, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 # estimate group-time average treatment effects using att_gt method
 # (and ignoring pre-treatment "dip")
 attgt.ignoredip <- att_gt(yname = "Y",
@@ -272,7 +272,7 @@ anticipation.results <- compute.attgt(dta)
 anticipation.results
 ```
 
-Finally, let's compute some standard errors using the nonparametric bootstrap (which is different from the multiplier bootstrap that we use in the *did* package); we'll just focus on the dynamic effects estimator
+Finally, let's compute some standard errors using the nonparametric bootstrap (which is different and much slower than the multiplier bootstrap that we use in the *did* package); we'll just focus on the dynamic effects estimator
 
 ```{r bootstrap, cache=TRUE}
 # the number of bootstrap iterations
@@ -302,7 +302,7 @@ dyn.results$att.se <- boot.se
 
 Finally, we can translate these into a plot.  [One last thing here, to keep things very simple, we are going to plot pointwise confidence intervals, but we strongly suggest computing simultaneous confidence bands in practice.]
 
-```{r}
+```{r, fig.width=8, fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 p <- ggplot(data=dyn.results, aes(x=e, y=att.e)) +
   geom_line() +
   geom_point() +

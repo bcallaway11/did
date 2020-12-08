@@ -17,7 +17,7 @@
 #' summary(pre.test)
 #' }
 #'
-#' @references Callaway, Brantly and Sant'Anna, Pedro.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://ssrn.com/abstract=3148250> (2019).
+#' @references Callaway, Brantly and Sant'Anna, Pedro H. C.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://arxiv.org/abs/1803.09015v2> (2018).
 #'
 #' @return an \code{\link{MP.TEST}} object
 #' @export
@@ -40,7 +40,7 @@ conditional_did_pretest <- function(yname,
                                     print_details=FALSE,
                                     pl=FALSE,
                                     cores=1) {
-  
+
   # this is a DIDparams object
   dp <- pre_process_did(yname=yname,
                         tname=tname,
@@ -76,7 +76,7 @@ conditional_did_pretest <- function(yname,
     stop("There are no pre-treatment periods to use to conduct test.")
   }
 
-  
+
   # set which weight function to use
   # the only option that will work with current setup
   # is indicator so hard-code it here
@@ -86,7 +86,7 @@ conditional_did_pretest <- function(yname,
   if (allow_unbalanced_panel) {
     stop("Conditional pre-test not currently supported for unbalanced panel.")
   }
-  
+
   # create dataset with n observations;
   # recover covariates from this dataset
   ifelse(panel & (allow_unbalanced_panel==FALSE),
@@ -141,7 +141,7 @@ conditional_did_pretest <- function(yname,
   # compute them***
   out <- lapply(out, function(Js) {
     # which elements of results to keep
-    keepers <- Js$group > Js$t 
+    keepers <- Js$group > Js$t
     this.group <- Js$group[keepers]
     this.t <- Js$t[keepers]
     this.J <- as.matrix(Js$J[keepers])
@@ -159,8 +159,8 @@ conditional_did_pretest <- function(yname,
   ifelse(class(J.inner)=="matrix", J <- t(J.inner), J <- as.matrix(J.inner))
 
   # compute CvM test statistic by averaging over X, and summing over g and t
-  CvM <- n*sum(apply(J^2, 2, mean)) 
-  
+  CvM <- n*sum(apply(J^2, 2, mean))
+
 
   #-----------------------------------------------------------------------------
   # use the multiplier bootstrap to simulate limiting distribution of
@@ -168,7 +168,7 @@ conditional_did_pretest <- function(yname,
   cat("Step 2 of 2: Simulating limiting distribution of test statistic....\n")
   boot.res <- test.mboot(Jinf.func, dp, cores=cores)
 
-  
+
   #-----------------------------------------------------------------------------
   ## # some debugging code
   ## # keeping in case helpful later on
@@ -193,7 +193,7 @@ conditional_did_pretest <- function(yname,
   ## })
   ## 1-ecdf(bout2)(ts2)
   ## #-----------------------------------------------------------------------------
-  
+
   # bootstrap results
   CvMb <- boot.res$bres
   # bootstrap critical value
@@ -273,7 +273,7 @@ indicator <- function(X, u) {
 #' @return list
 #'  * bres CvM test statistics for each bootstrap iteration
 #'  * crit.val critical value for CvM test statistic
-#' 
+#'
 #' @export
 test.mboot <- function(inf.func, DIDparams, cores=1) {
 
@@ -286,13 +286,13 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
-  
+
   # just get n obsevations (for clustering below...)
   ifelse(panel,
          dta <- data[ data[,tname]==tlist[1], ],
          dta <- data)
   n <- nrow(dta)
-  
+
   # if include id as variable to cluster on
   # drop it as we do this automatically
   if (idname %in% clustervars) {

@@ -51,7 +51,7 @@
  setups where there are more than two periods of data and allowing for
  treatment to occur at different points in time and allowing for
  treatment effect heterogeneity and dynamics.
- See Callaway and Sant'Anna (2019) for a detailed description." />
+ See Callaway and Sant'Anna (2020) for a detailed description." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -130,7 +130,7 @@
  setups where there are more than two periods of data and allowing for
  treatment to occur at different points in time and allowing for
  treatment effect heterogeneity and dynamics.
- See Callaway and Sant'Anna (2019) for a detailed description.</p>
+ See Callaway and Sant'Anna (2020) for a detailed description.</p>
     </div>
 
     <pre class="usage"><span class='fu'>att_gt</span><span class='op'>(</span>
@@ -312,7 +312,7 @@ Default is <code>FALSE</code>.</p></td>
  treatment effects</p>
     <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro H. C.. "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://ssrn.com/abstract=3148250&gt; (2019).</p>
+    <p>Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt; (2020).</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
@@ -322,71 +322,158 @@ Default is <code>FALSE</code>.</p></td>
 #&gt;  [7] "package:datasets"  "package:methods"   "Autoloads"        
 #&gt; [10] "tools:callr"       "package:base"     </div><div class='input'><span class='va'>lpa</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/libPaths.html'>.libPaths</a></span><span class='op'>(</span><span class='op'>)</span>
 <span class='va'>lpa</span>
-</div><div class='output co'>#&gt; [1] "/tmp/RtmptwucIc/temp_libpath457b1d1da746"     
-#&gt; [2] "/home/brant/R/x86_64-pc-linux-gnu-library/4.0"
-#&gt; [3] "/usr/local/lib/R/site-library"                
-#&gt; [4] "/usr/lib/R/site-library"                      
-#&gt; [5] "/usr/lib/R/library"                           </div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>lpa</span>, <span class='kw'>function</span><span class='op'>(</span><span class='va'>lp</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/base/list.files.html'>list.files</a></span><span class='op'>(</span><span class='va'>lp</span><span class='op'>)</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; $`/tmp/RtmptwucIc/temp_libpath457b1d1da746`
+</div><div class='output co'>#&gt; [1] "/private/var/folders/yh/wqt796_d5vg2bdyz_sbr66zw0000gq/T/RtmpkcpgQw/temp_libpath165e13ceb2b05"
+#&gt; [2] "/Library/Frameworks/R.framework/Versions/4.0/Resources/library"                               </div><div class='input'><span class='fu'><a href='https://rdrr.io/r/base/lapply.html'>sapply</a></span><span class='op'>(</span><span class='va'>lpa</span>, <span class='kw'>function</span><span class='op'>(</span><span class='va'>lp</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/base/list.files.html'>list.files</a></span><span class='op'>(</span><span class='va'>lp</span><span class='op'>)</span><span class='op'>)</span>
+</div><div class='output co'>#&gt; $`/private/var/folders/yh/wqt796_d5vg2bdyz_sbr66zw0000gq/T/RtmpkcpgQw/temp_libpath165e13ceb2b05`
 #&gt; [1] "did"
 #&gt; 
-#&gt; $`/home/brant/R/x86_64-pc-linux-gnu-library/4.0`
-#&gt;   [1] "abind"         "askpass"       "assertthat"    "backports"    
-#&gt;   [5] "badger"        "base64enc"     "bdsmatrix"     "BH"           
-#&gt;   [9] "BiocManager"   "BMisc"         "brew"          "brio"         
-#&gt;  [13] "broom"         "callr"         "car"           "carData"      
-#&gt;  [17] "cellranger"    "cli"           "clipr"         "colorspace"   
-#&gt;  [21] "commonmark"    "conquer"       "corrplot"      "covr"         
-#&gt;  [25] "cowplot"       "cpp11"         "crayon"        "crosstalk"    
-#&gt;  [29] "curl"          "data.table"    "desc"          "devtools"     
-#&gt;  [33] "did"           "diffobj"       "digest"        "dlstats"      
-#&gt;  [37] "downlit"       "dplyr"         "DRDID"         "DT"           
-#&gt;  [41] "ellipsis"      "evaluate"      "fansi"         "farver"       
-#&gt;  [45] "forcats"       "Formula"       "fs"            "gbRd"         
-#&gt;  [49] "generics"      "ggplot2"       "ggpubr"        "ggrepel"      
-#&gt;  [53] "ggsci"         "ggsignif"      "gh"            "git2r"        
-#&gt;  [57] "gitcreds"      "glue"          "gridExtra"     "gtable"       
-#&gt;  [61] "haven"         "here"          "highr"         "hms"          
-#&gt;  [65] "htmltools"     "htmlwidgets"   "httr"          "ini"          
-#&gt;  [69] "isoband"       "jsonlite"      "knitr"         "labeling"     
-#&gt;  [73] "later"         "lazyeval"      "lifecycle"     "lme4"         
-#&gt;  [77] "lmtest"        "magrittr"      "maptools"      "markdown"     
-#&gt;  [81] "MatrixModels"  "matrixStats"   "maxLik"        "memoise"      
-#&gt;  [85] "mime"          "minqa"         "miscTools"     "munsell"      
-#&gt;  [89] "nloptr"        "openssl"       "openxlsx"      "parsedate"    
-#&gt;  [93] "pbapply"       "pbkrtest"      "pillar"        "pkgbuild"     
-#&gt;  [97] "pkgconfig"     "pkgdown"       "pkgload"       "plm"          
-#&gt; [101] "polynom"       "praise"        "prettyunits"   "processx"     
-#&gt; [105] "progress"      "promises"      "ps"            "purrr"        
-#&gt; [109] "quantreg"      "R6"            "ragg"          "rappdirs"     
-#&gt; [113] "rbibutils"     "rcmdcheck"     "RColorBrewer"  "Rcpp"         
-#&gt; [117] "RcppArmadillo" "RcppEigen"     "Rdpack"        "readr"        
-#&gt; [121] "readxl"        "rematch"       "rematch2"      "remotes"      
-#&gt; [125] "rex"           "rhub"          "rio"           "rlang"        
-#&gt; [129] "rmarkdown"     "roxygen2"      "rprojroot"     "rstatix"      
-#&gt; [133] "rstudioapi"    "rvcheck"       "rversions"     "sandwich"     
-#&gt; [137] "scales"        "sessioninfo"   "sp"            "SparseM"      
-#&gt; [141] "statmod"       "stringi"       "stringr"       "sys"          
-#&gt; [145] "systemfonts"   "testthat"      "textshaping"   "tibble"       
-#&gt; [149] "tidyr"         "tidyselect"    "tinytex"       "trust"        
-#&gt; [153] "usethis"       "utf8"          "uuid"          "vctrs"        
-#&gt; [157] "viridisLite"   "waldo"         "whisker"       "whoami"       
-#&gt; [161] "withr"         "xfun"          "xml2"          "xopen"        
-#&gt; [165] "yaml"          "zip"           "zoo"          
-#&gt; 
-#&gt; $`/usr/local/lib/R/site-library`
-#&gt; character(0)
-#&gt; 
-#&gt; $`/usr/lib/R/site-library`
-#&gt; character(0)
-#&gt; 
-#&gt; $`/usr/lib/R/library`
-#&gt;  [1] "base"         "boot"         "class"        "cluster"      "codetools"   
-#&gt;  [6] "compiler"     "datasets"     "foreign"      "graphics"     "grDevices"   
-#&gt; [11] "grid"         "KernSmooth"   "lattice"      "MASS"         "Matrix"      
-#&gt; [16] "methods"      "mgcv"         "nlme"         "nnet"         "parallel"    
-#&gt; [21] "rpart"        "spatial"      "splines"      "stats"        "stats4"      
-#&gt; [26] "survival"     "tcltk"        "tools"        "translations" "utils"       
+#&gt; $`/Library/Frameworks/R.framework/Versions/4.0/Resources/library`
+#&gt;   [1] "abind"                "acepack"              "AER"                 
+#&gt;   [4] "alphavantager"        "animation"            "anytime"             
+#&gt;   [7] "ape"                  "argon2"               "arm"                 
+#&gt;  [10] "askpass"              "assertthat"           "backports"           
+#&gt;  [13] "bacondecomp"          "badger"               "base"                
+#&gt;  [16] "base64enc"            "BBmisc"               "bbotk"               
+#&gt;  [19] "bdsmatrix"            "BH"                   "bibtex"              
+#&gt;  [22] "BiocManager"          "BiocVersion"          "bitops"              
+#&gt;  [25] "blob"                 "BMisc"                "bookdown"            
+#&gt;  [28] "boot"                 "boot.heterogeneity"   "bootcluster"         
+#&gt;  [31] "brew"                 "brio"                 "broom"               
+#&gt;  [34] "callr"                "car"                  "carData"             
+#&gt;  [37] "caTools"              "CausalGAM"            "CBPS"                
+#&gt;  [40] "cellranger"           "checkmate"            "class"               
+#&gt;  [43] "cli"                  "clipr"                "cluster"             
+#&gt;  [46] "clusterGeneration"    "clusterPower"         "coda"                
+#&gt;  [49] "codetools"            "colorspace"           "combinat"            
+#&gt;  [52] "commonmark"           "compiler"             "conflicted"          
+#&gt;  [55] "conquer"              "corrplot"             "covr"                
+#&gt;  [58] "cowplot"              "cpp11"                "crayon"              
+#&gt;  [61] "crosstalk"            "csabounds"            "cubature"            
+#&gt;  [64] "curl"                 "cvAUC"                "data.table"          
+#&gt;  [67] "datasets"             "DBI"                  "dbplyr"              
+#&gt;  [70] "DDD"                  "delayed"              "DEoptimR"            
+#&gt;  [73] "Deriv"                "desc"                 "deSolve"             
+#&gt;  [76] "devtools"             "dfidx"                "did"                 
+#&gt;  [79] "diffobj"              "digest"               "diptest"             
+#&gt;  [82] "dlstats"              "doBy"                 "doParallel"          
+#&gt;  [85] "doRNG"                "doSNOW"               "downlit"             
+#&gt;  [88] "dplyr"                "DRDID"                "DT"                  
+#&gt;  [91] "dygraphs"             "elasso"               "ellipsis"            
+#&gt;  [94] "evaluate"             "eventstudies"         "EventStudy"          
+#&gt;  [97] "expm"                 "fansi"                "farver"              
+#&gt; [100] "fastDummies"          "fastmap"              "fastmatch"           
+#&gt; [103] "fastplm"              "fda"                  "fect"                
+#&gt; [106] "flexclust"            "flexmix"              "forcats"             
+#&gt; [109] "foreach"              "forecast"             "foreign"             
+#&gt; [112] "Formula"              "formula.tools"        "fpc"                 
+#&gt; [115] "fracdiff"             "fs"                   "furrr"               
+#&gt; [118] "future"               "future.apply"         "gam"                 
+#&gt; [121] "gbRd"                 "gdata"                "generics"            
+#&gt; [124] "getPass"              "GGally"               "ggforce"             
+#&gt; [127] "ggplot2"              "ggpubr"               "ggrepel"             
+#&gt; [130] "ggsci"                "ggsignif"             "ggthemes"            
+#&gt; [133] "gh"                   "git2r"                "glmnet"              
+#&gt; [136] "glmx"                 "globals"              "glue"                
+#&gt; [139] "gower"                "gplots"               "graphics"            
+#&gt; [142] "grDevices"            "grid"                 "gridExtra"           
+#&gt; [145] "gtable"               "gtools"               "hal9001"             
+#&gt; [148] "harvestr"             "haven"                "here"                
+#&gt; [151] "hettreatreg"          "hexbin"               "highlight"           
+#&gt; [154] "highr"                "Hmisc"                "hms"                 
+#&gt; [157] "htmlTable"            "htmltools"            "htmlwidgets"         
+#&gt; [160] "httpuv"               "httr"                 "hunspell"            
+#&gt; [163] "icon"                 "igraph"               "imputeMissings"      
+#&gt; [166] "ini"                  "ipred"                "IPS"                 
+#&gt; [169] "isoband"              "iterators"            "ivpack"              
+#&gt; [172] "janitor"              "jpeg"                 "jsonlite"            
+#&gt; [175] "kableExtra"           "kernlab"              "KernSmooth"          
+#&gt; [178] "kmte"                 "knitcitations"        "knitLatex"           
+#&gt; [181] "knitr"                "knitrBootstrap"       "knitrProgressBar"    
+#&gt; [184] "labeling"             "LassoNet"             "later"               
+#&gt; [187] "lattice"              "latticeExtra"         "lava"                
+#&gt; [190] "lazyeval"             "lemon"                "lfe"                 
+#&gt; [193] "lgr"                  "lifecycle"            "listenv"             
+#&gt; [196] "lme4"                 "lmtest"               "longbowtools"        
+#&gt; [199] "lspartition"          "ltmle"                "lubridate"           
+#&gt; [202] "magick"               "magrittr"             "manipulateWidget"    
+#&gt; [205] "mapdata"              "maps"                 "maptools"            
+#&gt; [208] "markdown"             "MASS"                 "Matching"            
+#&gt; [211] "MatchIt"              "matlib"               "Matrix"              
+#&gt; [214] "matrixcalc"           "MatrixModels"         "matrixStats"         
+#&gt; [217] "maxLik"               "mclust"               "memoise"             
+#&gt; [220] "metafor"              "methods"              "mgcv"                
+#&gt; [223] "mi"                   "mime"                 "miniUI"              
+#&gt; [226] "minqa"                "miscTools"            "mlbench"             
+#&gt; [229] "mlogit"               "mlr3"                 "mlr3data"            
+#&gt; [232] "mlr3learners"         "mlr3measures"         "mlr3misc"            
+#&gt; [235] "mlr3tuning"           "mnormt"               "modeldata"           
+#&gt; [238] "modelr"               "modeltools"           "msm"                 
+#&gt; [241] "munsell"              "mvtnorm"              "nlme"                
+#&gt; [244] "nloptr"               "nnet"                 "nnls"                
+#&gt; [247] "np"                   "numDeriv"             "openssl"             
+#&gt; [250] "openxlsx"             "operator.tools"       "origami"             
+#&gt; [253] "packrat"              "pacman"               "padr"                
+#&gt; [256] "pander"               "panelView"            "paradox"             
+#&gt; [259] "parallel"             "patchwork"            "pbapply"             
+#&gt; [262] "pbdZMQ"               "pbkrtest"             "pbmcapply"           
+#&gt; [265] "PerformanceAnalytics" "phangorn"             "phytools"            
+#&gt; [268] "pillar"               "pkgbuild"             "pkgconfig"           
+#&gt; [271] "pkgdown"              "pkgload"              "plm"                 
+#&gt; [274] "plogr"                "plotly"               "plotrix"             
+#&gt; [277] "plyr"                 "png"                  "polyclip"            
+#&gt; [280] "polynom"              "prabclus"             "pracma"              
+#&gt; [283] "praise"               "prettyunits"          "processx"            
+#&gt; [286] "prodlim"              "profvis"              "progress"            
+#&gt; [289] "promises"             "PRROC"                "ps"                  
+#&gt; [292] "pstest"               "purrr"                "qte"                 
+#&gt; [295] "quadprog"             "Quandl"               "quantmod"            
+#&gt; [298] "quantreg"             "quantreg.nonpar"      "R.methodsS3"         
+#&gt; [301] "R.oo"                 "R6"                   "ragg"                
+#&gt; [304] "randomForest"         "raster"               "rbibutils"           
+#&gt; [307] "rcmdcheck"            "RColorBrewer"         "Rcpp"                
+#&gt; [310] "RcppArmadillo"        "RcppEigen"            "Rdpack"              
+#&gt; [313] "readr"                "readstata13"          "readxl"              
+#&gt; [316] "Rearrangement"        "recipes"              "RefManageR"          
+#&gt; [319] "rematch"              "rematch2"             "remote"              
+#&gt; [322] "remoter"              "remotes"              "repr"                
+#&gt; [325] "reprex"               "reshape"              "reshape2"            
+#&gt; [328] "rex"                  "rgl"                  "riingo"              
+#&gt; [331] "rio"                  "rJava"                "RJSONIO"             
+#&gt; [334] "rlang"                "rmarkdown"            "rmdexamples"         
+#&gt; [337] "rngtools"             "robustbase"           "ROCR"                
+#&gt; [340] "roxygen2"             "rpart"                "rprojroot"           
+#&gt; [343] "rsample"              "rsconnect"            "Rsolnp"              
+#&gt; [346] "rstackdeque"          "rstatix"              "rstudioapi"          
+#&gt; [349] "rvcheck"              "rversions"            "rvest"               
+#&gt; [352] "sandwich"             "scales"               "scatterplot3d"       
+#&gt; [355] "selectr"              "sem"                  "sessioninfo"         
+#&gt; [358] "sets"                 "shape"                "shiny"               
+#&gt; [361] "SiZer"                "skimr"                "sl3"                 
+#&gt; [364] "slider"               "snakecase"            "snow"                
+#&gt; [367] "sourcetools"          "sp"                   "SparseM"             
+#&gt; [370] "spatial"              "speedglm"             "spelling"            
+#&gt; [373] "splines"              "SQUAREM"              "stargazer"           
+#&gt; [376] "statmod"              "stats"                "stats4"              
+#&gt; [379] "stringi"              "stringr"              "subplex"             
+#&gt; [382] "SuperLearner"         "survival"             "sys"                 
+#&gt; [385] "systemfonts"          "tcltk"                "testit"              
+#&gt; [388] "testthat"             "texreg"               "textshaping"         
+#&gt; [391] "tibble"               "tidyfast"             "tidyquant"           
+#&gt; [394] "tidyr"                "tidyselect"           "tidyverse"           
+#&gt; [397] "timeDate"             "timetk"               "tinytex"             
+#&gt; [400] "tlverse"              "tmle"                 "tmle3"               
+#&gt; [403] "tmle3mopttx"          "tmle3shift"           "tmvnsim"             
+#&gt; [406] "tools"                "translations"         "truncnorm"           
+#&gt; [409] "trust"                "tseries"              "TTR"                 
+#&gt; [412] "tufte"                "tweenr"               "urca"                
+#&gt; [415] "usethis"              "utf8"                 "utils"               
+#&gt; [418] "uuid"                 "vctrs"                "viridis"             
+#&gt; [421] "viridisLite"          "visNetwork"           "waldo"               
+#&gt; [424] "warp"                 "webshot"              "whisker"             
+#&gt; [427] "withr"                "xfun"                 "xlsx"                
+#&gt; [430] "xlsxjars"             "xml2"                 "xopen"               
+#&gt; [433] "xtable"               "xts"                  "yaml"                
+#&gt; [436] "zip"                  "zoo"                 
 #&gt; </div><div class='input'>
 <span class='co'># with covariates</span>
 <span class='va'>out1</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
@@ -401,7 +488,7 @@ Default is <code>FALSE</code>.</p></td>
 #&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
 #&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta)
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
+#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. 
 #&gt; 
 #&gt; Group-Time Average Treatment Effects:
 #&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
@@ -436,7 +523,7 @@ Default is <code>FALSE</code>.</p></td>
 #&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
 #&gt;     gname = "first.treat", xformla = NULL, data = mpdta)
 #&gt; 
-#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper &lt;https://ssrn.com/abstract=3148250&gt;, 2020. 
+#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. 
 #&gt; 
 #&gt; Group-Time Average Treatment Effects:
 #&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
@@ -470,7 +557,7 @@ Default is <code>FALSE</code>.</p></td>
 
       <footer>
       <div class="copyright">
-  <p>Developed by Brantly Callaway, Pedro H.C. Sant'Anna.</p>
+  <p>Developed by <a href='https://bcallaway11.github.io/'>Brantly Callaway</a>, <a href='https://pedrohcgs.github.io/'>Pedro H. C. Sant'Anna</a>.</p>
 </div>
 
 <div class="pkgdown">

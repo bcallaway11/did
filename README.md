@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-<img src="man/figures/logo.png" width="150">
+# Difference-in-Differences <img src="man/figures/logo.png" align="right" alt="" width="155" />
 
 <!-- badges: start -->
 
@@ -53,9 +53,10 @@ treatment effects or event-study-type estimands.
 There has been some recent work on DiD with multiple time periods. The
 **did** package implements the framework put forward in
 
-  - Callaway, Brantly, and Pedro H.C. Sant'Anna.
+  - [Callaway, Brantly, and Pedro H.C. Sant'Anna.
     Difference-in-differences with multiple time periods. Forthcoming at
-    the Journal of Econometrics (2020).
+    the Journal of Econometrics
+    (2020).](https://arxiv.org/abs/1803.09015)
 
 **Higher level discussions of issues are available in**
 
@@ -81,7 +82,7 @@ devtools::install_github("bcallaway11/did")
 
 The following is a simplified example of the effect of states increasing
 their minimum wages on county-level teen employment rates which comes
-from Callaway and Sant’Anna (2020).
+from [Callaway and Sant’Anna (2020)](https://arxiv.org/abs/1803.09015).
 
   - [More detailed examples are also
     available](articles/did-basics.html)
@@ -136,26 +137,26 @@ summary(out)
 #> att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
 #>     gname = "first.treat", xformla = ~1, data = mpdta, est_method = "reg")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0225       -0.0717      0.0507  
-#>   2004 2005  -0.0704     0.0315       -0.1562      0.0153  
-#>   2004 2006  -0.1373     0.0399       -0.2460     -0.0286 *
-#>   2004 2007  -0.1008     0.0359       -0.1985     -0.0031 *
-#>   2006 2004   0.0065     0.0239       -0.0587      0.0717  
-#>   2006 2005  -0.0028     0.0203       -0.0581      0.0526  
-#>   2006 2006  -0.0046     0.0174       -0.0521      0.0429  
-#>   2006 2007  -0.0412     0.0200       -0.0956      0.0131  
-#>   2007 2004   0.0305     0.0150       -0.0103      0.0713  
-#>   2007 2005  -0.0027     0.0166       -0.0478      0.0424  
-#>   2007 2006  -0.0311     0.0171       -0.0776      0.0154  
-#>   2007 2007  -0.0261     0.0170       -0.0724      0.0203  
+#>   2004 2004  -0.0105     0.0248       -0.0744      0.0534  
+#>   2004 2005  -0.0704     0.0338       -0.1573      0.0165  
+#>   2004 2006  -0.1373     0.0408       -0.2423     -0.0322 *
+#>   2004 2007  -0.1008     0.0359       -0.1933     -0.0083 *
+#>   2006 2004   0.0065     0.0246       -0.0568      0.0698  
+#>   2006 2005  -0.0028     0.0206       -0.0558      0.0503  
+#>   2006 2006  -0.0046     0.0183       -0.0518      0.0426  
+#>   2006 2007  -0.0412     0.0212       -0.0958      0.0134  
+#>   2007 2004   0.0305     0.0149       -0.0077      0.0687  
+#>   2007 2005  -0.0027     0.0176       -0.0481      0.0426  
+#>   2007 2006  -0.0311     0.0179       -0.0772      0.0150  
+#>   2007 2007  -0.0261     0.0170       -0.0698      0.0177  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
-#> P-value for pre-test of parallel trends assumption:  0.15294
+#> P-value for pre-test of parallel trends assumption:  0.19578
 #> Control Group:  Never Treated,  Anticipation Periods:  0
 #> Estimation Method:  Outcome Regression
 ```
@@ -176,7 +177,7 @@ effects. This can be done using the **ggdid** command:
 ggdid(out, ylim = c(-.25,.1))
 ```
 
-![](man/figures/README-unnamed-chunk-8-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-8-1.png" width="90%" style="display: block; margin: auto;" />
 
 The red dots in the plot are pre-treatment group-time average treatment
 effects . Here they are provided with 95% simultaneous confidence
@@ -211,23 +212,23 @@ summary(es)
 #> Call:
 #> aggte(MP = out, type = "dynamic")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
 #> 
 #> 
 #> Overall ATT:  
 #>      ATT Std. Error     [95%  Conf. Int.]  
-#>  -0.0772     0.0209   -0.1181     -0.0363 *
+#>  -0.0772     0.0219   -0.1202     -0.0343 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  event time     ATT Std. Error [95% Simult.  Conf. Band]  
-#>          -3  0.0305     0.0152       -0.0079      0.0689  
-#>          -2 -0.0006     0.0149       -0.0382      0.0370  
-#>          -1 -0.0245     0.0142       -0.0602      0.0113  
-#>           0 -0.0199     0.0122       -0.0506      0.0107  
-#>           1 -0.0510     0.0161       -0.0916     -0.0103 *
-#>           2 -0.1373     0.0385       -0.2343     -0.0403 *
-#>           3 -0.1008     0.0338       -0.1861     -0.0155 *
+#>          -3  0.0305     0.0161       -0.0107      0.0718  
+#>          -2 -0.0006     0.0134       -0.0349      0.0338  
+#>          -1 -0.0245     0.0146       -0.0621      0.0132  
+#>           0 -0.0199     0.0122       -0.0512      0.0113  
+#>           1 -0.0510     0.0163       -0.0929     -0.0090 *
+#>           2 -0.1373     0.0398       -0.2394     -0.0351 *
+#>           3 -0.1008     0.0346       -0.1898     -0.0118 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -247,7 +248,7 @@ To plot the event study, use **ggdid**
 ggdid(es)
 ```
 
-![](man/figures/README-unnamed-chunk-11-1.png)<!-- -->
+<img src="man/figures/README-unnamed-chunk-11-1.png" width="90%" style="display: block; margin: auto;" />
 
 The figure here is very similar to the group-time average treatment
 effects. Red dots are pre-treatment periods, blue dots are
@@ -276,19 +277,19 @@ summary(group_effects)
 #> Call:
 #> aggte(MP = out, type = "group")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Working Paper <https://ssrn.com/abstract=3148250>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
 #> 
 #> 
 #> Overall ATT:  
 #>     ATT Std. Error     [95%  Conf. Int.]  
-#>  -0.031     0.0127   -0.0559     -0.0062 *
+#>  -0.031     0.0125   -0.0556     -0.0064 *
 #> 
 #> 
 #> Group Effects:
 #>  group     ATT Std. Error [95% Simult.  Conf. Band]  
-#>   2004 -0.0797     0.0280       -0.1393     -0.0202 *
-#>   2006 -0.0229     0.0174       -0.0599      0.0141  
-#>   2007 -0.0261     0.0165       -0.0610      0.0089  
+#>   2004 -0.0797     0.0298       -0.1464     -0.0131 *
+#>   2006 -0.0229     0.0165       -0.0599      0.0141  
+#>   2007 -0.0261     0.0160       -0.0620      0.0098  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

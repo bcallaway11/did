@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This vignette discusses the basics of using Difference-in-Differences (DiD) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the **did** package.
+This vignette discusses the basics of using Difference-in-Differences (DiD) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the **did** package. The background article for it is [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://arxiv.org/abs/1803.09015).
 
 * The **did** package allows for multiple periods and variation in treatment timing
 
@@ -126,19 +126,10 @@ summary(example_attgt)
 The summary of `example_attgt` provides estimates of the group-time average treatment effects in the column labeled `att`, and the corresponding bootstrapped-based standard errors are given in the column `se`.  The corresponding groups and times are given in the columns `group` and `time`.  Under the no-anticipation and parallel trends assumptions, group-time average treatment effects are identified in periods when $t \geq g$ (i.e., post-treatment periods for each group).  The table also reports pseudo group-time average treatment effects when $t < g$ (i.e., pre-treatment periods for group $g$).  These can be used as a pre-test for the parallel trends assumption (as long as we assume that the no-anticipation assumption indeed holds).  In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results.  [A much more detailed discussion of using the **did** package for pre-testing is available here](pre-testing).
 
 Next, we'll demonstrate how to plot group-time average treatment effects.  To plot these, use the `ggdid` function which builds off the `ggplot2` package.
-```{r, eval=FALSE}
+```{r, fig.width=8,fig.height=10, fig.align='center', out.width="90%", dpi = 200}
 # plot the results
 ggdid(example_attgt)
 ```
-
-```{r, echo=FALSE}
-p <- ggdid(example_attgt)
-ggsave(plot=p, filename="did-basics-fig1.png", device="png", width=8, height=10)
-```
-
-<center>
-![](did-basics-fig1.png){ width=90% }
-</center>
 
 The resulting figure is one that contains separate plots for each group.  Notice in the figure above, the first plot is labeled "Group 2", the second "Group 3", etc.  Then, the figure contains estimates of group-time average treatment effects for each group in each time period along with a simultaneous confidence interval.  The red dots in the plots are pre-treatment pseudo group-time average treatment effects and are most useful for pre-testing the parallel trends assumption.  The blue dots are post-treatment group-time average treatment effects and should be interpreted as the average effect of participating in the treatment for units in a particular group at a particular point in time.
 
@@ -160,8 +151,8 @@ In many applications, there can be a large number of groups and time periods.  I
 One idea that is likely to immediately come to mind is to just return a weighted average of all group-time average treatment effects with weights proportional to the group size.  This is available by calling the `aggte` function with `type = simple`.
 
 ```{r}
-#agg.simple <- aggte(example_attgt, type = "simple")
-#summary(agg.simple)
+agg.simple <- aggte(example_attgt, type = "simple")
+summary(agg.simple)
 ```
 
 This sort of aggregation immediately avoids the negative weights issue that two-way fixed effects regressions can suffer from, but we often think that *there are better alternatives*. In particular, this `simple` aggregation tends to overweight the effect of early-treated groups simply because we observe more of them during post-treatment periods.  We think there are likely to be better alternatives in most applications.
@@ -170,7 +161,7 @@ This sort of aggregation immediately avoids the negative weights issue that two-
 
 One of the most common alternative approaches is to aggregate group-time effects into an event study plot.  Group-time average treatment effects can immediately be averaged into average treatment effects at different lengths of exposure to the treatment using the following code:
 
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 agg.es <- aggte(example_attgt, type = "dynamic")
 summary(agg.es)
 ggdid(agg.es)
@@ -185,7 +176,7 @@ The Overall ATT here averages the average treatment effects across all lengths o
 #### Group-Specific Effects
 
 Another idea is to look at average effects specific to each group.  It is also straightforward to aggregate group-time average treatment effects into group-specific average treatment effects using the following code:
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r, fig.width=6, fig.align='center', out.width="90%", dpi = 200}
 agg.gs <- aggte(example_attgt, type = "group")
 summary(agg.gs)
 ggdid(agg.gs)
@@ -199,7 +190,7 @@ The Overall ATT averages the group-specific treatment effects across groups.  In
 
 Finally, the `did` package allows aggregations across different time periods.  To do this
 
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r, fig.width=8, fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 agg.ct <- aggte(example_attgt, type = "calendar")
 summary(agg.ct)
 ggdid(agg.ct)
@@ -259,9 +250,8 @@ The argument `est_method` is also available to pass in a custom function for est
 
 # An example with real data
 
-Next, we use a subset of data that comes from Callaway and Sant'Anna (2020).  This is a dataset that contains county-level teen employment rates from 2003-2007.  The data can be loaded by
+Next, we use a subset of data that comes from [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015).  This is a dataset that contains county-level teen employment rates from 2003-2007.  The data can be loaded by
 ```{r}
-library(did)
 data(mpdta)
 ```
 `mpdta` is a balanced panel with `r nrow(mpdta)` observations.  And the dataset looks like
@@ -294,7 +284,7 @@ Next, we walk through a straightforward, but realistic way to use the `did` pack
 
 We'll consider two cases.  For the first case, we will not condition on any covariates.  For the second, we will condition on the log of county population (in a "real" application, one might want to condition on more covariates).
 
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r, fig.width=8,fig.height=10, fig.align='center', out.width="90%", dpi = 200}
 # estimate group-time average treatment effects without covariates
 mw.attgt <- att_gt(yname = "lemp",
                    gname = "first.treat",
@@ -318,7 +308,7 @@ There are a few things to notice in this case
 
 * There is some evidence of negative effects of the minimum wage on employment.  Two group-time average treatment effects are negative and statistically different from 0.  These results also suggest that it may be helpful to aggregate the group-time average treatment effects.
 
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r,  fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 # aggregate the group-time average treatment effects
 mw.dyn <- aggte(mw.attgt, type = "dynamic")
 summary(mw.dyn)
@@ -332,7 +322,7 @@ One potential issue with these dynamic effect estimators is that the composition
 One way to combat this is to balance the sample by (i) only including groups that are exposed to the treatment for at least a certain number of time periods and (ii) only look at dynamic effects in those time periods.  In the `did` package, one can do this by specifying the `balance_e` option.  Here, we set `balance_e = 1` -- what this does is to only consider groups of states that
 are treated in 2004 and 2006 (so we can compute event-study-type parameters for them for $e=0,1$), drops the group treated in 2007 (as we can not compute the event-study-type parameter with $e=1$ for this group)), and then only looks at instantaneous average effects and the average effect one period after states raised the minimum wage.
 
-```{r, fig.width=12,fig.height=8, fig.align='center'}
+```{r,  fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 mw.dyn.balance <- aggte(mw.attgt, type = "dynamic", balance_e=1)
 summary(mw.dyn.balance)
 ggdid(mw.dyn.balance, ylim = c(-.3,.3))

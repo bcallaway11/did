@@ -16,12 +16,11 @@ knitr::opts_chunk$set(
 library(did)
 library(ggpubr)
 data(mpdta)
-fldr <- "~/Dropbox/did/R/"
-sapply(paste0(fldr,list.files(fldr)), source)
+#fldr <- "~/Dropbox/did/R/"
+#sapply(paste0(fldr,list.files(fldr)), source)
 library(BMisc)
 ```
-
-<img src="man/figures/logo.png" width="150">
+# Difference-in-Differences <img src="man/figures/logo.png" align="right" alt="" width="155" />
 
 <!-- badges: start -->
 
@@ -60,7 +59,7 @@ Group-time average treatment effects are also natural building blocks for more a
 
 There has been some recent work on DiD with multiple time periods.  The **did** package implements the framework put forward in
 
-* Callaway, Brantly, and Pedro H.C. Sant\'Anna. Difference-in-differences with multiple time periods. Forthcoming at the Journal of Econometrics (2020).
+* [Callaway, Brantly, and Pedro H.C. Sant\'Anna. Difference-in-differences with multiple time periods. Forthcoming at the Journal of Econometrics (2020).](https://arxiv.org/abs/1803.09015)
 
 
 **Higher level discussions of issues are available in**
@@ -85,7 +84,7 @@ devtools::install_github("bcallaway11/did")
 
 ## A short example
 
-The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from Callaway and Sant'Anna (2020).
+The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015).
 
 * [More detailed examples are also available](articles/did-basics.html)
 
@@ -133,7 +132,7 @@ library(gridExtra)
 library(ggplot2)
 ```
 
-```{r}
+```{r, fig.width=8, fig.height=10, fig.align='center', out.width="90%", dpi = 200}
 ggdid(out, ylim = c(-.25,.1))
 ```
 
@@ -144,7 +143,7 @@ The red dots in the plot are pre-treatment group-time average treatment effects 
 Although in the current example it is pretty easy to directly interpret the group-time average treatment effects, there are many cases where it is convenient to aggregate the group-time average treatment effects into a small number of parameters.  A main type of aggregation is into an *event study* plot.
 
 To make an event study plot in the **did** package, one can use the **aggte** function
-```{r}
+```{r, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 es <- aggte(out, type = "dynamic")
 ```
 
@@ -156,7 +155,7 @@ summary(es)
 The column `event time` is for each group relative to when they first participate in the treatment.  To give some examples, `event time=0` corresponds to the *on impact* effect, and `event time=-1` is the *effect* in the period before a unit becomes treated (checking that this is equal to 0 is potentially useful as a pre-test).
 
 To plot the event study, use **ggdid**
-```{r}
+```{r, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 ggdid(es)
 ```
 
