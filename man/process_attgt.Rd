@@ -10,11 +10,11 @@ process_attgt(attgt.results.list)
 \item{attgt.results.list}{list of results from \code{\link{compute.att_gt}}}
 }
 \value{
-list
- * group which group a set of results belongs to
- * tt which time period a set of results belongs to
- * att the group time average treatment effect
- * inf.func the influence function for that group time average treatment effect
+list with elements:
+\item{group}{which group a set of results belongs to}
+\item{tt}{which time period a set of results belongs to}
+\item{att}{the group time average treatment effect}
+\item{inf.func}{the influence function for that group time average treatment effect}
 }
 \description{
 Process Results from \code{\link{compute.att_gt}}

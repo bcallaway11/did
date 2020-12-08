@@ -74,7 +74,7 @@
 #' @param allow_unbalanced_panel Whether or not function should
 #'  "balance" the panel with respect to time and id.  The default
 #'  values if \code{FALSE} which means that \code{att_gt} will drop
-#'  all observations where data is not observed in all periods.
+#'  all units where data is not observed in all periods.
 #'  The advantage of this is that the computations are faster
 #'  (sometimes substantially).
 #' @param control_group Which units to use the control group.

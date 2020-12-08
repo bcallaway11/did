@@ -8,10 +8,10 @@
 #' @param DIDparams DIDparams object
 #'
 #' @return list with elements
-#' * bres returns from each bootstrap iteration
-#' * V variance matrix
-#' * se standard errors
-#' * crit.val a critical value for computing uniform confidence bands
+#' \item{bres}{results from each bootstrap iteration}
+#' \item{V}{variance matrix}
+#' \item{se}{standard errors}
+#' \item{crit.val}{a critical value for computing uniform confidence bands}
 #'
 #' @export
 mboot <- function(inf.func, DIDparams) {

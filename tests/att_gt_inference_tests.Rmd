@@ -21,7 +21,7 @@ library(BMisc)
 library(ggplot2)
 library(gridExtra)
 
-ncl <- 10
+ncl <- 1
 time.periods <- 4
 biters <- 200
 ```

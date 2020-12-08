@@ -28,9 +28,9 @@ MP(
 \item{att}{the group-average treatment effect for group \code{group} and time
 period \code{t}}
 
-\item{V_analytical}{Analytical variance matrix for group-time average treatment effects}
+\item{V_analytical}{Analytical estimator for the asymptotic variance-covariance matrix for group-time average treatment effects}
 
-\item{se}{standard errors for group-time average treatment effects}
+\item{se}{standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.}
 
 \item{c}{simulataneous critical value if one is obtaining simultaneous confidence
 bands. Otherwise it reports the critival value based on pointwise normal

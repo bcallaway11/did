@@ -271,8 +271,8 @@ indicator <- function(X, u) {
 #'  corresponds to not running parallel.
 #'
 #' @return list
-#'  * bres CvM test statistics for each bootstrap iteration
-#'  * crit.val critical value for CvM test statistic
+#' \item{bres}{CvM test statistics for each bootstrap iteration}
+#' \item{crit.val}{critical value for CvM test statistic}
 #'
 #' @export
 test.mboot <- function(inf.func, DIDparams, cores=1) {

@@ -74,7 +74,8 @@ must be the same as idname which allows for clustering at the individual
 level. Default is the variables set in the MP object}
 }
 \value{
-AGGTEobj
+An \code{\link{AGGTEobj}} object that holds the results from the
+ aggregation
 }
 \description{
 A function to take group-time average treatment effects

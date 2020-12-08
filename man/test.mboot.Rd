@@ -17,8 +17,8 @@ corresponds to not running parallel.}
 }
 \value{
 list
- * bres CvM test statistics for each bootstrap iteration
- * crit.val critical value for CvM test statistic
+\item{bres}{CvM test statistics for each bootstrap iteration}
+\item{crit.val}{critical value for CvM test statistic}
 }
 \description{
 A slightly modified multiplier bootstrap procedure

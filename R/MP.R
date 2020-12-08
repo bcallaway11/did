@@ -9,8 +9,8 @@
 #' @param c simulataneous critical value if one is obtaining simultaneous confidence
 #'  bands. Otherwise it reports the critival value based on pointwise normal
 #'  approximation.
-#' @param V_analytical Analytical variance matrix for group-time average treatment effects
-#' @param se standard errors for group-time average treatment effects
+#' @param V_analytical Analytical estimator for the asymptotic variance-covariance matrix for group-time average treatment effects
+#' @param se standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.
 #' @param inffunc the influence function for estimating group-time average treatment effects
 #' @param n the number of observations
 #' @param W the Wald statistic for pre-testing the common trends assumption

@@ -51,7 +51,9 @@
 #'  level. Default is the variables set in the MP object
 
 #'
-#' @return AGGTEobj
+#' @return An \code{\link{AGGTEobj}} object that holds the results from the
+#'  aggregation
+#' 
 #' @export
 aggte <- function(MP,
                   type = "group",
