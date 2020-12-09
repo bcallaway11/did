@@ -26,4 +26,4 @@ There was 1 NOTE:
 
 ## Additional Comments
 
-* None
+* I have fixed issues related to possible invalid URLs from the previous submission.
