@@ -104,7 +104,7 @@
 </ul>
 <p><strong>Higher level discussions of issues are available in</strong></p>
 <ul>
-<li><a href="articles/multi-period-did.html">Our approach to DiD with multiple time periods</a></li>
+<li><a href="https://bcallaway11.github.io/did/articles/multi-period-did.html">Our approach to DiD with multiple time periods</a></li>
 </ul>
 </div>
 <div id="installation" class="section level2">
@@ -123,7 +123,7 @@
 <a href="#a-short-example" class="anchor"></a>A short example</h2>
 <p>The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from <a href="https://arxiv.org/abs/1803.09015">Callaway and Sant’Anna (2020)</a>.</p>
 <ul>
-<li><a href="articles/did-basics.html">More detailed examples are also available</a></li>
+<li><a href="https://bcallaway11.github.io/did/articles/did-basics.html">More detailed examples are also available</a></li>
 </ul>
 <p>A subset of the data is available in the package and can be loaded by</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -158,22 +158,22 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group-Time Average Treatment Effects:</span>
 <span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004 2004  -0.0105     0.0248       -0.0744      0.0534  </span>
-<span class="co">#&gt;   2004 2005  -0.0704     0.0338       -0.1573      0.0165  </span>
-<span class="co">#&gt;   2004 2006  -0.1373     0.0408       -0.2423     -0.0322 *</span>
-<span class="co">#&gt;   2004 2007  -0.1008     0.0359       -0.1933     -0.0083 *</span>
-<span class="co">#&gt;   2006 2004   0.0065     0.0246       -0.0568      0.0698  </span>
-<span class="co">#&gt;   2006 2005  -0.0028     0.0206       -0.0558      0.0503  </span>
-<span class="co">#&gt;   2006 2006  -0.0046     0.0183       -0.0518      0.0426  </span>
-<span class="co">#&gt;   2006 2007  -0.0412     0.0212       -0.0958      0.0134  </span>
-<span class="co">#&gt;   2007 2004   0.0305     0.0149       -0.0077      0.0687  </span>
-<span class="co">#&gt;   2007 2005  -0.0027     0.0176       -0.0481      0.0426  </span>
-<span class="co">#&gt;   2007 2006  -0.0311     0.0179       -0.0772      0.0150  </span>
-<span class="co">#&gt;   2007 2007  -0.0261     0.0170       -0.0698      0.0177  </span>
+<span class="co">#&gt;   2004 2004  -0.0105     0.0244       -0.0742      0.0532  </span>
+<span class="co">#&gt;   2004 2005  -0.0704     0.0338       -0.1586      0.0177  </span>
+<span class="co">#&gt;   2004 2006  -0.1373     0.0384       -0.2376     -0.0370 *</span>
+<span class="co">#&gt;   2004 2007  -0.1008     0.0355       -0.1934     -0.0083 *</span>
+<span class="co">#&gt;   2006 2004   0.0065     0.0252       -0.0593      0.0724  </span>
+<span class="co">#&gt;   2006 2005  -0.0028     0.0193       -0.0531      0.0476  </span>
+<span class="co">#&gt;   2006 2006  -0.0046     0.0179       -0.0512      0.0420  </span>
+<span class="co">#&gt;   2006 2007  -0.0412     0.0211       -0.0964      0.0139  </span>
+<span class="co">#&gt;   2007 2004   0.0305     0.0154       -0.0097      0.0707  </span>
+<span class="co">#&gt;   2007 2005  -0.0027     0.0163       -0.0453      0.0399  </span>
+<span class="co">#&gt;   2007 2006  -0.0311     0.0200       -0.0833      0.0211  </span>
+<span class="co">#&gt;   2007 2007  -0.0261     0.0174       -0.0715      0.0194  </span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.19578</span>
+<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.16812</span>
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class="co">#&gt; Estimation Method:  Outcome Regression</span></code></pre></div>
 <p>This provides estimates of group-time average treatment effects for all groups in all time periods. Group-time average treatment effects are identified when <code>t &gt;= g</code> (these are post-treatment time periods for each group), but <strong>summary</strong> reports them even in periods when <code>t &lt; g</code> – these can be used to pre-test for the parallel trends assumption. The <code>P-value for pre-test of parallel trends assumption</code> is for a Wald pre-test of the parallel trends assumption. Here the parallel trends assumption would not be rejected at conventional significance levels.</p>
@@ -199,18 +199,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Overall ATT:  </span>
 <span class="co">#&gt;      ATT Std. Error     [95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0772     0.0219   -0.1202     -0.0343 *</span>
+<span class="co">#&gt;  -0.0772     0.0205   -0.1174      -0.037 *</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Dynamic Effects:</span>
 <span class="co">#&gt;  event time     ATT Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -3  0.0305     0.0161       -0.0107      0.0718  </span>
-<span class="co">#&gt;          -2 -0.0006     0.0134       -0.0349      0.0338  </span>
-<span class="co">#&gt;          -1 -0.0245     0.0146       -0.0621      0.0132  </span>
-<span class="co">#&gt;           0 -0.0199     0.0122       -0.0512      0.0113  </span>
-<span class="co">#&gt;           1 -0.0510     0.0163       -0.0929     -0.0090 *</span>
-<span class="co">#&gt;           2 -0.1373     0.0398       -0.2394     -0.0351 *</span>
-<span class="co">#&gt;           3 -0.1008     0.0346       -0.1898     -0.0118 *</span>
+<span class="co">#&gt;          -3  0.0305     0.0157       -0.0079      0.0689  </span>
+<span class="co">#&gt;          -2 -0.0006     0.0138       -0.0345      0.0334  </span>
+<span class="co">#&gt;          -1 -0.0245     0.0137       -0.0580      0.0091  </span>
+<span class="co">#&gt;           0 -0.0199     0.0130       -0.0517      0.0118  </span>
+<span class="co">#&gt;           1 -0.0510     0.0177       -0.0942     -0.0077 *</span>
+<span class="co">#&gt;           2 -0.1373     0.0385       -0.2317     -0.0428 *</span>
+<span class="co">#&gt;           3 -0.1008     0.0376       -0.1930     -0.0086 *</span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -238,14 +238,14 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Overall ATT:  </span>
 <span class="co">#&gt;     ATT Std. Error     [95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.031     0.0125   -0.0556     -0.0064 *</span>
+<span class="co">#&gt;  -0.031     0.0119   -0.0543     -0.0078 *</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group Effects:</span>
 <span class="co">#&gt;  group     ATT Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004 -0.0797     0.0298       -0.1464     -0.0131 *</span>
-<span class="co">#&gt;   2006 -0.0229     0.0165       -0.0599      0.0141  </span>
-<span class="co">#&gt;   2007 -0.0261     0.0160       -0.0620      0.0098  </span>
+<span class="co">#&gt;   2004 -0.0797     0.0280       -0.1442     -0.0153 *</span>
+<span class="co">#&gt;   2006 -0.0229     0.0161       -0.0599      0.0141  </span>
+<span class="co">#&gt;   2007 -0.0261     0.0180       -0.0676      0.0154  </span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -258,10 +258,10 @@
 <a href="#additional-resources" class="anchor"></a>Additional Resources</h2>
 <p>We have provided several more vignettes that may be helpful for using the <strong>did</strong> package</p>
 <ul>
-<li><p><a href="articles/did-basics.html">Getting Started with the did Package</a></p></li>
-<li><p><a href="articles/multi-period-did.html">Introduction to DiD with Multiple Time Periods</a></p></li>
-<li><p><a href="articles/pre-testing.html">Pre-Testing in a DiD Setup using the did Package</a></p></li>
-<li><p><a href="articles/extensions.html">Writing Extensions to the did Package</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/did-basics.html">Getting Started with the did Package</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/multi-period-did.html">Introduction to DiD with Multiple Time Periods</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/pre-testing.html">Pre-Testing in a DiD Setup using the did Package</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/extensions.html">Writing Extensions to the did Package</a></p></li>
 </ul>
 </div>
 </div>

@@ -61,7 +61,7 @@ There has been some recent work on DiD with multiple time periods. The
 **Higher level discussions of issues are available in**
 
   - [Our approach to DiD with multiple time
-    periods](articles/multi-period-did.html)
+    periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
 
 ## Installation
 
@@ -85,7 +85,7 @@ their minimum wages on county-level teen employment rates which comes
 from [Callaway and Sant’Anna (2020)](https://arxiv.org/abs/1803.09015).
 
   - [More detailed examples are also
-    available](articles/did-basics.html)
+    available](https://bcallaway11.github.io/did/articles/did-basics.html)
 
 A subset of the data is available in the package and can be loaded by
 
@@ -141,22 +141,22 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0248       -0.0744      0.0534  
-#>   2004 2005  -0.0704     0.0338       -0.1573      0.0165  
-#>   2004 2006  -0.1373     0.0408       -0.2423     -0.0322 *
-#>   2004 2007  -0.1008     0.0359       -0.1933     -0.0083 *
-#>   2006 2004   0.0065     0.0246       -0.0568      0.0698  
-#>   2006 2005  -0.0028     0.0206       -0.0558      0.0503  
-#>   2006 2006  -0.0046     0.0183       -0.0518      0.0426  
-#>   2006 2007  -0.0412     0.0212       -0.0958      0.0134  
-#>   2007 2004   0.0305     0.0149       -0.0077      0.0687  
-#>   2007 2005  -0.0027     0.0176       -0.0481      0.0426  
-#>   2007 2006  -0.0311     0.0179       -0.0772      0.0150  
-#>   2007 2007  -0.0261     0.0170       -0.0698      0.0177  
+#>   2004 2004  -0.0105     0.0244       -0.0742      0.0532  
+#>   2004 2005  -0.0704     0.0338       -0.1586      0.0177  
+#>   2004 2006  -0.1373     0.0384       -0.2376     -0.0370 *
+#>   2004 2007  -0.1008     0.0355       -0.1934     -0.0083 *
+#>   2006 2004   0.0065     0.0252       -0.0593      0.0724  
+#>   2006 2005  -0.0028     0.0193       -0.0531      0.0476  
+#>   2006 2006  -0.0046     0.0179       -0.0512      0.0420  
+#>   2006 2007  -0.0412     0.0211       -0.0964      0.0139  
+#>   2007 2004   0.0305     0.0154       -0.0097      0.0707  
+#>   2007 2005  -0.0027     0.0163       -0.0453      0.0399  
+#>   2007 2006  -0.0311     0.0200       -0.0833      0.0211  
+#>   2007 2007  -0.0261     0.0174       -0.0715      0.0194  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
-#> P-value for pre-test of parallel trends assumption:  0.19578
+#> P-value for pre-test of parallel trends assumption:  0.16812
 #> Control Group:  Never Treated,  Anticipation Periods:  0
 #> Estimation Method:  Outcome Regression
 ```
@@ -217,18 +217,18 @@ summary(es)
 #> 
 #> Overall ATT:  
 #>      ATT Std. Error     [95%  Conf. Int.]  
-#>  -0.0772     0.0219   -0.1202     -0.0343 *
+#>  -0.0772     0.0205   -0.1174      -0.037 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  event time     ATT Std. Error [95% Simult.  Conf. Band]  
-#>          -3  0.0305     0.0161       -0.0107      0.0718  
-#>          -2 -0.0006     0.0134       -0.0349      0.0338  
-#>          -1 -0.0245     0.0146       -0.0621      0.0132  
-#>           0 -0.0199     0.0122       -0.0512      0.0113  
-#>           1 -0.0510     0.0163       -0.0929     -0.0090 *
-#>           2 -0.1373     0.0398       -0.2394     -0.0351 *
-#>           3 -0.1008     0.0346       -0.1898     -0.0118 *
+#>          -3  0.0305     0.0157       -0.0079      0.0689  
+#>          -2 -0.0006     0.0138       -0.0345      0.0334  
+#>          -1 -0.0245     0.0137       -0.0580      0.0091  
+#>           0 -0.0199     0.0130       -0.0517      0.0118  
+#>           1 -0.0510     0.0177       -0.0942     -0.0077 *
+#>           2 -0.1373     0.0385       -0.2317     -0.0428 *
+#>           3 -0.1008     0.0376       -0.1930     -0.0086 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -282,14 +282,14 @@ summary(group_effects)
 #> 
 #> Overall ATT:  
 #>     ATT Std. Error     [95%  Conf. Int.]  
-#>  -0.031     0.0125   -0.0556     -0.0064 *
+#>  -0.031     0.0119   -0.0543     -0.0078 *
 #> 
 #> 
 #> Group Effects:
 #>  group     ATT Std. Error [95% Simult.  Conf. Band]  
-#>   2004 -0.0797     0.0298       -0.1464     -0.0131 *
-#>   2006 -0.0229     0.0165       -0.0599      0.0141  
-#>   2007 -0.0261     0.0160       -0.0620      0.0098  
+#>   2004 -0.0797     0.0280       -0.1442     -0.0153 *
+#>   2006 -0.0229     0.0161       -0.0599      0.0141  
+#>   2007 -0.0261     0.0180       -0.0676      0.0154  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -306,12 +306,14 @@ estimate that increasing the minimum wage decreased teen employment by
 We have provided several more vignettes that may be helpful for using
 the **did** package
 
-  - [Getting Started with the did Package](articles/did-basics.html)
+  - [Getting Started with the did
+    Package](https://bcallaway11.github.io/did/articles/did-basics.html)
 
   - [Introduction to DiD with Multiple Time
-    Periods](articles/multi-period-did.html)
+    Periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
 
   - [Pre-Testing in a DiD Setup using the did
-    Package](articles/pre-testing.html)
+    Package](https://bcallaway11.github.io/did/articles/pre-testing.html)
 
-  - [Writing Extensions to the did Package](articles/extensions.html)
+  - [Writing Extensions to the did
+    Package](https://bcallaway11.github.io/did/articles/extensions.html)

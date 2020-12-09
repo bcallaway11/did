@@ -238,7 +238,7 @@ All of these aggregations are available in the **did** package and examples with
 
 ## Conclusion
 
-This vignette has covered basic background issues on DiD with multiple periods.  [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](articles/index.html)
+This vignette has covered basic background issues on DiD with multiple periods.  [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](index.html)
 
 ## References
 

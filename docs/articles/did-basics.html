@@ -78,7 +78,7 @@
       <h1 data-toc-skip>Getting Started with the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 class="date">2020-12-08</h4>
+            <h4 class="date">2020-12-09</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/did-basics.Rmd"><code>vignettes/did-basics.Rmd</code></a></small>
       <div class="hidden name"><code>did-basics.Rmd</code></div>
@@ -97,7 +97,7 @@
 <li><p>Treatment effect estimates coming from the <strong>did</strong> package do not suffer from any of the drawbacks associated with two-way fixed effects regressions or event study regressions when there are multiple periods / variation in treatment timing</p></li>
 <li><p>The <strong>did</strong> package can deliver disaggregated <em>group-time average treatment effects</em> as well as event-study type estimates (treatment effects parameters corresponding to different lengths of exposure to the treatment) and overall treatment effect estimates.</p></li>
 </ul>
-<p>We use some notation in this vignette that is fully explained in our <a href="multi-periods.html">Introduction to DiD with Multiple Time Periods</a> vignette.</p>
+<p>We use some notation in this vignette that is fully explained in our <a href="multi-period-did.html">Introduction to DiD with Multiple Time Periods</a> vignette.</p>
 </div>
 <div id="examples-with-simulated-data" class="section level1">
 <h1 class="hasAnchor">
@@ -206,7 +206,7 @@
 <span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.79243</span>
 <span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre></div>
-<p>The summary of <code>example_attgt</code> provides estimates of the group-time average treatment effects in the column labeled <code>att</code>, and the corresponding bootstrapped-based standard errors are given in the column <code>se</code>. The corresponding groups and times are given in the columns <code>group</code> and <code>time</code>. Under the no-anticipation and parallel trends assumptions, group-time average treatment effects are identified in periods when <span class="math inline">\(t \geq g\)</span> (i.e., post-treatment periods for each group). The table also reports pseudo group-time average treatment effects when <span class="math inline">\(t &lt; g\)</span> (i.e., pre-treatment periods for group <span class="math inline">\(g\)</span>). These can be used as a pre-test for the parallel trends assumption (as long as we assume that the no-anticipation assumption indeed holds). In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results. <a href="pre-testing">A much more detailed discussion of using the <strong>did</strong> package for pre-testing is available here</a>.</p>
+<p>The summary of <code>example_attgt</code> provides estimates of the group-time average treatment effects in the column labeled <code>att</code>, and the corresponding bootstrapped-based standard errors are given in the column <code>se</code>. The corresponding groups and times are given in the columns <code>group</code> and <code>time</code>. Under the no-anticipation and parallel trends assumptions, group-time average treatment effects are identified in periods when <span class="math inline">\(t \geq g\)</span> (i.e., post-treatment periods for each group). The table also reports pseudo group-time average treatment effects when <span class="math inline">\(t &lt; g\)</span> (i.e., pre-treatment periods for group <span class="math inline">\(g\)</span>). These can be used as a pre-test for the parallel trends assumption (as long as we assume that the no-anticipation assumption indeed holds). In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results. <a href="pre-testing.html">A much more detailed discussion of using the <strong>did</strong> package for pre-testing is available here</a>.</p>
 <p>Next, we’ll demonstrate how to plot group-time average treatment effects. To plot these, use the <code>ggdid</code> function which builds off the <code>ggplot2</code> package.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># plot the results</span>

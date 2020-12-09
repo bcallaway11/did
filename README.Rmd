@@ -64,7 +64,7 @@ There has been some recent work on DiD with multiple time periods.  The **did** 
 
 **Higher level discussions of issues are available in**
 
-* [Our approach to DiD with multiple time periods](articles/multi-period-did.html)
+* [Our approach to DiD with multiple time periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
 
 
 ## Installation
@@ -86,7 +86,7 @@ devtools::install_github("bcallaway11/did")
 
 The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015).
 
-* [More detailed examples are also available](articles/did-basics.html)
+* [More detailed examples are also available](https://bcallaway11.github.io/did/articles/did-basics.html)
 
 A subset of the data is available in the package and can be loaded by
 ```{r eval=FALSE}
@@ -179,10 +179,10 @@ Of particular interest is the `Overall ATT` in the results.  Here, we estimate t
 
 We have provided several more vignettes that may be helpful for using the **did** package
 
-* [Getting Started with the did Package](articles/did-basics.html)
+* [Getting Started with the did Package](https://bcallaway11.github.io/did/articles/did-basics.html)
 
-* [Introduction to DiD with Multiple Time Periods](articles/multi-period-did.html)
+* [Introduction to DiD with Multiple Time Periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
 
-* [Pre-Testing in a DiD Setup using the did Package](articles/pre-testing.html)
+* [Pre-Testing in a DiD Setup using the did Package](https://bcallaway11.github.io/did/articles/pre-testing.html)
 
-* [Writing Extensions to the did Package](articles/extensions.html)
+* [Writing Extensions to the did Package](https://bcallaway11.github.io/did/articles/extensions.html)
