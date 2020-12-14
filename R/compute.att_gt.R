@@ -42,7 +42,7 @@ compute.att_gt <- function(dp) {
   #-----------------------------------------------------------------------------
   # main computations
   #-----------------------------------------------------------------------------
- 
+
   # will populate with all att(g,t)
   attgt.list <- list()
 
@@ -149,7 +149,7 @@ compute.att_gt <- function(dp) {
         # contains the change in the outcome over time.
         # dy is computed as latest year - earliest year. "Y" is outcome
         # in the pre period, "yt1" is outcome in the post period
-        disdat <- BMisc::panel2cs(disdat, yname, idname, tname)
+        disdat <- suppressWarnings(BMisc::panel2cs(disdat, yname, idname, tname))
 
         # still total number of units (not just included in G or C)
         n <- nrow(disdat)
@@ -212,11 +212,11 @@ compute.att_gt <- function(dp) {
             next
           }
         }
-        
+
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
-        
+
         if (class(est_method) == "function") {
           # user-specified function
           attgt <- est_method(y1=Ypost, y0=Ypre,
@@ -249,7 +249,7 @@ compute.att_gt <- function(dp) {
         attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
 
       } else { # repeated cross sections / unbalanced panel
-        
+
         # total number of observations
         n  <- nrow(data)
 
@@ -277,7 +277,7 @@ compute.att_gt <- function(dp) {
         Y <- disdat$y
         post <- 1*(disdat[,tname] == tlist[t+1])
         # num obs. for computing ATT(g,t), have to be careful here
-        n1 <- sum(G+C) 
+        n1 <- sum(G+C)
         w <- disdat$w
 
         #-----------------------------------------------------------------------------
@@ -306,7 +306,7 @@ compute.att_gt <- function(dp) {
           counter <- counter+1
           next
         }
-          
+
 
         # matrix of covariates
         covariates <- model.matrix(xformla, data=disdat)

@@ -1,3 +1,6 @@
+# did 2.0.1
+  * Compute critical value for simultaneous conf. band even when some standard error is zero
+  
 # did 2.0.0
   * Big improvement on code base / functionality / testing
   
