@@ -55,7 +55,8 @@ summary.MP <- function(object, ...) {
 
   cband_text1a <- paste0(100*(1-mpobj$alp),"% ")
   cband_text1b <- ifelse(mpobj$DIDparams$bstrap,
-                         ifelse(mpobj$DIDparams$cband, "Simult. ", "Pointwise "))
+                         ifelse(mpobj$DIDparams$cband, "Simult. ", "Pointwise "),
+                         "Pointwise ")
   cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
   cband_lower <- mpobj$att - mpobj$c*mpobj$se

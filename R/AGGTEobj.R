@@ -60,7 +60,7 @@ AGGTEobj <- function(overall.att = NULL,
 #'
 #' @description A function to summarize aggregated treatment effect parameters.
 #'
-#' @param object an AGGTEobj object
+#' @param object an \code{AGGTEobj} object
 #' @param ... other arguments
 #'
 #' @export
@@ -103,7 +103,8 @@ summary.AGGTEobj <- function(object, ...) {
     cat("\n")
     cband_text1a <- paste0(100*(1-object$DIDparams$alp),"% ")
     cband_text1b <- ifelse(object$DIDparams$bstrap,
-                           ifelse(object$DIDparams$cband, "Simult. ", "Pointwise "))
+                           ifelse(object$DIDparams$cband, "Simult. ", "Pointwise "),
+                           "Pointwise ")
     cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
     cband_lower <- object$att - object$crit.val*object$se
@@ -163,13 +164,12 @@ summary.AGGTEobj <- function(object, ...) {
 
 #' @title Print Aggregate Treatment Effect Parameter Objects
 #'
-#' @description A function to print summarize aggregated treatment effect parameters.
+#' @description A function to print aggregated treatment effect parameters.
 #'
-#' @param object an AGGTEobj object
+#' @param x an \code{AGGTEobj} object
 #' @param ... other arguments
 #'
 #' @export
 print.AGGTEobj <- function(x, ...) {
-
   summary.AGGTEobj(x, ...)
 }
