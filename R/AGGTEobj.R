@@ -162,14 +162,14 @@ summary.AGGTEobj <- function(object, ...) {
   }
 }
 
-#' @title Print Aggregate Treatment Effect Parameter Objects
+#' @title print.AGGTEobj
 #'
-#' @description A function to print aggregated treatment effect parameters.
+#' @description prints value of a \code{AGGTEobj} object
 #'
-#' @param x an \code{AGGTEobj} object
-#' @param ... other arguments
+#' @param x a \code{AGGTEobj} object
+#' @param ... extra arguments
 #'
 #' @export
-print.AGGTEobj <- function(x, ...) {
-  summary.AGGTEobj(x, ...)
+print.AGGTEobj <- function(x,...) {
+  summary.AGGTEobj(x,...)
 }
