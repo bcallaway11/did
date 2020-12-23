@@ -7,7 +7,7 @@ bibentry(bibtype = "Article",
          year = "2020",
          journal = "Forthcoming at the Journal of Econometrics",
          url = "https://arxiv.org/abs/1803.09015",
-         header = "To cite the paper that the R did package is based on:"
+         header = "To cite the paper that the R did package is based on:\n"
 )
 
 
@@ -20,5 +20,5 @@ bibentry(
   year     = "2020",
   note     = note,
   url      = "https://bcallaway11.github.io/did/",
-  header   = "To cite the did R package:"
+  header   = "To cite the did R package:\n"
 )

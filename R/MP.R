@@ -49,25 +49,26 @@ summary.MP <- function(object, ...) {
   # citation
   citation()
   cat("\n")
-  
+
   # group time average treatment effects
   cat("Group-Time Average Treatment Effects:\n")
 
   cband_text1a <- paste0(100*(1-mpobj$alp),"% ")
-  cband_text1b <- ifelse(mpobj$DIDparams$cband, "Simult. ", "Pointwise ")
+  cband_text1b <- ifelse(mpobj$DIDparams$bstrap,
+                         ifelse(mpobj$DIDparams$cband, "Simult. ", "Pointwise "))
   cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
   cband_lower <- mpobj$att - mpobj$c*mpobj$se
   cband_upper <- mpobj$att + mpobj$c*mpobj$se
-  
+
   sig <- (cband_upper < 0) | (cband_lower > 0)
   sig_text <- ifelse(sig, "*", "")
-  
+
   out <- cbind.data.frame(mpobj$group, mpobj$t, mpobj$att, mpobj$se, cband_lower, cband_upper)
   out <- round(out,4)
   out <- cbind.data.frame(out, sig_text)
 
-  
+
   colnames(out) <- c("Group", "Time", "ATT(g,t)","Std. Error", cband_text1, "Conf. Band]", "")
   print(out, row.names=FALSE)
   cat("---\n")
@@ -80,9 +81,9 @@ summary.MP <- function(object, ...) {
     cat(as.character(mpobj$Wpval))
     cat("\n")
   }
-  
 
-  
+
+
   # set control group text
   control_group <- mpobj$DIDparams$control_group
   control_group_text <- NULL
@@ -114,7 +115,7 @@ summary.MP <- function(object, ...) {
     } else if (est_method == "reg") {
       est_method_text <- "Outcome Regression"
     }
-    
+
     cat("Estimation Method:  ")
     cat(est_method_text)
     cat("\n")

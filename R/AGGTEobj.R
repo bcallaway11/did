@@ -102,15 +102,16 @@ summary.AGGTEobj <- function(object, ...) {
 
     cat("\n")
     cband_text1a <- paste0(100*(1-object$DIDparams$alp),"% ")
-    cband_text1b <- ifelse(object$DIDparams$cband, "Simult. ", "Pointwise ")
+    cband_text1b <- ifelse(object$DIDparams$bstrap,
+                           ifelse(object$DIDparams$cband, "Simult. ", "Pointwise "))
     cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
     cband_lower <- object$att - object$crit.val*object$se
     cband_upper <- object$att + object$crit.val*object$se
-    
+
     sig <- (cband_upper < 0) | (cband_lower > 0)
     sig_text <- ifelse(sig, "*", "")
-    
+
     out2 <- cbind.data.frame(object$egt, object$att.egt, object$se.egt, cband_lower, cband_upper)
     out2 <- round(out2, 4)
     out2 <- cbind.data.frame(out2, sig_text)
@@ -121,7 +122,7 @@ summary.AGGTEobj <- function(object, ...) {
   cat("---\n")
   cat("Signif. codes: `*' confidence band does not cover 0")
   cat("\n\n")
-  
+
   # set control group text
   control_group <- object$DIDparams$control_group
   control_group_text <- NULL
@@ -153,9 +154,22 @@ summary.AGGTEobj <- function(object, ...) {
     } else if (est_method == "reg") {
       est_method_text <- "Outcome Regression"
     }
-    
+
     cat("Estimation Method:  ")
     cat(est_method_text)
-    cat("\n")  
+    cat("\n")
   }
+}
+
+#' @title Print Aggregate Treatment Effect Parameter Objects
+#'
+#' @description A function to print summarize aggregated treatment effect parameters.
+#'
+#' @param object an AGGTEobj object
+#' @param ... other arguments
+#'
+#' @export
+print.AGGTEobj <- function(x, ...) {
+
+  summary.AGGTEobj(x, ...)
 }
