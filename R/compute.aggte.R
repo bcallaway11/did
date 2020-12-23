@@ -152,6 +152,8 @@ compute.aggte <- function(MP,
                                   whichones=keepers,
                                   weights.agg=pg[keepers]/sum(pg[keepers]),
                                   wif=simple.wif)
+    # Make it as vector
+    simple.if <- as.numeric(simple.if)
 
     # get standard errors from overall influence function
     simple.se <- getSE(simple.if, dp)
@@ -222,6 +224,8 @@ compute.aggte <- function(MP,
                                            weights.agg=pgg/sum(pgg),
                                            wif=selective.wif)
 
+
+    selective.inf.func <- as.numeric(selective.inf.func)
     # get overall standard error
     selective.se <- getSE(selective.inf.func, dp)
 
@@ -266,7 +270,7 @@ compute.aggte <- function(MP,
       include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance_e)
     }
 
-    # only looks at some event times 
+    # only looks at some event times
      eseq <- eseq[ (eseq >= min_e) & (eseq <= max_e) ]
 
     # compute atts that are specific to each event time
@@ -310,6 +314,8 @@ compute.aggte <- function(MP,
                                          whichones=(1:sum(epos)),
                                          weights.agg=(rep(1/sum(epos), sum(epos))),
                                          wif=NULL)
+
+    dynamic.inf.func <- as.numeric(dynamic.inf.func)
     dynamic.se <- getSE(dynamic.inf.func, dp)
 
     return(AGGTEobj(overall.att=dynamic.att,
@@ -389,7 +395,7 @@ compute.aggte <- function(MP,
                                            whichones=(1:length(calendar.tlist)),
                                            weights.agg=rep(1/length(calendar.tlist), length(calendar.tlist)),
                                            wif=NULL)
-
+    calendar.inf.func <- as.numeric(calendar.inf.func)
     # get overall standard error
     calendar.se <- getSE(calendar.inf.func, dp)
 
