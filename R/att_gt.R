@@ -26,10 +26,10 @@
 #'  standard errors are reported.
 #' @param biters The number of bootstrap iterations to use.  The default is 1000,
 #'  and this is only applicable if \code{bstrap=TRUE}.
-#' @param clustervars A vector of variables to cluster on.  At most, there
+#' @param clustervars A vector of variables names to cluster on.  At most, there
 #'  can be two variables (otherwise will throw an error) and one of these
 #'  must be the same as idname which allows for clustering at the individual
-#'  level.
+#'  level. By default, we cluster at individual level (when \code{bstrap=TRUE}).
 #' @param cband Boolean for whether or not to compute a uniform confidence
 #'  band that covers all of the group-time average treatment effects
 #'  with fixed probability \code{1-alp}.  In order to compute uniform confidence

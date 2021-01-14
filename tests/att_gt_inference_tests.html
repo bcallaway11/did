@@ -11,7 +11,7 @@
 
 <meta name="author" content="Brantly Callaway and Pedro H.C. Sant&#39;Anna" />
 
-<meta name="date" content="2020-12-08" />
+<meta name="date" content="2021-01-04" />
 
 <title>Tests that inference procedures are working correctly for ATT(g,t)</title>
 
@@ -413,7 +413,7 @@ summary {
 
 <h1 class="title toc-ignore">Tests that inference procedures are working correctly for ATT(g,t)</h1>
 <h4 class="author">Brantly Callaway and Pedro H.C. Sant&#39;Anna</h4>
-<h4 class="date">2020-12-08</h4>
+<h4 class="date">2021-01-04</h4>
 
 </div>
 
@@ -427,8 +427,9 @@ summary {
 reset.sim()
 te &lt;- 1
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;Wpval&quot;, panel=FALSE), cl=ncl)
+#&gt; Warning: package &#39;tidyr&#39; was built under R version 4.0.2
 mean( bout )
-#&gt; [1] 0.025
+#&gt; [1] 0.03
 # expect to reject about 5% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check if uniform confidence bands are working
@@ -437,7 +438,7 @@ reset.sim()
 te &lt;- 0
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;cband&quot;, bstrap=TRUE, cband=TRUE, panel=FALSE), cl=ncl)
 mean( bout )
-#&gt; [1] 0.935
+#&gt; [1] 0.95
 # expect to cover all about 95% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check if simple att is working
@@ -446,7 +447,7 @@ reset.sim()
 te &lt;- 0
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;simple&quot;), cl=ncl)
 mean(bout)
-#&gt; [1] 0.105
+#&gt; [1] 0.04
 # expect to reject that simple att = 0 about 5% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check if dynamic effects are working
@@ -458,7 +459,7 @@ bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;dynamic&quot;,
                                                     bstrap=TRUE,
                                                     cband=TRUE), cl=ncl)
 mean(bout)
-#&gt; [1] 0.98
+#&gt; [1] 0.94
 # expect to cover the truth about 95% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check not yet treated as control
@@ -467,7 +468,7 @@ reset.sim()
 te &lt;- 0
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim(ret=&quot;notyettreated&quot;, control.group=&quot;notyettreated&quot;), cl=ncl)
 mean( bout )
-#&gt; [1] 0.03
+#&gt; [1] 0.065
 # should reject about 5% of the time</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # test inference when dropping some event times
@@ -491,7 +492,7 @@ sim_dyn_pan &lt;- function() {
 
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim_dyn_pan(), cl=ncl)
 mean(bout)
-#&gt; [1] 0.04</code></pre>
+#&gt; [1] 0.055</code></pre>
 <pre class="r"><code>#-----------------------------------------------------------------------------
 # check inference for unbalanced panel
 # should cover about 95% of the time
@@ -515,7 +516,7 @@ sim_unb_pan &lt;- function() {
 
 bout &lt;- pbapply::pbsapply(1:biters, function(b) sim_unb_pan(), cl=ncl)
 mean(bout)
-#&gt; [1] 0.945</code></pre>
+#&gt; [1] 0.96</code></pre>
 </div>
 
 

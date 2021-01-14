@@ -71,10 +71,10 @@ and this is only applicable if \code{bstrap=TRUE}.}
 
 \item{alp}{the significance level, default is 0.05}
 
-\item{clustervars}{A vector of variables to cluster on.  At most, there
+\item{clustervars}{A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level.}
+level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
 
 \item{call}{The function call to aggte}
 }

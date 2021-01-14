@@ -61,6 +61,7 @@ pre_process_did <- function(yname,
   # list of treated groups (by time) from smallest to largest
   glist <- unique(data[,gname], )[order(unique(data[,gname]))]
 
+
   # Check if there is a never treated group
   if ( length(glist[glist==0]) == 0) {
     if(control_group=="nevertreated"){
@@ -250,7 +251,7 @@ pre_process_did <- function(yname,
       data$rowid <- data[, idname]
     }
 
-    # n is uniques number of observations
+    # n is unique number of cross section observations
     # this is different for repeated cross sections and unbalanced panel
     n <- length(unique(data[,idname]))
   }
@@ -269,12 +270,18 @@ pre_process_did <- function(yname,
   first.period <- tlist[1]
   glist <- glist[glist > first.period + anticipation]
 
+  # Check if groups is empty (usually a problem with the way people defined groups)
+  if(length(glist)==0){
+    stop("No valid groups. The variable in 'gname' should be expressed as the time a unit is first treated (0 if never-treated).")
+  }
+
   # How many time periods
   nT <- length(tlist)
   # How many treated groups
   nG <- length(glist)
 
-
+  # order dataset wrt idname and tname
+  data <- data[order(data[,idname], data[,tname]),]
 
   # store parameters for passing around later
   dp <- DIDparams(yname=yname,

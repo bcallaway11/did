@@ -24,7 +24,7 @@ The "canonical" version of DiD involves two periods and two groups.  The *untrea
 
 However, much applied work deals with cases where there are more than two time periods and different units can become treated at different points in time.  Regardless of the number of time periods, by far the leading approach in applied work is to try to estimate the effect of the treatment using a two-way fixed effects (TWFE) linear regression.  This works great in the case with two periods, but there are a number of recent methodological papers that suggest that there may be substantial drawbacks to using TWFE with multiple time periods.
 
-This vignette briefly discusses the emerging literature on DiD with multiple time periods -- both issues with standard approaches as well as remedies for these potential problems.  The `did` package implements a number of these remedies.  A vignette for how to use the `did` package is available [here](did-basics.html). The background article for these vignettes is [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://arxiv.org/abs/1803.09015).
+This vignette briefly discusses the emerging literature on DiD with multiple time periods -- both issues with standard approaches as well as remedies for these potential problems.  The `did` package implements a number of these remedies.  A vignette for how to use the `did` package is available [here](did-basics.html). The background article for these vignettes is [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
 ## Background
 
@@ -125,7 +125,7 @@ To fix ideas, let's provide some extended notation and be clear about the identi
 
 * $D_{it}$ is an indicator variable for whether unit $i$ has been treated by time $t$.
 
-* $Y_{it}$ is unit $i$'s observed outcome in time period $t$.  For units in the never-treated group, $Y_{it} = Y_{it}(0)$ in all time periods.  For units in other groups, we observe $Y_{it} = \mathbf{1}\{ G_i > t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)$.  The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on *when* they became treated). Implicit in this notation there is a **no treatment anticipation** assumption, which can be relaxed as discussed in [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://arxiv.org/abs/1803.09015).
+* $Y_{it}$ is unit $i$'s observed outcome in time period $t$.  For units in the never-treated group, $Y_{it} = Y_{it}(0)$ in all time periods.  For units in other groups, we observe $Y_{it} = \mathbf{1}\{ G_i > t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)$.  The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on *when* they became treated). Implicit in this notation there is a **no treatment anticipation** assumption, which can be relaxed as discussed in [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
 * $X_i$ vector of pre-treatment covariates.
 
@@ -244,12 +244,12 @@ This vignette has covered basic background issues on DiD with multiple periods. 
 
 * [Borusyak, Kirill, and Xavier Jaravel. "Revisiting Event Study Designs". Available at SSRN 2826228 (2018)](https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf)
 
-* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Forthcoming at the Journal of Econometrics (2020)](https://arxiv.org/abs/1803.09015).
+* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Forthcoming at the Journal of Econometrics (2020)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
 * [de Chaisemartin, Clement, and Xavier d'Haultfoeuille. "Two-way fixed effects estimators with heterogeneous treatment effects." American Economic Review 110.9 (2020): 2964-96.](https://doi.org/10.1257/aer.20181169)
 
 * [Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing." Working Paper, 2020](http://goodman-bacon.com/pdfs/ddtiming.pdf)
 
-* [Marcus, Michelle, and Pedro H. C. Sant'Anna. "The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics". Forthcoming at the Journal of the Association of Environmental and Resource Economists.](https://arxiv.org/abs/2009.01963)
+* [Marcus, Michelle, and Pedro H. C. Sant'Anna. "The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics". Forthcoming at the Journal of the Association of Environmental and Resource Economists.](https://www.journals.uchicago.edu/doi/10.1086/711509)
 
 * [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Forthcoming at the Journal of Econometrics (2020).](http://economics.mit.edu/files/14964)

@@ -11,7 +11,7 @@
 
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
 
-[![](https://img.shields.io/badge/devel%20version-2.0.0-blue.svg)](https://github.com/bcallaway11/did)
+[![](https://img.shields.io/badge/devel%20version-2.0.1-blue.svg)](https://github.com/bcallaway11/did)
 
 [![](https://img.shields.io/github/languages/code-size/bcallaway11/did.svg)](https://github.com/bcallaway11/did)
 
@@ -56,7 +56,7 @@ There has been some recent work on DiD with multiple time periods. The
   - [Callaway, Brantly, and Pedro H.C. Sant'Anna.
     Difference-in-differences with multiple time periods. Forthcoming at
     the Journal of Econometrics
-    (2020).](https://arxiv.org/abs/1803.09015)
+    (2020).](https://authors.elsevier.com/a/1cFzc15Dji4pnC)
 
 **Higher level discussions of issues are available in**
 
@@ -82,7 +82,8 @@ devtools::install_github("bcallaway11/did")
 
 The following is a simplified example of the effect of states increasing
 their minimum wages on county-level teen employment rates which comes
-from [Callaway and Sant’Anna (2020)](https://arxiv.org/abs/1803.09015).
+from [Callaway and Sant’Anna
+(2020)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
   - [More detailed examples are also
     available](https://bcallaway11.github.io/did/articles/did-basics.html)
@@ -141,18 +142,18 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0244       -0.0742      0.0532  
-#>   2004 2005  -0.0704     0.0338       -0.1586      0.0177  
-#>   2004 2006  -0.1373     0.0384       -0.2376     -0.0370 *
-#>   2004 2007  -0.1008     0.0355       -0.1934     -0.0083 *
-#>   2006 2004   0.0065     0.0252       -0.0593      0.0724  
-#>   2006 2005  -0.0028     0.0193       -0.0531      0.0476  
-#>   2006 2006  -0.0046     0.0179       -0.0512      0.0420  
-#>   2006 2007  -0.0412     0.0211       -0.0964      0.0139  
-#>   2007 2004   0.0305     0.0154       -0.0097      0.0707  
-#>   2007 2005  -0.0027     0.0163       -0.0453      0.0399  
-#>   2007 2006  -0.0311     0.0200       -0.0833      0.0211  
-#>   2007 2007  -0.0261     0.0174       -0.0715      0.0194  
+#>   2004 2004  -0.0105     0.0259       -0.0796      0.0586  
+#>   2004 2005  -0.0704     0.0312       -0.1535      0.0127  
+#>   2004 2006  -0.1373     0.0375       -0.2373     -0.0372 *
+#>   2004 2007  -0.1008     0.0352       -0.1947     -0.0069 *
+#>   2006 2004   0.0065     0.0229       -0.0547      0.0677  
+#>   2006 2005  -0.0028     0.0203       -0.0568      0.0513  
+#>   2006 2006  -0.0046     0.0179       -0.0522      0.0430  
+#>   2006 2007  -0.0412     0.0210       -0.0972      0.0148  
+#>   2007 2004   0.0305     0.0159       -0.0118      0.0728  
+#>   2007 2005  -0.0027     0.0164       -0.0465      0.0410  
+#>   2007 2006  -0.0311     0.0183       -0.0797      0.0176  
+#>   2007 2007  -0.0261     0.0179       -0.0737      0.0215  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -217,18 +218,18 @@ summary(es)
 #> 
 #> Overall ATT:  
 #>      ATT Std. Error     [95%  Conf. Int.]  
-#>  -0.0772     0.0205   -0.1174      -0.037 *
+#>  -0.0772     0.0205   -0.1175      -0.037 *
 #> 
 #> 
 #> Dynamic Effects:
-#>  event time     ATT Std. Error [95% Simult.  Conf. Band]  
-#>          -3  0.0305     0.0157       -0.0079      0.0689  
-#>          -2 -0.0006     0.0138       -0.0345      0.0334  
-#>          -1 -0.0245     0.0137       -0.0580      0.0091  
-#>           0 -0.0199     0.0130       -0.0517      0.0118  
-#>           1 -0.0510     0.0177       -0.0942     -0.0077 *
-#>           2 -0.1373     0.0385       -0.2317     -0.0428 *
-#>           3 -0.1008     0.0376       -0.1930     -0.0086 *
+#>  Event time Estimate Std. Error [95% Simult.  Conf. Band]  
+#>          -3   0.0305     0.0153       -0.0102      0.0712  
+#>          -2  -0.0006     0.0132       -0.0356      0.0345  
+#>          -1  -0.0245     0.0145       -0.0630      0.0141  
+#>           0  -0.0199     0.0120       -0.0518      0.0120  
+#>           1  -0.0510     0.0175       -0.0977     -0.0042 *
+#>           2  -0.1373     0.0396       -0.2426     -0.0319 *
+#>           3  -0.1008     0.0346       -0.1929     -0.0087 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -282,14 +283,14 @@ summary(group_effects)
 #> 
 #> Overall ATT:  
 #>     ATT Std. Error     [95%  Conf. Int.]  
-#>  -0.031     0.0119   -0.0543     -0.0078 *
+#>  -0.031     0.0125   -0.0554     -0.0066 *
 #> 
 #> 
 #> Group Effects:
-#>  group     ATT Std. Error [95% Simult.  Conf. Band]  
-#>   2004 -0.0797     0.0280       -0.1442     -0.0153 *
-#>   2006 -0.0229     0.0161       -0.0599      0.0141  
-#>   2007 -0.0261     0.0180       -0.0676      0.0154  
+#>  Group Estimate Std. Error [95% Simult.  Conf. Band]  
+#>   2004  -0.0797     0.0274       -0.1388     -0.0207 *
+#>   2006  -0.0229     0.0165       -0.0585      0.0127  
+#>   2007  -0.0261     0.0176       -0.0641      0.0120  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

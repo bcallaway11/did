@@ -1,5 +1,16 @@
 # did 2.0.1
-  * Compute critical value for simultaneous conf. band even when some standard error is zero
+  * Compute critical value for simultaneous confidence bands even when some standard error is zero (drop these observations)
+  
+  * Improved codes for unbalanced panel data: faster and more memory efficient
+  
+  * Bug fixes for summary **aggte** objects
+  
+  * Allow clustering for unbalanced panel data
+  
+  * Fixed error in calendar-type aggregation within **aggte** function (point estimates were not being weighted by group-size; now they are).
+  
+  * Additional error handling
+  
   
 # did 2.0.0
   * Big improvement on code base / functionality / testing

@@ -7,7 +7,7 @@
 \method{summary}{AGGTEobj}(object, ...)
 }
 \arguments{
-\item{object}{an AGGTEobj object}
+\item{object}{an \code{AGGTEobj} object}
 
 \item{...}{other arguments}
 }

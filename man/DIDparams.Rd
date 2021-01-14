@@ -85,10 +85,10 @@ standard errors are reported.}
 \item{biters}{The number of bootstrap iterations to use.  The default is 1000,
 and this is only applicable if \code{bstrap=TRUE}.}
 
-\item{clustervars}{A vector of variables to cluster on.  At most, there
+\item{clustervars}{A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level.}
+level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
  band that covers all of the group-time average treatment effects

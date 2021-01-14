@@ -35,32 +35,38 @@ mboot <- function(inf.func, DIDparams) {
   inf.func <- as.matrix(inf.func)
 
   # set correct number of units
-  n <- ifelse(!panel & !true_repeated_cross_sections,
-              length(unique(data[,idname])), # unbalanced panel
-              nrow(inf.func)) # balanced panel or repeated cross sections
+  n <- nrow(inf.func)
 
-  if (panel | true_repeated_cross_sections) {
-    # if include id as variable to cluster on
-    # drop it as we do this automatically
-    if (idname %in% clustervars) {
-      clustervars <- clustervars[-which(clustervars==idname)]
-    }
-  } else if (!true_repeated_cross_sections) {
-    # if unbalanced panel, then we have to cluster on idname
-    # (not sure if totally safe), but here we assume that
-    # clustervars would only potentially include more aggregated
-    # clustering than just using id (i.e. clustering at state level
-    # always would cluster at individual level)
-    if (is.null(clustervars)) {
-      clustervars <- idname
-    }
+  # if include id as variable to cluster on
+  # drop it as we do this automatically
+  if (idname %in% clustervars) {
+    clustervars <- clustervars[-which(clustervars==idname)]
   }
 
+  if(!is.null(clustervars)){
+    if(is.numeric(clustervars)){
+      stop("clustervars need to be the name of the clustering variable.")
+    }
+  }
   # we can only handle up to 2-way clustering
   # (in principle could do more, but not high priority now)
   if (length(clustervars) > 1) {
     stop("can't handle that many cluster variables")
   }
+
+  if (length(clustervars) > 0) {
+    # CHECK iF CLUSTERVAR is TIME-VARYING
+    clust_tv = stats::aggregate(data[,clustervars], list((data[,idname])), sd)
+    if(any(clust_tv[,2]>0)){
+      stop("can't handle time-varying cluster variables")
+    } else if (!panel){
+      # IF NOT, SUBSET DTA TO ONE VALUE PER ID
+      # Here we do not care about tname and yname as we do not use these
+      dta <- stats::aggregate(dta, list((data[,idname])), mean)[,-1]
+    }
+
+  }
+
 
   # bootstrap
   bout <- lapply(1:biters, FUN=function(b) {

@@ -59,7 +59,7 @@ Group-time average treatment effects are also natural building blocks for more a
 
 There has been some recent work on DiD with multiple time periods.  The **did** package implements the framework put forward in
 
-* [Callaway, Brantly, and Pedro H.C. Sant\'Anna. Difference-in-differences with multiple time periods. Forthcoming at the Journal of Econometrics (2020).](https://arxiv.org/abs/1803.09015)
+* [Callaway, Brantly, and Pedro H.C. Sant\'Anna. Difference-in-differences with multiple time periods. Forthcoming at the Journal of Econometrics (2020).](https://authors.elsevier.com/a/1cFzc15Dji4pnC)
 
 
 **Higher level discussions of issues are available in**
@@ -84,7 +84,7 @@ devtools::install_github("bcallaway11/did")
 
 ## A short example
 
-The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015).
+The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from [Callaway and Sant'Anna (2020)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
 * [More detailed examples are also available](https://bcallaway11.github.io/did/articles/did-basics.html)
 

@@ -63,7 +63,7 @@ compute.att_gt <- function(dp) {
   } else {
     #inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
     #inffunc <- matrix(data=0, nrow=nrow(data), ncol=nG*(nT-1))
-    inffunc <- Matrix::Matrix(data=0,nrow=nrow(data), ncol=nG*(nT-1), sparse=TRUE)
+    inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
   }
 
   # loop over groups
@@ -220,10 +220,10 @@ compute.att_gt <- function(dp) {
         if (class(est_method) == "function") {
           # user-specified function
           attgt <- est_method(y1=Ypost, y0=Ypre,
-                             D=G,
-                             covariates=covariates,
-                             i.weights=w,
-                             inffunc=TRUE)
+                              D=G,
+                              covariates=covariates,
+                              i.weights=w,
+                              inffunc=TRUE)
         } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
@@ -251,7 +251,7 @@ compute.att_gt <- function(dp) {
       } else { # repeated cross sections / unbalanced panel
 
         # total number of observations
-        n  <- nrow(data)
+        #n  <- nrow(data)
 
         # pick up the indices for units that will be used to compute ATT(g,t)
         # these conditions are (1) you are observed in the right period and
@@ -318,11 +318,11 @@ compute.att_gt <- function(dp) {
         if (class(est_method) == "function") {
           # user-specified function
           attgt <- est_method(y=Y,
-                             post=post,
-                             D=G,
-                             covariates=covariates,
-                             i.weights=w,
-                             inffunc=TRUE)
+                              post=post,
+                              D=G,
+                              covariates=covariates,
+                              i.weights=w,
+                              inffunc=TRUE)
         } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_rc(y=Y,
@@ -353,6 +353,8 @@ compute.att_gt <- function(dp) {
         # att_gt only using observations from groups
         # G and C
         attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
+
+
       } #end panel if
 
       # save results for this att(g,t)
@@ -364,7 +366,15 @@ compute.att_gt <- function(dp) {
       inf.func <- rep(0, n)
 
       # populate the influence function in the right places
-      inf.func[disidx] <- attgt$att.inf.func
+      if(panel) {
+        inf.func[disidx] <- attgt$att.inf.func
+      } else {
+        # aggregate inf functions by id (order by id)
+        aggte_inffunc = stats::aggregate(attgt$att.inf.func, list(rightids), sum)
+        disidx <- (unique(data$rowid) %in% aggte_inffunc[,1])
+        inf.func[disidx] <- aggte_inffunc[,2]
+      }
+
 
       # save it in influence function matrix
       # inffunc[g,t,] <- inf.func

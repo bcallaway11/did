@@ -96,9 +96,9 @@ summary.AGGTEobj <- function(object, ...) {
   if (object$type %in% c("group","dynamic","calendar")) {
 
     # header
-    if (object$type=="dynamic") { c1name <- "event time"; cat("Dynamic Effects:") }
-    if (object$type=="group") { c1name <- "group"; cat("Group Effects:") }
-    if (object$type=="calendar") { c1name <- "time"; cat("Time Effects:") }
+    if (object$type=="dynamic") { c1name <- "Event time"; cat("Dynamic Effects:") }
+    if (object$type=="group") { c1name <- "Group"; cat("Group Effects:") }
+    if (object$type=="calendar") { c1name <- "Time"; cat("Time Effects:") }
 
     cat("\n")
     cband_text1a <- paste0(100*(1-object$DIDparams$alp),"% ")
@@ -107,8 +107,8 @@ summary.AGGTEobj <- function(object, ...) {
                            "Pointwise ")
     cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
-    cband_lower <- object$att - object$crit.val*object$se
-    cband_upper <- object$att + object$crit.val*object$se
+    cband_lower <- object$att - object$crit.val.egt*object$se.egt
+    cband_upper <- object$att + object$crit.val.egt*object$se.egt
 
     sig <- (cband_upper < 0) | (cband_lower > 0)
     sig_text <- ifelse(sig, "*", "")
@@ -117,8 +117,8 @@ summary.AGGTEobj <- function(object, ...) {
     out2 <- round(out2, 4)
     out2 <- cbind.data.frame(out2, sig_text)
 
-    colnames(out2) <- c(c1name, "ATT","Std. Error", cband_text1, "Conf. Band]", "")
-    print(out2, row.names=FALSE)
+    colnames(out2) <- c(c1name, "Estimate","Std. Error", cband_text1, "Conf. Band]", "")
+    print(out2, row.names=FALSE, justify = "centre")
   }
   cat("---\n")
   cat("Signif. codes: `*' confidence band does not cover 0")

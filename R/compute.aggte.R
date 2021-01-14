@@ -83,10 +83,18 @@ compute.aggte <- function(MP,
   if((na.rm == FALSE) && base::anyNA(att)) stop("Missing values at att_gt found. If you want to remove these, set `na.rm = TRUE'.")
 
   # data from first period
-  ifelse(panel,
-         dta <- data[ data[,tname]==tlist[1], ],
-         dta <- data
-         )
+  #ifelse(panel,
+  #       dta <- data[ data[,tname]==tlist[1], ],
+  #       dta <- data
+  #       )
+  if(panel){
+    # data from first period
+    dta <- data[ data[,tname]==tlist[1], ]
+  }else {
+    #aggregate data
+    dta <- stats::aggregate(data, list((data[,idname])), mean)[,-1]
+  }
+
   #-----------------------------------------------------------------------------
   # data organization and recoding
   #-----------------------------------------------------------------------------
@@ -201,7 +209,7 @@ compute.aggte <- function(MP,
 
     # use multiplier bootstrap (across groups) to get critical value
     # for constructing uniform confidence bands
-    selective.crit.val <- NULL
+    selective.crit.val <- stats::qnorm(1 - alp/2)
     if(dp$cband==TRUE){
       selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
     }
@@ -300,7 +308,7 @@ compute.aggte <- function(MP,
     dynamic.se.e <- unlist(BMisc::getListElement(dynamic.se.inner, "se"))
     dynamic.inf.func.e <- simplify2array(BMisc::getListElement(dynamic.se.inner, "inf.func"))
 
-    dynamic.crit.val <- NULL
+    dynamic.crit.val <- stats::qnorm(1 - alp/2)
     if(dp$cband==TRUE){
       dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
     }
@@ -351,13 +359,15 @@ compute.aggte <- function(MP,
       # look at post-treatment periods for group g
       whicht <- which( (t == t1) & (group <= t))
       attt <- att[whicht]
-      mean(attt)
+      pgt <- pg[whicht]/(sum(pg[whicht]))
+      mean(pgt * attt)
     })
 
     # get standard errors and influence functions
     # for each time specific att
     calendar.se.inner <- lapply(calendar.tlist, function(t1) {
       whicht <- which( (t == t1) & (group <= t))
+      pgt <- pg[whicht]/(sum(pg[whicht]))
       wif.t <- wif(keepers=whicht,
                    pg=pg,
                    weights.ind=weights.ind,
@@ -366,7 +376,7 @@ compute.aggte <- function(MP,
       inf.func.t <- as.numeric(get_agg_inf_func(att=att,
                                      inffunc1=inffunc1,
                                      whichones=whicht,
-                                     weights.agg=pg[whicht]/sum(pg[whicht]),
+                                     weights.agg=pgt,
                                      wif=wif.t))
       se.t <- getSE(inf.func.t, dp)
       list(inf.func=inf.func.t, se=se.t)
@@ -380,7 +390,7 @@ compute.aggte <- function(MP,
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
-    calendar.crit.val <- NULL
+    calendar.crit.val <-  stats::qnorm(1-alp/2)
     if(dp$cband==TRUE){
       calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
     }
