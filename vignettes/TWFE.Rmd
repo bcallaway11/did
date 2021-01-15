@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{Problems with TWFE event-study regressions} 
+  %\VignetteIndexEntry{Problems with two-way fixed-effects event-study regressions} 
   %\VignetteEngine{knitr::rmarkdown} 
   %\VignetteEncoding{UTF-8}
 ---

@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.901</span>
       </span>
     </div>
 
@@ -71,14 +71,14 @@
 
       
 
-      </header><script src="multi-period-did_files/accessible-code-block-0.0.1/empty-anchor.js"></script><link href="multi-period-did_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
+      </header><link href="multi-period-did_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
 <script src="multi-period-did_files/anchor-sections-1.0/anchor-sections.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Introduction to DiD with Multiple Time Periods</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 class="date">2020-12-22</h4>
+            <h4 class="date">2021-01-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/multi-period-did.Rmd"><code>vignettes/multi-period-did.Rmd</code></a></small>
       <div class="hidden name"><code>multi-period-did.Rmd</code></div>
@@ -93,7 +93,7 @@
 <p>Difference-in-differences is one of the most common approaches for identifying and estimating the causal effect of participating in a treatment on some outcome.</p>
 <p>The “canonical” version of DiD involves two periods and two groups. The <em>untreated group</em> never participates in the treatment, and the <em>treated group</em> becomes treated in the second period.</p>
 <p>However, much applied work deals with cases where there are more than two time periods and different units can become treated at different points in time. Regardless of the number of time periods, by far the leading approach in applied work is to try to estimate the effect of the treatment using a two-way fixed effects (TWFE) linear regression. This works great in the case with two periods, but there are a number of recent methodological papers that suggest that there may be substantial drawbacks to using TWFE with multiple time periods.</p>
-<p>This vignette briefly discusses the emerging literature on DiD with multiple time periods – both issues with standard approaches as well as remedies for these potential problems. The <code>did</code> package implements a number of these remedies. A vignette for how to use the <code>did</code> package is available <a href="did-basics.html">here</a>. The background article for these vignettes is <a href="https://arxiv.org/abs/1803.09015">Callaway and Sant’Anna (2020), “Difference-in-Differences with Multiple Time Periods”</a>.</p>
+<p>This vignette briefly discusses the emerging literature on DiD with multiple time periods – both issues with standard approaches as well as remedies for these potential problems. The <code>did</code> package implements a number of these remedies. A vignette for how to use the <code>did</code> package is available <a href="did-basics.html">here</a>. The background article for these vignettes is <a href="https://authors.elsevier.com/a/1cFzc15Dji4pnC">Callaway and Sant’Anna (2020), “Difference-in-Differences with Multiple Time Periods”</a>.</p>
 </div>
 <div id="background" class="section level2">
 <h2 class="hasAnchor">
@@ -163,7 +163,7 @@ Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
 <li><p><span class="math inline">\(G_i\)</span> is the time period when unit <span class="math inline">\(i\)</span> becomes treated (often <em>groups</em> are defined by the time period when a unit becomes treated; hence, the <span class="math inline">\(G\)</span> notation).</p></li>
 <li><p><span class="math inline">\(C_i\)</span> is an indicator variable for whether unit <span class="math inline">\(i\)</span> is in a <strong>never-treated</strong> group.</p></li>
 <li><p><span class="math inline">\(D_{it}\)</span> is an indicator variable for whether unit <span class="math inline">\(i\)</span> has been treated by time <span class="math inline">\(t\)</span>.</p></li>
-<li><p><span class="math inline">\(Y_{it}\)</span> is unit <span class="math inline">\(i\)</span>’s observed outcome in time period <span class="math inline">\(t\)</span>. For units in the never-treated group, <span class="math inline">\(Y_{it} = Y_{it}(0)\)</span> in all time periods. For units in other groups, we observe <span class="math inline">\(Y_{it} = \mathbf{1}\{ G_i &gt; t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)\)</span>. The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on <em>when</em> they became treated). Implicit in this notation there is a <strong>no treatment anticipation</strong> assumption, which can be relaxed as discussed in <a href="https://arxiv.org/abs/1803.09015">Callaway and Sant’Anna (2020), “Difference-in-Differences with Multiple Time Periods”</a>.</p></li>
+<li><p><span class="math inline">\(Y_{it}\)</span> is unit <span class="math inline">\(i\)</span>’s observed outcome in time period <span class="math inline">\(t\)</span>. For units in the never-treated group, <span class="math inline">\(Y_{it} = Y_{it}(0)\)</span> in all time periods. For units in other groups, we observe <span class="math inline">\(Y_{it} = \mathbf{1}\{ G_i &gt; t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)\)</span>. The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on <em>when</em> they became treated). Implicit in this notation there is a <strong>no treatment anticipation</strong> assumption, which can be relaxed as discussed in <a href="https://authors.elsevier.com/a/1cFzc15Dji4pnC">Callaway and Sant’Anna (2020), “Difference-in-Differences with Multiple Time Periods”</a>.</p></li>
 <li><p><span class="math inline">\(X_i\)</span> vector of pre-treatment covariates.</p></li>
 </ul>
 <div id="main-assumptions" class="section level3">
@@ -245,10 +245,10 @@ ATT(g,t) = E[ Y_t - Y_{g-1}| G=g] - E[ Y_t - Y_{g-1}| D_t=0, G\not=g].
 <a href="#references" class="anchor"></a>References</h2>
 <ul>
 <li><p><a href="https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf">Borusyak, Kirill, and Xavier Jaravel. “Revisiting Event Study Designs”. Available at SSRN 2826228 (2018)</a></p></li>
-<li><p><a href="https://arxiv.org/abs/1803.09015">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Forthcoming at the Journal of Econometrics (2020)</a>.</p></li>
+<li><p><a href="https://authors.elsevier.com/a/1cFzc15Dji4pnC">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Forthcoming at the Journal of Econometrics (2020)</a>.</p></li>
 <li><p><a href="https://doi.org/10.1257/aer.20181169">de Chaisemartin, Clement, and Xavier d’Haultfoeuille. “Two-way fixed effects estimators with heterogeneous treatment effects.” American Economic Review 110.9 (2020): 2964-96.</a></p></li>
 <li><p><a href="http://goodman-bacon.com/pdfs/ddtiming.pdf">Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing." Working Paper, 2020</a></p></li>
-<li><p><a href="https://arxiv.org/abs/2009.01963">Marcus, Michelle, and Pedro H. C. Sant’Anna. “The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics”. Forthcoming at the Journal of the Association of Environmental and Resource Economists.</a></p></li>
+<li><p><a href="https://www.journals.uchicago.edu/doi/10.1086/711509">Marcus, Michelle, and Pedro H. C. Sant’Anna. “The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics”. Forthcoming at the Journal of the Association of Environmental and Resource Economists.</a></p></li>
 <li><p><a href="http://economics.mit.edu/files/14964">Sun, Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in event studies with heterogeneous treatment effects.” Forthcoming at the Journal of Econometrics (2020).</a></p></li>
 </ul>
 </div>

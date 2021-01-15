@@ -79,7 +79,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.901</span>
       </span>
     </div>
 
@@ -124,7 +124,12 @@
 <a href="#did-201" class="anchor"></a>did 2.0.1<small> Unreleased </small>
 </h1>
 <ul>
-<li>Compute critical value for simultaneous conf. band even when some standard error is zero</li>
+<li><p>Compute critical value for simultaneous confidence bands even when some standard error is zero (drop these observations)</p></li>
+<li><p>Improved codes for unbalanced panel data: faster and more memory efficient</p></li>
+<li><p>Bug fixes for summary <strong>aggte</strong> objects</p></li>
+<li><p>Allow clustering for unbalanced panel data</p></li>
+<li><p>Fixed error in calendar-type aggregation within <strong>aggte</strong> function (point estimates were not being weighted by group-size; now they are).</p></li>
+<li><p>Additional error handling</p></li>
 </ul>
 </div>
     <div id="did-200" class="section level1">

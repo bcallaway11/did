@@ -81,7 +81,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.901</span>
       </span>
     </div>
 
@@ -218,10 +218,10 @@ and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
     </tr>
     <tr>
       <th>clustervars</th>
-      <td><p>A vector of variables to cluster on.  At most, there
+      <td><p>A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level.</p></td>
+level. By default, we cluster at individual level (when <code>bstrap=TRUE</code>).</p></td>
     </tr>
     <tr>
       <th>call</th>

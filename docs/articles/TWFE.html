@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.901</span>
       </span>
     </div>
 
@@ -71,14 +71,14 @@
 
       
 
-      </header><script src="TWFE_files/accessible-code-block-0.0.1/empty-anchor.js"></script><link href="TWFE_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
+      </header><link href="TWFE_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
 <script src="TWFE_files/anchor-sections-1.0/anchor-sections.js"></script><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Problems with two-way fixed-effects event-study regressions</h1>
                         <h4 class="author">Brantly Callaway and Pedro H. C. Sant’Anna</h4>
             
-            <h4 class="date">2020-12-22</h4>
+            <h4 class="date">2021-01-14</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/TWFE.Rmd"><code>vignettes/TWFE.Rmd</code></a></small>
       <div class="hidden name"><code>TWFE.Rmd</code></div>
@@ -105,12 +105,12 @@
 <p>Let’s start the discussion by first visualizing how the DGP looks like.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Load libraries and set baseline parameters</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sgaure/lfe">lfe</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jacobkap/fastDummies">fastDummies</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://github.com/jrnold/ggthemes">ggthemes</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">tidyverse</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">lfe</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">fastDummies</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">ggthemes</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://bcallaway11.github.io/did/">did</a></span><span class="op">)</span>
-<span class="fu">theme_set</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/ggthemes/man/theme_clean.html">theme_clean</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu">theme</span><span class="op">(</span>plot.background <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+<span class="fu">theme_set</span><span class="op">(</span><span class="fu">theme_clean</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu">theme</span><span class="op">(</span>plot.background <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
 <span class="co">#----------------------------------------------------------------------------</span>
 <span class="va">iseed</span>  <span class="op">=</span> <span class="fl">20201221</span>
 <span class="va">nrep</span> <span class="op">&lt;-</span> <span class="fl">100</span>  
@@ -197,14 +197,14 @@
 
 <span class="va">plot1</span>
 
-<span class="co">#ggsave("plot_dgp1.png", plot1, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/plot_dgp1.png" style="width:100.0%"></p>
+<span class="co">#ggsave("plot_dgp1.png", plot1, width = 10, height = 5, dpi = 100)</span></code></pre></div>
+<p><img src="plot_dgp1.png" style="width:100.0%"></p>
 <p>The above plot shows the 1,000 individual values of <span class="math inline">\(Y_{i,t}\)</span>, as well as the average by treatment-group (the thicker colorful lines), and the vertical lines show the period when treatment begins for each group. Because treatment effects here grows linearly with time elapsed since treatment started, we can see that the earliest treated units end up with the highest value of Y, and that the difference grows by the gap between treatment years.</p>
 </div>
 <div id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions" class="section level3">
 <h3 class="hasAnchor">
 <a href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions" class="anchor"></a>Estimating dynamic treatment effects via TWFE event-study regressions</h3>
-<p>Given that we are interested in treatment effect dynamics, we then proceed to consider a classical two-way fixed-effects (TWFE) event study specification <span class="math display">\[y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> where <span class="math inline">\(D_{i,t}^{k}=1\{t-G_i=k\}\)</span> is an “event-study” dummy variable that takes value one if a unit <span class="math inline">\(i\)</span> is <span class="math inline">\(k\)</span> periods away from initial treatment at time <span class="math inline">\(t\)</span> and zero otherwise, <span class="math inline">\(D_{i,t}^{&lt;-K}=1\{t-G_i&lt;-K\}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}=1\{t-G_i&gt;L\}\)</span> are defined analogously. For instance, <span class="math inline">\(D_{i,t}^{0}\)</span> is equal to one if the unit <span class="math inline">\(i\)</span> is first treated at time <span class="math inline">\(t\)</span>, <span class="math inline">\(D_{i,t}^{1}\)</span> is equal to one if a one period has passed since treatment started (treatment lags), etc. Alternatively we have that <span class="math inline">\(D_{i,t}^{-2}\)</span> is equal to one if a unit <span class="math inline">\(i\)</span> will be treated in two periods from <span class="math inline">\(t\)</span> (treatment leads). In this exercise we set <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> to be equal to 5.</p>
+<p>Given that we are interested in treatment effect dynamics, we then proceed to consider a classical two-way fixed-effects (TWFE) event study specification <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> where <span class="math inline">\(D_{i,t}^{k}=1\{t-G_i=k\}\)</span> is an “event-study” dummy variable that takes value one if a unit <span class="math inline">\(i\)</span> is <span class="math inline">\(k\)</span> periods away from initial treatment at time <span class="math inline">\(t\)</span> and zero otherwise, <span class="math inline">\(D_{i,t}^{&lt;-K}=1\{t-G_i&lt;-K\}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}=1\{t-G_i&gt;L\}\)</span> are defined analogously. For instance, <span class="math inline">\(D_{i,t}^{0}\)</span> is equal to one if the unit <span class="math inline">\(i\)</span> is first treated at time <span class="math inline">\(t\)</span>, <span class="math inline">\(D_{i,t}^{1}\)</span> is equal to one if a one period has passed since treatment started (treatment lags), etc. Alternatively we have that <span class="math inline">\(D_{i,t}^{-2}\)</span> is equal to one if a unit <span class="math inline">\(i\)</span> will be treated in two periods from <span class="math inline">\(t\)</span> (treatment leads). In this exercise we set <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> to be equal to 5.</p>
 <p>Up to today, it is customary to interpret estimates of <span class="math inline">\(\gamma_k^{lags}\)</span> as ``good’’ measures of the average treatment effect for being exposed to treatment for <span class="math inline">\(k\)</span> periods, and estimates of <span class="math inline">\(\gamma_k^{leads}\)</span> as measures of pre-trends. Our first exercise here is to assess if this is OK-ish.</p>
 <p>Towards this end, we will a perform Monte Carlo exercise where we generate data according to the DGP described above and estimate all the parameters of the TWFE event-study regression above. We repeat this 100 times (same holds true if we do 1,000) and plot the Monte Carlo mean and 1.96 times the Monte-Carlo standard-deviation of the relative time indicator dummies, as well as the true treatment effect below.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -222,21 +222,28 @@
   <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op">%&gt;%</span> 
     <span class="co"># make dummies</span>
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">year</span> <span class="op">-</span> <span class="va">cohort_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="co"># generate pre and post dummies</span>
     <span class="fu">mutate</span><span class="op">(</span>Pre <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">5</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,
            Post <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&gt;</span> <span class="fl">5</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>
   
   <span class="co"># estimate the model</span>
-  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html">felm</a></span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> 
+  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu">felm</span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> 
                 <span class="va">`rel_year_0`</span> <span class="op">+</span> <span class="va">`rel_year_1`</span> <span class="op">+</span> <span class="va">`rel_year_2`</span> <span class="op">+</span> <span class="va">`rel_year_3`</span> <span class="op">+</span> <span class="va">`rel_year_4`</span> <span class="op">+</span> 
                 <span class="va">`rel_year_5`</span> <span class="op">+</span> <span class="va">Post</span> <span class="op">|</span> <span class="va">unit</span> <span class="op">+</span> <span class="va">year</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">state</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   
   <span class="co"># grab the obs we need</span>
-  <span class="fu">broom</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="op">(</span>
+    estimate <span class="op">=</span> <span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span>,
+    term1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">rownames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>
+    <span class="op">)</span>
+  
+ <span class="va">es</span> <span class="op">&lt;-</span>
+   <span class="va">mod2</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term1</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span><span class="op">:</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span>
+ <span class="va">es</span>
 <span class="op">}</span>
 
 <span class="va">data_classical</span> <span class="op">&lt;-</span> <span class="fu">map_dfr</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD</span><span class="op">)</span>
@@ -270,8 +277,8 @@
 
 <span class="va">ES_plot_classical</span>
 
-<span class="co">#ggsave("es_plot_classical.png", ES_plot_classical, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_classical.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_classical.png", ES_plot_classical, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_classical.png" style="width:100.0%"></p>
 <p>The results above show that these TWFE event-study type estimates are <em>severely biased</em> for the true treatment effects. Furthermore, using the estimates of coefficient of treatment leads as a way to find evidence of “pre-trends” is very problematic, as illustrated above; see Sun and Abraham (2020) for formal results! Putting it simply, the results above highlight that such TWFE linear regression should not be used to highlight treatment effect dynamics!</p>
 <p>Now, you may wonder: What happens if I include all possible leads and lags in the TWFE event study specification, i.e., to set K and L to the maximum allowable in the data, making inclusion of <span class="math inline">\(D_{i,t}^{&lt;-K}\)</span> and of <span class="math inline">\(D_{i,t}^{&gt;L}\)</span> unnecessary. In what follows, we do exactly that, though we need to omit one extra period apart from -1 to avoid problems of multicollinearity identified by Borusyak and Jaravel (2018). We drop the most negative time period, which is perhaps the most natural thing to do. In order words, we set <span class="math inline">\(K=23\)</span> and <span class="math inline">\(L=24\)</span>, and drop the <span class="math inline">\(D_{i,t}^{&lt;-K}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}\)</span> from the TWFE specification.</p>
 <p>The result of this exercise is displayed below. And, as you can see, this still leads to <em>very biased</em> estimates for the causal effects of interest!</p>
@@ -293,7 +300,7 @@
   <span class="co"># reindex the relative years</span>
   <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">rel_year</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span>
+    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span>
   
   <span class="co"># make regression formula </span>
   <span class="va">indics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="st">"rel_year"</span>, <span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">data</span><span class="op">$</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="op">-</span><span class="fl">1</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span><span class="op">]</span>, sep <span class="op">=</span> <span class="st">"_"</span>, collapse <span class="op">=</span> <span class="st">" + "</span><span class="op">)</span>
@@ -301,13 +308,20 @@
   <span class="va">formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="st">"dep_var ~"</span>, <span class="va">indics</span>, <span class="st">"| unit + year | 0 | state"</span><span class="op">)</span><span class="op">)</span>
   
   <span class="co"># run mod</span>
-  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html">felm</a></span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">felm</span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   
   <span class="co"># grab the obs we need</span>
-  <span class="fu">broom</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="op">(</span>
+    estimate <span class="op">=</span> <span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span>,
+    term1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">rownames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>
+    <span class="op">)</span>
+  
+ <span class="va">es</span> <span class="op">&lt;-</span>
+   <span class="va">mod2</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term1</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span><span class="op">:</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span>
+ <span class="va">es</span>
 <span class="op">}</span>
 
 <span class="va">data_sat</span> <span class="op">&lt;-</span> <span class="fu">map_dfr</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat</span><span class="op">)</span>
@@ -340,8 +354,8 @@
 
 <span class="va">ES_plot_sat</span>
 
-<span class="co">#ggsave("es_plot_sat.png", ES_plot_sat, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_sat.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_sat.png", ES_plot_sat, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_sat.png" style="width:100.0%"></p>
 </div>
 <div id="using-the-callaway-and-santanna-2020-framework" class="section level3">
 <h3 class="hasAnchor">
@@ -404,8 +418,8 @@
 
 <span class="va">ES_plot_CS</span>
 
-<span class="co">#ggsave("es_plot_CS.png", ES_plot_CS, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_CS.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_CS.png", ES_plot_CS, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_CS.png" style="width:100.0%"></p>
 </div>
 </div>
 <div id="setup-with-a-group-that-remains-untreated-at-the-end-of-the-sample" class="section level2">
@@ -507,13 +521,13 @@
 
 <span class="va">plot2</span> 
 
-<span class="co">#ggsave("plot_dgp_never_treated.png",plot2, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/plot_dgp_never_treated.png" style="width:100.0%"></p>
+<span class="co">#ggsave("plot_dgp_never_treated.png",plot2, width = 10, height = 5, dpi = 100)</span></code></pre></div>
+<p><img src="plot_dgp_never_treated.png" style="width:100.0%"></p>
 </div>
 <div id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1" class="section level3">
 <h3 class="hasAnchor">
 <a href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1" class="anchor"></a>Estimating dynamic treatment effects via TWFE event-study regressions</h3>
-<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
+<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
 <p>As you can see from the results below, the bias are still substantial. Thus, the problems with TWFE specifications persists even if you have a “never-treated” group.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># function to run ES DID</span>
@@ -530,22 +544,29 @@
     <span class="co"># make dummies</span>
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">year</span> <span class="op">-</span> <span class="va">cohort_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">==</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">NA</span>, <span class="va">rel_year</span><span class="op">)</span><span class="op">)</span><span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span><span class="fu">across</span><span class="op">(</span><span class="fu">starts_with</span><span class="op">(</span><span class="st">"rel_year_"</span><span class="op">)</span>, <span class="op">~</span><span class="fu">replace_na</span><span class="op">(</span><span class="va">.</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="co"># generate pre and post dummies</span>
     <span class="fu">mutate</span><span class="op">(</span>Pre <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">5</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,
            Post <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&gt;</span> <span class="fl">5</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>
   
   <span class="co"># estimate the model</span>
-  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html">felm</a></span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> 
+  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu">felm</span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> 
                 <span class="va">`rel_year_0`</span> <span class="op">+</span> <span class="va">`rel_year_1`</span> <span class="op">+</span> <span class="va">`rel_year_2`</span> <span class="op">+</span> <span class="va">`rel_year_3`</span> <span class="op">+</span> <span class="va">`rel_year_4`</span> <span class="op">+</span> 
                 <span class="va">`rel_year_5`</span> <span class="op">+</span> <span class="va">Post</span> <span class="op">|</span> <span class="va">unit</span> <span class="op">+</span> <span class="va">year</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">state</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   
-  <span class="co"># grab the obs we need</span>
-  <span class="fu">broom</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+ <span class="co"># grab the obs we need</span>
+  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="op">(</span>
+    estimate <span class="op">=</span> <span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span>,
+    term1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">rownames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>
+    <span class="op">)</span>
+  
+ <span class="va">es</span> <span class="op">&lt;-</span>
+   <span class="va">mod2</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term1</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span><span class="op">:</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span>
+ <span class="va">es</span>
 <span class="op">}</span>
 
 <span class="va">data_classical_never</span> <span class="op">&lt;-</span> <span class="fu">map_dfr</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_never</span><span class="op">)</span>
@@ -577,8 +598,8 @@
 
 <span class="va">ES_plot_classical_never</span>
 
-<span class="co">#ggsave("es_plot_classical_never.png", ES_plot_classical_never, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_classical_never.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_classical_never.png", ES_plot_classical_never, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_classical_never.png" style="width:100.0%"></p>
 <p>Next, we consider the case where we one include almost all leads and lags (<span class="math inline">\(K=17\)</span> and <span class="math inline">\(L=24\)</span>) but omit the furthest lead <span class="math inline">\(K=18\)</span>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># function to run ES DID</span>
@@ -599,7 +620,7 @@
   <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year2 <span class="op">=</span> <span class="va">rel_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">rel_year</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="st">"rel_year_-Inf"</span><span class="op">)</span><span class="op">)</span>
     
   
@@ -609,13 +630,21 @@
   <span class="va">formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="st">"dep_var ~"</span>, <span class="va">indics</span>, <span class="st">"| unit + year | 0 | state"</span><span class="op">)</span><span class="op">)</span>
   
   <span class="co"># run mod</span>
-  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html">felm</a></span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">felm</span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   
   <span class="co"># grab the obs we need</span>
-  <span class="fu">broom</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+ <span class="co"># grab the obs we need</span>
+  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="op">(</span>
+    estimate <span class="op">=</span> <span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span>,
+    term1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">rownames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>
+    <span class="op">)</span>
+  
+ <span class="va">es</span> <span class="op">&lt;-</span>
+   <span class="va">mod2</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term1</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span><span class="op">:</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span>
+ <span class="va">es</span>
 <span class="op">}</span>
 
 <span class="va">data_sat_never</span> <span class="op">&lt;-</span> <span class="fu">map_dfr</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat_never</span><span class="op">)</span>
@@ -647,8 +676,8 @@
 
 <span class="va">ES_plot_sat_never</span>
 
-<span class="co">#ggsave("es_plot_sat_never.png", ES_plot_sat_never, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_sat_never.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_sat_never.png", ES_plot_sat_never, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_sat_never.png" style="width:100.0%"></p>
 <p>As the result above shows, when you have a never-treated group, treatment effects are homogeneous across cohorts, and you do not bin event-times, TWFE event-study regressions do recover the true underlying dynamic treatment effects.</p>
 </div>
 <div id="using-the-callaway-and-santanna-2020-framework-1" class="section level3">
@@ -713,8 +742,8 @@
 
 <span class="va">ES_plot_CS_never</span>
 
-<span class="co">#ggsave("es_plot_CS_never.png", ES_plot_CS_never, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_CS_never.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_CS_never.png", ES_plot_CS_never, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_CS_never.png" style="width:100.0%"></p>
 <p>As expected, the results look good!</p>
 <p>Now, let’s consider the “not-yet-treated” units as comparison group.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -774,8 +803,8 @@
 
 <span class="va">ES_plot_CS_ny</span>
 
-<span class="co">#ggsave("es_plot_CS_ny.png", ES_plot_CS_ny, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_CS_ny.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_CS_ny.png", ES_plot_CS_ny, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_CS_ny.png" style="width:100.0%"></p>
 <p>As expected, the results look good, too</p>
 </div>
 </div>
@@ -874,13 +903,13 @@
 
 <span class="va">plot3</span> 
 
-<span class="co">#ggsave("plot_dgp_never_treated_het.png", plot3, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/plot_dgp_never_treated_het.png" style="width:100.0%"></p>
+<span class="co">#ggsave("plot_dgp_never_treated_het.png", plot3, width = 10, height = 5, dpi = 100)</span></code></pre></div>
+<p><img src="plot_dgp_never_treated_het.png" style="width:100.0%"></p>
 </div>
 <div id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2" class="section level3">
 <h3 class="hasAnchor">
 <a href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2" class="anchor"></a>Estimating dynamic treatment effects via TWFE event-study regressions</h3>
-<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
+<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
 <p>As you can see from the results below, the bias are still substantial. Given the results we have shown before, this should be not a surprise.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># function to run ES DID</span>
@@ -897,22 +926,30 @@
     <span class="co"># make dummies</span>
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">year</span> <span class="op">-</span> <span class="va">cohort_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">==</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">NA</span>, <span class="va">rel_year</span><span class="op">)</span><span class="op">)</span><span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span><span class="fu">across</span><span class="op">(</span><span class="fu">starts_with</span><span class="op">(</span><span class="st">"rel_year_"</span><span class="op">)</span>, <span class="op">~</span><span class="fu">replace_na</span><span class="op">(</span><span class="va">.</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="co"># generate pre and post dummies</span>
     <span class="fu">mutate</span><span class="op">(</span>Pre <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">5</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,
            Post <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&gt;</span> <span class="fl">5</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>
   
   <span class="co"># estimate the model</span>
-  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html">felm</a></span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> 
+  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu">felm</span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> 
                 <span class="va">`rel_year_0`</span> <span class="op">+</span> <span class="va">`rel_year_1`</span> <span class="op">+</span> <span class="va">`rel_year_2`</span> <span class="op">+</span> <span class="va">`rel_year_3`</span> <span class="op">+</span> <span class="va">`rel_year_4`</span> <span class="op">+</span> 
                 <span class="va">`rel_year_5`</span> <span class="op">+</span> <span class="va">Post</span> <span class="op">|</span> <span class="va">unit</span> <span class="op">+</span> <span class="va">year</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">state</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   
   <span class="co"># grab the obs we need</span>
-  <span class="fu">broom</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+<span class="co"># grab the obs we need</span>
+  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="op">(</span>
+    estimate <span class="op">=</span> <span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span>,
+    term1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">rownames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>
+    <span class="op">)</span>
+  
+ <span class="va">es</span> <span class="op">&lt;-</span>
+   <span class="va">mod2</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term1</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span><span class="op">:</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span>
+ <span class="va">es</span>
 <span class="op">}</span>
 
 <span class="va">data_classical_never_het</span> <span class="op">&lt;-</span> <span class="fu">map_dfr</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_never_het</span><span class="op">)</span>
@@ -944,8 +981,8 @@
 
 <span class="va">ES_plot_classical_never_het</span>
 
-<span class="co">#ggsave("es_plot_classical_never_het.png", ES_plot_classical_never_het, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_classical_never_het.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_classical_never_het.png", ES_plot_classical_never_het, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_classical_never_het.png" style="width:100.0%"></p>
 <p>Next, we consider the case where one include almost all leads and lags (<span class="math inline">\(K=17\)</span> and <span class="math inline">\(L=24\)</span>) but omit the furthest lead <span class="math inline">\(K=18\)</span>.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># function to run ES DID</span>
@@ -966,7 +1003,7 @@
   <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year2 <span class="op">=</span> <span class="va">rel_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">rel_year</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="st">"rel_year_-Inf"</span><span class="op">)</span><span class="op">)</span>
     
   
@@ -976,13 +1013,21 @@
   <span class="va">formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste</a></span><span class="op">(</span><span class="st">"dep_var ~"</span>, <span class="va">indics</span>, <span class="st">"| unit + year | 0 | state"</span><span class="op">)</span><span class="op">)</span>
   
   <span class="co"># run mod</span>
-  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html">felm</a></span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">felm</span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
   
   <span class="co"># grab the obs we need</span>
-  <span class="fu">broom</span><span class="fu">::</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span> <span class="op">%&gt;%</span> 
-    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+<span class="co"># grab the obs we need</span>
+  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="op">(</span>
+    estimate <span class="op">=</span> <span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span>,
+    term1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html">rownames</a></span><span class="op">(</span><span class="va">mod</span><span class="op">$</span><span class="va">coefficients</span><span class="op">)</span>
+    <span class="op">)</span>
+  
+ <span class="va">es</span> <span class="op">&lt;-</span>
+   <span class="va">mod2</span> <span class="op">%&gt;%</span> 
+    <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term1</span> <span class="op">%in%</span> <span class="va">keepvars</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">mutate</span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">5</span><span class="op">:</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
     <span class="fu">select</span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span>
+ <span class="va">es</span>
 <span class="op">}</span>
 
 <span class="va">data_sat_never_het</span> <span class="op">&lt;-</span> <span class="fu">map_dfr</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat_never_het</span><span class="op">)</span>
@@ -1014,8 +1059,8 @@
 
 <span class="va">ES_plot_sat_never_het</span>
 
-<span class="co">#ggsave("es_plot_sat_never_het.png", ES_plot_sat_never_het, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_sat_never_het.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_sat_never_het.png", ES_plot_sat_never_het, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_sat_never_het.png" style="width:100.0%"></p>
 <p>As the result above shows, when treatment effects dynamics are heterogeneous across groups, TWFE event-study regressions do not recover the true underlying dynamic treatment effects, even if a “never-treated” group is available and one does not bin extreme event-times. Again, this is a red flag for the usage of TWFE-type regressions in DiD setups.</p>
 </div>
 <div id="using-the-callaway-and-santanna-2020-framework-2" class="section level3">
@@ -1080,7 +1125,7 @@
 <span class="va">ES_plot_CS_never_het</span>
 
 <span class="co">#ggsave("es_plot_CS_never_het.png", ES_plot_CS_never_het, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_CS_never_het.png" style="width:100.0%"></p>
+<p><img src="es_plot_CS_never_het.png" style="width:100.0%"></p>
 <p>As expected, the results look good!</p>
 <p>Now, let’s consider the “not-yet-treated” units as comparison group.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
@@ -1140,8 +1185,8 @@
 
 <span class="va">ES_plot_CS_ny_het</span>
 
-<span class="co">#ggsave("es_plot_CS_ny_het.png", ES_plot_CS_ny_het, width = 10, height = 5)</span></code></pre></div>
-<p><img src="../../../Co-authored%20Projects/did/vignettes/es_plot_CS_ny_het.png" style="width:100.0%"></p>
+<span class="co">#ggsave("es_plot_CS_ny_het.png", ES_plot_CS_ny_het, width = 10, height = 5, dpi = 150)</span></code></pre></div>
+<p><img src="es_plot_CS_ny_het.png" style="width:100.0%"></p>
 <p>As expected, the results look good, too!</p>
 </div>
 </div>
@@ -1149,14 +1194,6 @@
 <h2 class="hasAnchor">
 <a href="#conclusion" class="anchor"></a>Conclusion</h2>
 <p>In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant’Anna (2020) and implement in our <strong>did</strong> packaged does not suffer from these drawbacks.</p>
-<p>As so, we conclude with the following messages:</p>
-<center>
-<span style='font-size:2em;"'><strong><em>USING TWFE TO ESTIMATE DYNAMIC TREATMENT EFFECTS IS DANGEROUS!</em></strong></span>
-</center>
-<p><span class="math display">\[\\[0.15in]\]</span></p>
-<center>
-<span style='font-size:2em;"'><strong><em>TWFE IS NOT THE SAME AS DiD</em></strong></span>
-</center>
 </div>
 <div id="references" class="section level2">
 <h2 class="hasAnchor">
