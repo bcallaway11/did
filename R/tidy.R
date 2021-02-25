@@ -52,6 +52,7 @@ tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "dynamic"){
     out <- data.frame(
       type          = x$type,
+      term = paste0('ATT(', x$egt, ")"),
       event.time= x$egt,
       estimate  = x$att.egt,
       std.error = x$se.egt,
@@ -63,6 +64,7 @@ tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "group"){
     out <- data.frame(
       type     = x$type,
+      term = paste0('ATT(', x$egt, ")"),
       group    = x$egt,
       estimate  = x$att.egt,
       std.error = x$se.egt,
@@ -76,6 +78,7 @@ tidy.AGGTEobj<- function(x, ...) {
     out <- data.frame(
       type      = x$type,
       time      = x$egt,
+      term = paste0('ATT(', x$egt, ")"),
       estimate  = x$att.egt,
       std.error = x$se.egt,
       conf.low  = x$att.egt - x$crit.val.egt * x$se.egt,
@@ -87,7 +90,7 @@ tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "simple"){
     out <- data.frame(
       type      = x$type,
-      estimate  = x$overall.se,
+      estimate  = x$overall.att,
       std.error = x$overall.se,
       conf.low  = x$overall.se - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
       conf.high = x$overall.se + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
