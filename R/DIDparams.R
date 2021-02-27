@@ -16,7 +16,7 @@
 #'  panel code runs through the repeated cross sections code)
 #'
 #' @export
-DIDparams <- function(yname, 
+DIDparams <- function(yname,
                    tname,
                    idname=NULL,
                    gname,
@@ -26,10 +26,10 @@ DIDparams <- function(yname,
                    anticipation=0,
                    weightsname=NULL,
                    alp=0.05,
-                   bstrap=T,
+                   bstrap=TRUE,
                    biters=1000,
                    clustervars=NULL,
-                   cband=T,
+                   cband=TRUE,
                    print_details=TRUE,
                    pl=FALSE,
                    cores=1,

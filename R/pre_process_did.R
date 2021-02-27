@@ -99,6 +99,15 @@ pre_process_did <- function(yname,
   if ( nfirstperiod > 0 ) {
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period."))
     data <- data[ data[,gname] %in% c(0,glist), ]
+    # update tlist and glist
+    tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+    glist <- unique(data[,gname], )[order(unique(data[,gname]))]
+    glist <- glist[glist>0]
+
+    # drop groups treated in the first period or before
+    first.period <- tlist[1]
+    glist <- glist[glist > first.period + anticipation]
+
   }
 
 
@@ -113,11 +122,11 @@ pre_process_did <- function(yname,
     n_id_year = all( table(data[, idname], data[, tname]) <= 1)
     if (! n_id_year) stop("The value of idname must be the unique (by tname)")
 
-    # make sure first.treat doesn't change across periods for particular individuals
+    # make sure gname doesn't change across periods for particular individuals
     if (!all(sapply( split(data, data[,idname]), function(df) {
       length(unique(df[,gname]))==1
     }))) {
-      stop("The value of first.treat must be the same across all periods for each particular individual.")
+      stop("The value of gname must be the same across all periods for each particular individual.")
     }
   }
 
@@ -219,7 +228,7 @@ pre_process_did <- function(yname,
       if (!all(sapply( split(data, data[,idname]), function(df) {
         length(unique(df[,gname]))==1
       }))) {
-        stop("The value of first.treat must be the same across all periods for each particular individual.")
+        stop("The value of gname must be the same across all periods for each particular individual.")
       }
 
     }
