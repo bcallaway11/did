@@ -360,7 +360,7 @@ compute.aggte <- function(MP,
       whicht <- which( (t == t1) & (group <= t))
       attt <- att[whicht]
       pgt <- pg[whicht]/(sum(pg[whicht]))
-      mean(pgt * attt)
+      sum(pgt * attt)
     })
 
     # get standard errors and influence functions
@@ -428,7 +428,7 @@ compute.aggte <- function(MP,
 }
 
 #-----------------------------------------------------------------------------
-# Internal functions for getteing standard errors
+# Internal functions for getting standard errors
 #-----------------------------------------------------------------------------
 
 #' @title Compute extra term in influence function due to estimating weights
