@@ -211,6 +211,9 @@ compute.aggte <- function(MP,
     # for constructing uniform confidence bands
     selective.crit.val <- stats::qnorm(1 - alp/2)
     if(dp$cband==TRUE){
+      if(dp$bstrap == FALSE){
+        warning('Used bootstrap procedure to compute simultaneous confidence band')
+      }
       selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
     }
 
@@ -310,6 +313,9 @@ compute.aggte <- function(MP,
 
     dynamic.crit.val <- stats::qnorm(1 - alp/2)
     if(dp$cband==TRUE){
+      if(dp$bstrap == FALSE){
+        warning('Used bootstrap procedure to compute simultaneous confidence band')
+      }
       dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
     }
 
@@ -392,6 +398,9 @@ compute.aggte <- function(MP,
     # for constructing uniform confidence bands
     calendar.crit.val <-  stats::qnorm(1-alp/2)
     if(dp$cband==TRUE){
+      if(dp$bstrap == FALSE){
+        warning('Used bootstrap procedure to compute simultaneous confidence band')
+      }
       calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
     }
 
