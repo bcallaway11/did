@@ -91,7 +91,7 @@ summary.AGGTEobj <- function(object, ...) {
   if (object$type=="dynamic") cat("Overall summary of ATT’s based on event-study/dynamic aggregation:  \n")
   if (object$type=="group") cat("Overall summary of ATT’s based on group/cohort aggregation:  \n")
   if (object$type=="calendar") cat("Overall summary of ATT’s based on calendar time aggregation:  \n")
-  colnames(out1) <- c("ATT","Std. Error","    [95% ", "Conf. Int.]","")
+  colnames(out1) <- c("Estimate","Std. Error","    [95% ", "Conf. Int.]","")
   print(out1, row.names=FALSE)
   cat("\n\n")
 

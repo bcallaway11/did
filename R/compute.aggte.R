@@ -92,7 +92,7 @@ compute.aggte <- function(MP,
     dta <- data[ data[,tname]==tlist[1], ]
   }else {
     #aggregate data
-    dta <- stats::aggregate(data, list((data[,idname])), mean)[,-1]
+    dta <- base::suppressWarnings(stats::aggregate(data, list((data[,idname])), mean)[,-1])
   }
 
   #-----------------------------------------------------------------------------
