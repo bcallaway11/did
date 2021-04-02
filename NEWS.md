@@ -1,5 +1,5 @@
 # did 2.0.1
-  * Compute critical value for simultaneous confidence bands even when some standard error is zero (drop these observations)
+  * Compute critical value for simultaneous confidence bands even when some standard error is zero (set these to NA)
   
   * Improved codes for unbalanced panel data: faster and more memory efficient
   
