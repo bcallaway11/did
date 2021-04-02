@@ -39,6 +39,8 @@ ggdid <- function(object, ...) {
 #'  default is 1.
 #' @param legend Whether or not to include a legend (which will indicate color
 #'  of pre- and post-treatment estimates).  Default is \code{TRUE}.
+#' @param group Vector for which groups to include in the plots of ATT(g,t).
+#'   Default is NULL, and, in this case, plots for all groups will be included.
 #'
 #' @export
 ggdid.MP <- function(object,
@@ -49,6 +51,7 @@ ggdid.MP <- function(object,
                      xgap=1,
                      ncol=1,
                      legend=TRUE,
+                     group=NULL,
                      ...) {
 
   mpobj <- object
@@ -70,10 +73,16 @@ ggdid.MP <- function(object,
   alp <- mpobj$alp
 
   mplots <- lapply(g, function(g) {
-    thisdta <- subset(results, group==g)
-    gplot(thisdta, ylim, xlab, ylab, title, xgap, legend)
+    # If group is not specified, plot all. If group is specified, only plot g in group
+    if(is.null(group) | g %in% group) {
+      thisdta <- subset(results, group==g)
+      gplot(thisdta, ylim, xlab, ylab, title, xgap, legend)
+    }
   })
-
+  
+  # Remove NULL
+  mplots <- mplots[!sapply(mplots, is.null)]
+  
   do.call("ggarrange", c(mplots, ncol=ncol))
 }
 
