@@ -231,7 +231,7 @@ compute.aggte <- function(MP,
       }
 
       if(selective.crit.val >= 7){
-        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
       }
 
     }
@@ -353,7 +353,7 @@ compute.aggte <- function(MP,
       }
 
       if(dynamic.crit.val >= 7){
-        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
       }
     }
 
@@ -455,7 +455,7 @@ compute.aggte <- function(MP,
       }
 
       if(calendar.crit.val >= 7){
-        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
       }
     }
 

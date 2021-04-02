@@ -290,7 +290,7 @@ att_gt <- function(yname,
       bT <- apply(bres, 1, function(b) max( abs(b/bSigma), na.rm = TRUE))
       cval <- quantile(bT, 1-alp, type=1, na.rm = T)
       if(cval >= 7){
-        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
       }
     }
   }
