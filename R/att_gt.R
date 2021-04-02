@@ -206,8 +206,8 @@ att_gt <- function(yname,
   }
 
   # Identify entries of main diagonal V that are zero or NA
-  zero_na_sd_entry <- unique(which(is.na(Matrix::diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
-  #zero_na_sd_entry <- unique(which(is.na(se))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
+  #zero_na_sd_entry <- unique(which(is.na(Matrix::diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
+  zero_na_sd_entry <- unique(which(is.na(se))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
 
   # bootstrap variance matrix
   if (bstrap) {
