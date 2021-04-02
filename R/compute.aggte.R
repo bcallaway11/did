@@ -230,6 +230,10 @@ compute.aggte <- function(MP,
         dp$cband <- FALSE
       }
 
+      if(selective.crit.val >= 7){
+        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+      }
+
     }
 
     # get overall att under selective treatment timing
@@ -347,6 +351,10 @@ compute.aggte <- function(MP,
         dynamic.crit.val <- stats::qnorm(1 - alp/2)
         dp$cband <- FALSE
       }
+
+      if(dynamic.crit.val >= 7){
+        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+      }
     }
 
     # get overall average treatment effect
@@ -444,6 +452,10 @@ compute.aggte <- function(MP,
         warning('Simultaneous conf. band is somehow smaller than pointwise one using normal approximation. Since this is unusual, we are reporting pointwise confidence intervals')
         calendar.crit.val <- stats::qnorm(1 - alp/2)
         dp$cband <- FALSE
+      }
+
+      if(calendar.crit.val >= 7){
+        warning("Simultaneous critical value is arguable `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
       }
     }
 
