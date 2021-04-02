@@ -165,7 +165,7 @@ compute.aggte <- function(MP,
 
     # get standard errors from overall influence function
     simple.se <- getSE(simple.if, dp)
-    if(simple.se < sqrt(.Machine$double.eps)*10) simple.se <- NA
+    if(simple.se <= sqrt(.Machine$double.eps)*10) simple.se <- NA
 
     return(AGGTEobj(overall.att = simple.att,
                     overall.se = simple.se,
@@ -204,7 +204,7 @@ compute.aggte <- function(MP,
 
     # recover standard errors separately by group
     selective.se.g <- unlist(BMisc::getListElement(selective.se.inner, "se"))
-    selective.se.g[selective.se.g < sqrt(.Machine$double.eps)*10] <- NA
+    selective.se.g[selective.se.g <= sqrt(.Machine$double.eps)*10] <- NA
 
     # recover influence function separately by group
     selective.inf.func.g <- simplify2array(BMisc::getListElement(selective.se.inner, "inf.func"))
@@ -254,7 +254,7 @@ compute.aggte <- function(MP,
     selective.inf.func <- as.numeric(selective.inf.func)
     # get overall standard error
     selective.se <- getSE(selective.inf.func, dp)
-    if((selective.se < sqrt(.Machine$double.eps)*10)) selective.se <- NA
+    if((selective.se <= sqrt(.Machine$double.eps)*10)) selective.se <- NA
 
     return(AGGTEobj(overall.att=selective.att,
                     overall.se=selective.se,
@@ -325,7 +325,7 @@ compute.aggte <- function(MP,
     })
 
     dynamic.se.e <- unlist(BMisc::getListElement(dynamic.se.inner, "se"))
-    dynamic.se.e[dynamic.se.e < sqrt(.Machine$double.eps)*10] <- NA
+    dynamic.se.e[dynamic.se.e <= sqrt(.Machine$double.eps)*10] <- NA
 
     dynamic.inf.func.e <- simplify2array(BMisc::getListElement(dynamic.se.inner, "inf.func"))
 
@@ -361,7 +361,7 @@ compute.aggte <- function(MP,
 
     dynamic.inf.func <- as.numeric(dynamic.inf.func)
     dynamic.se <- getSE(dynamic.inf.func, dp)
-    if (dynamic.se < sqrt(.Machine$double.eps)*10) dynamic.se <- NA
+    if (dynamic.se <= sqrt(.Machine$double.eps)*10) dynamic.se <- NA
 
     return(AGGTEobj(overall.att=dynamic.att,
                     overall.se=dynamic.se,
@@ -421,7 +421,7 @@ compute.aggte <- function(MP,
 
     # recover standard errors separately by time
     calendar.se.t <- unlist(BMisc::getListElement(calendar.se.inner, "se"))
-    calendar.se.t[calendar.se.t < sqrt(.Machine$double.eps)*10] <- NA
+    calendar.se.t[calendar.se.t <= sqrt(.Machine$double.eps)*10] <- NA
     # recover influence function separately by time
     calendar.inf.func.t <- simplify2array(BMisc::getListElement(calendar.se.inner, "inf.func"))
 
@@ -460,7 +460,7 @@ compute.aggte <- function(MP,
     calendar.inf.func <- as.numeric(calendar.inf.func)
     # get overall standard error
     calendar.se <- getSE(calendar.inf.func, dp)
-    if (calendar.se < sqrt(.Machine$double.eps)*10) calendar.se <- NA
+    if (calendar.se <= sqrt(.Machine$double.eps)*10) calendar.se <- NA
     return(AGGTEobj(overall.att=calendar.att,
                     overall.se=calendar.se,
                     type=type,

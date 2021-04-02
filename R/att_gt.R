@@ -196,7 +196,7 @@ att_gt <- function(yname,
   se <- sqrt(Matrix::diag(V)/n)
 
   # Zero standard error replaced by NA
-  se[se < sqrt(.Machine$double.eps)*10] <- NA
+  se[se <= sqrt(.Machine$double.eps)*10] <- NA
 
   # if clustering along another dimension...we require using the
   # bootstrap (in principle, could come up with analytical standard
@@ -224,7 +224,7 @@ att_gt <- function(yname,
     }
   }
   # Zero standard error replaced by NA
-  se[se < sqrt(.Machine$double.eps)*10] <- NA
+  se[se <= sqrt(.Machine$double.eps)*10] <- NA
 
 
   #-----------------------------------------------------------------------------
