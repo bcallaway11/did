@@ -195,6 +195,9 @@ att_gt <- function(yname,
   V <- Matrix::t(inffunc)%*%inffunc/n
   se <- sqrt(Matrix::diag(V)/n)
 
+  # Zero standard error replaced by NA
+  se[se < sqrt(.Machine$double.eps)*10] <- NA
+
   # if clustering along another dimension...we require using the
   # bootstrap (in principle, could come up with analytical standard
   # errors here though)
@@ -204,6 +207,7 @@ att_gt <- function(yname,
 
   # Identify entries of main diagonal V that are zero or NA
   zero_na_sd_entry <- unique(which(is.na(Matrix::diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
+  #zero_na_sd_entry <- unique(which(is.na(se))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
 
   # bootstrap variance matrix
   if (bstrap) {
@@ -219,6 +223,8 @@ att_gt <- function(yname,
       se <- bout$se
     }
   }
+  # Zero standard error replaced by NA
+  se[se < sqrt(.Machine$double.eps)*10] <- NA
 
 
   #-----------------------------------------------------------------------------
@@ -278,7 +284,7 @@ att_gt <- function(yname,
                       function(b) (quantile(b, .75, type=1, na.rm = T) -
                                      quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
       # sup-t confidence band
-      bT <- apply(bres, 1, function(b) max( abs(b/bSigma)))
+      bT <- apply(bres, 1, function(b) max( abs(b/bSigma), na.rm = TRUE))
       cval <- quantile(bT, 1-alp, type=1, na.rm = T)
     }
   }

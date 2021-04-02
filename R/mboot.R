@@ -95,7 +95,7 @@ mboot <- function(inf.func, DIDparams) {
 
   # Non-degenerate dimensions
   # ndg.dim <- (base::colSums(bres) != 0)
-  ndg.dim <- (!is.na(colSums(bres))) & (base::colSums(bres^2) > .Machine$double.eps/2)
+  ndg.dim <- (!is.na(colSums(bres))) & (base::colSums(bres^2) > sqrt(.Machine$double.eps)*10)
   # If NA, set it to false
   #ndg.dim[is.na(ndg.dim)] <- FALSE
   bres <- as.matrix(bres[ , ndg.dim])
@@ -108,10 +108,12 @@ mboot <- function(inf.func, DIDparams) {
                                  quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
 
   # critical value for uniform confidence band
-  bT <- apply(bres, 1, function(b) max( abs(b/bSigma), na.rm = T))
+  bT <- base::suppressWarnings(apply(bres, 1, function(b) max( abs(b/bSigma), na.rm = T)))
+  bT <- bT[is.finite(bT)]
   crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
 
-  se <- rep(0, length(ndg.dim))
+  #se <- rep(0, length(ndg.dim))
+  se <- rep(NA, length(ndg.dim))
   se[ndg.dim] <- as.numeric(bSigma)/sqrt(n)
   #se[se==0] <- NA
 

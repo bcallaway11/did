@@ -84,6 +84,7 @@ summary.AGGTEobj <- function(object, ...) {
   out1 <- cbind.data.frame(object$overall.att, object$overall.se, overall_cband_lower, overall_cband_upper)
   out1 <- round(out1, 4)
   overall_sig <- (overall_cband_upper < 0) | (overall_cband_lower > 0)
+  overall_sig[is.na(overall_sig)] <- FALSE
   overall_sig_text <- ifelse(overall_sig, "*", "")
   out1 <- cbind.data.frame(out1, overall_sig_text)
   cat("\n")
@@ -91,7 +92,7 @@ summary.AGGTEobj <- function(object, ...) {
   if (object$type=="dynamic") cat("Overall summary of ATT’s based on event-study/dynamic aggregation:  \n")
   if (object$type=="group") cat("Overall summary of ATT’s based on group/cohort aggregation:  \n")
   if (object$type=="calendar") cat("Overall summary of ATT’s based on calendar time aggregation:  \n")
-  colnames(out1) <- c("Estimate","Std. Error","    [95% ", "Conf. Int.]","")
+  colnames(out1) <- c("ATT","Std. Error","    [95% ", "Conf. Int.]","")
   print(out1, row.names=FALSE)
   cat("\n\n")
 
@@ -114,6 +115,7 @@ summary.AGGTEobj <- function(object, ...) {
     cband_upper <- object$att + object$crit.val.egt*object$se.egt
 
     sig <- (cband_upper < 0) | (cband_lower > 0)
+    sig[is.na(sig)] <- FALSE
     sig_text <- ifelse(sig, "*", "")
 
     out2 <- cbind.data.frame(object$egt, object$att.egt, object$se.egt, cband_lower, cband_upper)
