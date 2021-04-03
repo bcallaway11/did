@@ -56,13 +56,14 @@ mboot <- function(inf.func, DIDparams) {
 
   if (length(clustervars) > 0) {
     # CHECK iF CLUSTERVAR is TIME-VARYING
-    clust_tv = stats::aggregate(data[,clustervars], list((data[,idname])), sd)
-    if(any(clust_tv[,2]>0)){
+    clust_tv = base::suppressWarnings(stats::aggregate(data[,clustervars], list((data[,idname])), sd))
+    clust_tv$x[is.na(clust_tv$x)] <- 0
+    if(any(clust_tv[,2]>.Machine$double.eps)){
       stop("can't handle time-varying cluster variables")
     } else if (!panel){
       # IF NOT, SUBSET DTA TO ONE VALUE PER ID
       # Here we do not care about tname and yname as we do not use these
-      dta <- stats::aggregate(dta, list((data[,idname])), mean)[,-1]
+      dta <- base::suppressWarnings(stats::aggregate(dta, list((data[,idname])), mean)[,-1])
     }
 
   }
