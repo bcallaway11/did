@@ -3,6 +3,8 @@
   
   * Improved codes for unbalanced panel data: faster and more memory efficient
   
+  * Correct estimates of P(G=g|Eventually treated) with unbalanced panel data. This affects **aggte** objects with unbalanced panel data
+  
   * Bug fixes for summary **aggte** objects
   
   * Allow clustering for unbalanced panel data
