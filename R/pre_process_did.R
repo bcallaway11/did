@@ -114,9 +114,15 @@ pre_process_did <- function(yname,
   # make sure time periods are numeric
   if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
 
+  #  make sure gname is numeric
+  if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
+
+  #  make sure id is numeric
   if (! is.null(idname)){
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
+
+
 
     # Check if idname is unique by tname
     n_id_year = all( table(data[, idname], data[, tname]) <= 1)
