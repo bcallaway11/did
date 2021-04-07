@@ -13,6 +13,7 @@
   xgap = 1,
   ncol = 1,
   legend = TRUE,
+  group = NULL,
   ...
 )
 }
@@ -37,6 +38,9 @@ default is 1.}
 
 \item{legend}{Whether or not to include a legend (which will indicate color
 of pre- and post-treatment estimates).  Default is \code{TRUE}.}
+
+\item{group}{Vector for which groups to include in the plots of ATT(g,t).
+Default is NULL, and, in this case, plots for all groups will be included.}
 
 \item{...}{other arguments}
 }

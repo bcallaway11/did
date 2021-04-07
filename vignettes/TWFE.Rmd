@@ -149,7 +149,7 @@ The above plot shows the 1,000 individual values of $Y_{i,t}$, as well as the av
 ### Estimating dynamic treatment effects via TWFE event-study regressions
 
 Given that we are interested in treatment effect dynamics, we then proceed to consider a classical two-way fixed-effects (TWFE) event study specification 
-$$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$ 
+$$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$ 
 where $D_{i,t}^{k}=1\{t-G_i=k\}$ is an "event-study" dummy variable that takes value one if a unit $i$ is $k$ periods away from initial treatment at time $t$ and zero otherwise, $D_{i,t}^{<-K}=1\{t-G_i<-K\}$ and $D_{i,t}^{>L}=1\{t-G_i>L\}$ are defined analogously. For instance, $D_{i,t}^{0}$ is equal to one if the unit $i$ is first treated at time $t$, $D_{i,t}^{1}$ is equal to one if a one period has passed since treatment started (treatment lags), etc. Alternatively we have that $D_{i,t}^{-2}$ is equal to one if a unit $i$ will be treated in two periods from $t$ (treatment leads). In this exercise we set $K$ and $L$ to be equal to 5.
 
 
@@ -499,7 +499,7 @@ plot2
 ### Estimating dynamic treatment effects via TWFE event-study regressions
 
 Like before, we start by estimating a TWFE event-study regression 
-$$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$
+$$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$
 with $K$ and $L$ set to 5. That is, binning the end points.
 
 As you can see from the results below, the bias are still substantial. Thus, the problems with TWFE specifications persists even if you have a "never-treated" group.
@@ -904,7 +904,7 @@ plot3
 ### Estimating dynamic treatment effects via TWFE event-study regressions
 
 Like before, we start by estimating a TWFE event-study regression 
-$$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$
+$$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$
 with $K$ and $L$ set to 5. That is, binning the end points.
 
 As you can see from the results below, the bias are still substantial. Given the results we have shown before, this should be not a surprise.

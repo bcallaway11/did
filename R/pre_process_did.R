@@ -93,7 +93,7 @@ pre_process_did <- function(yname,
 
   # check for groups treated in the first period and drop these
   # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
-  treated_first_period <- data[,gname]==first.period
+  treated_first_period <- data[,gname] <= first.period
   treated_first_period[is.na(treated_first_period)] <- FALSE
   nfirstperiod <- length(unique(data[treated_first_period,][,idname]))
   if ( nfirstperiod > 0 ) {
@@ -114,9 +114,15 @@ pre_process_did <- function(yname,
   # make sure time periods are numeric
   if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
 
+  #  make sure gname is numeric
+  if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
+
+  #  make sure id is numeric
   if (! is.null(idname)){
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
+
+
 
     # Check if idname is unique by tname
     n_id_year = all( table(data[, idname], data[, tname]) <= 1)
@@ -132,15 +138,15 @@ pre_process_did <- function(yname,
 
   # This is a duplicate but I kept it before making the final changes
   #if (panel) {
-    # check that id is numeric
+  # check that id is numeric
   #  if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
 
-    #check that first.treat doesn't change across periods for particular individuals
-   # if (!all(sapply( split(data, data[,idname]), function(df) {
-    #  length(unique(df[,gname]))==1
-    #}))) {
-    #  stop("The value of first.treat must be the same across all periods for each particular individual.")
-    #}
+  #check that first.treat doesn't change across periods for particular individuals
+  # if (!all(sapply( split(data, data[,idname]), function(df) {
+  #  length(unique(df[,gname]))==1
+  #}))) {
+  #  stop("The value of first.treat must be the same across all periods for each particular individual.")
+  #}
   #}
 
 

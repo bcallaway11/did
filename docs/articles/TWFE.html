@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.901</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.904</span>
       </span>
     </div>
 
@@ -57,7 +57,7 @@
 <ul class="nav navbar-nav navbar-right">
 <li>
   <a href="https://github.com/bcallaway11/did/">
-    <span class="fab fa fab fa-github fa-lg"></span>
+    <span class="fab fa-github fa-lg"></span>
      
   </a>
 </li>
@@ -71,14 +71,13 @@
 
       
 
-      </header><link href="TWFE_files/anchor-sections-1.0/anchor-sections.css" rel="stylesheet">
-<script src="TWFE_files/anchor-sections-1.0/anchor-sections.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Problems with two-way fixed-effects event-study regressions</h1>
                         <h4 class="author">Brantly Callaway and Pedro H. C. Sant’Anna</h4>
             
-            <h4 class="date">2021-01-14</h4>
+            <h4 class="date">2021-04-01</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/TWFE.Rmd"><code>vignettes/TWFE.Rmd</code></a></small>
       <div class="hidden name"><code>TWFE.Rmd</code></div>
@@ -105,7 +104,7 @@
 <p>Let’s start the discussion by first visualizing how the DGP looks like.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Load libraries and set baseline parameters</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">tidyverse</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">lfe</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">fastDummies</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">ggthemes</span><span class="op">)</span>
@@ -204,7 +203,7 @@
 <div id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions" class="section level3">
 <h3 class="hasAnchor">
 <a href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions" class="anchor"></a>Estimating dynamic treatment effects via TWFE event-study regressions</h3>
-<p>Given that we are interested in treatment effect dynamics, we then proceed to consider a classical two-way fixed-effects (TWFE) event study specification <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> where <span class="math inline">\(D_{i,t}^{k}=1\{t-G_i=k\}\)</span> is an “event-study” dummy variable that takes value one if a unit <span class="math inline">\(i\)</span> is <span class="math inline">\(k\)</span> periods away from initial treatment at time <span class="math inline">\(t\)</span> and zero otherwise, <span class="math inline">\(D_{i,t}^{&lt;-K}=1\{t-G_i&lt;-K\}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}=1\{t-G_i&gt;L\}\)</span> are defined analogously. For instance, <span class="math inline">\(D_{i,t}^{0}\)</span> is equal to one if the unit <span class="math inline">\(i\)</span> is first treated at time <span class="math inline">\(t\)</span>, <span class="math inline">\(D_{i,t}^{1}\)</span> is equal to one if a one period has passed since treatment started (treatment lags), etc. Alternatively we have that <span class="math inline">\(D_{i,t}^{-2}\)</span> is equal to one if a unit <span class="math inline">\(i\)</span> will be treated in two periods from <span class="math inline">\(t\)</span> (treatment leads). In this exercise we set <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> to be equal to 5.</p>
+<p>Given that we are interested in treatment effect dynamics, we then proceed to consider a classical two-way fixed-effects (TWFE) event study specification <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> where <span class="math inline">\(D_{i,t}^{k}=1\{t-G_i=k\}\)</span> is an “event-study” dummy variable that takes value one if a unit <span class="math inline">\(i\)</span> is <span class="math inline">\(k\)</span> periods away from initial treatment at time <span class="math inline">\(t\)</span> and zero otherwise, <span class="math inline">\(D_{i,t}^{&lt;-K}=1\{t-G_i&lt;-K\}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}=1\{t-G_i&gt;L\}\)</span> are defined analogously. For instance, <span class="math inline">\(D_{i,t}^{0}\)</span> is equal to one if the unit <span class="math inline">\(i\)</span> is first treated at time <span class="math inline">\(t\)</span>, <span class="math inline">\(D_{i,t}^{1}\)</span> is equal to one if a one period has passed since treatment started (treatment lags), etc. Alternatively we have that <span class="math inline">\(D_{i,t}^{-2}\)</span> is equal to one if a unit <span class="math inline">\(i\)</span> will be treated in two periods from <span class="math inline">\(t\)</span> (treatment leads). In this exercise we set <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> to be equal to 5.</p>
 <p>Up to today, it is customary to interpret estimates of <span class="math inline">\(\gamma_k^{lags}\)</span> as ``good’’ measures of the average treatment effect for being exposed to treatment for <span class="math inline">\(k\)</span> periods, and estimates of <span class="math inline">\(\gamma_k^{leads}\)</span> as measures of pre-trends. Our first exercise here is to assess if this is OK-ish.</p>
 <p>Towards this end, we will a perform Monte Carlo exercise where we generate data according to the DGP described above and estimate all the parameters of the TWFE event-study regression above. We repeat this 100 times (same holds true if we do 1,000) and plot the Monte Carlo mean and 1.96 times the Monte-Carlo standard-deviation of the relative time indicator dummies, as well as the true treatment effect below.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -527,7 +526,7 @@
 <div id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1" class="section level3">
 <h3 class="hasAnchor">
 <a href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1" class="anchor"></a>Estimating dynamic treatment effects via TWFE event-study regressions</h3>
-<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
+<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
 <p>As you can see from the results below, the bias are still substantial. Thus, the problems with TWFE specifications persists even if you have a “never-treated” group.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># function to run ES DID</span>
@@ -909,7 +908,7 @@
 <div id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2" class="section level3">
 <h3 class="hasAnchor">
 <a href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2" class="anchor"></a>Estimating dynamic treatment effects via TWFE event-study regressions</h3>
-<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lead} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
+<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
 <p>As you can see from the results below, the bias are still substantial. Given the results we have shown before, this should be not a surprise.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># function to run ES DID</span>

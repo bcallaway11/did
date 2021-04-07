@@ -63,6 +63,7 @@ summary.MP <- function(object, ...) {
   cband_upper <- mpobj$att + mpobj$c*mpobj$se
 
   sig <- (cband_upper < 0) | (cband_lower > 0)
+  sig[is.na(sig)] <- FALSE
   sig_text <- ifelse(sig, "*", "")
 
   out <- cbind.data.frame(mpobj$group, mpobj$t, mpobj$att, mpobj$se, cband_lower, cband_upper)
