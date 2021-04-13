@@ -12,7 +12,7 @@
 #' @param V_analytical Analytical estimator for the asymptotic variance-covariance matrix for group-time average treatment effects
 #' @param se standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.
 #' @param inffunc the influence function for estimating group-time average treatment effects
-#' @param n the number of observations
+#' @param n the number of unique cross-sectional units (unique values of idname)
 #' @param W the Wald statistic for pre-testing the common trends assumption
 #' @param Wpval the p-value of the Wald statistic for pre-testing the
 #'  common trends assumption

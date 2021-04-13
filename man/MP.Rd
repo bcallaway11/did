@@ -38,7 +38,7 @@ approximation.}
 
 \item{inffunc}{the influence function for estimating group-time average treatment effects}
 
-\item{n}{the number of observations}
+\item{n}{the number of unique cross-sectional units (unique values of idname)}
 
 \item{W}{the Wald statistic for pre-testing the common trends assumption}
 
