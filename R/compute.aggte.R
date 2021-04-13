@@ -78,6 +78,28 @@ compute.aggte <- function(MP,
     inffunc1 <- inffunc1[, notna]
     #tlist <- sort(unique(t))
     glist <- sort(unique(group))
+
+    # If aggte is of the group type, ensure we have non-missing post-treatment ATTs for each group
+    if(type == "group"){
+      # Get the groups that have some non-missing ATT(g,t) in post-treatmemt periods
+      gnotna <- sapply(glist, function(g) {
+        # look at post-treatment periods for group g
+        whichg <- which( (group == g) & (g <= t))
+        attg <- att[whichg]
+        group_select <- !is.na(mean(attg))
+        return(group_select)
+      })
+      gnotna <- glist[gnotna]
+      # indicator for not all post-treatment ATT(g,t) missing
+      not_all_na <- group %in% gnotna
+      # Re-do the na.rm thing to update the groups
+      group <- group[not_all_na]
+      t <- t[not_all_na]
+      att <- att[not_all_na]
+      inffunc1 <- inffunc1[, not_all_na]
+      #tlist <- sort(unique(t))
+      glist <- sort(unique(group))
+    }
   }
 
   if((na.rm == FALSE) && base::anyNA(att)) stop("Missing values at att_gt found. If you want to remove these, set `na.rm = TRUE'.")
@@ -150,6 +172,7 @@ compute.aggte <- function(MP,
     # averages all post-treatment ATT(g,t) with weights
     # given by group size
     simple.att <- sum(att[keepers]*pg[keepers])/(sum(pg[keepers]))
+    if(is.nan(simple.att)) simple.att <- NA
 
     # get the part of the influence function coming from estimated weights
     simple.wif <- wif(keepers, pg, weights.ind, G, group)
@@ -165,7 +188,10 @@ compute.aggte <- function(MP,
 
     # get standard errors from overall influence function
     simple.se <- getSE(simple.if, dp)
-    if(simple.se <= sqrt(.Machine$double.eps)*10) simple.se <- NA
+    if(!is.na(simple.se)){
+      if(simple.se <= sqrt(.Machine$double.eps)*10) simple.se <- NA
+    }
+
 
     return(AGGTEobj(overall.att = simple.att,
                     overall.se = simple.se,
@@ -189,6 +215,8 @@ compute.aggte <- function(MP,
       attg <- att[whichg]
       mean(attg)
     })
+    selective.att.g[is.nan(selective.att.g)] <- NA
+
 
     # get standard errors for each group specific ATT
     selective.se.inner <- lapply(glist, function(g) {
@@ -258,7 +286,9 @@ compute.aggte <- function(MP,
     selective.inf.func <- as.numeric(selective.inf.func)
     # get overall standard error
     selective.se <- getSE(selective.inf.func, dp)
-    if((selective.se <= sqrt(.Machine$double.eps)*10)) selective.se <- NA
+    if(!is.na(selective.se)){
+      if((selective.se <= sqrt(.Machine$double.eps)*10)) selective.se <- NA
+    }
 
     return(AGGTEobj(overall.att=selective.att,
                     overall.se=selective.se,
@@ -369,7 +399,9 @@ compute.aggte <- function(MP,
 
     dynamic.inf.func <- as.numeric(dynamic.inf.func)
     dynamic.se <- getSE(dynamic.inf.func, dp)
-    if (dynamic.se <= sqrt(.Machine$double.eps)*10) dynamic.se <- NA
+    if(!is.na(dynamic.se)){
+      if (dynamic.se <= sqrt(.Machine$double.eps)*10) dynamic.se <- NA
+    }
 
     return(AGGTEobj(overall.att=dynamic.att,
                     overall.se=dynamic.se,
@@ -472,7 +504,9 @@ compute.aggte <- function(MP,
     calendar.inf.func <- as.numeric(calendar.inf.func)
     # get overall standard error
     calendar.se <- getSE(calendar.inf.func, dp)
-    if (calendar.se <= sqrt(.Machine$double.eps)*10) calendar.se <- NA
+    if(!is.na(calendar.se)){
+      if (calendar.se <= sqrt(.Machine$double.eps)*10) calendar.se <- NA
+    }
     return(AGGTEobj(overall.att=calendar.att,
                     overall.se=calendar.se,
                     type=type,

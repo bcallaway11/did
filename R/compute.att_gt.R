@@ -354,6 +354,11 @@ compute.att_gt <- function(dp) {
         # G and C
         attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
 
+        # If ATT is NaN, replace it with NA, and make Influence functions equal to zero
+        if(is.nan(attgt$ATT)){
+          attgt$ATT <- NA
+          attgt$att.inf.func <- 0 * attgt$att.inf.func
+        }
 
       } #end panel if
 
@@ -370,7 +375,7 @@ compute.att_gt <- function(dp) {
         inf.func[disidx] <- attgt$att.inf.func
       } else {
         # aggregate inf functions by id (order by id)
-        aggte_inffunc = stats::aggregate(attgt$att.inf.func, list(rightids), sum)
+        aggte_inffunc = base::suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
         disidx <- (unique(data$rowid) %in% aggte_inffunc[,1])
         inf.func[disidx] <- aggte_inffunc[,2]
       }

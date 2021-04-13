@@ -92,7 +92,7 @@ summary.AGGTEobj <- function(object, ...) {
   if (object$type=="dynamic") cat("Overall summary of ATT’s based on event-study/dynamic aggregation:  \n")
   if (object$type=="group") cat("Overall summary of ATT’s based on group/cohort aggregation:  \n")
   if (object$type=="calendar") cat("Overall summary of ATT’s based on calendar time aggregation:  \n")
-  colnames(out1) <- c("ATT","Std. Error","    [95% ", "Conf. Int.]","")
+  colnames(out1) <- c("ATT","   Std. Error", paste0("    [ ",100*(1-object$DIDparams$alp),"% "), "Conf. Int.]","")
   print(out1, row.names=FALSE)
   cat("\n\n")
 
@@ -111,8 +111,8 @@ summary.AGGTEobj <- function(object, ...) {
                            "Pointwise ")
     cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
-    cband_lower <- object$att - object$crit.val.egt*object$se.egt
-    cband_upper <- object$att + object$crit.val.egt*object$se.egt
+    cband_lower <- object$att.egt - object$crit.val.egt*object$se.egt
+    cband_upper <- object$att.egt + object$crit.val.egt*object$se.egt
 
     sig <- (cband_upper < 0) | (cband_lower > 0)
     sig[is.na(sig)] <- FALSE
