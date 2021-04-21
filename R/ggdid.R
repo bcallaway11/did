@@ -2,7 +2,7 @@
 #'
 #' @description Function to plot objects from the \code{did} package
 #'
-#' @param object either a \code{MP} object or \code{AGGTEobj} object
+#' @param object either a \code{MP} object or \code{AGGTEobj} object. See \code{help(ggdid.MP)} and \code{help(ggdid.AGGTEobj)}.
 #' @param ... other arguments
 #'
 #' @export
@@ -40,7 +40,11 @@ ggdid <- function(object, ...) {
 #' @param legend Whether or not to include a legend (which will indicate color
 #'  of pre- and post-treatment estimates).  Default is \code{TRUE}.
 #' @param group Vector for which groups to include in the plots of ATT(g,t).
-#'   Default is NULL, and, in this case, plots for all groups will be included.
+#'   Default is NULL, and, in this case, plots for all groups will be included (\code{ggdid.MP} only).
+#' @param ref_line A reference line at this value, usually to compare confidence
+#'   intervals to 0. Set to NULL to omit.
+#' @param theming Set to FALSE to skip all theming so you can do it yourself.
+#' @param grtitle Title to append before each group name (\code{ggdid.MP} only).
 #'
 #' @export
 ggdid.MP <- function(object,
@@ -52,6 +56,9 @@ ggdid.MP <- function(object,
                      ncol=1,
                      legend=TRUE,
                      group=NULL,
+                     ref_line = 0,
+                     theming = TRUE,
+                     grtitle = "Group",
                      ...) {
 
   mpobj <- object
@@ -63,6 +70,7 @@ ggdid.MP <- function(object,
 
   results <- data.frame(year=rep(y,G))
   results$group <- unlist(lapply(g, function(x) { rep(x, Y) }))
+  results$grtitle <- paste(grtitle,results$group)
   results$att <- mpobj$att
   n <- mpobj$n
   results$att.se <- mpobj$se #sqrt(diag(mpobj$V)/n)
@@ -72,18 +80,12 @@ ggdid.MP <- function(object,
   #vcovatt <- mpobj$V/n
   alp <- mpobj$alp
 
-  mplots <- lapply(g, function(g) {
-    # If group is not specified, plot all. If group is specified, only plot g in group
-    if(is.null(group) | g %in% group) {
-      thisdta <- subset(results, group==g)
-      gplot(thisdta, ylim, xlab, ylab, title, xgap, legend)
-    }
-  })
-  
-  # Remove NULL
-  mplots <- mplots[!sapply(mplots, is.null)]
-  
-  do.call("ggarrange", c(mplots, ncol=ncol))
+  mplots <- gplot(subset(results, group %in% g),
+                  ylim, xlab, ylab, title, xgap,
+                  legend, ref_line, theming) +
+    facet_wrap(~grtitle, ncol = ncol, scales = 'free')
+
+  return(mplots)
 }
 
 
@@ -101,6 +103,8 @@ ggdid.AGGTEobj <- function(object,
                            title="",
                            xgap=1,
                            legend=TRUE,
+                           ref_line = 0,
+                           theming = TRUE,
                            ...) {
 
   if ( !(object$type %in% c("dynamic","group","calendar")) ) {
@@ -115,15 +119,15 @@ ggdid.AGGTEobj <- function(object,
   results$c <- ifelse(is.null(object$crit.val.egt), abs(qnorm(.025)), object$crit.val.egt)
 
   if (title == "") {
-    # get title right depending on which aggregation 
+    # get title right depending on which aggregation
     title <- ifelse(object$type=="group", "Average Effect by Group", ifelse(object$type=="dynamic", "Average Effect by Length of Exposure", "Average Effect by Time Period"))
   }
 
   if (object$type == "group") {
     # alternative plot if selective/group treatment timing plot
-    p <- splot(results, ylim, xlab, ylab, title, legend)
+    p <- splot(results, ylim, xlab, ylab, title, legend, ref_line, theming)
   } else {
-    p <- gplot(results, ylim, xlab, ylab, title, xgap, legend)
+    p <- gplot(results, ylim, xlab, ylab, title, xgap, legend, ref_line, theming)
   }
 
   p
