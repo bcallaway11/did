@@ -10,7 +10,9 @@ splot(
   xlab = NULL,
   ylab = NULL,
   title = "Group",
-  legend = TRUE
+  legend = TRUE,
+  ref_line = 0,
+  theming = TRUE
 )
 }
 \value{

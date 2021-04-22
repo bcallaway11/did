@@ -12,11 +12,13 @@
   title = "",
   xgap = 1,
   legend = TRUE,
+  ref_line = 0,
+  theming = TRUE,
   ...
 )
 }
 \arguments{
-\item{object}{either a \code{MP} object or \code{AGGTEobj} object}
+\item{object}{either a \code{MP} object or \code{AGGTEobj} object. See \code{help(ggdid.MP)} and \code{help(ggdid.AGGTEobj)}.}
 
 \item{ylim}{optional y limits for the plot; settng here makes the y limits
 the same across different plots}
@@ -33,6 +35,11 @@ value on the x-axis.  The default is 1.}
 
 \item{legend}{Whether or not to include a legend (which will indicate color
 of pre- and post-treatment estimates).  Default is \code{TRUE}.}
+
+\item{ref_line}{A reference line at this value, usually to compare confidence
+intervals to 0. Set to NULL to omit.}
+
+\item{theming}{Set to FALSE to skip all theming so you can do it yourself.}
 
 \item{...}{other arguments}
 }
