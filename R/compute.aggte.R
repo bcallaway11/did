@@ -157,7 +157,7 @@ compute.aggte <- function(MP,
   pg <- pg[match(group, glist)]
 
   # which group time average treatment effects are post-treatment
-  keepers <- which(group <= t)
+  keepers <- which(group <= t & t<= (group + max_e)) ### added second condition to allow for limit on longest period included in att
 
   # n x 1 vector of group variable
   G <-  unlist(lapply(dta[,gname], orig2t))
@@ -211,7 +211,7 @@ compute.aggte <- function(MP,
     # note: there are no estimated weights here
     selective.att.g <- sapply(glist, function(g) {
       # look at post-treatment periods for group g
-      whichg <- which( (group == g) & (g <= t))
+      whichg <- which( (group == g) & (g <= t) & (t<= (group + max_e))) ### added last condition to allow for limit on longest period included in att
       attg <- att[whichg]
       mean(attg)
     })
@@ -220,7 +220,7 @@ compute.aggte <- function(MP,
 
     # get standard errors for each group specific ATT
     selective.se.inner <- lapply(glist, function(g) {
-      whichg <- which( (group == g) & (g <= t))
+      whichg <- which( (group == g) & (g <= t) & (t<= (group + max_e)))  ### added last condition to allow for limit on longest period included in att
       inf.func.g <- as.numeric(get_agg_inf_func(att=att,
                                                 inffunc1=inffunc1,
                                                 whichones=whichg,

@@ -93,7 +93,7 @@ pre_process_did <- function(yname,
 
   # check for groups treated in the first period and drop these
   # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
-  treated_first_period <- data[,gname] <= first.period
+  treated_first_period <- ( data[,gname] <= first.period ) & ( !(data[,gname]==0) )
   treated_first_period[is.na(treated_first_period)] <- FALSE
   nfirstperiod <- length(unique(data[treated_first_period,][,idname]))
   if ( nfirstperiod > 0 ) {
