@@ -7,7 +7,7 @@
 ggdid(object, ...)
 }
 \arguments{
-\item{object}{either a \code{MP} object or \code{AGGTEobj} object}
+\item{object}{either a \code{MP} object or \code{AGGTEobj} object. See \code{help(ggdid.MP)} and \code{help(ggdid.AGGTEobj)}.}
 
 \item{...}{other arguments}
 }

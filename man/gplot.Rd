@@ -11,7 +11,9 @@ gplot(
   ylab = NULL,
   title = "Group",
   xgap = 1,
-  legend = TRUE
+  legend = TRUE,
+  ref_line = 0,
+  theming = TRUE
 )
 }
 \value{
