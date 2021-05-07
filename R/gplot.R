@@ -27,7 +27,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
     scale_y_continuous(limits=ylim) +
     #scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
     scale_x_continuous(breaks=as.numeric(dabreaks), labels=as.character(dabreaks)) +
-    scale_colour_hue(drop=FALSE, labels = c('Pre','Post')) +
+    scale_color_manual(drop=FALSE, values=c("#e87d72","#56bcc2"), breaks = c(0, 1), labels = c('Pre','Post')) +
     labs(x = xlab, y = ylab, title = title, color = NULL)
 
   if (!is.null(ref_line)) {
@@ -87,7 +87,7 @@ splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group",
     scale_y_discrete(breaks=as.factor(ssresults$year)) +
     #scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
     scale_x_continuous(limits=ylim) +
-    scale_colour_hue(drop=FALSE) +
+    scale_color_manual(drop=FALSE, values=c("#e87d72","#56bcc2"), breaks = c(0, 1), labels = c('Pre','Post')) +
     labs(x = xlab, y = ylab, title = title)
 
   if (!is.null(ref_line)) {
