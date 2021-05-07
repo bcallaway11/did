@@ -522,7 +522,9 @@ run_ES_DiD_never <- function(...) {
     mutate(across(starts_with("rel_year_"), ~replace_na(., 0))) %>% 
     # generate pre and post dummies
     mutate(Pre = ifelse((rel_year < -5) * (!is.na(rel_year)), 1, 0),
-           Post = ifelse((rel_year > 5) * (!is.na(rel_year)), 1, 0))
+           Post = ifelse((rel_year > 5) * (!is.na(rel_year)), 1, 0)) %>%
+    mutate(Pre = ifelse(is.na(Pre), 0, Pre),
+           Post = ifelse(is.na(Post), 0, Post))
   
   # estimate the model
   mod <- lfe::felm(dep_var ~ Pre + `rel_year_-5` + `rel_year_-4` + `rel_year_-3` + `rel_year_-2` + 
@@ -927,7 +929,9 @@ run_ES_DiD_never_het <- function(...) {
     mutate(across(starts_with("rel_year_"), ~replace_na(., 0))) %>% 
     # generate pre and post dummies
     mutate(Pre = ifelse((rel_year < -5) * (!is.na(rel_year)), 1, 0),
-           Post = ifelse((rel_year > 5) * (!is.na(rel_year)), 1, 0))
+           Post = ifelse((rel_year > 5) * (!is.na(rel_year)), 1, 0)) %>%
+    mutate(Pre = ifelse(is.na(Pre), 0, Pre),
+           Post = ifelse(is.na(Post), 0, Post))
   
   # estimate the model
   mod <- lfe::felm(dep_var ~ Pre + `rel_year_-5` + `rel_year_-4` + `rel_year_-3` + `rel_year_-2` + 
@@ -1204,7 +1208,7 @@ As expected, the results look good, too!
 
 ## Conclusion
 
-In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant'Anna (2020) and implement in our **did** packaged does not suffer from these drawbacks. 
+In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant'Anna (2020) and implement in our **did** package does not suffer from these drawbacks. 
 
 ## References
 
