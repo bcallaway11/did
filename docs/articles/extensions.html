@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.906</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.907</span>
       </span>
     </div>
 
@@ -71,13 +71,13 @@
 
       
 
-      </header><script src="extensions_files/header-attrs-2.7/header-attrs.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Writing Extensions to the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 class="date">2021-04-22</h4>
+            <h4 class="date">2021-05-07</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/extensions.Rmd"><code>vignettes/extensions.Rmd</code></a></small>
       <div class="hidden name"><code>extensions.Rmd</code></div>
@@ -143,8 +143,6 @@
                           xformla <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,
                           data <span class="op">=</span> <span class="va">dta</span>,
                           <span class="op">)</span>
-<span class="co">#&gt; Warning in pre_process_did(yname = yname, tname = tname, idname = idname, :</span>
-<span class="co">#&gt; Dropped 4796 units that were already treated in the first period.</span>
 
 <span class="co"># summarize the results</span>
 <span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">attgt.ignoredip</span><span class="op">)</span>
@@ -379,7 +377,7 @@
 <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
 <span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
 <span class="va">p</span></code></pre></div>
-<p><img src="../../../../../OneDrive%20-%20Seattle%20University/Documents/GitHub/did-1/vignettes/extensions_anticipation.png" style="width:90.0%"></p>
+<p><img src="extensions_anticipation.png" style="width:90.0%"></p>
 <p>Here, the black line is our estimate and the blue line is the “truth”. You can immediately see that we get things right here when we account for anticipation. The only other thing to notice is that we do not estimate dynamic effects at as many different lengths of exposure, but that is the price to pay for accounting for anticipation.</p>
 </div>
 </div>
