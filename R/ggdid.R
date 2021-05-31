@@ -80,7 +80,14 @@ ggdid.MP <- function(object,
   #vcovatt <- mpobj$V/n
   alp <- mpobj$alp
 
-  mplots <- gplot(subset(results, group %in% g),
+
+  if(is.null(group)) group <- g
+  if(any(!(group %in% g))){
+    warning('Some of the specified groups do not exist in the data. Reporting all available groups.')
+    group <- g
+  }
+
+  mplots <- gplot(results[results$group %in% group,],
                   ylim, xlab, ylab, title, xgap,
                   legend, ref_line, theming) +
     facet_wrap(~grtitle, ncol = ncol, scales = 'free')
