@@ -52,19 +52,8 @@ compute.att_gt <- function(dp) {
   # number of time periods
   tlist.length <- length(tlist)
 
-  # 3-dimensional array which will store influence function
-  # across groups and times
-  # with balanced panel, 3rd dimension is equal to N
-  # otherwise, total number of rows in the data
-  if(panel) {
-    #inffunc <- array(data=0, dim=c(nG,nT,n))
-    #inffunc <- matrix(data=0, nrow=n, ncol=nG*(nT-1))
-    inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
-  } else {
-    #inffunc <- array(data=0, dim=c(nG,nT,nrow(data)))
-    #inffunc <- matrix(data=0, nrow=nrow(data), ncol=nG*(nT-1))
-    inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
-  }
+  # influence function
+  inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
 
   # loop over groups
   for (g in 1:nG) {
