@@ -48,8 +48,8 @@
 
 <meta property="og:title" content="Process did Function Arguments — pre_process_did" />
 <meta property="og:description" content="Function to process arguments passed to the main methods in the
- did package as well as conducting some tests to make sure
- data is in proper format / try to throw helpful error messages." />
+did package as well as conducting some tests to make sure
+data is in proper format / try to throw helpful error messages." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -82,7 +82,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.907</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.908</span>
       </span>
     </div>
 
@@ -125,8 +125,8 @@
 
     <div class="ref-description">
     <p>Function to process arguments passed to the main methods in the
- <code>did</code> package as well as conducting some tests to make sure
- data is in proper format / try to throw helpful error messages.</p>
+<code>did</code> package as well as conducting some tests to make sure
+data is in proper format / try to throw helpful error messages.</p>
     </div>
 
     <pre class="usage"><span class='fu'>pre_process_did</span><span class='op'>(</span>
@@ -202,7 +202,7 @@ as repeated cross sections.</p></td>
       <th>allow_unbalanced_panel</th>
       <td><p>Whether or not function should
 "balance" the panel with respect to time and id.  The default
-values if <code>FALSE</code> which means that <code>att_gt</code> will drop
+values if <code>FALSE</code> which means that <code><a href='att_gt.html'>att_gt()</a></code> will drop
 all units where data is not observed in all periods.
 The advantage of this is that the computations are faster
 (sometimes substantially).</p></td>
@@ -248,9 +248,9 @@ standard errors are reported.</p></td>
     <tr>
       <th>cband</th>
       <td><p>Boolean for whether or not to compute a uniform confidence
- band that covers all of the group-time average treatment effects
- with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
- bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
+band that covers all of the group-time average treatment effects
+with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
+bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
 <code>TRUE</code>.</p></td>
     </tr>
     <tr>

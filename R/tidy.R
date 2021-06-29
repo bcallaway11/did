@@ -9,7 +9,7 @@ generics::glance
 #' tidy results from MP objects
 #'
 #' @importFrom generics tidy
-#' @param x a model of class MP produced by the `att_gt` function
+#' @param x a model of class MP produced by the [att_gt()] function
 #' @param ... Additional arguments to tidying method.
 #' @export
 tidy.MP <- function(x, ...) {
@@ -29,7 +29,7 @@ tidy.MP <- function(x, ...) {
 #' glance model characteristics from MP objects
 #'
 #' @importFrom generics glance
-#' @param x a model of class MP produced by the `att_gt` function
+#' @param x a model of class MP produced by the [att_gt()] function
 #' @param ... other arguments passed to methods
 #' @export
 glance.MP <- function(x, ...) {
@@ -45,7 +45,7 @@ glance.MP <- function(x, ...) {
 #' tidy results from AGGTEobj objects
 #'
 #' @importFrom generics tidy
-#' @param x a model of class AGGTEobj produced by the `aggte` function
+#' @param x a model of class AGGTEobj produced by the [aggte()] function
 #' @param ... Additional arguments to tidying method.
 #' @export
 tidy.AGGTEobj<- function(x, ...) {
@@ -104,7 +104,7 @@ tidy.AGGTEobj<- function(x, ...) {
 #' glance model characteristics from AGGTEobj objects
 #'
 #' @importFrom generics glance
-#' @param x a model of class AGGTEobj produced by the `aggte` function
+#' @param x a model of class AGGTEobj produced by the [aggte()] function
 #' @param ... other arguments passed to methods
 #' @export
 glance.AGGTEobj<- function(x, ...) {

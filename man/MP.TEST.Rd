@@ -40,5 +40,5 @@ MP.TEST(
 }
 \description{
 An object that holds results from computing pre-test of the
- conditional parallel trends assumption
+conditional parallel trends assumption
 }

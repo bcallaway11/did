@@ -50,7 +50,7 @@ common trends assumption}
 \item{alp}{the significance level, default is 0.05}
 
 \item{DIDparams}{a \code{\link{DIDparams}} object.  A way to optionally return the parameters
-of the call to \code{\link{att_gt}} or \code{\link{conditional_did_pretest}}.}
+of the call to \code{\link[=att_gt]{att_gt()}} or \code{\link[=conditional_did_pretest]{conditional_did_pretest()}}.}
 }
 \value{
 MP object

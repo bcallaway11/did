@@ -1,6 +1,6 @@
 #' @title Compute Group-Time Average Treatment Effects
 #'
-#' @description \code{compute.att_gt} does the main work for computing
+#' @description `compute.att_gt` does the main work for computing
 #'  multiperiod group-time average treatment effects
 #'
 #' @param dp A DIDparams object

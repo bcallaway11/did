@@ -6,5 +6,5 @@
 \title{Difference in Differences}
 \description{
 Difference in Differences with multiple periods and variation in
- treatment timing
+treatment timing
 }

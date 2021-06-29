@@ -17,6 +17,7 @@ Imports:
     ggpubr,
     DRDID,
     generics
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 VignetteBuilder: knitr
 Suggests: 

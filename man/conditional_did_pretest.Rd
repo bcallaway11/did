@@ -57,7 +57,7 @@ as repeated cross sections.}
 
 \item{allow_unbalanced_panel}{Whether or not function should
 "balance" the panel with respect to time and id.  The default
-values if \code{FALSE} which means that \code{att_gt} will drop
+values if \code{FALSE} which means that \code{\link[=att_gt]{att_gt()}} will drop
 all units where data is not observed in all periods.
 The advantage of this is that the computations are faster
 (sometimes substantially).}
@@ -87,9 +87,9 @@ will be returned.  If bstrap is \code{FALSE}, then analytical
 standard errors are reported.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
- band that covers all of the group-time average treatment effects
- with fixed probability \code{1-alp}.  In order to compute uniform confidence
- bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
+band that covers all of the group-time average treatment effects
+with fixed probability \code{1-alp}.  In order to compute uniform confidence
+bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \code{TRUE}.}
 
 \item{biters}{The number of bootstrap iterations to use.  The default is 1000,
@@ -133,7 +133,7 @@ an \code{\link{MP.TEST}} object
 }
 \description{
 An integrated moments test for the conditional parallel trends
- assumption holding in all pre-treatment time periods for all groups
+assumption holding in all pre-treatment time periods for all groups
 }
 \examples{
 \dontrun{
@@ -149,5 +149,5 @@ summary(pre.test)
 
 }
 \references{
-Callaway, Brantly and Sant'Anna, Pedro H. C.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <https://arxiv.org/abs/1803.09015v2> (2018).
+Callaway, Brantly and Sant'Anna, Pedro H. C.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper \url{https://arxiv.org/abs/1803.09015v2} (2018).
 }

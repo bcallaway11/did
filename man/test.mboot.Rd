@@ -22,5 +22,5 @@ list
 }
 \description{
 A slightly modified multiplier bootstrap procedure
- for the pre-test of the conditional parallel trends assumption
+for the pre-test of the conditional parallel trends assumption
 }

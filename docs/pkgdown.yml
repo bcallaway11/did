@@ -1,4 +1,4 @@
-pandoc: '2.5'
+pandoc: 2.11.4
 pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
@@ -7,5 +7,5 @@ articles:
   extensions: extensions.html
   multi-period-did: multi-period-did.html
   pre-testing: pre-testing.html
-last_built: 2021-05-08T01:15Z
+last_built: 2021-06-29T16:00Z
 

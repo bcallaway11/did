@@ -14,6 +14,6 @@ scalar standard error
 }
 \description{
 Function to take an nx1 influence function and return
- a standard error
+a standard error
 }
 \keyword{internal}

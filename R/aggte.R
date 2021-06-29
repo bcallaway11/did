@@ -5,7 +5,7 @@
 #'  several possible aggregations including "simple", "dynamic", "group",
 #'  and "calendar."
 #'
-#' @param MP an MP object (i.e., the results of the \code{att_gt} method)
+#' @param MP an MP object (i.e., the results of the [att_gt()] method)
 #' @param type Which type of aggregated treatment effect parameter to compute.
 #'   One option is "simple" (this just computes a weighted average of all
 #'   group-time average treatment effects with weights proportional to group
@@ -20,29 +20,29 @@
 #'   time periods; here the overall effect averages the effect across each
 #'   time period).
 #' @param balance_e If set (and if one computes dynamic effects), it balances
-#'  the sample with respect to event time.  For example, if \code{balance.e=2},
-#'  \code{aggte} will drop groups that are not exposed to treatment for
-#'  at least three periods. (the initial period when \code{e=0} as well as the
-#'  next two periods when \code{e=1} and the \code{e=2}).  This ensures that
+#'  the sample with respect to event time.  For example, if `balance.e=2`,
+#'  `aggte` will drop groups that are not exposed to treatment for
+#'  at least three periods. (the initial period when `e=0` as well as the
+#'  next two periods when `e=1` and the `e=2`).  This ensures that
 #'  the composition of groups does not change when event time changes.
 #' @param min_e For event studies, this is the smallest event time to compute
-#'  dynamic effects for.  By default, \code{min_e = -Inf} so that effects at
+#'  dynamic effects for.  By default, `min_e = -Inf` so that effects at
 #'  all lengths of exposure are computed.
 #' @param max_e For event studies, this is the largest event time to compute
-#'  dynamic effects for.  By default, \code{max_e = Inf} so that effects at
+#'  dynamic effects for.  By default, `max_e = Inf` so that effects at
 #'  all lengths of exposure are computed.
 #' @param na.rm Logical value if we are to remove missing Values from analyses. Defaults is FALSE.
 #' @param bstrap Boolean for whether or not to compute standard errors using
 #'  the multiplier boostrap.  If standard errors are clustered, then one
-#'  must set \code{bstrap=TRUE}. Default is value set in the MP object.  If bstrap is \code{FALSE}, then analytical
+#'  must set `bstrap=TRUE`. Default is value set in the MP object.  If bstrap is `FALSE`, then analytical
 #'  standard errors are reported.
 #' @param biters The number of boostrap iterations to use.  The default is the value set in the MP object,
-#'  and this is only applicable if \code{bstrap=TRUE}.
+#'  and this is only applicable if `bstrap=TRUE`.
 #'
 #' @param cband Boolean for whether or not to compute a uniform confidence
 #'  band that covers all of the group-time average treatment effects
-#'  with fixed probability \code{1-alp}.  In order to compute uniform confidence
-#'  bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
+#'  with fixed probability `1-alp`.  In order to compute uniform confidence
+#'  bands, `bstrap` must also be set to `TRUE`.  The default is
 #'  the value set in the MP object
 #' @param alp the significance level, default is value set in the MP object.
 #' @param clustervars A vector of variables to cluster on.  At most, there
@@ -51,9 +51,47 @@
 #'  level. Default is the variables set in the MP object
 
 #'
-#' @return An \code{\link{AGGTEobj}} object that holds the results from the
+#' @return An [`AGGTEobj`] object that holds the results from the
 #'  aggregation
-#' 
+#'
+#' @section Examples:
+#'
+#
+#' Initial ATT(g,t) estimates from [att_gt()]
+#'
+#' ```{r, comment = "#>", collapse = TRUE}
+#' data(mpdta)
+#' out <- att_gt(yname="lemp",
+#'                tname="year",
+#'                idname="countyreal",
+#'                gname="first.treat",
+#'                xformla=NULL,
+#'                data=mpdta)
+#' ```
+#'
+#' You can aggregate the ATT(g,t) in many ways.
+#'
+#' **Overall ATT:**
+#' ```{r, comment = "#>", collapse = TRUE}
+#' aggte(out, type = "simple")
+#' ```
+#'
+#' **Dynamic ATT (Event-Study):**
+#' ```{r, comment = "#>", collapse = TRUE}
+#' aggte(out, type = "dynamic")
+#' ```
+#'
+#' **ATT for each group:**
+#' ```{r, comment = "#>", collapse = TRUE}
+#' aggte(out, type = "group")
+#' ```
+#'
+#' **ATT for each calendar year:**
+#' ```{r, comment = "#>", collapse = TRUE}
+#' aggte(out, type = "calendar")
+#' ```
+#'
+#'
 #' @export
 aggte <- function(MP,
                   type = "group",
@@ -69,12 +107,12 @@ aggte <- function(MP,
                   ) {
 
   call <- match.call()
-  
+
   compute.aggte(MP = MP,
                 type = type,
                 balance_e = balance_e,
                 min_e = min_e,
-                max_e = max_e, 
+                max_e = max_e,
                 na.rm = na.rm,
                 bstrap = bstrap,
                 biters = biters,

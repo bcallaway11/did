@@ -6,7 +6,7 @@
 #'
 #' @inheritParams ggdid
 #'
-#' @return a \code{ggplot2} object
+#' @return a `ggplot2` object
 #'
 #' @keywords internal
 #'
@@ -57,7 +57,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
 #' @inheritParams ggdid
 #' @inheritParams gplot
 #'
-#' @return a \code{ggplot2} object
+#' @return a `ggplot2` object
 #'
 #' @keywords internal
 #'

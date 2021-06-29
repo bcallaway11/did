@@ -24,7 +24,7 @@ nxk influence function matrix
 }
 \description{
 A function to compute the extra term that shows up in the
- influence function for aggregated treatment effect parameters
- due to estimating the weights
+influence function for aggregated treatment effect parameters
+due to estimating the weights
 }
 \keyword{internal}

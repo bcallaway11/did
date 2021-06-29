@@ -20,7 +20,7 @@ compute.aggte(
 )
 }
 \arguments{
-\item{MP}{an MP object (i.e., the results of the \code{att_gt} method)}
+\item{MP}{an MP object (i.e., the results of the \code{\link[=att_gt]{att_gt()}} method)}
 
 \item{type}{Which type of aggregated treatment effect parameter to compute.
 One option is "simple" (this just computes a weighted average of all
@@ -64,9 +64,9 @@ standard errors are reported.}
 and this is only applicable if \code{bstrap=TRUE}.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
- band that covers all of the group-time average treatment effects
- with fixed probability \code{1-alp}.  In order to compute uniform confidence
- bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
+band that covers all of the group-time average treatment effects
+with fixed probability \code{1-alp}.  In order to compute uniform confidence
+bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \code{TRUE}.}
 
 \item{alp}{the significance level, default is 0.05}
@@ -83,6 +83,6 @@ level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
 }
 \description{
 Does the heavy lifting on computing aggregated group-time
- average treatment effects
+average treatment effects
 }
 \keyword{internal}
