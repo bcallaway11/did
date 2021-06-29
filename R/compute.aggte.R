@@ -7,7 +7,7 @@
 #' @inheritParams aggte
 #' @param call The function call to aggte
 #'
-#' @return \code{\link{AGGTEobj}} object
+#' @return [`AGGTEobj`] object
 #'
 #' @keywords internal
 #'

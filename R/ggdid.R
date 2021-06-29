@@ -1,8 +1,8 @@
-#' @title Plot \code{did} objects using \code{ggplot2}
+#' @title Plot `did` objects using `ggplot2`
 #'
-#' @description Function to plot objects from the \code{did} package
+#' @description Function to plot objects from the `did` package
 #'
-#' @param object either a \code{MP} object or \code{AGGTEobj} object. See \code{help(ggdid.MP)} and \code{help(ggdid.AGGTEobj)}.
+#' @param object either a `MP` object or `AGGTEobj` object. See `help(ggdid.MP)` and `help(ggdid.AGGTEobj)`.
 #' @param ... other arguments
 #'
 #' @export
@@ -22,9 +22,9 @@ ggdid <- function(object, ...) {
 ## #'  (this also requires setting the additional paramater e1)
 
 
-#' @title Plot \code{MP} objects using \code{ggplot2}
+#' @title Plot `MP` objects using `ggplot2`
 #'
-#' @description A function to plot \code{MP} objects
+#' @description A function to plot `MP` objects
 #'
 #' @inheritParams ggdid
 #' @param ylim optional y limits for the plot; settng here makes the y limits
@@ -33,18 +33,18 @@ ggdid <- function(object, ...) {
 #' @param ylab optional y-axis label
 #' @param title optional plot title
 #' @param xgap optional gap between the labels on the x-axis.  For example,
-#'  \code{xgap=3} indicates that the labels should show up for every third
+#'  `xgap=3` indicates that the labels should show up for every third
 #'  value on the x-axis.  The default is 1.
 #' @param ncol The number of columns to include in the resulting plot.  The
 #'  default is 1.
 #' @param legend Whether or not to include a legend (which will indicate color
-#'  of pre- and post-treatment estimates).  Default is \code{TRUE}.
+#'  of pre- and post-treatment estimates).  Default is `TRUE`.
 #' @param group Vector for which groups to include in the plots of ATT(g,t).
-#'   Default is NULL, and, in this case, plots for all groups will be included (\code{ggdid.MP} only).
+#'   Default is NULL, and, in this case, plots for all groups will be included (`ggdid.MP` only).
 #' @param ref_line A reference line at this value, usually to compare confidence
 #'   intervals to 0. Set to NULL to omit.
 #' @param theming Set to FALSE to skip all theming so you can do it yourself.
-#' @param grtitle Title to append before each group name (\code{ggdid.MP} only).
+#' @param grtitle Title to append before each group name (`ggdid.MP` only).
 #'
 #' @export
 ggdid.MP <- function(object,
@@ -96,9 +96,9 @@ ggdid.MP <- function(object,
 }
 
 
-#' @title Plot \code{AGGTEobj} objects
+#' @title Plot `AGGTEobj` objects
 #'
-#' @description A function to plot \code{AGGTEobj} objects
+#' @description A function to plot `AGGTEobj` objects
 #'
 #' @inheritParams ggdid.MP
 #'

@@ -48,7 +48,7 @@
 
 <meta property="og:title" content="Pre-Test of Conditional Parallel Trends Assumption — conditional_did_pretest" />
 <meta property="og:description" content="An integrated moments test for the conditional parallel trends
- assumption holding in all pre-treatment time periods for all groups" />
+assumption holding in all pre-treatment time periods for all groups" />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -81,7 +81,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.907</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.908</span>
       </span>
     </div>
 
@@ -124,7 +124,7 @@
 
     <div class="ref-description">
     <p>An integrated moments test for the conditional parallel trends
- assumption holding in all pre-treatment time periods for all groups</p>
+assumption holding in all pre-treatment time periods for all groups</p>
     </div>
 
     <pre class="usage"><span class='fu'>conditional_did_pretest</span><span class='op'>(</span>
@@ -198,7 +198,7 @@ as repeated cross sections.</p></td>
       <th>allow_unbalanced_panel</th>
       <td><p>Whether or not function should
 "balance" the panel with respect to time and id.  The default
-values if <code>FALSE</code> which means that <code>att_gt</code> will drop
+values if <code>FALSE</code> which means that <code><a href='att_gt.html'>att_gt()</a></code> will drop
 all units where data is not observed in all periods.
 The advantage of this is that the computations are faster
 (sometimes substantially).</p></td>
@@ -238,9 +238,9 @@ standard errors are reported.</p></td>
     <tr>
       <th>cband</th>
       <td><p>Boolean for whether or not to compute a uniform confidence
- band that covers all of the group-time average treatment effects
- with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
- bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
+band that covers all of the group-time average treatment effects
+with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
+bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
 <code>TRUE</code>.</p></td>
     </tr>
     <tr>
@@ -298,7 +298,7 @@ Default is <code>FALSE</code>.</p></td>
     <p>an <code><a href='MP.TEST.html'>MP.TEST</a></code> object</p>
     <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro H. C.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper &lt;https://arxiv.org/abs/1803.09015v2&gt; (2018).</p>
+    <p>Callaway, Brantly and Sant'Anna, Pedro H. C.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <a href='https://arxiv.org/abs/1803.09015v2'>https://arxiv.org/abs/1803.09015v2</a> (2018).</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
     <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>

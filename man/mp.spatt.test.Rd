@@ -11,5 +11,5 @@ mp.spatt.test(...)
 }
 \description{
 Deprecated function for integrated moments test for conditional
- parallel trends holding in all pre-treatment time periods across all groups
+parallel trends holding in all pre-treatment time periods across all groups
 }

@@ -7,7 +7,7 @@
 \method{glance}{AGGTEobj}(x, ...)
 }
 \arguments{
-\item{x}{a model of class AGGTEobj produced by the `aggte` function}
+\item{x}{a model of class AGGTEobj produced by the \code{\link[=aggte]{aggte()}} function}
 
 \item{...}{other arguments passed to methods}
 }

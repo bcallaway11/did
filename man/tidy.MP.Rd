@@ -7,7 +7,7 @@
 \method{tidy}{MP}(x, ...)
 }
 \arguments{
-\item{x}{a model of class MP produced by the `att_gt` function}
+\item{x}{a model of class MP produced by the \code{\link[=att_gt]{att_gt()}} function}
 
 \item{...}{Additional arguments to tidying method.}
 }

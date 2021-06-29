@@ -91,9 +91,9 @@ must be the same as idname which allows for clustering at the individual
 level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
- band that covers all of the group-time average treatment effects
- with fixed probability \code{1-alp}.  In order to compute uniform confidence
- bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
+band that covers all of the group-time average treatment effects
+with fixed probability \code{1-alp}.  In order to compute uniform confidence
+bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \code{TRUE}.}
 
 \item{print_details}{Whether or not to show details/progress of computations.

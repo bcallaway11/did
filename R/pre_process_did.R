@@ -1,13 +1,13 @@
-#' @title Process \code{did} Function Arguments
+#' @title Process `did` Function Arguments
 #'
 #' @description Function to process arguments passed to the main methods in the
-#'  \code{did} package as well as conducting some tests to make sure
+#'  `did` package as well as conducting some tests to make sure
 #'  data is in proper format / try to throw helpful error messages.
 #'
 #' @inheritParams att_gt
 #' @param call Function call to att_gt
 #'
-#' @return a \code{\link{DIDparams}} object
+#' @return a [`DIDparams`] object
 #'
 #' @export
 pre_process_did <- function(yname,

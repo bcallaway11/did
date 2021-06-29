@@ -1,6 +1,6 @@
-#' @title Process Results from \code{\link{compute.att_gt}}
+#' @title Process Results from [compute.att_gt()]
 #'
-#' @param attgt.results.list list of results from \code{\link{compute.att_gt}}
+#' @param attgt.results.list list of results from [compute.att_gt()]
 #'
 #' @return list with elements:
 #' \item{group}{which group a set of results belongs to}
@@ -17,7 +17,7 @@ process_attgt <- function(attgt.results.list) {
   # pick up number of observations from the influence function
   # this will be flexible for panel or repeated cross sections
 
-  #n <- length(inffunc[1,1,]) 
+  #n <- length(inffunc[1,1,])
 
   n <- length(inffunc[,1])
 
@@ -31,7 +31,7 @@ process_attgt <- function(attgt.results.list) {
   # (note: this is relying on having a balanced panel,
   # which we do currently enforce)
 
-  #inffunc1 <- matrix(0, ncol=nG*nT, nrow=n) 
+  #inffunc1 <- matrix(0, ncol=nG*nT, nrow=n)
 
   # populate result vectors and matrices
   for (f in 1:nG) {

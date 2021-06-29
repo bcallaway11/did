@@ -20,6 +20,6 @@ a \code{ggplot2} object
 }
 \description{
 alternative plotting function for the case with selective treatment
- timing
+timing
 }
 \keyword{internal}

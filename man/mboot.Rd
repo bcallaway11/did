@@ -20,6 +20,6 @@ list with elements
 }
 \description{
 A function to take an influence function and use the
- multiplier bootstrap to compute standard errors and critical values for
- uniform confidence bands.
+multiplier bootstrap to compute standard errors and critical values for
+uniform confidence bands.
 }

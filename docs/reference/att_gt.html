@@ -48,10 +48,10 @@
 
 <meta property="og:title" content="Group-Time Average Treatment Effects — att_gt" />
 <meta property="og:description" content="att_gt computes average treatment effects in DID
- setups where there are more than two periods of data and allowing for
- treatment to occur at different points in time and allowing for
- treatment effect heterogeneity and dynamics.
- See Callaway and Sant'Anna (2020) for a detailed description." />
+setups where there are more than two periods of data and allowing for
+treatment to occur at different points in time and allowing for
+treatment effect heterogeneity and dynamics.
+See Callaway and Sant'Anna (2020) for a detailed description." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -84,7 +84,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.907</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.908</span>
       </span>
     </div>
 
@@ -127,10 +127,10 @@
 
     <div class="ref-description">
     <p><code>att_gt</code> computes average treatment effects in DID
- setups where there are more than two periods of data and allowing for
- treatment to occur at different points in time and allowing for
- treatment effect heterogeneity and dynamics.
- See Callaway and Sant'Anna (2020) for a detailed description.</p>
+setups where there are more than two periods of data and allowing for
+treatment to occur at different points in time and allowing for
+treatment effect heterogeneity and dynamics.
+See Callaway and Sant'Anna (2020) for a detailed description.</p>
     </div>
 
     <pre class="usage"><span class='fu'>att_gt</span><span class='op'>(</span>
@@ -205,7 +205,7 @@ as repeated cross sections.</p></td>
       <th>allow_unbalanced_panel</th>
       <td><p>Whether or not function should
 "balance" the panel with respect to time and id.  The default
-values if <code>FALSE</code> which means that <code>att_gt</code> will drop
+values if <code>FALSE</code> which means that <code>att_gt()</code> will drop
 all units where data is not observed in all periods.
 The advantage of this is that the computations are faster
 (sometimes substantially).</p></td>
@@ -251,9 +251,9 @@ standard errors are reported.</p></td>
     <tr>
       <th>cband</th>
       <td><p>Boolean for whether or not to compute a uniform confidence
- band that covers all of the group-time average treatment effects
- with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
- bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
+band that covers all of the group-time average treatment effects
+with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
+bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
 <code>TRUE</code>.</p></td>
     </tr>
     <tr>
@@ -309,85 +309,122 @@ Default is <code>FALSE</code>.</p></td>
     <h2 class="hasAnchor" id="value"><a class="anchor" href="#value"></a>Value</h2>
 
     <p>an <code><a href='MP.html'>MP</a></code> object containing all the results for group-time average
- treatment effects</p>
-    <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
+treatment effects</p>
+    <h2 class="hasAnchor" id="examples-"><a class="anchor" href="#examples-"></a>Examples:</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt; (2020).</p>
+    <p><strong>Basic <code>att_gt()</code> call:</strong><div class="r"></p><pre><span class='co'># Example data</span>
+<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
 
-    <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
-
-<span class='co'># with covariates</span>
 <span class='va'>out1</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
-               tname<span class='op'>=</span><span class='st'>"year"</span>,
-               idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
-               gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
-               xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,
-               data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out1</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; 
-#&gt; Call:
-#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
-#&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta)
-#&gt; 
-#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. 
-#&gt; 
-#&gt; Group-Time Average Treatment Effects:
-#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#&gt;   2004 2004  -0.0145     0.0234       -0.0761      0.0470  
-#&gt;   2004 2005  -0.0764     0.0296       -0.1541      0.0013  
-#&gt;   2004 2006  -0.1404     0.0396       -0.2445     -0.0364 *
-#&gt;   2004 2007  -0.1069     0.0329       -0.1934     -0.0204 *
-#&gt;   2006 2004  -0.0005     0.0217       -0.0575      0.0565  
-#&gt;   2006 2005  -0.0062     0.0189       -0.0557      0.0433  
-#&gt;   2006 2006   0.0010     0.0192       -0.0495      0.0515  
-#&gt;   2006 2007  -0.0413     0.0185       -0.0898      0.0072  
-#&gt;   2007 2004   0.0267     0.0143       -0.0108      0.0642  
-#&gt;   2007 2005  -0.0046     0.0159       -0.0463      0.0371  
-#&gt;   2007 2006  -0.0284     0.0196       -0.0799      0.0230  
-#&gt;   2007 2007  -0.0288     0.0161       -0.0710      0.0134  
-#&gt; ---
-#&gt; Signif. codes: `*' confidence band does not cover 0
-#&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.23267
-#&gt; Control Group:  Never Treated,  Anticipation Periods:  0
-#&gt; Estimation Method:  Doubly Robust</div><div class='input'>
-<span class='co'># without covariates</span>
-<span class='va'>out2</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
                tname<span class='op'>=</span><span class='st'>"year"</span>,
                idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
                gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
                xformla<span class='op'>=</span><span class='cn'>NULL</span>,
                data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out1</span><span class='op'>)</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Call:</span>
+<span class='co'>#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
+<span class='co'>#&gt;     gname = "first.treat", xformla = NULL, data = mpdta)</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Group-Time Average Treatment Effects:</span>
+<span class='co'>#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
+<span class='co'>#&gt;   2004 2004  -0.0105     0.0237       -0.0725      0.0515  </span>
+<span class='co'>#&gt;   2004 2005  -0.0704     0.0352       -0.1627      0.0218  </span>
+<span class='co'>#&gt;   2004 2006  -0.1373     0.0394       -0.2404     -0.0341 *</span>
+<span class='co'>#&gt;   2004 2007  -0.1008     0.0354       -0.1935     -0.0081 *</span>
+<span class='co'>#&gt;   2006 2004   0.0065     0.0241       -0.0566      0.0696  </span>
+<span class='co'>#&gt;   2006 2005  -0.0028     0.0199       -0.0550      0.0495  </span>
+<span class='co'>#&gt;   2006 2006  -0.0046     0.0184       -0.0528      0.0436  </span>
+<span class='co'>#&gt;   2006 2007  -0.0412     0.0212       -0.0969      0.0144  </span>
+<span class='co'>#&gt;   2007 2004   0.0305     0.0155       -0.0101      0.0711  </span>
+<span class='co'>#&gt;   2007 2005  -0.0027     0.0159       -0.0444      0.0390  </span>
+<span class='co'>#&gt;   2007 2006  -0.0311     0.0179       -0.0779      0.0157  </span>
+<span class='co'>#&gt;   2007 2007  -0.0261     0.0168       -0.0702      0.0181  </span>
+<span class='co'>#&gt; ---</span>
+<span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; P-value for pre-test of parallel trends assumption:  0.16812</span>
+<span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
+<span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
+</pre><p></div></p>
+<p><strong>Using covariates:</strong><div class="r"></p><pre><span class='va'>out2</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+               tname<span class='op'>=</span><span class='st'>"year"</span>,
+               idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
+               gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
+               xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,
+               data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out2</span><span class='op'>)</span>
-</div><div class='output co'>#&gt; 
-#&gt; Call:
-#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
-#&gt;     gname = "first.treat", xformla = NULL, data = mpdta)
-#&gt; 
-#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. 
-#&gt; 
-#&gt; Group-Time Average Treatment Effects:
-#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#&gt;   2004 2004  -0.0105     0.0251       -0.0770      0.0560  
-#&gt;   2004 2005  -0.0704     0.0324       -0.1562      0.0154  
-#&gt;   2004 2006  -0.1373     0.0401       -0.2436     -0.0309 *
-#&gt;   2004 2007  -0.1008     0.0366       -0.1977     -0.0039 *
-#&gt;   2006 2004   0.0065     0.0254       -0.0606      0.0737  
-#&gt;   2006 2005  -0.0028     0.0199       -0.0555      0.0499  
-#&gt;   2006 2006  -0.0046     0.0190       -0.0551      0.0459  
-#&gt;   2006 2007  -0.0412     0.0219       -0.0992      0.0168  
-#&gt;   2007 2004   0.0305     0.0158       -0.0113      0.0724  
-#&gt;   2007 2005  -0.0027     0.0165       -0.0465      0.0411  
-#&gt;   2007 2006  -0.0311     0.0179       -0.0784      0.0162  
-#&gt;   2007 2007  -0.0261     0.0163       -0.0692      0.0171  
-#&gt; ---
-#&gt; Signif. codes: `*' confidence band does not cover 0
-#&gt; 
-#&gt; P-value for pre-test of parallel trends assumption:  0.16812
-#&gt; Control Group:  Never Treated,  Anticipation Periods:  0
-#&gt; Estimation Method:  Doubly Robust</div><div class='input'>
-</div></pre>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Call:</span>
+<span class='co'>#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
+<span class='co'>#&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta)</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Group-Time Average Treatment Effects:</span>
+<span class='co'>#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
+<span class='co'>#&gt;   2004 2004  -0.0145     0.0233       -0.0772      0.0481  </span>
+<span class='co'>#&gt;   2004 2005  -0.0764     0.0295       -0.1560      0.0031  </span>
+<span class='co'>#&gt;   2004 2006  -0.1404     0.0359       -0.2371     -0.0437 *</span>
+<span class='co'>#&gt;   2004 2007  -0.1069     0.0338       -0.1979     -0.0159 *</span>
+<span class='co'>#&gt;   2006 2004  -0.0005     0.0202       -0.0550      0.0540  </span>
+<span class='co'>#&gt;   2006 2005  -0.0062     0.0192       -0.0579      0.0455  </span>
+<span class='co'>#&gt;   2006 2006   0.0010     0.0203       -0.0536      0.0555  </span>
+<span class='co'>#&gt;   2006 2007  -0.0413     0.0196       -0.0940      0.0114  </span>
+<span class='co'>#&gt;   2007 2004   0.0267     0.0142       -0.0115      0.0649  </span>
+<span class='co'>#&gt;   2007 2005  -0.0046     0.0163       -0.0486      0.0394  </span>
+<span class='co'>#&gt;   2007 2006  -0.0284     0.0186       -0.0784      0.0215  </span>
+<span class='co'>#&gt;   2007 2007  -0.0288     0.0168       -0.0739      0.0163  </span>
+<span class='co'>#&gt; ---</span>
+<span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; P-value for pre-test of parallel trends assumption:  0.23267</span>
+<span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
+<span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
+</pre><p></div></p>
+<p><strong>Specify comparison units:</strong><div class="r"></p><pre><span class='va'>out3</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+               tname<span class='op'>=</span><span class='st'>"year"</span>,
+               idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
+               gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
+               xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,
+               control_group <span class='op'>=</span> <span class='st'>"notyettreated"</span>,
+               data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
+<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>out3</span><span class='op'>)</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Call:</span>
+<span class='co'>#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
+<span class='co'>#&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta, control_group = "notyettreated")</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; Group-Time Average Treatment Effects:</span>
+<span class='co'>#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
+<span class='co'>#&gt;   2004 2004  -0.0212     0.0233       -0.0818      0.0394  </span>
+<span class='co'>#&gt;   2004 2005  -0.0816     0.0288       -0.1565     -0.0067 *</span>
+<span class='co'>#&gt;   2004 2006  -0.1382     0.0373       -0.2351     -0.0413 *</span>
+<span class='co'>#&gt;   2004 2007  -0.1069     0.0330       -0.1927     -0.0211 *</span>
+<span class='co'>#&gt;   2006 2004  -0.0075     0.0221       -0.0649      0.0500  </span>
+<span class='co'>#&gt;   2006 2005  -0.0046     0.0188       -0.0535      0.0443  </span>
+<span class='co'>#&gt;   2006 2006   0.0087     0.0184       -0.0392      0.0565  </span>
+<span class='co'>#&gt;   2006 2007  -0.0413     0.0203       -0.0940      0.0114  </span>
+<span class='co'>#&gt;   2007 2004   0.0269     0.0146       -0.0111      0.0650  </span>
+<span class='co'>#&gt;   2007 2005  -0.0042     0.0156       -0.0448      0.0364  </span>
+<span class='co'>#&gt;   2007 2006  -0.0284     0.0183       -0.0760      0.0191  </span>
+<span class='co'>#&gt;   2007 2007  -0.0288     0.0165       -0.0717      0.0141  </span>
+<span class='co'>#&gt; ---</span>
+<span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
+<span class='co'>#&gt; </span>
+<span class='co'>#&gt; P-value for pre-test of parallel trends assumption:  0.23326</span>
+<span class='co'>#&gt; Control Group:  Not Yet Treated,  Anticipation Periods:  0</span>
+<span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
+</pre><p></div></p>
+    <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
+
+    <p>Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics <a href='https://arxiv.org/abs/1803.09015'>https://arxiv.org/abs/1803.09015</a> (2020).</p>
+
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

@@ -77,7 +77,7 @@ an AGGTEobj
 }
 \description{
 Objects of this class hold results on aggregated
- group-time average treatment effects
+group-time average treatment effects
 
 An object for holding aggregated treatment effect parameters.
 }

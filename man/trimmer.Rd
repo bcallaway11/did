@@ -53,7 +53,7 @@ list of ids of observations that likely violate support conditions
 }
 \description{
 A utility function to find observations that appear
- to violate support conditions.  This function is not called
- anywhere in the code, but it is just useful for debugging some
- common issues that users run into.
+to violate support conditions.  This function is not called
+anywhere in the code, but it is just useful for debugging some
+common issues that users run into.
 }
