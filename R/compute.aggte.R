@@ -135,7 +135,9 @@ compute.aggte <- function(MP,
   # function to switch between "original"
   #  t values and new t values
   orig2t <- function(orig) {
-    c(uniquet,0)[which(unique(c(originalt,0))==orig)]
+    new_t <- c(uniquet,0)[which(unique(c(originalt,0))==orig)]
+    out <- ifelse(length(new_t) == 0, NA, new_t)
+    out
   }
   t <- sapply(originalt, orig2t)
   group <- sapply(originalgroup, orig2t)
@@ -552,12 +554,12 @@ wif <- function(keepers, pg, weights.ind, G, group) {
 
   # effect of estimating weights in the numerator
   if1 <- sapply(keepers, function(k) {
-    (weights.ind * 1*(G==group[k]) - pg[k]) /
+    (weights.ind * 1*isTRUE(G==group[k]) - pg[k]) /
       sum(pg[keepers])
   })
   # effect of estimating weights in the denominator
   if2 <- rowSums( sapply( keepers, function(k) {
-    weights.ind*1*(G==group[k]) - pg[k]
+    weights.ind*1*isTRUE(G==group[k]) - pg[k]
   })) %*%
     t(pg[keepers]/(sum(pg[keepers])^2))
 
