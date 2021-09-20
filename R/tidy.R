@@ -64,15 +64,15 @@ tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "group"){
     out <- data.frame(
       type     = x$type,
-      term = paste0('ATT(', x$egt, ")"),
-      group    = x$egt,
-      estimate  = x$att.egt,
-      std.error = x$se.egt,
-      conf.low  = x$att.egt - x$crit.val.egt * x$se.egt,
-      conf.high = x$att.egt + x$crit.val.egt * x$se.egt,
-      point.conf.low  = x$att.egt - stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt,
-      point.conf.high = x$att.egt + stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt)
-  }
+      term = c(paste0('ATT(Average)'), paste0('ATT(', x$egt, ")")),
+      group    = c('Average', x$egt),
+      estimate  = c(x$overall.att, x$att.egt),
+      std.error = c(x$overall.se, x$se.egt),
+      conf.low  = c(x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se, x$att.egt - x$crit.val.egt * x$se.egt),
+      conf.high = c(x$overall.att + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se, x$att.egt + x$crit.val.egt * x$se.egt),
+      point.conf.low  = c(x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se, x$att.egt - stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt),
+      point.conf.high = c(x$overall.att + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,x$att.egt + stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt))
+     }
   
   if(x$type == "calendar"){
     out <- data.frame(
