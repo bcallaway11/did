@@ -145,7 +145,7 @@ treatment effect heterogeneity and dynamics.
 See Callaway and Sant'Anna (2020) for a detailed description.
 }
 \section{Examples:}{
-\strong{Basic \code{\link[=att_gt]{att_gt()}} call:}\if{html}{\out{<div class="r">}}\preformatted{# Example data
+\strong{Basic \code{\link[=att_gt]{att_gt()}} call:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{# Example data
 data(mpdta)
 
 out1 <- att_gt(yname="lemp",
@@ -160,22 +160,22 @@ summary(out1)
 #> att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
 #>     gname = "first.treat", xformla = NULL, data = mpdta)
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0248       -0.0746      0.0536  
-#>   2004 2005  -0.0704     0.0321       -0.1534      0.0125  
-#>   2004 2006  -0.1373     0.0378       -0.2350     -0.0396 *
-#>   2004 2007  -0.1008     0.0334       -0.1873     -0.0144 *
-#>   2006 2004   0.0065     0.0244       -0.0566      0.0696  
-#>   2006 2005  -0.0028     0.0209       -0.0568      0.0513  
-#>   2006 2006  -0.0046     0.0177       -0.0505      0.0413  
-#>   2006 2007  -0.0412     0.0205       -0.0941      0.0117  
-#>   2007 2004   0.0305     0.0164       -0.0120      0.0730  
-#>   2007 2005  -0.0027     0.0175       -0.0479      0.0424  
-#>   2007 2006  -0.0311     0.0184       -0.0788      0.0166  
-#>   2007 2007  -0.0261     0.0173       -0.0707      0.0186  
+#>   2004 2004  -0.0105     0.0245       -0.0766      0.0556  
+#>   2004 2005  -0.0704     0.0307       -0.1531      0.0123  
+#>   2004 2006  -0.1373     0.0369       -0.2368     -0.0377 *
+#>   2004 2007  -0.1008     0.0371       -0.2007     -0.0009 *
+#>   2006 2004   0.0065     0.0236       -0.0570      0.0701  
+#>   2006 2005  -0.0028     0.0205       -0.0580      0.0525  
+#>   2006 2006  -0.0046     0.0183       -0.0538      0.0446  
+#>   2006 2007  -0.0412     0.0206       -0.0967      0.0143  
+#>   2007 2004   0.0305     0.0158       -0.0121      0.0731  
+#>   2007 2005  -0.0027     0.0163       -0.0467      0.0413  
+#>   2007 2006  -0.0311     0.0181       -0.0799      0.0177  
+#>   2007 2007  -0.0261     0.0168       -0.0713      0.0192  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -184,7 +184,7 @@ summary(out1)
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{Using covariates:}\if{html}{\out{<div class="r">}}\preformatted{out2 <- att_gt(yname="lemp",
+\strong{Using covariates:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{out2 <- att_gt(yname="lemp",
                tname="year",
                idname="countyreal",
                gname="first.treat",
@@ -196,22 +196,22 @@ summary(out2)
 #> att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
 #>     gname = "first.treat", xformla = ~lpop, data = mpdta)
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
-#>   2004 2004  -0.0145     0.0233       -0.0739      0.0448  
-#>   2004 2005  -0.0764     0.0307       -0.1548      0.0020  
-#>   2004 2006  -0.1404     0.0369       -0.2345     -0.0464 *
-#>   2004 2007  -0.1069     0.0350       -0.1961     -0.0177 *
-#>   2006 2004  -0.0005     0.0227       -0.0583      0.0574  
-#>   2006 2005  -0.0062     0.0179       -0.0520      0.0396  
-#>   2006 2006   0.0010     0.0195       -0.0488      0.0507  
-#>   2006 2007  -0.0413     0.0209       -0.0947      0.0121  
-#>   2007 2004   0.0267     0.0144       -0.0101      0.0636  
-#>   2007 2005  -0.0046     0.0163       -0.0461      0.0370  
-#>   2007 2006  -0.0284     0.0179       -0.0740      0.0171  
-#>   2007 2007  -0.0288     0.0165       -0.0709      0.0134  
+#>   2004 2004  -0.0145     0.0237       -0.0791      0.0500  
+#>   2004 2005  -0.0764     0.0304       -0.1592      0.0064  
+#>   2004 2006  -0.1404     0.0390       -0.2466     -0.0342 *
+#>   2004 2007  -0.1069     0.0365       -0.2064     -0.0074 *
+#>   2006 2004  -0.0005     0.0221       -0.0607      0.0598  
+#>   2006 2005  -0.0062     0.0176       -0.0542      0.0418  
+#>   2006 2006   0.0010     0.0205       -0.0548      0.0568  
+#>   2006 2007  -0.0413     0.0189       -0.0927      0.0101  
+#>   2007 2004   0.0267     0.0145       -0.0129      0.0663  
+#>   2007 2005  -0.0046     0.0158       -0.0476      0.0384  
+#>   2007 2006  -0.0284     0.0174       -0.0758      0.0189  
+#>   2007 2007  -0.0288     0.0165       -0.0737      0.0161  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -220,7 +220,7 @@ summary(out2)
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{Specify comparison units:}\if{html}{\out{<div class="r">}}\preformatted{out3 <- att_gt(yname="lemp",
+\strong{Specify comparison units:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{out3 <- att_gt(yname="lemp",
                tname="year",
                idname="countyreal",
                gname="first.treat",
@@ -233,22 +233,22 @@ summary(out3)
 #> att_gt(yname = "lemp", tname = "year", idname = "countyreal", 
 #>     gname = "first.treat", xformla = ~lpop, data = mpdta, control_group = "notyettreated")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
-#>   2004 2004  -0.0212     0.0216       -0.0787      0.0363  
-#>   2004 2005  -0.0816     0.0268       -0.1530     -0.0102 *
-#>   2004 2006  -0.1382     0.0357       -0.2333     -0.0431 *
-#>   2004 2007  -0.1069     0.0331       -0.1951     -0.0187 *
-#>   2006 2004  -0.0075     0.0231       -0.0689      0.0540  
-#>   2006 2005  -0.0046     0.0198       -0.0573      0.0482  
-#>   2006 2006   0.0087     0.0166       -0.0355      0.0528  
-#>   2006 2007  -0.0413     0.0210       -0.0972      0.0146  
-#>   2007 2004   0.0269     0.0148       -0.0125      0.0664  
-#>   2007 2005  -0.0042     0.0155       -0.0454      0.0370  
-#>   2007 2006  -0.0284     0.0169       -0.0734      0.0165  
-#>   2007 2007  -0.0288     0.0167       -0.0732      0.0156  
+#>   2004 2004  -0.0212     0.0244       -0.0850      0.0427  
+#>   2004 2005  -0.0816     0.0296       -0.1591     -0.0041 *
+#>   2004 2006  -0.1382     0.0365       -0.2339     -0.0425 *
+#>   2004 2007  -0.1069     0.0330       -0.1933     -0.0205 *
+#>   2006 2004  -0.0075     0.0217       -0.0643      0.0493  
+#>   2006 2005  -0.0046     0.0187       -0.0537      0.0445  
+#>   2006 2006   0.0087     0.0171       -0.0363      0.0536  
+#>   2006 2007  -0.0413     0.0200       -0.0937      0.0112  
+#>   2007 2004   0.0269     0.0143       -0.0105      0.0644  
+#>   2007 2005  -0.0042     0.0145       -0.0423      0.0339  
+#>   2007 2006  -0.0284     0.0183       -0.0763      0.0194  
+#>   2007 2007  -0.0288     0.0166       -0.0724      0.0148  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

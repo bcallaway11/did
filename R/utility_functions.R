@@ -7,6 +7,8 @@
 #'
 #' @param g is a particular group (below I pass in 2009)
 #' @inheritParams att_gt
+#' @param threshold the cutoff for which observations are flagged as
+#'  likely violators of the support condition.
 #'
 #' @return list of ids of observations that likely violate support conditions
 #' 

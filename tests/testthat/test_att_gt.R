@@ -1,0 +1,402 @@
+library(DRDID)
+library(BMisc)
+library(ggplot2)
+library(ggpubr)
+
+
+## -----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+# test each estimation method with panel data
+# Expected results: treatment effects = 1, p-value for pre-test
+# uniformly distributed, ipw model is incorectly specified here
+#-----------------------------------------------------------------------------
+test_that("att_gt works w/o dynamics, time effects, or group effects", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+
+  # dr
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="dr")
+  # reg
+  res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="reg")
+
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+  expect_equal(res_reg$att[1], 1, tol=.5)
+})
+
+
+test_that("att_gt works using ipw", {
+  sp <- reset.sim()
+  data <- build_ipw_dataset(sp)
+
+  # dr
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr")
+
+
+  # ipw
+  res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method="ipw")
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+  expect_equal(res_ipw$att[1], 1, tol=.5)
+})
+
+test_that("two period case", {
+  sp <- reset.sim(time.periods=2)
+  data <- build_sim_dataset(sp)
+
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="ipw")
+
+  agg_simple <- aggte(res, type="simple")
+  agg_group <- aggte(res, type="group")
+  agg_dynamic <- aggte(res, type="dynamic")
+  agg_calendar <- aggte(res, type="calendar")
+
+  expect_equal(agg_simple$overall.att, 1, tol=.5)
+  expect_equal(agg_group$overall.att, 1, tol=.5)
+  expect_equal(agg_dynamic$overall.att, 1, tol=.5)
+  expect_equal(agg_calendar$overall.att, 1, tol=.5)
+})
+
+test_that("no covariates case", {
+  time.periods <- 4
+  sp <- reset.sim(time.periods=time.periods)
+  
+  # no effect of covariates
+  sp$bett <- sp$betu <- rep(0,time.periods)
+  data <- build_sim_dataset(sp)
+
+  res_dr <- att_gt(yname="Y", xformla=~1, data=data, tname="period", idname="id",
+                gname="G", est_method="dr")
+
+  res_reg <- att_gt(yname="Y", xformla=~1, data=data, tname="period", idname="id",
+                gname="G", est_method="reg")
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+  expect_equal(res_reg$att[1], 1, tol=.5)
+})
+
+test_that("repeated cross section", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp, panel=FALSE)
+
+  # dr
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr", panel=FALSE)
+
+  # reg
+  res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                    gname="G", est_method="reg", panel=FALSE)
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+  expect_equal(res_reg$att[1], 1, tol=.5)
+})
+
+
+test_that("ipw repeated cross sections", {
+  sp <- reset.sim()
+  data <- build_ipw_dataset(sp, panel=FALSE)
+
+  # dr
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method="dr", panel=FALSE)
+  
+
+  #ipw
+  res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="ipw", panel=FALSE)
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+  expect_equal(res_ipw$att[1], 1, tol=.5)
+})
+
+
+test_that("repeated cross sections dynamic effects", {
+  time.periods <- 4
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te.e <- 1:time.periods
+  data <- build_sim_dataset(sp, panel=FALSE)
+
+  # dr
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr", panel=FALSE)
+  
+
+  agg_dynamic <- aggte(res_dr, type="dynamic")
+  agg_idx <- agg_dynamic$egt==2
+
+  expect_equal(agg_dynamic$att.egt[agg_idx], 3, tol=.5)
+})
+
+test_that("unbalanced panel", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  # drop second row to create unbalanced panel
+  data <- data[-2,]
+
+  # dr
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method="dr", allow_unbalanced_panel=TRUE)
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+
+  expect_warning(att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method="dr", allow_unbalanced_panel=FALSE))
+
+  # ipw version
+  sp <- reset.sim()
+  data <- build_ipw_dataset(sp)
+  data <- data[-2,]
+
+  res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method="ipw", allow_unbalanced_panel=TRUE)
+
+  expect_equal(res_dr$att[1], 1, tol=.5)
+
+  # unbalanced paenl without providing id, should error
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  data <- data[sample(1:nrow(data),  size=floor(.9*nrow(data))),]
+
+  expect_error(att_gt(yname="Y", xformla=~X, data=data, tname="period", idname=NULL,
+                      gname="G", est_method="reg", panel=TRUE, allow_unbalanced_panel=TRUE))
+})
+
+test_that("not yet treated comparison group", {
+  sp <- reset.sim()
+  data <- build_ipw_dataset(sp, panel=FALSE)
+
+  # dr
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="notyettreated", 
+                gname="G", est_method="dr", panel=FALSE)
+
+  expect_equal(res$att[1], 1, tol=.5)
+
+  # no never treated group
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  data <- subset(data, G > 0) # drop nevertreated
+
+  # dr
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="notyettreated",
+                gname="G", est_method="dr", panel=FALSE)
+  expect_equal(res$att[1], 1, tol=.5)
+
+
+  # try to use never treated group as comparison group, should error
+  expect_error(att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                      control_group="nevertreated",
+                      gname="G", est_method="dr", panel=FALSE))
+
+})
+
+test_that("aggregations", {
+
+  # dynamic effects
+  time.periods <- 4
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te <- 0
+  sp$te.e <- 1:time.periods
+  data <- build_sim_dataset(sp)
+
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="nevertreated",
+                gname="G", est_method="reg", panel=FALSE)
+  
+  agg_dynamic <- aggte(res, type="dynamic")
+  agg_idx <- agg_dynamic$egt==2
+
+  expect_equal(agg_dynamic$att.egt[agg_idx], 2, tol=.5)
+
+
+  # group effects
+
+  time.periods <- 4
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te <- 0
+  sp$te.bet.ind <- 1:time.periods
+  data <- build_ipw_dataset(sp, panel=FALSE)
+
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="nevertreated",
+                gname="G", est_method="ipw", panel=FALSE)
+
+  agg_group <- aggte(res, type="group")
+
+  expect_equal(agg_group$att.egt[2], 2*3, tol=.5)
+
+
+  # calendar time effects
+  time.periods <- 4
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te <- 0
+  sp$te.t <- sp$thet + 1:time.periods
+  data <- build_sim_dataset(sp, panel=FALSE)
+  
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="nevertreated",
+                gname="G", est_method="dr", panel=FALSE)
+  
+  agg_calendar <- aggte(res, type="calendar")
+  expect_equal(agg_calendar$att.egt[2], 2, tol=.5)
+
+
+  # balancing with respect to event time
+
+  sp <- reset.sim()
+  sp$te <- 0
+  sp$te.e <- 1:time.periods
+  sp$te.bet.ind <- 1:time.periods
+  data <- build_sim_dataset(sp)
+
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="nevertreated",
+                gname="G", est_method="dr", panel=FALSE)
+
+  
+  agg_dynamic <- aggte(res, type="dynamic")
+  agg_dynamic_balance <- aggte(res, type="dynamic", balance_e=1)
+
+  ad_idx <- which(agg_dynamic$egt == 1)
+  adb_idx <- which(agg_dynamic_balance$egt == 1)
+
+  expect_equal(agg_dynamic_balance$att.egt[adb_idx] - agg_dynamic_balance$att.egt[adb_idx-1], 1, tol=.5)
+})
+
+test_that("unequally spaced groups", {
+  time.periods <- 8
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te <- 0
+  sp$te.e <- 1:time.periods
+  data <- build_sim_dataset(sp)
+  keep.periods <- c(1,2,5,7)
+  data <- subset(data, G %in% c(0, keep.periods))
+  data <- subset(data, period %in% keep.periods)
+
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="nevertreated",
+                gname="G", est_method="reg", panel=FALSE)
+  res
+  res_dynamic <- aggte(res, type="dynamic")
+
+  agg_dynamic <- aggte(res, type="dynamic")
+  agg_idx <- agg_dynamic$egt==2
+
+  expect_equal(agg_dynamic$att.egt[agg_idx], 2, tol=.5)
+
+  agg_dynamic_balance <- aggte(res, type="dynamic", balance_e=0)
+  agg_idx2 <- which(agg_dynamic_balance$egt==0)
+  expect_equal(agg_dynamic_balance$att.egt[agg_idx], 1, tol=.5)
+})
+
+test_that("some units treated in first period", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  data <- subset(data, period >= 2)
+
+  expect_warning(att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                        control_group="nevertreated",
+                        gname="G", est_method="reg", panel=FALSE))
+})
+
+test_that("min and max length of exposures", {
+  sp$reset.sim()
+  sp$te <- 0
+  sp$te.e <- 1:time.periods
+  data <- build_sim_dataset(sp)
+
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                control_group="nevertreated",
+                gname="G", est_method="dr", panel=FALSE)
+  
+  agg_dynamic <- aggte(res, type="dynamic", min_e=-1, max_e=1)
+  agg_idx <- which(agg_dynamic$egt == 1)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 1)
+})
+
+
+test_that("anticipation", {
+  time.periods <- 5
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te <- 0
+  sp$te.e <- -1:(time.periods-2)
+  data <- build_sim_dataset(sp)
+  data$G <- data$G + 1 # add anticipation
+  
+  data <- subset(data, period < time.periods) # drop last period (due to way data is constructed)
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                idname="id",
+                control_group="nevertreated",
+                gname="G", est_method="dr",
+                anticipation=1
+                )
+
+  agg_dynamic <- aggte(res, type="dynamic")
+  agg_idx <- which(agg_dynamic$egt==2)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 2)
+
+  # incorrectly ignore anticipation
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                idname="id",
+                control_group="nevertreated",
+                gname="G", est_method="dr",
+                anticipation=0
+                )
+  agg_dynamic <- aggte(res, type="dynamic")
+  agg_idx <- which(agg_dynamic$egt==2)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 3)
+
+})
+
+test_that("significance level and uniform confidence bands", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+
+  # 5% significance level
+  res05 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                  gname="G", est_method="dr", alp=0.05)
+  # 1% significance level
+  res01 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                  gname="G", est_method="dr", alp=0.01)
+  # 5% pointwise
+  res_pw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                  gname="G", est_method="dr", alp=0.05, cband=FALSE)
+
+  expect_lte(res05$att[1] + res05$c*res05$se[1],
+             res01$att[1] + res01$c*res01$se[1])
+  expect_lte(res05$att[1] + res05$c*res05$se[1],
+             res_pw$att[1] + res_pw$c*res_pw$se[1])
+
+})
+
+test_that("malformed data", {
+
+  # some groups later than last treated period
+  # plus missing groups
+  time.periods <- 7
+  sp <- reset.sim(time.periods=time.periods)
+  data <- build_sim_dataset(sp)
+  data <- subset(data, period <= 4)
+  missingG_ids <- sample(unique(data$id), size=10)
+  data[data$id %in% missingG_ids,"G"] <- NA
+
+  expect_warning(att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method="dr"))
+  
+
+  #-----------------------------------------------------------------------------
+  # incorrectly specified id
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  
+  expect_error(att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="brant",
+                      gname="G", est_method="dr"))
+})
+
+  

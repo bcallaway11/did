@@ -1,0 +1,141 @@
+---
+title: "Tests that inference procedures are working correctly for ATT(g,t)"
+author: "Brantly Callaway and Pedro H.C. Sant&apos;Anna"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
+source("setup_sims.R")
+#fldr <- "~/Dropbox/did/R/"
+fldr <- "/Users/santanph/Dropbox/Co-authored Projects/did/R/"
+sapply(paste0(fldr,list.files(fldr)), source)
+remotes::install_github("pedrohcgs/DRDID")
+library(BMisc)
+library(ggplot2)
+library(gridExtra)
+
+ncl <- 1
+time.periods <- 4
+biters <- 200
+```
+
+# Inference Test Results
+
+These are relatively slow (there not that slow though) simulations to test if the inference procedures in the `did` package are working correctly.
+
+```{r}
+#-----------------------------------------------------------------------------
+# check if repeated cross section inference with Wald pre-tests are working
+#-----------------------------------------------------------------------------
+reset.sim()
+te <- 1
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="Wpval", panel=FALSE), cl=ncl)
+mean( bout )
+# expect to reject about 5% of the time
+```
+
+```{r}
+#-----------------------------------------------------------------------------
+# check if uniform confidence bands are working
+#-----------------------------------------------------------------------------
+reset.sim()
+te <- 0
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="cband", bstrap=TRUE, cband=TRUE, panel=FALSE), cl=ncl)
+mean( bout )
+# expect to cover all about 95% of the time
+```
+
+```{r}
+#-----------------------------------------------------------------------------
+# check if simple att is working
+#-----------------------------------------------------------------------------
+reset.sim()
+te <- 0
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="simple"), cl=ncl)
+mean(bout)
+# expect to reject that simple att = 0 about 5% of the time
+```
+
+```{r}
+#-----------------------------------------------------------------------------
+# check if dynamic effects are working
+#-----------------------------------------------------------------------------
+reset.sim()
+te <- 0
+te.e <- 1:time.periods
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="dynamic",
+                                                    bstrap=TRUE,
+                                                    cband=TRUE), cl=ncl)
+mean(bout)
+# expect to cover the truth about 95% of the time
+```
+
+```{r}
+#-----------------------------------------------------------------------------
+# check not yet treated as control
+#-----------------------------------------------------------------------------
+reset.sim()
+te <- 0
+bout <- pbapply::pbsapply(1:biters, function(b) sim(ret="notyettreated", control.group="notyettreated"), cl=ncl)
+mean( bout )
+# should reject about 5% of the time
+```
+
+```{r}
+#-----------------------------------------------------------------------------
+# test inference when dropping some event times
+# should reject about 5\%
+#-----------------------------------------------------------------------------
+time.periods <- 4
+reset.sim()
+te <- 0
+te.e <- 1:time.periods
+
+sim_dyn_pan <- function() {
+  this_data <- build_sim_dataset()
+  res <- att_gt(yname="Y", xformla=~X, data=this_data, tname="period", idname="id",
+                gname="G", est_method="dr")
+  dyn.res <- aggte(res, type="dynamic", min_e=-1)
+  # pre-test
+
+  t_stat <- dyn.res$att[1] / dyn.res$se.egt[1]
+  abs(t_stat) > qnorm(.975)
+}
+
+bout <- pbapply::pbsapply(1:biters, function(b) sim_dyn_pan(), cl=ncl)
+mean(bout)
+```
+
+```{r}
+#-----------------------------------------------------------------------------
+# check inference for unbalanced panel
+# should cover about 95% of the time
+#-----------------------------------------------------------------------------
+time.periods <- 4
+reset.sim()
+te <- 0
+
+
+sim_unb_pan <- function() {
+  this_data <- build_sim_dataset()
+  this_data <- this_data[sample(1:nrow(this_data),  size=floor(.9*nrow(this_data))),]
+  res <- att_gt(yname="Y", xformla=~X, data=this_data, tname="period", idname="id",
+                gname="G", est_method="reg", 
+                panel=TRUE, allow_unbalanced_panel=TRUE)
+  cu <- res$att + res$c * sqrt(diag(res$V))/sqrt(res$n)
+  cl <- res$att - res$c * sqrt(diag(res$V))/sqrt(res$n)
+  covers0 <- 1*(all( (cu > 0) & (cl < 0)))
+  covers0
+}
+
+bout <- pbapply::pbsapply(1:biters, function(b) sim_unb_pan(), cl=ncl)
+mean(bout)
+```

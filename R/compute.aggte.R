@@ -579,8 +579,8 @@ wif <- function(keepers, pg, weights.ind, G, group) {
 #'  (matrix)
 #' @param whichones which elements of att will be used to compute the aggregated
 #'  treatment effect parameter
-#' @param weights.agg the weights to apply to each element of att[whichones];
-#'  should have the same dimension as att[whichones]
+#' @param weights.agg the weights to apply to each element of att(whichones);
+#'  should have the same dimension as att(whichones)
 #' @param wif extra influence function term coming from estimating the weights;
 #'  should be n x k matrix where k is dimension of whichones
 #'

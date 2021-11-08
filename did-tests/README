@@ -1,0 +1,22 @@
+Running test cases:
+
+- Either step through R markdown files directly (useful when writing new code)
+
+- Create html file by running `rmarkdown::render` on each .Rmd file in the folder; results shoud be easy to interpret
+
+
+Description of files in `tests` folder:
+
+- att_gt_point_estimate_tests.Rmd -- These are detailed simulations that our point estimates appear to be correct.  They run relatively quickly and are a good way to quickly to test code.
+
+- att_gt_inference_tests.Rmd -- These are simulations to test the inference procedures of our approach (but do not include tests of the conditional moment pre-testing functions).  Therefore, these should be run, at least before releasing a new version of the package.
+
+- pretest_tests.Rmd -- These simulations are extremely slow.  They test the conditional pre-testing functions.  These functions do have some dependencies on the main code, but the dependencies are small.  These simulations only need to be run when changes to conditional pre-testing code have been made.
+
+- setup_sims.R -- Contains functions for building datasets used in the simulations.
+
+- fast_sims.R -- can be deleted (migrated to R markdown version)
+
+- slow_sims.R -- can be deleted (migrated to R markdown version)
+
+- pretest_sims.R -- can be deleted (migrated to R markdown version)

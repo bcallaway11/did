@@ -1,18 +1,36 @@
-reset.sim <- function(time.periods=NULL) {
+#' @title reset.sim
+#' @description a function to create a "reasonable" set of parameters
+#'  to create simulated panel data that obeys a parallel trends assumption.
+#'  In particular, it provides parameters where the the effect of participating
+#'  in the treatment is equal to one in all post-treatment time periods.
+#' 
+#'  After calling this function, the user can change particular values of the
+#'  parameters in order to generate dynamics, heterogeneous effects across
+#'  groups, etc.
+#'
+#' @param time.periods The number of time periods to include
+#' @param n The total number of observations
+#' @param p The probability of being treated
+#'
+#' @return list of simulation parameters
+#' 
+#' @keywords internal
+#' @export
+reset.sim <- function(time.periods=4, n=5000, p=0.5) {
   #-----------------------------------------------------------------------------
   # set parameters
   #-----------------------------------------------------------------------------
   # number of time periods
-  if (is.null(time.periods)) time.periods=4
-
   # number of treated units
-  nt <- 4000
+  n <- 5000
+  p <- 0.5
+  nt <- rbinom(1, n, p)
   # coefficient on X 
   bett <- seq(1:time.periods)
   # time fixed effect
   thet <- seq(1:time.periods)
   # number of untreated units
-  nu <- 4000
+  nu <- n - nt
   # time fixed effect
   theu <- thet # changing this creates violations of parallel trends
   # covariate effect
@@ -28,7 +46,7 @@ reset.sim <- function(time.periods=NULL) {
   #-----------------------------------------------------------------------------
   # extra parameters for an ipw sim (otherwise, these are not used)
   #-----------------------------------------------------------------------------
-  n <- 4000
+  # this ignores p from earlier and just
   # these are parameters in generalized propensity score
   # don't make them too big otherwise can get divide by 0
   gamG <- c(0,1:time.periods)/(2*time.periods)
@@ -58,6 +76,7 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   time.periods <- sp_list$time.periods
   nt <- sp_list$nt
   bett <- sp_list$bett
+  thet=sp_list$thet
   nu <- sp_list$nu
   theu <- sp_list$theu
   betu <- sp_list$betu
@@ -150,12 +169,27 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
 
 
 
-build_ipw_dataset <- function(panel=TRUE) {
+build_ipw_dataset <- function(sp_list, panel=TRUE) {
 
   #-----------------------------------------------------------------------------
   # build dataset
   # build things up from the generalized propensity score
   #-----------------------------------------------------------------------------
+  time.periods <- sp_list$time.periods
+  nt <- sp_list$nt
+  bett <- sp_list$bett
+  thet=sp_list$thet
+  nu <- sp_list$nu
+  theu <- sp_list$theu
+  betu <- sp_list$betu
+  te.bet.ind <- sp_list$te.bet.ind
+  te.bet.X <- sp_list$te.bet.X
+  te.t <- sp_list$te.t
+  te.e <- sp_list$te.e
+  te <- sp_list$te
+  n <- sp_list$n
+  gamG <- sp_list$gamG
+  
   X <- rnorm(n)
 
   pr <- exp(outer(X,gamG)) / apply( exp(outer(X,gamG)), 1, sum)

@@ -47,6 +47,9 @@ in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
 participated yet.}
+
+\item{threshold}{the cutoff for which observations are flagged as
+likely violators of the support condition.}
 }
 \value{
 list of ids of observations that likely violate support conditions

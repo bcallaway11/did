@@ -86,7 +86,7 @@ and "calendar."
 \section{Examples}{
 
 
-Initial ATT(g,t) estimates from \code{\link[=att_gt]{att_gt()}}\if{html}{\out{<div class="r">}}\preformatted{data(mpdta)
+Initial ATT(g,t) estimates from \code{\link[=att_gt]{att_gt()}}\if{html}{\out{<div class="sourceCode r">}}\preformatted{data(mpdta)
 out <- att_gt(yname="lemp",
                tname="year",
                idname="countyreal",
@@ -97,16 +97,16 @@ out <- att_gt(yname="lemp",
 
 You can aggregate the ATT(g,t) in many ways.
 
-\strong{Overall ATT:}\if{html}{\out{<div class="r">}}\preformatted{aggte(out, type = "simple")
+\strong{Overall ATT:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "simple")
 #> 
 #> Call:
 #> aggte(MP = out, type = "simple")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> 
 #>    ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.04        0.0127    -0.0647     -0.0152 *
+#>  -0.04        0.0123    -0.0641     -0.0158 *
 #> 
 #> 
 #> ---
@@ -116,28 +116,28 @@ You can aggregate the ATT(g,t) in many ways.
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{Dynamic ATT (Event-Study):}\if{html}{\out{<div class="r">}}\preformatted{aggte(out, type = "dynamic")
+\strong{Dynamic ATT (Event-Study):}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "dynamic")
 #> 
 #> Call:
 #> aggte(MP = out, type = "dynamic")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> 
-#> Overall summary of ATT’s based on event-study/dynamic aggregation:  
+#> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0772        0.0208    -0.1181     -0.0364 *
+#>  -0.0772        0.0214    -0.1191     -0.0354 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0154       -0.0087      0.0697  
-#>          -2  -0.0006     0.0131       -0.0339      0.0328  
-#>          -1  -0.0245     0.0144       -0.0610      0.0121  
-#>           0  -0.0199     0.0116       -0.0493      0.0094  
-#>           1  -0.0510     0.0181       -0.0969     -0.0050 *
-#>           2  -0.1373     0.0375       -0.2324     -0.0421 *
-#>           3  -0.1008     0.0347       -0.1888     -0.0128 *
+#>          -3   0.0305     0.0150       -0.0092      0.0702  
+#>          -2  -0.0006     0.0136       -0.0365      0.0353  
+#>          -1  -0.0245     0.0144       -0.0624      0.0135  
+#>           0  -0.0199     0.0117       -0.0508      0.0110  
+#>           1  -0.0510     0.0165       -0.0944     -0.0075 *
+#>           2  -0.1373     0.0388       -0.2395     -0.0350 *
+#>           3  -0.1008     0.0365       -0.1970     -0.0046 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -145,24 +145,24 @@ You can aggregate the ATT(g,t) in many ways.
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{ATT for each group:}\if{html}{\out{<div class="r">}}\preformatted{aggte(out, type = "group")
+\strong{ATT for each group:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "group")
 #> 
 #> Call:
 #> aggte(MP = out, type = "group")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> 
-#> Overall summary of ATT’s based on group/cohort aggregation:  
+#> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.031        0.0123    -0.0552     -0.0068 *
+#>  -0.031        0.0129    -0.0563     -0.0057 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0308       -0.1483     -0.0112 *
-#>   2006  -0.0229     0.0164       -0.0593      0.0135  
-#>   2007  -0.0261     0.0175       -0.0651      0.0130  
+#>   2004  -0.0797     0.0263       -0.1392     -0.0203 *
+#>   2006  -0.0229     0.0166       -0.0604      0.0146  
+#>   2007  -0.0261     0.0182       -0.0670      0.0149  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -170,25 +170,25 @@ You can aggregate the ATT(g,t) in many ways.
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{ATT for each calendar year:}\if{html}{\out{<div class="r">}}\preformatted{aggte(out, type = "calendar")
+\strong{ATT for each calendar year:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "calendar")
 #> 
 #> Call:
 #> aggte(MP = out, type = "calendar")
 #> 
-#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015>, 2020. 
+#> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> 
-#> Overall summary of ATT’s based on calendar time aggregation:  
+#> Overall summary of ATT's based on calendar time aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0417        0.0173    -0.0755     -0.0079 *
+#>  -0.0417        0.0169    -0.0749     -0.0085 *
 #> 
 #> 
 #> Time Effects:
 #>  Time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>  2004  -0.0105     0.0236       -0.0656      0.0446  
-#>  2005  -0.0704     0.0312       -0.1434      0.0025  
-#>  2006  -0.0488     0.0200       -0.0955     -0.0021 *
-#>  2007  -0.0371     0.0142       -0.0702     -0.0039 *
+#>  2004  -0.0105     0.0238       -0.0644      0.0434  
+#>  2005  -0.0704     0.0323       -0.1435      0.0027  
+#>  2006  -0.0488     0.0185       -0.0906     -0.0070 *
+#>  2007  -0.0371     0.0140       -0.0688     -0.0053 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
