@@ -27,6 +27,7 @@ compute.att_gt <- function(dp) {
   xformla <- dp$xformla
   weightsname <- dp$weightsname
   est_method <- dp$est_method
+  base_period <- dp$base_period
   panel <- dp$panel
   true_repeated_cross_sections <- dp$true_repeated_cross_sections
   print_details <- dp$print_details
@@ -51,28 +52,37 @@ compute.att_gt <- function(dp) {
 
   # number of time periods
   tlist.length <- length(tlist)
+  tfac <- 0
+  
+  if (base_period != "universal") {
+    tlist.length <- tlist.length - 1
+    tfac <- 1
+  }
 
   # influence function
-  inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-1), sparse=TRUE)
+  inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-tfac), sparse=TRUE)
 
   # loop over groups
   for (g in 1:nG) {
 
     # loop over time periods
-    for (t in 1:(tlist.length-1)) {
+    for (t in 1:tlist.length) {
 
 
-      # set pre-treatment time period (this is updated later
-      # if g <= t (i.e. for "already treated" groups)
+      # varying base period
       pret <- t
 
+      # universal base period
+      if (base_period == "universal") {
+        # use same base period as for post-treatment periods
+        pret <- tail(which( (tlist+anticipation) < glist[g]),1)
+      }
+      
 
-      # code to update pre-treatment time periods
-      if ((glist[g]<=tlist[(t+1)])) {
+      # check if in post-treatment period
+      if ((glist[g]<=tlist[(t+tfac)])) {
 
-        # set an index for the pretreatment period
-        # this recovers the right pre-treatment period for this group
-        # it is the most recent pre-treatment period (g-1)
+        # most recent pre-treatment period (g-delta-1)
         pret <- tail(which( (tlist+anticipation) < glist[g]),1)
 
         # print a warning message if there are no pre-treatment period
@@ -80,15 +90,27 @@ compute.att_gt <- function(dp) {
           warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g], "\nUnits from this group are dropped"))
 
           # if there are not pre-treatment periods, code will
-          # break, jump out of this loop
+          # jump out of this loop
           break
         }
-
       }
+
+      
+      #-----------------------------------------------------------------------------
+      # if we are in period (g-1), normalize results to be equal to 0
+      # and break without computing anything
+      if (base_period == "universal") {
+        if (pret == tlist[(t+tfac)]) {
+          attgt.list[[counter]] <- list(att=0, group=glist[g], year=tlist[(t+tfac)], post=0)
+          inffunc[,counter] <- rep(0,n)
+          counter <- counter+1
+          next
+        }
+      }          
 
       # print the details of which iteration we are on
       if (print_details) {
-        cat(paste("current period:", tlist[(t+1)]), "\n")
+        cat(paste("current period:", tlist[(t+tfac)]), "\n")
         cat(paste("current group:", glist[g]), "\n")
         cat(paste("set pretreatment period to be", tlist[pret]), "\n")
       }
@@ -100,10 +122,10 @@ compute.att_gt <- function(dp) {
       #if (panel) {
 
       # post treatment dummy variable
-      post.treat <- 1*(glist[g]<=tlist[t+1])
+      post.treat <- 1*(glist[g]<=tlist[t+tfac])
 
       # get dataset with current period and pre-treatment period
-      disdat <- data[(data[,tname]==tlist[t+1] | data[,tname]==tlist[pret]),]
+      disdat <- data[(data[,tname]==tlist[t+tfac] | data[,tname]==tlist[pret]),]
 
       # kind of hack, but need it to count for repeated cross sections case
       thisdata <- data
@@ -121,10 +143,10 @@ compute.att_gt <- function(dp) {
         # that is, never treated + units that are eventually treated,
         # but not treated by the current period
         disdat$C <- 1 * ((disdat[,gname] == 0) |
-                           ((disdat[,gname] > tlist[t+1]) &
+                           ((disdat[,gname] > tlist[t+tfac]) &
                               (disdat[,gname] != glist[g])))
         thisdata$C <- 1*((thisdata[,gname] == 0) |
-                           ((thisdata[,gname] > tlist[t+1]) &
+                           ((thisdata[,gname] > tlist[t+tfac]) &
                               (thisdata[,gname] != glist[g])))
         thisdata$G <- 1*(thisdata[,gname] == glist[g])
       }
@@ -136,9 +158,9 @@ compute.att_gt <- function(dp) {
 
         # transform  disdat it into "cross-sectional" data where one of the columns
         # contains the change in the outcome over time.
-        # dy is computed as latest year - earliest year. "Y" is outcome
-        # in the pre period, "yt1" is outcome in the post period
-        disdat <- suppressWarnings(BMisc::panel2cs(disdat, yname, idname, tname))
+        # dy is computed as latest year - earliest year. 
+        #disdat <- suppressWarnings(BMisc::panel2cs(disdat, yname, idname, tname))
+        disdat <- BMisc::panel2cs2(disdat, yname, idname, tname)
 
         # still total number of units (not just included in G or C)
         n <- nrow(disdat)
@@ -155,9 +177,9 @@ compute.att_gt <- function(dp) {
         # give short names for data in this iteration
         G <- disdat$G
         C <- disdat$C
-        Ypre <- disdat$y
-        Ypost <- disdat$yt1
-        dy <- disdat$dy
+        # handle pre-treatmen universal base period differenctly
+        Ypre <- if(tlist[(t+tfac)] > pret) disdat$y0 else disdat$y1
+        Ypost <- if(tlist[(t+tfac)] > pret) disdat$y1 else disdat$y0
         n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
         w <- disdat$w
 
@@ -180,7 +202,7 @@ compute.att_gt <- function(dp) {
             preliminary_pscores <- predict(preliminary_logit, type="response")
             if (max(preliminary_pscores) >= 0.999) {
               pscore_problems_likely <- TRUE
-              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t+1]))
+              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t+tfac]))
             }
           }
 
@@ -190,12 +212,12 @@ compute.att_gt <- function(dp) {
             #if (determinant(t(control_covs)%*%control_covs, logarithm=FALSE)$modulus < .Machine$double.eps) {
             if ( rcond(t(control_covs)%*%control_covs) < .Machine$double.eps) {
               reg_problems_likely <- TRUE
-              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t+1], " to run specified regression"))
+              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t+tfac], " to run specified regression"))
             }
           }
 
           if (reg_problems_likely | pscore_problems_likely) {
-            attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+1)], post=post.treat)
+            attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+tfac)], post=post.treat)
             inffunc[,counter] <- NA
             counter <- counter+1
             next
@@ -252,19 +274,19 @@ compute.att_gt <- function(dp) {
         # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
         # with true repeated cross sections, but should pick up the right time periods
         # only with unbalanced panel
-        disidx <- (data$rowid %in% rightids) & ( (data[,tname] == tlist[t+1]) | (data[,tname]==tlist[pret]))
+        disidx <- (data$rowid %in% rightids) & ( (data[,tname] == tlist[t+tfac]) | (data[,tname]==tlist[pret]))
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- thisdata[disidx,]
 
         # drop missing factors
-        disdat <- base::droplevels(disdat)
+        disdat <- droplevels(disdat)
 
         # give short names for data in this iteration
         G <- disdat$G
         C <- disdat$C
         Y <- disdat$y
-        post <- 1*(disdat[,tname] == tlist[t+1])
+        post <- 1*(disdat[,tname] == tlist[t+tfac])
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
         w <- disdat$w
@@ -273,7 +295,7 @@ compute.att_gt <- function(dp) {
         # checks to make sure that we have enough observations
         skip_this_att_gt <- FALSE
         if ( sum(G*post) == 0 ) {
-          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t+1]))
+          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t+tfac]))
           skip_this_att_gt <- TRUE
         }
         if ( sum(G*(1-post)) == 0) {
@@ -281,7 +303,7 @@ compute.att_gt <- function(dp) {
           skip_this_att_gt <- TRUE
         }
         if (sum(C*post) == 0) {
-          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t+1]))
+          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t+tfac]))
           skip_this_att_gt <- TRUE
         }
         if (sum(C*(1-post)) == 0) {
@@ -290,7 +312,7 @@ compute.att_gt <- function(dp) {
         }
 
         if (skip_this_att_gt) {
-          attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+1)], post=post.treat)
+          attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+tfac)], post=post.treat)
           inffunc[,counter] <- NA
           counter <- counter+1
           next
@@ -352,7 +374,7 @@ compute.att_gt <- function(dp) {
       } #end panel if
 
       # save results for this att(g,t)
-      attgt.list[[counter]] <- list(att=attgt$ATT, group=glist[g], year=tlist[(t+1)], post=post.treat)
+      attgt.list[[counter]] <- list(att=attgt$ATT, group=glist[g], year=tlist[(t+tfac)], post=post.treat)
 
       # recover the influence function
       # start with vector of 0s because influence function
@@ -364,7 +386,7 @@ compute.att_gt <- function(dp) {
         inf.func[disidx] <- attgt$att.inf.func
       } else {
         # aggregate inf functions by id (order by id)
-        aggte_inffunc = base::suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
+        aggte_inffunc = suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
         disidx <- (unique(data$rowid) %in% aggte_inffunc[,1])
         inf.func[disidx] <- aggte_inffunc[,2]
       }

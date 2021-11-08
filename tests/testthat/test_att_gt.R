@@ -399,4 +399,31 @@ test_that("malformed data", {
                       gname="G", est_method="dr"))
 })
 
+test_that("varying or universal base period", {
+
+  time.periods <- 8
+  sp <- reset.sim(time.periods=time.periods)
+  sp$te <- 0
+  sp$te.e <- 1:time.periods
+  data <- build_sim_dataset(sp)
+  data <- subset(data, (G<=5) | G==0 )
+  # add pre-treatment effects 
+  data$G <- ifelse(data$G==0, 0, data$G+3)
   
+  
+  # dr
+  res_varying <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="dr", base_period="varying")
+
+  agg_dynamic_varying <- aggte(res_varying, type="dynamic")
+
+  res_universal <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                          gname="G", est_method="dr", base_period="universal")
+
+  agg_dynamic_universal <- aggte(res_universal, type="dynamic")
+
+  agg_idx <- which(agg_dynamic_varying$egt == -3)
+
+  expect_equal(agg_dynamic_varying$att.egt[agg_idx], 1, tol=.5)
+  expect_equal(agg_dynamic_universal$att.egt[agg_idx], -2, tol=.5)
+})

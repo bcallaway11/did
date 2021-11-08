@@ -1,3 +1,10 @@
+# did 2.1
+
+  * Support for *universal* base period
+  
+  * Moved from local testing to `testthat`
+
+
 # did 2.0.1
 
   * Improved plots
