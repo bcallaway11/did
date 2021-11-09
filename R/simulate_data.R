@@ -148,8 +148,7 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   df$id <- 1:nrow(df)
 
   # convert data from wide to long format
-  library(tidyr)
-  ddf <- gather(df, period, Y, -G, -X, -id)
+  ddf <- tidyr::gather(df, period, Y, -G, -X, -id)
   ddf$period <- as.numeric(ddf$period)
   ddf$treat <- 1*(ddf$G > 0)
   ddf <- ddf[order(ddf$id, ddf$period),] # reorder data
@@ -251,8 +250,7 @@ build_ipw_dataset <- function(sp_list, panel=TRUE) {
   df$id <- 1:nrow(df)
 
   # convert data from wide to long format
-  library(tidyr)
-  ddf <- gather(df, period, Y, -G, -X, -id)
+  ddf <- tidyr::gather(df, period, Y, -G, -X, -id)
   ddf$period <- as.numeric(ddf$period)
   ddf$treat <- 1*(ddf$G > 0)
   ddf <- ddf[order(ddf$id, ddf$period),] # reorder data
@@ -314,20 +312,20 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE, control.group="nevertreated
 
 }
 
-pretest_sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE,
-                        control.group="nevertreated", panel=TRUE, xformla=~X, cores=1) {
+## pretest_sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE,
+##                         control.group="nevertreated", panel=TRUE, xformla=~X, cores=1) {
 
-  ddf <- build_ipw_dataset(panel=panel)
+##   ddf <- build_ipw_dataset(panel=panel)
 
-  # get results
-  res <- conditional_did_pretest(yname="Y", xformla=xformla, data=ddf,
-                                 tname="period", idname="id",
-                                 first.treat.name="G", estMethod="ipw",
-                                 printdetails=FALSE,
-                                 bstrap=bstrap, cband=cband,
-                                 control.group=control.group,
-                                 panel=panel, 
-                                 pl=TRUE, cores=cores)
+##   # get results
+##   res <- conditional_did_pretest(yname="Y", xformla=xformla, data=ddf,
+##                                  tname="period", idname="id",
+##                                  first.treat.name="G", estMethod="ipw",
+##                                  printdetails=FALSE,
+##                                  bstrap=bstrap, cband=cband,
+##                                  control.group=control.group,
+##                                  panel=panel, 
+##                                  pl=TRUE, cores=cores)
 
-  res$CvMpval
-}
+##   res$CvMpval
+## }

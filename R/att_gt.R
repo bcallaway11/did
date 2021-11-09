@@ -102,11 +102,10 @@
 #'  t, but repeatedly changes the value of t)
 #'
 #'  A universal base period fixes the base period to always be
-#'  (g-delta-1) where delta is the number of periods of
-#'  treatment effect anticipation.  This does not compute
+#'  (g-anticipation-1).  This does not compute
 #'  pseudo-ATT(g,t)'s in pre-treatment periods, but rather
 #'  reports average changes in outcomes from period t to
-#'  (g-\delta-1) for a particular group relative to its comparison
+#'  (g-anticipation-1) for a particular group relative to its comparison
 #'  group.  This is analogous to what is often reported in event
 #'  study regressions.  
 #'

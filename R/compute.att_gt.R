@@ -100,7 +100,7 @@ compute.att_gt <- function(dp) {
       # if we are in period (g-1), normalize results to be equal to 0
       # and break without computing anything
       if (base_period == "universal") {
-        if (pret == tlist[(t+tfac)]) {
+        if (tlist[pret] == tlist[(t+tfac)]) {
           attgt.list[[counter]] <- list(att=0, group=glist[g], year=tlist[(t+tfac)], post=0)
           inffunc[,counter] <- rep(0,n)
           counter <- counter+1

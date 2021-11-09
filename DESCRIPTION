@@ -16,7 +16,8 @@ Imports:
     ggplot2,
     ggpubr,
     DRDID,
-    generics
+    generics,
+    tidyr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 VignetteBuilder: knitr
@@ -24,4 +25,5 @@ Suggests:
     rmarkdown,
     plm,
     here,
-    knitr
+    knitr,
+    covr

@@ -16,8 +16,7 @@ knitr::opts_chunk$set(
 library(did)
 library(ggpubr)
 data(mpdta)
-#fldr <- "~/Dropbox/did/R/"
-#sapply(paste0(fldr,list.files(fldr)), source)
+devtools::load_all("~/Dropbox/did")
 library(BMisc)
 ```
 # Difference-in-Differences <img src="man/figures/logo.png" align="right" alt="" width="155" />

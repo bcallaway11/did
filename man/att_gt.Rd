@@ -22,6 +22,7 @@ att_gt(
   biters = 1000,
   clustervars = NULL,
   est_method = "dr",
+  base_period = "varying",
   print_details = FALSE,
   pl = FALSE,
   cores = 1
@@ -124,6 +125,31 @@ The function can return other things as well, but these are
 the only two that are required. \code{est_method} is only used
 if covariates are included.}
 
+\item{base_period}{Whether to use a "varying" base period or a
+"universal" base period.  Either choice results in the same
+post-treatment estimates of ATT(g,t)'s.  In pre-treatment
+periods, using a varying base period amounts to computing a
+pseudo-ATT in each treatment period by comparing the change
+in outcomes for a particular group relative to its comparison
+group in the pre-treatment periods (i.e., in pre-treatment
+periods this setting computes changes from period t-1 to period
+t, but repeatedly changes the value of t)
+
+A universal base period fixes the base period to always be
+(g-anticipation-1).  This does not compute
+pseudo-ATT(g,t)'s in pre-treatment periods, but rather
+reports average changes in outcomes from period t to
+(g-anticipation-1) for a particular group relative to its comparison
+group.  This is analogous to what is often reported in event
+study regressions.
+
+Using a varying base period results in an estimate of
+ATT(g,t) being reported in the period immediately before
+treatment.  Using a universal base period normalizes the
+estimate in the period right before treatment (or earlier when
+the user allows for anticipation) to be equal to 0, but one
+extra estimate in an earlier period.}
+
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
 
@@ -164,18 +190,18 @@ summary(out1)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0245       -0.0766      0.0556  
-#>   2004 2005  -0.0704     0.0307       -0.1531      0.0123  
-#>   2004 2006  -0.1373     0.0369       -0.2368     -0.0377 *
-#>   2004 2007  -0.1008     0.0371       -0.2007     -0.0009 *
-#>   2006 2004   0.0065     0.0236       -0.0570      0.0701  
-#>   2006 2005  -0.0028     0.0205       -0.0580      0.0525  
-#>   2006 2006  -0.0046     0.0183       -0.0538      0.0446  
-#>   2006 2007  -0.0412     0.0206       -0.0967      0.0143  
-#>   2007 2004   0.0305     0.0158       -0.0121      0.0731  
-#>   2007 2005  -0.0027     0.0163       -0.0467      0.0413  
-#>   2007 2006  -0.0311     0.0181       -0.0799      0.0177  
-#>   2007 2007  -0.0261     0.0168       -0.0713      0.0192  
+#>   2004 2004  -0.0105     0.0247       -0.0752      0.0542  
+#>   2004 2005  -0.0704     0.0330       -0.1571      0.0162  
+#>   2004 2006  -0.1373     0.0390       -0.2395     -0.0350 *
+#>   2004 2007  -0.1008     0.0347       -0.1918     -0.0098 *
+#>   2006 2004   0.0065     0.0261       -0.0621      0.0751  
+#>   2006 2005  -0.0028     0.0197       -0.0546      0.0491  
+#>   2006 2006  -0.0046     0.0181       -0.0520      0.0428  
+#>   2006 2007  -0.0412     0.0196       -0.0927      0.0103  
+#>   2007 2004   0.0305     0.0160       -0.0115      0.0726  
+#>   2007 2005  -0.0027     0.0160       -0.0448      0.0393  
+#>   2007 2006  -0.0311     0.0174       -0.0769      0.0147  
+#>   2007 2007  -0.0261     0.0175       -0.0719      0.0198  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -200,18 +226,18 @@ summary(out2)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
-#>   2004 2004  -0.0145     0.0237       -0.0791      0.0500  
-#>   2004 2005  -0.0764     0.0304       -0.1592      0.0064  
-#>   2004 2006  -0.1404     0.0390       -0.2466     -0.0342 *
-#>   2004 2007  -0.1069     0.0365       -0.2064     -0.0074 *
-#>   2006 2004  -0.0005     0.0221       -0.0607      0.0598  
-#>   2006 2005  -0.0062     0.0176       -0.0542      0.0418  
-#>   2006 2006   0.0010     0.0205       -0.0548      0.0568  
-#>   2006 2007  -0.0413     0.0189       -0.0927      0.0101  
-#>   2007 2004   0.0267     0.0145       -0.0129      0.0663  
-#>   2007 2005  -0.0046     0.0158       -0.0476      0.0384  
-#>   2007 2006  -0.0284     0.0174       -0.0758      0.0189  
-#>   2007 2007  -0.0288     0.0165       -0.0737      0.0161  
+#>   2004 2004  -0.0145     0.0219       -0.0714      0.0424  
+#>   2004 2005  -0.0764     0.0330       -0.1621      0.0093  
+#>   2004 2006  -0.1404     0.0387       -0.2409     -0.0400 *
+#>   2004 2007  -0.1069     0.0364       -0.2015     -0.0123 *
+#>   2006 2004  -0.0005     0.0229       -0.0599      0.0589  
+#>   2006 2005  -0.0062     0.0197       -0.0575      0.0451  
+#>   2006 2006   0.0010     0.0190       -0.0484      0.0503  
+#>   2006 2007  -0.0413     0.0192       -0.0910      0.0084  
+#>   2007 2004   0.0267     0.0138       -0.0091      0.0626  
+#>   2007 2005  -0.0046     0.0158       -0.0456      0.0364  
+#>   2007 2006  -0.0284     0.0192       -0.0782      0.0213  
+#>   2007 2007  -0.0288     0.0168       -0.0724      0.0148  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -237,18 +263,18 @@ summary(out3)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
-#>   2004 2004  -0.0212     0.0244       -0.0850      0.0427  
-#>   2004 2005  -0.0816     0.0296       -0.1591     -0.0041 *
-#>   2004 2006  -0.1382     0.0365       -0.2339     -0.0425 *
-#>   2004 2007  -0.1069     0.0330       -0.1933     -0.0205 *
-#>   2006 2004  -0.0075     0.0217       -0.0643      0.0493  
-#>   2006 2005  -0.0046     0.0187       -0.0537      0.0445  
-#>   2006 2006   0.0087     0.0171       -0.0363      0.0536  
-#>   2006 2007  -0.0413     0.0200       -0.0937      0.0112  
-#>   2007 2004   0.0269     0.0143       -0.0105      0.0644  
-#>   2007 2005  -0.0042     0.0145       -0.0423      0.0339  
-#>   2007 2006  -0.0284     0.0183       -0.0763      0.0194  
-#>   2007 2007  -0.0288     0.0166       -0.0724      0.0148  
+#>   2004 2004  -0.0212     0.0218       -0.0777      0.0354  
+#>   2004 2005  -0.0816     0.0302       -0.1599     -0.0033 *
+#>   2004 2006  -0.1382     0.0370       -0.2339     -0.0425 *
+#>   2004 2007  -0.1069     0.0335       -0.1937     -0.0201 *
+#>   2006 2004  -0.0075     0.0230       -0.0671      0.0522  
+#>   2006 2005  -0.0046     0.0198       -0.0560      0.0468  
+#>   2006 2006   0.0087     0.0167       -0.0345      0.0518  
+#>   2006 2007  -0.0413     0.0200       -0.0932      0.0106  
+#>   2007 2004   0.0269     0.0144       -0.0105      0.0643  
+#>   2007 2005  -0.0042     0.0156       -0.0446      0.0362  
+#>   2007 2006  -0.0284     0.0193       -0.0784      0.0215  
+#>   2007 2007  -0.0288     0.0162       -0.0706      0.0131  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

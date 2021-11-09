@@ -106,7 +106,7 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> 
 #>    ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.04        0.0123    -0.0641     -0.0158 *
+#>  -0.04        0.0119    -0.0633     -0.0166 *
 #> 
 #> 
 #> ---
@@ -126,18 +126,18 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0772        0.0214    -0.1191     -0.0354 *
+#>  -0.0772        0.0194    -0.1153     -0.0392 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0150       -0.0092      0.0702  
-#>          -2  -0.0006     0.0136       -0.0365      0.0353  
-#>          -1  -0.0245     0.0144       -0.0624      0.0135  
-#>           0  -0.0199     0.0117       -0.0508      0.0110  
-#>           1  -0.0510     0.0165       -0.0944     -0.0075 *
-#>           2  -0.1373     0.0388       -0.2395     -0.0350 *
-#>           3  -0.1008     0.0365       -0.1970     -0.0046 *
+#>          -3   0.0305     0.0158       -0.0125      0.0735  
+#>          -2  -0.0006     0.0132       -0.0364      0.0353  
+#>          -1  -0.0245     0.0139       -0.0623      0.0134  
+#>           0  -0.0199     0.0120       -0.0525      0.0126  
+#>           1  -0.0510     0.0166       -0.0961     -0.0058 *
+#>           2  -0.1373     0.0351       -0.2327     -0.0418 *
+#>           3  -0.1008     0.0350       -0.1959     -0.0058 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -155,14 +155,14 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.031        0.0129    -0.0563     -0.0057 *
+#>  -0.031        0.0123    -0.0552     -0.0068 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0263       -0.1392     -0.0203 *
-#>   2006  -0.0229     0.0166       -0.0604      0.0146  
-#>   2007  -0.0261     0.0182       -0.0670      0.0149  
+#>   2004  -0.0797     0.0297       -0.1487     -0.0108 *
+#>   2006  -0.0229     0.0158       -0.0595      0.0137  
+#>   2007  -0.0261     0.0167       -0.0648      0.0127  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -180,15 +180,15 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on calendar time aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0417        0.0169    -0.0749     -0.0085 *
+#>  -0.0417        0.0167    -0.0745     -0.0089 *
 #> 
 #> 
 #> Time Effects:
 #>  Time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>  2004  -0.0105     0.0238       -0.0644      0.0434  
-#>  2005  -0.0704     0.0323       -0.1435      0.0027  
-#>  2006  -0.0488     0.0185       -0.0906     -0.0070 *
-#>  2007  -0.0371     0.0140       -0.0688     -0.0053 *
+#>  2004  -0.0105     0.0255       -0.0691      0.0481  
+#>  2005  -0.0704     0.0342       -0.1491      0.0083  
+#>  2006  -0.0488     0.0171       -0.0881     -0.0096 *
+#>  2007  -0.0371     0.0140       -0.0694     -0.0048 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

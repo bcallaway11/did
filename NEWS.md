@@ -1,5 +1,7 @@
 # did 2.1
 
+  * Simulation/testing code now exported
+
   * Support for *universal* base period
   
   * Moved from local testing to `testthat`

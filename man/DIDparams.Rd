@@ -23,6 +23,7 @@ DIDparams(
   pl = FALSE,
   cores = 1,
   est_method = "dr",
+  base_period = "varying",
   panel = TRUE,
   true_repeated_cross_sections,
   n = NULL,
@@ -123,6 +124,31 @@ covariates.  The function should return a list that includes
 The function can return other things as well, but these are
 the only two that are required. \code{est_method} is only used
 if covariates are included.}
+
+\item{base_period}{Whether to use a "varying" base period or a
+"universal" base period.  Either choice results in the same
+post-treatment estimates of ATT(g,t)'s.  In pre-treatment
+periods, using a varying base period amounts to computing a
+pseudo-ATT in each treatment period by comparing the change
+in outcomes for a particular group relative to its comparison
+group in the pre-treatment periods (i.e., in pre-treatment
+periods this setting computes changes from period t-1 to period
+t, but repeatedly changes the value of t)
+
+A universal base period fixes the base period to always be
+(g-anticipation-1).  This does not compute
+pseudo-ATT(g,t)'s in pre-treatment periods, but rather
+reports average changes in outcomes from period t to
+(g-anticipation-1) for a particular group relative to its comparison
+group.  This is analogous to what is often reported in event
+study regressions.
+
+Using a varying base period results in an estimate of
+ATT(g,t) being reported in the period immediately before
+treatment.  Using a universal base period normalizes the
+estimate in the period right before treatment (or earlier when
+the user allows for anticipation) to be equal to 0, but one
+extra estimate in an earlier period.}
 
 \item{panel}{Whether or not the data is a panel dataset.
 The panel dataset should be provided in long format -- that

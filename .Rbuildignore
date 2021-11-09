@@ -12,3 +12,5 @@
 ^doc$
 ^Meta$
 Icon?
+^codecov\.yml$
+^\.github$
