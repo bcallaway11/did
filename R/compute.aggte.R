@@ -554,12 +554,12 @@ wif <- function(keepers, pg, weights.ind, G, group) {
 
   # effect of estimating weights in the numerator
   if1 <- sapply(keepers, function(k) {
-    (weights.ind * 1*isTRUE(G==group[k]) - pg[k]) /
+    (weights.ind * 1*(G==group[k]) - pg[k]) /
       sum(pg[keepers])
   })
   # effect of estimating weights in the denominator
   if2 <- rowSums( sapply( keepers, function(k) {
-    weights.ind*1*isTRUE(G==group[k]) - pg[k]
+    weights.ind*1*(G==group[k]) - pg[k]
   })) %*%
     t(pg[keepers]/(sum(pg[keepers])^2))
 
