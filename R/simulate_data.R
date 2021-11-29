@@ -11,26 +11,34 @@
 #' @param time.periods The number of time periods to include
 #' @param n The total number of observations
 #' @param p The probability of being treated
+#' @param ipw If TRUE, sets parameters so that DGP is
+#'  compatible with recovering ATT(g,t)'s using IPW (i.e.,
+#'  where logit that just includes a linear term in X works).  If
+#'  FALSE, sets parameters that will be incompatible with IPW.
+#'  Either way, these parameters can be specified by the user
+#'  if so desired.
+#' @param reg If TRUE, sets parameters so that DGP is compatible
+#'  with recovering ATT(g,t)'s using regressions on untreated
+#'  untreated potential outcomes.  If FALSE, sets parameters that
+#'  will be incompatible with using regressions (i.e., regressions
+#'  that include only linear term in X).  Either way, these
+#'  paramters can be specified by the user if so desired.
 #'
 #' @return list of simulation parameters
 #' 
 #' @keywords internal
 #' @export
-reset.sim <- function(time.periods=4, n=5000, p=0.5) {
+reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
   #-----------------------------------------------------------------------------
   # set parameters
   #-----------------------------------------------------------------------------
   # number of time periods
   # number of treated units
   n <- 5000
-  p <- 0.5
-  nt <- rbinom(1, n, p)
   # coefficient on X 
   bett <- seq(1:time.periods)
   # time fixed effect
   thet <- seq(1:time.periods)
-  # number of untreated units
-  nu <- n - nt
   # time fixed effect
   theu <- thet # changing this creates violations of parallel trends
   # covariate effect
@@ -43,20 +51,14 @@ reset.sim <- function(time.periods=4, n=5000, p=0.5) {
   te.t <- thet # no calendar time effects
   te.e <- rep(0,time.periods) # no dynamic effects
   te <- 1 # overall basic effect
-  #-----------------------------------------------------------------------------
-  # extra parameters for an ipw sim (otherwise, these are not used)
-  #-----------------------------------------------------------------------------
-  # this ignores p from earlier and just
-  # these are parameters in generalized propensity score
+  # parameters in generalized propensity score
   # don't make them too big otherwise can get divide by 0
   gamG <- c(0,1:time.periods)/(2*time.periods)
 
   # return list of parameters
   list(time.periods=time.periods,
-       nt=nt,
        bett=bett,
        thet=thet,
-       nu=nu,
        theu=theu,
        betu=betu,
        te.bet.ind=te.bet.ind,
@@ -65,7 +67,10 @@ reset.sim <- function(time.periods=4, n=5000, p=0.5) {
        te.e=te.e,
        te=te,
        n=n,
-       gamG=gamG)
+       gamG=gamG,
+       ipw=ipw,
+       reg=reg
+       )
 }
 
 
@@ -87,22 +92,37 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   te <- sp_list$te
   n <- sp_list$n
   gamG <- sp_list$gamG
+  ipw <- sp_list$ipw
+  reg <- sp_list$reg
   
-  # randomly assign treated units to groups
-  # random groups
-  G <- sample(1:time.periods, size=nt, replace=TRUE)
-  # fixed groups
-  # G <- unlist(lapply(1:T, function(g) rep(g, nt/T)))
-  
-  # draw a single covariate
-  Xt <- rnorm(nt)
+
+  X <- rnorm(n)
+
+  if (ipw) {
+    pr <- exp(outer(X,gamG)) / apply( exp(outer(X,gamG)), 1, sum)
+  } else {
+    pr <- exp(outer(X^2,gamG)) / apply( exp(outer(X^2,gamG)), 1, sum)
+  }
+
+  G <- apply(pr, 1, function(pvec) sample(seq(0,time.periods), size=1, prob=pvec))
+
+  Gt <- G[G>0]
+  nt <- length(Gt)
+
+  if (reg) {
+    Xmodel <- X
+  } else {
+    Xmodel <- X^2
+  }
+
+  Xt <- Xmodel[G>0]
 
   # draw individual fixed effect
   Ct <- rnorm(nt, mean=G)
 
   # generate untreated potential outcomes in each time period
   Ynames <- paste0("Y",1:time.periods)
-  Ynames <- paste0(1:time.periods)
+  #Ynames <- paste0(1:time.periods)
   Y0tmat <- sapply(1:time.periods, function(t) {
     thet[t] + Ct + Xt*bett[t] + rnorm(nt)
   })
@@ -110,25 +130,26 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   
   # generate treated potential outcomes
   Y1tdf <- sapply(1:time.periods, function(t) {
-    te.t[t] + te.bet.ind[G]*Ct + Xt*te.bet.X[t] + (G <= t)*te.e[sapply(1:nt, function(i) max(t-G[i]+1,1))] + te + rnorm(nt) # hack for the dynamic effects but ok
+    te.t[t] + te.bet.ind[Gt]*Ct + Xt*te.bet.X[t] + (Gt <= t)*te.e[sapply(1:nt, function(i) max(t-Gt[i]+1,1))] + te + rnorm(nt) # hack for the dynamic effects but ok
   })
 
   # generate observed data
   Ytdf <- sapply(1:time.periods, function(t) {
-    (G<=t)*Y1tdf[,t] + (G>t)*Y0tdf[,t]
+    (Gt<=t)*Y1tdf[,t] + (Gt>t)*Y0tdf[,t]
   })
   colnames(Ytdf) <- Ynames
 
   # store observed data for treated group
-  dft <- cbind.data.frame(G,X=Xt,Ytdf)
+  dft <- cbind.data.frame(G=Gt,X=X[G>0],Ytdf)
 
   # untreated units
 
   # draw untreated covariate
-  Xu <- rnorm(nu, mean=1)
+  nu <- sum(G==0)
+  Xu <- Xmodel[G==0]
 
   # draw untreated fixed effect
-  Cu <- rnorm(nu)
+  Cu <- rnorm(nu, mean=0)
 
 
   # generate untreated potential outcomes
@@ -139,7 +160,7 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   colnames(Y0udf) <- Ynames
 
   # store dataset of observed outcomes for untreated units
-  dfu <- cbind.data.frame(G=0,X=Xu,Y0udf)
+  dfu <- cbind.data.frame(G=0,X=X[G==0],Y0udf)
 
   # store overall dataset
   df <- rbind.data.frame(dft, dfu)
@@ -148,7 +169,11 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   df$id <- 1:nrow(df)
 
   # convert data from wide to long format
-  ddf <- tidyr::gather(df, period, Y, -G, -X, -id)
+  ddf <- tidyr::pivot_longer(df,
+                             cols=tidyr::starts_with("Y"),
+                             names_to="period",
+                             names_prefix="Y",
+                             values_to="Y")
   ddf$period <- as.numeric(ddf$period)
   ddf$treat <- 1*(ddf$G > 0)
   ddf <- ddf[order(ddf$id, ddf$period),] # reorder data
