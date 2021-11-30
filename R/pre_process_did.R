@@ -295,6 +295,12 @@ pre_process_did <- function(yname,
     stop("No valid groups. The variable in 'gname' should be expressed as the time a unit is first treated (0 if never-treated).")
   }
 
+  # if there are only two time periods, then uniform confidence
+  # bands are the same as pointwise confidence intervals
+  if (length(tlist)==1) {
+    cband <- FALSE
+  }
+
   # How many time periods
   nT <- length(tlist)
   # How many treated groups
