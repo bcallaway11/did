@@ -427,3 +427,96 @@ test_that("varying or universal base period", {
   expect_equal(agg_dynamic_varying$att.egt[agg_idx], 1, tol=.5)
   expect_equal(agg_dynamic_universal$att.egt[agg_idx], -2, tol=.5)
 })
+
+
+test_that("small groups", {
+  # code should still compute in this case (as comparison
+  # group is large, but should give a warning about small groups)
+
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  # keep only one observation from group 2
+  G2_keep_id <- unique(subset(data, G==2)$id)[1]
+  data <- subset(data, (G != 2) | (id == G2_keep_id))
+
+  # dr
+  expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="dr"), "small groups")
+  # reg
+  expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="reg"), "small groups")
+  # ipw
+  expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+              gname="G", est_method="ipw"), "small groups")
+
+  expect_equal(res_dr$att[2], 1, tol=.5)
+  expect_equal(res_reg$att[2], 1, tol=.5)
+})
+
+
+test_that("small comparison group", {
+  # code doesn't run here if use never treated comparison group
+  # but should run for all groups except the last one when
+  # the not-yet-treated comparison group
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  # keep only one observation from untreated group
+  G0_keep_id <- unique(subset(data, G==0)$id)[1]
+  data <- subset(data, (G != 0) | (id == G0_keep_id))
+
+  #-----------------------------------------------------------------------------
+  # never treated comparison group
+  #-----------------------------------------------------------------------------
+  # dr
+  expect_error(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
+              gname="G", est_method="dr"), "untreated comparison group too small")
+  # reg
+  expect_error(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
+              gname="G", est_method="reg"), "untreated comparison group too small")
+  # ipw
+  expect_error(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
+              gname="G", est_method="ipw"), "untreated comparison group too small")
+
+  #-----------------------------------------------------------------------------
+  # not-yet-treated comparison group
+  #-----------------------------------------------------------------------------
+  # dr
+  expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated", 
+              gname="G", est_method="dr"), "small group")
+  # reg
+  expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+              gname="G", est_method="reg"), "not enough control units")
+  # ipw
+  expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+              gname="G", est_method="ipw"), "overlap condition violated")
+
+  # code should still work for some (g,t)'s
+  expect_equal(res_dr$att[1], 1, tol=.5)
+  expect_equal(res_reg$att[1], 1, tol=.5)
+  expect_equal(res_ipw$att[1], 1, tol=.5)
+
+  #-----------------------------------------------------------------------------
+  # aggregations
+  #-----------------------------------------------------------------------------
+
+  agg_dyn <- aggte(res_dr, type="dynamic", na.rm=TRUE)
+  agg_group <- aggte(res_reg, type="group", na.rm=TRUE)
+  agg_cal <- aggte(res_ipw, type="calendar", na.rm=TRUE)
+
+  expect_equal(agg_dyn$att.egt[3], 1, tol=.5)
+  expect_equal(agg_group$att.egt[1], 1, tol=.5)
+  expect_equal(agg_cal$att.egt[1], 1, tol=.5)
+
+  # make sure that standard errors are computed too
+  expect_false(is.na(agg_dyn$se.egt[3]))
+  expect_false(is.na(agg_group$se.egt[1]))
+  expect_false(is.na(agg_cal$se.egt[1]))
+})
+
+test_that("custom estimation method", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                gname="G", est_method=DRDID::drdid_imp_panel, panel=TRUE)
+  expect_equal(res$att[1], 1, tol=.5)  
+})
