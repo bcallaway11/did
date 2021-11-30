@@ -222,7 +222,7 @@ pre_process_did <- function(yname,
       n.old <- length(unique(data[,idname]))
       data <- BMisc::makeBalancedPanel(data, idname, tname)
       n <- length(unique(data[,idname]))
-      if (nrow(data) < n) {
+      if (n.old < n) {
         warning(paste0("Dropped ", n.old-n, " observations while converting to balanced panel."))
       }
 
@@ -297,7 +297,7 @@ pre_process_did <- function(yname,
 
   # if there are only two time periods, then uniform confidence
   # bands are the same as pointwise confidence intervals
-  if (length(tlist)==1) {
+  if (length(tlist)==2) {
     cband <- FALSE
   }
 

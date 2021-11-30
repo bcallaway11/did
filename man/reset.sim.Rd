@@ -4,12 +4,26 @@
 \alias{reset.sim}
 \title{reset.sim}
 \usage{
-reset.sim(time.periods = 4, n = 5000, p = 0.5)
+reset.sim(time.periods = 4, n = 5000, ipw = TRUE, reg = TRUE)
 }
 \arguments{
 \item{time.periods}{The number of time periods to include}
 
 \item{n}{The total number of observations}
+
+\item{ipw}{If TRUE, sets parameters so that DGP is
+compatible with recovering ATT(g,t)'s using IPW (i.e.,
+where logit that just includes a linear term in X works).  If
+FALSE, sets parameters that will be incompatible with IPW.
+Either way, these parameters can be specified by the user
+if so desired.}
+
+\item{reg}{If TRUE, sets parameters so that DGP is compatible
+with recovering ATT(g,t)'s using regressions on untreated
+untreated potential outcomes.  If FALSE, sets parameters that
+will be incompatible with using regressions (i.e., regressions
+that include only linear term in X).  Either way, these
+paramters can be specified by the user if so desired.}
 
 \item{p}{The probability of being treated}
 }
