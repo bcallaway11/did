@@ -47,7 +47,7 @@ test_that("att_gt works using ipw", {
 test_that("two period case", {
   sp <- reset.sim(time.periods=2)
   data <- build_sim_dataset(sp)
-
+  
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               gname="G", est_method="ipw")
 
@@ -469,13 +469,13 @@ test_that("small comparison group", {
   #-----------------------------------------------------------------------------
   # dr
   expect_error(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
-              gname="G", est_method="dr"), "untreated comparison group too small")
+              gname="G", est_method="dr"), "never treated group is too small")
   # reg
   expect_error(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
-              gname="G", est_method="reg"), "untreated comparison group too small")
+              gname="G", est_method="reg"), "never treated group is too small")
   # ipw
   expect_error(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
-              gname="G", est_method="ipw"), "untreated comparison group too small")
+              gname="G", est_method="ipw"), "never treated group is too small")
 
   #-----------------------------------------------------------------------------
   # not-yet-treated comparison group

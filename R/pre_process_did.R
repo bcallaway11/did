@@ -174,6 +174,10 @@ pre_process_did <- function(yname,
   if (nrow(gsize) > 0) {
     gpaste <-  paste(gsize[,1], collapse=",")
     warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
+
+    if ( (0 %in% gsize[,1]) & (control_group == "nevertreated") ) {
+      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
+    }
   }
   #----------------------------------------------------------------------------
 
