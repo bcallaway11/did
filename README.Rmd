@@ -21,7 +21,7 @@ library(BMisc)
 ```
 # Difference-in-Differences <img src="man/figures/logo.png" align="right" alt="" width="155" />
 
-```{r echo=FALSE, results='asis'}
+```{r echo=FALSE, results='asis', message=FALSE}
 cat(
   badger::badge_cran_download("did", "grand-total", "blue"),
   badger::badge_cran_download("did", "last-month", "blue"),

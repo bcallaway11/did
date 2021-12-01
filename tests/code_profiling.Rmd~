@@ -1,0 +1,16 @@
+--
+output: html_document
+--
+
+```{r}
+devtools::load_all("~/Dropbox/did")
+library(profvis)
+
+sp <- reset.sim(n=5000000)
+data <- build_sim_dataset(sp)
+
+profvis({
+  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr")
+})
+```

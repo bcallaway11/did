@@ -282,17 +282,15 @@ test_that("unequally spaced groups", {
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                 control_group="nevertreated",
                 gname="G", est_method="reg", panel=FALSE)
-  res
-  res_dynamic <- aggte(res, type="dynamic")
 
   agg_dynamic <- aggte(res, type="dynamic")
   agg_idx <- agg_dynamic$egt==2
 
-  expect_equal(agg_dynamic$att.egt[agg_idx], 2, tol=.5)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 3, tol=.5)
 
   agg_dynamic_balance <- aggte(res, type="dynamic", balance_e=0)
   agg_idx2 <- which(agg_dynamic_balance$egt==0)
-  expect_equal(agg_dynamic_balance$att.egt[agg_idx], 1, tol=.5)
+  expect_equal(agg_dynamic_balance$att.egt[agg_idx2], 1, tol=.5)
 })
 
 test_that("some units treated in first period", {
@@ -306,7 +304,8 @@ test_that("some units treated in first period", {
 })
 
 test_that("min and max length of exposures", {
-  sp$reset.sim()
+  sp <- reset.sim()
+  time.periods <- 4
   sp$te <- 0
   sp$te.e <- 1:time.periods
   data <- build_sim_dataset(sp)
@@ -317,7 +316,7 @@ test_that("min and max length of exposures", {
   
   agg_dynamic <- aggte(res, type="dynamic", min_e=-1, max_e=1)
   agg_idx <- which(agg_dynamic$egt == 1)
-  expect_equal(agg_dynamic$att.egt[agg_idx], 1)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 2, tol=.5)
 })
 
 
@@ -327,9 +326,11 @@ test_that("anticipation", {
   sp$te <- 0
   sp$te.e <- -1:(time.periods-2)
   data <- build_sim_dataset(sp)
-  data$G <- data$G + 1 # add anticipation
-  
-  data <- subset(data, period < time.periods) # drop last period (due to way data is constructed)
+  data$G <- ifelse(data$G==0, 0, data$G + 1) # add anticipation
+  data <- subset(data, G <= time.periods) # drop last period (due to way data is constructed)
+  # this will have an anticipation effect=-1, no effect at exposure,
+  # and treatment effects increasing by one in subsequent periods
+
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                 idname="id",
                 control_group="nevertreated",
@@ -339,18 +340,21 @@ test_that("anticipation", {
 
   agg_dynamic <- aggte(res, type="dynamic")
   agg_idx <- which(agg_dynamic$egt==2)
-  expect_equal(agg_dynamic$att.egt[agg_idx], 2)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 2, tol=.5)
 
   # incorrectly ignore anticipation
+  # causes over-stating treatment effects
+  # due to using incorrect base-period
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                 idname="id",
                 control_group="nevertreated",
                 gname="G", est_method="dr",
                 anticipation=0
                 )
+
   agg_dynamic <- aggte(res, type="dynamic")
   agg_idx <- which(agg_dynamic$egt==2)
-  expect_equal(agg_dynamic$att.egt[agg_idx], 3)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 3, tol=.5)
 
 })
 
@@ -359,18 +363,21 @@ test_that("significance level and uniform confidence bands", {
   data <- build_sim_dataset(sp)
 
   # 5% significance level
+  set.seed(1234)
   res05 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                   gname="G", est_method="dr", alp=0.05)
   # 1% significance level
+  set.seed(1234)
   res01 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                   gname="G", est_method="dr", alp=0.01)
   # 5% pointwise
+  set.seed(1234)
   res_pw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                   gname="G", est_method="dr", alp=0.05, cband=FALSE)
 
   expect_lte(res05$att[1] + res05$c*res05$se[1],
              res01$att[1] + res01$c*res01$se[1])
-  expect_lte(res05$att[1] + res05$c*res05$se[1],
+  expect_gte(res05$att[1] + res05$c*res05$se[1],
              res_pw$att[1] + res_pw$c*res_pw$se[1])
 
 })
@@ -449,8 +456,10 @@ test_that("small groups", {
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               gname="G", est_method="ipw"), "small groups")
 
-  expect_equal(res_dr$att[2], 1, tol=.5)
-  expect_equal(res_reg$att[2], 1, tol=.5)
+  # estimates will be imprecise for group 2
+  idx <- which(res_dr$group == 3 & res_dr$t==3)
+  expect_equal(res_dr$att[idx], 1, tol=.5)
+  expect_equal(res_reg$att[idx], 1, tol=.5)
 })
 
 
@@ -468,14 +477,14 @@ test_that("small comparison group", {
   # never treated comparison group
   #-----------------------------------------------------------------------------
   # dr
-  expect_error(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
-              gname="G", est_method="dr"), "never treated group is too small")
+  expect_error(expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
+              gname="G", est_method="dr"), "small groups"), "never treated group is too small")
   # reg
-  expect_error(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
-              gname="G", est_method="reg"), "never treated group is too small")
+  expect_error(expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
+              gname="G", est_method="reg"), "small groups"), "never treated group is too small")
   # ipw
-  expect_error(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
-              gname="G", est_method="ipw"), "never treated group is too small")
+  expect_error(expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
+              gname="G", est_method="ipw"), "small groups"), "never treated group is too small")
 
   #-----------------------------------------------------------------------------
   # not-yet-treated comparison group
@@ -485,7 +494,7 @@ test_that("small comparison group", {
               gname="G", est_method="dr"), "small group")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="reg"), "not enough control units")
+              gname="G", est_method="reg"), "Not enough control units")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
               gname="G", est_method="ipw"), "overlap condition violated")

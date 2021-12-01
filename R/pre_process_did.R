@@ -96,7 +96,7 @@ pre_process_did <- function(yname,
   # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
   treated_first_period <- ( data[,gname] <= first.period ) & ( !(data[,gname]==0) )
   treated_first_period[is.na(treated_first_period)] <- FALSE
-  nfirstperiod <- length(unique(data[treated_first_period,][,idname]))
+  nfirstperiod <- ifelse(panel, length(unique(data[treated_first_period,][,idname])), nrow(data[treated_first_period,]))
   if ( nfirstperiod > 0 ) {
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period."))
     data <- data[ data[,gname] %in% c(0,glist), ]
@@ -222,7 +222,7 @@ pre_process_did <- function(yname,
       n.old <- length(unique(data[,idname]))
       data <- BMisc::makeBalancedPanel(data, idname, tname)
       n <- length(unique(data[,idname]))
-      if (n.old < n) {
+      if (n < n.old) {
         warning(paste0("Dropped ", n.old-n, " observations while converting to balanced panel."))
       }
 
