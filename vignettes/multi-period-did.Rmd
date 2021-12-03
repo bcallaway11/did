@@ -24,7 +24,7 @@ The "canonical" version of DiD involves two periods and two groups.  The *untrea
 
 However, much applied work deals with cases where there are more than two time periods and different units can become treated at different points in time.  Regardless of the number of time periods, by far the leading approach in applied work is to try to estimate the effect of the treatment using a two-way fixed effects (TWFE) linear regression.  This works great in the case with two periods, but there are a number of recent methodological papers that suggest that there may be substantial drawbacks to using TWFE with multiple time periods.
 
-This vignette briefly discusses the emerging literature on DiD with multiple time periods -- both issues with standard approaches as well as remedies for these potential problems.  The `did` package implements a number of these remedies.  A vignette for how to use the `did` package is available [here](did-basics.html). The background article for these vignettes is [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+This vignette briefly discusses the emerging literature on DiD with multiple time periods -- both issues with standard approaches as well as remedies for these potential problems.  The `did` package implements a number of these remedies.  A vignette for how to use the `did` package is available [here](did-basics.html). The background article for these vignettes is [Callaway and Sant'Anna (2021), "Difference-in-Differences with Multiple Time Periods"](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 ## Background
 
@@ -82,7 +82,7 @@ Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
 $$
 where $\theta_t$ is a time fixed effect, $\eta_i$ is a unit fixed effect, $D_{it}$ is a treatment dummy variable, $v_{it}$ are time varying unobservables that are mean independent of everything else, and $\alpha$ is presumably the parameter of interest.  $\alpha$ is often interpreted as the *average effect* of participating in the treatment.
       
-Although this is essentially a standard approach in applied work, there are a number of recent papers that point out potentially severe drawbacks of using the TWFE estimation procedure.  These include: Borusyak and Jaravel (2018), Goodman-Bacon (2020), de Chaisemartin and D'Haultfoeuille (2020), and Sun and Abraham (2020).
+Although this is essentially a standard approach in applied work, there are a number of recent papers that point out potentially severe drawbacks of using the TWFE estimation procedure.  These include: Borusyak and Jaravel (2018), Goodman-Bacon (2021), de Chaisemartin and D'Haultfoeuille (2020), and Sun and Abraham (2021).
 
 **When will TWFE work?**
 
@@ -92,7 +92,7 @@ Although this is essentially a standard approach in applied work, there are a nu
 
 **Why is TWFE not robust to treatment effect heterogeneity?**
 
-There are entire papers written about this, see, e.g., Borusyak and Jaravel (2018), Goodman-Bacon (2020), de Chaisemartin and D'Haultfoeuille (2020), and Sun and Abraham (2020).  But here is the short version: in a TWFE regression, units whose treatment status doesn't change over time serve as the comparison group for units whose treatment status does change over time.  With multiple time periods and variation of treatment timing, some of these comparisons are:
+There are entire papers written about this, see, e.g., Borusyak and Jaravel (2018), Goodman-Bacon (2021), de Chaisemartin and D'Haultfoeuille (2020), and Sun and Abraham (2021).  But here is the short version: in a TWFE regression, units whose treatment status doesn't change over time serve as the comparison group for units whose treatment status does change over time.  With multiple time periods and variation of treatment timing, some of these comparisons are:
 
 * newly treated units relative to ``never treated'' units (good!)
 
@@ -125,7 +125,7 @@ To fix ideas, let's provide some extended notation and be clear about the identi
 
 * $D_{it}$ is an indicator variable for whether unit $i$ has been treated by time $t$.
 
-* $Y_{it}$ is unit $i$'s observed outcome in time period $t$.  For units in the never-treated group, $Y_{it} = Y_{it}(0)$ in all time periods.  For units in other groups, we observe $Y_{it} = \mathbf{1}\{ G_i > t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)$.  The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on *when* they became treated). Implicit in this notation there is a **no treatment anticipation** assumption, which can be relaxed as discussed in [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+* $Y_{it}$ is unit $i$'s observed outcome in time period $t$.  For units in the never-treated group, $Y_{it} = Y_{it}(0)$ in all time periods.  For units in other groups, we observe $Y_{it} = \mathbf{1}\{ G_i > t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)$.  The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on *when* they became treated). Implicit in this notation there is a **no treatment anticipation** assumption, which can be relaxed as discussed in [Callaway and Sant'Anna (2021), "Difference-in-Differences with Multiple Time Periods"](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 * $X_i$ vector of pre-treatment covariates.
 
@@ -152,7 +152,7 @@ For all $g=2,...,\mathcal{T}$, $s,t=2,...,\mathcal{T}$ with $t \ge g$ and $s \ge
 $$
   E[ Y_t(0) - Y_{t-1}(0) | G=g] = E[ Y_t(0) - Y_{t-1}(0)| D_s=0, G\not=g]
 $$
-In plain English, this assumption states that one can use the not-yet-treated by time $s$ ($s \ge t$) units as valid comparison groups when computing the average treatment effect for the group first treated in time $g$. In general, this assumption uses more data when constructing comparison groups. However, as noted in [Marcus and Sant'Anna (2020)](https://arxiv.org/abs/2009.01963), this assumption does restrict some pre-treatment trends across different groups. In other words, there is no free-lunch.
+In plain English, this assumption states that one can use the not-yet-treated by time $s$ ($s \ge t$) units as valid comparison groups when computing the average treatment effect for the group first treated in time $g$. In general, this assumption uses more data when constructing comparison groups. However, as noted in [Marcus and Sant'Anna (2021)](https://www.journals.uchicago.edu/doi/full/10.1086/711509), this assumption does restrict some pre-treatment trends across different groups. In other words, there is no free-lunch.
 
 
 
@@ -203,13 +203,13 @@ These parallel trends assumptions are the conditional analogues of previous ones
 
 An example of a case where this assumption is attractive is one where a researcher is interested in estimating the effect of participating in job training on earnings.  In that case, if the path of earnings (in the absence of participating in job training) depends on things like education, previous occupation, or years of experience (which it almost certainly does), then it would be important to condition on these types of variables in order to make parallel trends more credible.  
 
-In this case, the parameter of interest is still often the $ATT(g,t)'s$ (or their aggregation).  It is still straightforward to identify and estimate the $ATT$ in this case.  Basically, one needs to estimate the change in outcomes for units in the untreated group conditional on $X$, but average out $X$ over the distribution of covariates for individuals in group $g$ to obtain $ATT(g,t)$ (see [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015) and references therein for many more details).  In practice, you can use different approaches to recover these parameters. More precisely, you can estimate the $ATT(g,t)'s$ using outcome-regressions, inverse probability weighting, or doubly-robust methods. But the **did** package automates all of this for the user.
+In this case, the parameter of interest is still often the $ATT(g,t)'s$ (or their aggregation).  It is still straightforward to identify and estimate the $ATT$ in this case.  Basically, one needs to estimate the change in outcomes for units in the untreated group conditional on $X$, but average out $X$ over the distribution of covariates for individuals in group $g$ to obtain $ATT(g,t)$ (see [Callaway and Sant'Anna (2021)](https://doi.org/10.1016/j.jeconom.2020.12.001) and references therein for many more details).  In practice, you can use different approaches to recover these parameters. More precisely, you can estimate the $ATT(g,t)'s$ using outcome-regressions, inverse probability weighting, or doubly-robust methods. But the **did** package automates all of this for the user.
 
 ## Aggregating Group-Time Average Treatment Effects
 
 Group-time average treatment effects are natural parameters to identify in the context of DiD with multiple periods and multiple groups.  But in many applications, there may be a lot of them.  There are some benefits and costs here.  The main benefit is that it is relatively straightforward to think about heterogeneous effects across groups and time using group-time average treatment effects.  On the other hand, it can be hard to summarize them (e.g., they are not just a single number).
 
-In our paper, [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://arxiv.org/abs/1803.09015), we propose a number of ways to aggregate group-time average treatment effects.  Here, we will just consider a few important ones that we think applied researchers are most often interested in.  First, consider the average effect of participating in the treatment, separately for each group.  This is given by
+In our paper, [Callaway and Sant'Anna (2021), "Difference-in-Differences with Multiple Time Periods"](https://doi.org/10.1016/j.jeconom.2020.12.001), we propose a number of ways to aggregate group-time average treatment effects.  Here, we will just consider a few important ones that we think applied researchers are most often interested in.  First, consider the average effect of participating in the treatment, separately for each group.  This is given by
 
 $$
   \theta_S(g) = \frac{1}{\mathcal{T} - g + 1} \sum_{t=2}^{\mathcal{T}} \mathbf{1}\{g \leq t\} ATT(g,t).
@@ -234,22 +234,22 @@ $$
 
 This is the average effect of participating in the treatment for the group of units that have been exposed to the treatment for exactly $e$ time periods.  
 
-All of these aggregations are available in the **did** package and examples with real data are available in our [Getting Started with the **did** Package](did-basics.html) vignette. In [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015), we also discuss additional aggregation schemes. We encourage you to take a look!
+All of these aggregations are available in the **did** package and examples with real data are available in our [Getting Started with the **did** Package](did-basics.html) vignette. In [Callaway and Sant'Anna (2021)](https://doi.org/10.1016/j.jeconom.2020.12.001), we also discuss additional aggregation schemes. We encourage you to take a look!
 
 ## Conclusion
 
-This vignette has covered basic background issues on DiD with multiple periods.  [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](index.html)
+This vignette has covered basic background issues on DiD with multiple periods.  [Callaway and Sant'Anna (2021)](https://doi.org/10.1016/j.jeconom.2020.12.001) discusses many extensions and these are all provided in the **did** package as well. [See our User Guides for more details.](index.html)
 
 ## References
 
 * [Borusyak, Kirill, and Xavier Jaravel. "Revisiting Event Study Designs". Available at SSRN 2826228 (2018)](https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf)
 
-* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Forthcoming at the Journal of Econometrics (2020)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 * [de Chaisemartin, Clement, and Xavier d'Haultfoeuille. "Two-way fixed effects estimators with heterogeneous treatment effects." American Economic Review 110.9 (2020): 2964-96.](https://doi.org/10.1257/aer.20181169)
 
-* [Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing." Working Paper, 2020](http://goodman-bacon.com/pdfs/ddtiming.pdf)
+* [Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing." Journal of Econometrics, Vol. 225, No. 2, pp. 254-277, 2021](https://doi.org/10.1016/j.jeconom.2021.03.014)
 
-* [Marcus, Michelle, and Pedro H. C. Sant'Anna. "The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics". Forthcoming at the Journal of the Association of Environmental and Resource Economists.](https://www.journals.uchicago.edu/doi/10.1086/711509)
+* [Marcus, Michelle, and Pedro H. C. Sant'Anna. "The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics". Journal of the Association of Environmental and Resource Economists, Vol. 8, No. 2, pp. 235-275, 2021](https://www.journals.uchicago.edu/doi/10.1086/711509)
 
-* [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Forthcoming at the Journal of Econometrics (2020).](http://economics.mit.edu/files/14964)
+* [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021](https://doi.org/10.1016/j.jeconom.2020.09.006)

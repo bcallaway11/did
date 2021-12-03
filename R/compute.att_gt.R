@@ -160,7 +160,7 @@ compute.att_gt <- function(dp) {
         # contains the change in the outcome over time.
         # dy is computed as latest year - earliest year. 
         #disdat <- suppressWarnings(BMisc::panel2cs(disdat, yname, idname, tname))
-        disdat <- BMisc::panel2cs2(disdat, yname, idname, tname)
+        disdat <- BMisc::panel2cs2(disdat, yname, idname, tname, balance_panel=FALSE)
 
         # still total number of units (not just included in G or C)
         n <- nrow(disdat)

@@ -32,9 +32,6 @@ reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
   #-----------------------------------------------------------------------------
   # set parameters
   #-----------------------------------------------------------------------------
-  # number of time periods
-  # number of treated units
-  n <- 5000
   # coefficient on X 
   bett <- seq(1:time.periods)
   # time fixed effect
@@ -167,6 +164,8 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
 
   # generate id variable
   df$id <- 1:nrow(df)
+  # generate clusters (there's no actual within-cluster correlation)
+  df$cluster <- sample(1:50, size=nrow(df), replace=TRUE)
 
   # convert data from wide to long format
   ddf <- tidyr::pivot_longer(df,

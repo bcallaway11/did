@@ -3,17 +3,20 @@ output: html_document
 --
 
 ```{r}
+devtools::load_all("~/Dropbox/BMisc")
 devtools::load_all("~/Dropbox/did")
 library(profvis)
 
-n <- 5000000
+
+n <- 10000
 time.periods <- 10
 sp <- reset.sim(n=n, time.periods=time.periods)
+
 data <- build_sim_dataset(sp)
 N <- nrow(data)
 # add some more spurrious columns to data:
 data$X1 <- sample(1:25, size=N, replace=TRUE)
-data$X1 <- as.factor(data$X1)
+#data$X1 <- as.factor(data$X1)
 data$X2 <- rnorm(N)
 data$X3 <- rnorm(N)
 data$X4 <- rnorm(N)
@@ -22,5 +25,7 @@ data$X5 <- rnorm(N)
 profvis({
   res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr")
-})
+`})
+
+
 ```

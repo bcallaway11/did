@@ -181,7 +181,7 @@ Overall, everything looks good using either approach.  (Just to keep things fair
 
 #### Pitfall: Selective Treatment Timing
 
-Sun and Abraham (2020) point out a major limitation of event study regressions:  when there is **selective treatment timing** the $\mu_l$ end up being weighted averages of treatment effects *across different lengths of exposures*.
+Sun and Abraham (2021) point out a major limitation of event study regressions:  when there is **selective treatment timing** the $\mu_l$ end up being weighted averages of treatment effects *across different lengths of exposures*.
 
 **Selective treatment timing** means that individuals in different groups experience systematically different effects of participating in the treatment from individuals in other groups.  For example, there would be selective treatment timing if individuals choose to be treated in earlier periods if they tend to experience larger benefits from participating in the treatment.  This sort of selective treatment timing is likely to be present in many applications in economics / policy evaluation.
 
@@ -334,8 +334,8 @@ cdp
 
 * [Abadie, Alberto. "Semiparametric difference-in-differences estimators." The Review of Economic Studies 72.1 (2005): 1-19.](https://doi.org/10.1111/0034-6527.00321)
 
-* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Forthcoming at the Journal of Econometrics (2020).](https://arxiv.org/abs/1803.09015).
+* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 * [Heckman, James J., Hidehiko Ichimura, and Petra Todd. "Matching as an econometric evaluation estimator." The Review of Economic Studies 65.2 (1998): 261-294.](https://doi.org/10.2307/2971733)
 
-* [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Available at SSRN 3158747 (2020).](http://economics.mit.edu/files/14964)
+* [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021](https://doi.org/10.1016/j.jeconom.2020.09.006)

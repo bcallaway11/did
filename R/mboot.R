@@ -68,31 +68,29 @@ mboot <- function(inf.func, DIDparams) {
 
   }
 
-
-  # bootstrap
-  bout <- lapply(1:biters, FUN=function(b) {
-    if (length(clustervars) > 0) {
-      # draw Rademachar weights
-      # these are the same within clusters
-      # see paper for details
-      n1 <- length(unique(dta[,clustervars]))
-      Vb <- matrix(sample(c(-1,1), n1, replace=T))
-      Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-      Ub <- data.frame(dta[,clustervars])
-      Ub <- Vb[match(Ub[,1], Vb[,1]),]
-      Ub <- Ub[,-1]
-    } else {
-      Ub <- sample(c(-1,1), n, replace=T)
-    }
-    # multiply weights onto influence function
-    Rb <- sqrt(n)*(apply(Ub*(inf.func), 2, mean))
-    # return bootstrap draw
-    Rb
-  })
-  # bootstrap results
-  bres <- simplify2array(bout)
+  # multiplier bootstrap
+  n_clusters <- n
+  if (length(clustervars)==0) {
+    #Umat <- matrix(sample(c(-1,1), size=n*biters, replace=TRUE), nrow=n)
+    #bres <- sapply(1:biters, function(b) sqrt(n)*colMeans(Umat[,b]*inf.func))
+    #bres <- sqrt(n)*BMisc::element_wise_mult(Umat, inf.func)
+    bres <- sqrt(n)*BMisc::multiplier_bootstrap(inf.func, biters)
+  } else {
+    #n1 <- length(unique(data[,clustervars]))
+    #Vmat <- matrix(sample(c(-1,1), size=n1*biters, replace=TRUE), nrow=n1)
+    n_clusters <- length(unique(data[,clustervars]))
+    cluster <- dta[,clustervars]
+    cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
+    cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
+    bres <- sqrt(cluster_n)*BMisc::multiplier_bootstrap(cluster_mean_if, biters)
+    #bres <- sapply(1:biters, function(b) sqrt(n)*colMeans(Vmat[,b]*cluster_mean_if))
+  }
+  
+  
   # handle vector and matrix case differently, so you get nxk matrix
-  ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
+  # ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
+  
+  if (isTRUE(class(bres) == "numeric")) bres <- as.matrix(bres)
 
   # Non-degenerate dimensions
   # ndg.dim <- (base::colSums(bres) != 0)
@@ -115,7 +113,7 @@ mboot <- function(inf.func, DIDparams) {
 
   #se <- rep(0, length(ndg.dim))
   se <- rep(NA, length(ndg.dim))
-  se[ndg.dim] <- as.numeric(bSigma)/sqrt(n)
+  se[ndg.dim] <- as.numeric(bSigma) / sqrt(n_clusters)
   #se[se==0] <- NA
 
   list(bres = bres, V = V, se = se, crit.val = crit.val)

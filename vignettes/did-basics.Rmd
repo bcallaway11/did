@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-This vignette discusses the basics of using Difference-in-Differences (DiD) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the **did** package. The background article for it is [Callaway and Sant'Anna (2020), "Difference-in-Differences with Multiple Time Periods"](https://arxiv.org/abs/1803.09015).
+This vignette discusses the basics of using Difference-in-Differences (DiD) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the **did** package. The background article for it is [Callaway and Sant'Anna (2021), "Difference-in-Differences with Multiple Time Periods"](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 * The **did** package allows for multiple periods and variation in treatment timing
 
@@ -249,7 +249,7 @@ The argument `est_method` is also available to pass in a custom function for est
 
 # An example with real data
 
-Next, we use a subset of data that comes from [Callaway and Sant'Anna (2020)](https://arxiv.org/abs/1803.09015).  This is a dataset that contains county-level teen employment rates from 2003-2007.  The data can be loaded by
+Next, we use a subset of data that comes from [Callaway and Sant'Anna (2020)](https://doi.org/10.1016/j.jeconom.2020.12.001).  This is a dataset that contains county-level teen employment rates from 2003-2007.  The data can be loaded by
 ```{r}
 data(mpdta)
 ```

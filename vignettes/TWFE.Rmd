@@ -234,7 +234,7 @@ ES_plot_classical
 
 ![](es_plot_classical.png){ width=100% }
 
-The results above show that these TWFE event-study type estimates are *severely biased* for the true treatment effects. Furthermore, using the estimates of coefficient of treatment leads as a way to find evidence of "pre-trends" is very problematic, as illustrated above; see Sun and Abraham (2020) for formal results! Putting it simply, the results above highlight that such TWFE linear regression should not be used to highlight treatment effect dynamics!
+The results above show that these TWFE event-study type estimates are *severely biased* for the true treatment effects. Furthermore, using the estimates of coefficient of treatment leads as a way to find evidence of "pre-trends" is very problematic, as illustrated above; see Sun and Abraham (2021) for formal results! Putting it simply, the results above highlight that such TWFE linear regression should not be used to highlight treatment effect dynamics!
 
 
 
@@ -322,13 +322,13 @@ ES_plot_sat
 ![](es_plot_sat.png){ width=100% }
 
 
-### Using the Callaway and Sant'Anna (2020) framework
+### Using the Callaway and Sant'Anna (2021) framework
 
-Instead of using variants of the TWFE specification above, we advocate you to use the procedure put forward by Callaway and Sant'Anna (2020) and implemented in our package **did**. 
+Instead of using variants of the TWFE specification above, we advocate you to use the procedure put forward by Callaway and Sant'Anna (2021) and implemented in our package **did**. 
 
 In this specific DGP, as there is no "never-treated" units, we can use the "not-yet-treated" units as a valid comparison group for each cohort. Furthermore, since covariates are not available (and do not play any major role into the analysis), we do not need to worry about the underlying "est_method".
 
-Below we show the results associated with using the Callaway and Sant'Anna (2020) procedure. As you can see, you get reliable and precise estimates for treatment effect dynamics. This is good news!
+Below we show the results associated with using the Callaway and Sant'Anna (2021) procedure. As you can see, you get reliable and precise estimates for treatment effect dynamics. This is good news!
 ```{r CS, message = FALSE, warning = FALSE, cache = TRUE, cache.lazy = TRUE, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 # function to run ES DID
 run_CS <- function(...) {
@@ -376,7 +376,7 @@ ES_plot_CS <- data_CS %>%
   labs(x = "Relative Time", y = "Estimate") + 
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12)) +
-  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2020)\nComparison group: Not-yet-treated")+
+  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated")+
     scale_color_manual(values = colors) + 
   theme(plot.title = element_text(hjust = 0.5, size=12),
         legend.position = "bottom", 
@@ -664,9 +664,9 @@ ES_plot_sat_never
 As the result above shows, when you have a never-treated group, treatment effects are homogeneous across cohorts, and you do not bin event-times, TWFE event-study regressions do recover the true underlying dynamic treatment effects. 
 
 
-### Using the Callaway and Sant'Anna (2020) framework
+### Using the Callaway and Sant'Anna (202) framework
 
-Next, we show that the procedure put forward by Callaway and Sant'Anna (2020) and implemented in our **did** can also be used in this setup.
+Next, we show that the procedure put forward by Callaway and Sant'Anna (2021) and implemented in our **did** can also be used in this setup.
 
 
 In this specific DGP, as there is a "never-treated" group, we can use use different comparison groups: 1) the "never-treated" group, and 2) the "not-yet-treated" group. In this particular DGP, using any of these two different comparison groups should recover the true underlying dynamic treatment effect. Let's see if this is indeed the case.
@@ -722,7 +722,7 @@ ES_plot_CS_never <- data_CS_never %>%
   labs(x = "Relative Time", y = "Estimate") + 
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))+
-  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2020)\nComparison group: Never-treated units")+
+  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Never-treated units")+
   scale_color_manual(values = colors) + 
   theme(plot.title = element_text(hjust = 0.5, size=12),
         legend.position = "bottom", 
@@ -787,7 +787,7 @@ ES_plot_CS_ny <- data_CS_ny %>%
   labs(x = "Relative Time", y = "Estimate") + 
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))+
-  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2020)\nComparison group: Not-yet-treated units")+
+  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated units")+
   scale_color_manual(values = colors) + 
   theme(plot.title = element_text(hjust = 0.5, size=12),
         legend.position = "bottom", 
@@ -1071,9 +1071,9 @@ ES_plot_sat_never_het
 
 As the result above shows, when treatment effects dynamics are heterogeneous across groups, TWFE event-study regressions do not recover the true underlying dynamic treatment effects, even if a "never-treated" group is available and one does not bin extreme event-times. Again, this is a red flag for the usage of TWFE-type regressions in DiD setups. 
 
-### Using the Callaway and Sant'Anna (2020) framework
+### Using the Callaway and Sant'Anna (2021) framework
 
-Next, we show that the procedure put forward by Callaway and Sant'Anna (2020) and implemented in our **did** can also be used in this setup. In other words, Callaway and Sant'Anna (2020) proposal *does not rely on restricting treatment effect heterogeneity*.
+Next, we show that the procedure put forward by Callaway and Sant'Anna (2021) and implemented in our **did** can also be used in this setup. In other words, Callaway and Sant'Anna (2021) proposal *does not rely on restricting treatment effect heterogeneity*.
 
 
 First, let's estimate the treatment effect dynamics using the "never-treated" units as the comparison group.
@@ -1126,7 +1126,7 @@ ES_plot_CS_never_het <- data_CS_never_het %>%
   labs(x = "Relative Time", y = "Estimate") + 
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))+
-  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2020)\nComparison group: Never-treated units")+
+  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Never-treated units")+
   scale_color_manual(values = colors) + 
   theme(plot.title = element_text(hjust = 0.5, size=12),
         legend.position = "bottom", 
@@ -1192,7 +1192,7 @@ ES_plot_CS_ny_het <- data_CS_ny_het %>%
   labs(x = "Relative Time", y = "Estimate") + 
   theme(axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))+
-  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2020)\nComparison group: Not-yet-treated units")+
+  ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated units")+
   scale_color_manual(values = colors) + 
   theme(plot.title = element_text(hjust = 0.5, size=12),
         legend.position = "bottom", 
@@ -1208,15 +1208,14 @@ As expected, the results look good, too!
 
 ## Conclusion
 
-In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant'Anna (2020) and implement in our **did** package does not suffer from these drawbacks. 
+In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant'Anna (2021) and implement in our **did** package does not suffer from these drawbacks. 
 
 ## References
 
 * [Borusyak, Kirill, and Xavier Jaravel. "Revisiting Event Study Designs". Available at SSRN 2826228 (2018)](https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.png)
 
+* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
-* [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Forthcoming at the Journal of Econometrics (2020)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+* [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021](https://doi.org/10.1016/j.jeconom.2020.09.006)
 
-
-* [Sun, Liyang, and Sarah Abraham. "Estimating dynamic treatment effects in event studies with heterogeneous treatment effects." Forthcoming at the Journal of Econometrics (2020).](https://www.sciencedirect.com/science/article/abs/pii/S030440762030378X)
 

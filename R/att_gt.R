@@ -4,7 +4,7 @@
 #'  setups where there are more than two periods of data and allowing for
 #'  treatment to occur at different points in time and allowing for
 #'  treatment effect heterogeneity and dynamics.
-#'  See Callaway and Sant'Anna (2020) for a detailed description.
+#'  See Callaway and Sant'Anna (2021) for a detailed description.
 #'
 #' @param yname The name of the outcome variable
 #' @param data The name of the data.frame that contains the data
@@ -116,7 +116,7 @@
 #'  the user allows for anticipation) to be equal to 0, but one
 #'  extra estimate in an earlier period.
 #'  
-#' @references Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics <https://arxiv.org/abs/1803.09015> (2020).
+#' @references Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
 #'
 #' @return an [`MP`] object containing all the results for group-time average
 #'  treatment effects
