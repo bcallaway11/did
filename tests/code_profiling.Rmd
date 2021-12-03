@@ -3,13 +3,17 @@ output: html_document
 --
 
 ```{r}
-devtools::load_all("~/Dropbox/BMisc")
-devtools::load_all("~/Dropbox/did")
+# currently on CRAN
+detach("package:did")
+library(did, lib.loc="~/R/old-versions")
+packageVersion("did")
 library(profvis)
+# functions for simulating data
+source("~/Dropbox/did/R/simulate_data.R")
 
 
 n <- 10000
-time.periods <- 10
+time.periods <- 20
 sp <- reset.sim(n=n, time.periods=time.periods)
 
 data <- build_sim_dataset(sp)
@@ -22,10 +26,23 @@ data$X3 <- rnorm(N)
 data$X4 <- rnorm(N)
 data$X5 <- rnorm(N)
 
-profvis({
-  res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+pt <- proc.time()
+cran_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr")
-`})
+cran_time <- proc.time() - pt
+cran_time
 
+
+# now, try new code
+devtools::load_all("~/Dropbox/BMisc")
+devtools::load_all("~/Dropbox/did")
+
+pt <- proc.time()
+new_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr")
+new_time <- proc.time() - pt
+new_time
+
+all(new_dr$att == cran_dr$att)
 
 ```

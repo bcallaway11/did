@@ -61,7 +61,7 @@ pre_process_did <- function(yname,
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
 
-  if (".w" in colnames(data)) stop("`did` tried to use column named \".w\" internally, but there was already a column with this name")
+  if (".w" %in% colnames(data)) stop("`did` tried to use column named \".w\" internally, but there was already a column with this name")
   data$.w <- w
 
   # Outcome variable will be denoted by y
