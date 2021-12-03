@@ -223,11 +223,10 @@ att_gt <- function(yname,
   inffunc <- results$inffunc
 
   # process results
-  attgt.results <- process_attgt(results)
+  attgt.results <- process_attgt(attgt.list)
   group <- attgt.results$group
   att <- attgt.results$att
   tt <- attgt.results$tt
-  inffunc <- attgt.results$inf.func
 
 
 
