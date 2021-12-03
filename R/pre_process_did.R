@@ -54,6 +54,9 @@ pre_process_did <- function(yname,
   if (is.null(xformla)) {
     xformla <- ~1
   }
+
+  # drop irrelevant columns from data
+  data <- cbind.data.frame(data[,c(idname, tname, yname, gname)], model.frame(xformla, data=data))
   
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
@@ -143,31 +146,7 @@ pre_process_did <- function(yname,
   }
 
 
-  #-----------------------------------------------------------------------------
-  # more error handling after we have balanced the panel
-
-  # check against very small groups
-  gsize <- aggregate(data[,gname], by=list(data[,gname]), function(x) length(x)/length(tlist))
-
-  # how many in each group before give warning
-  # 5 is just a buffer, could pick something else, but seems to work fine
-  reqsize <- length(BMisc::rhs.vars(xformla)) + 5
-
-  # which groups to warn about
-  gsize <- subset(gsize, x < reqsize) # x is name of column from aggregate
-
-  # warn if some groups are small
-  if (nrow(gsize) > 0) {
-    gpaste <-  paste(gsize[,1], collapse=",")
-    warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
-
-    if ( (0 %in% gsize[,1]) & (control_group == "nevertreated") ) {
-      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
-    }
-  }
-  #----------------------------------------------------------------------------
-
-
+  
   # if user specifies repeated cross sections,
   # set that it really is repeated cross sections
   true_repeated_cross_sections <- FALSE
@@ -196,7 +175,7 @@ pre_process_did <- function(yname,
       # this is the case where we coerce balanced panel
 
       # check for complete cases
-      keepers <- complete.cases(cbind.data.frame(data[,c(idname, tname, yname, gname)], model.matrix(xformla, data=data)))
+      keepers <- complete.cases(data)
       n <- length(unique(data[,idname]))
       n.keep <- length(unique(data[keepers,idname]))
       if (nrow(data[keepers,]) < nrow(data)) {
@@ -214,19 +193,18 @@ pre_process_did <- function(yname,
 
       # If drop all data, you do not have a panel.
       if (nrow(data)==0) {
-        stop("All observations dropped to converte data to balanced panel. Consider setting `panel = FALSE' and/or revisit 'idname'.")
+        stop("All observations dropped to converted data to balanced panel. Consider setting `panel = FALSE' and/or revisit 'idname'.")
       }
 
-      # create an n-row data.frame to hold the influence function later
-      #dta <- data[ data[,tname]==tlist[1], ]
-      n <- nrow(data[ data[,tname]==tlist[1], ]) # use this for influence function
+      n <- nrow(data[ data[,tname]==tlist[1], ]) 
 
-      # check that first.treat doesn't change across periods for particular individuals
-      if (!all(sapply( split(data, data[,idname]), function(df) {
-        length(unique(df[,gname]))==1
-      }))) {
-        stop("The value of gname must be the same across all periods for each particular individual.")
-      }
+      # slow, repeated check here...
+      ## # check that first.treat doesn't change across periods for particular individuals
+      ## if (!all(sapply( split(data, data[,idname]), function(df) {
+      ##   length(unique(df[,gname]))==1
+      ## }))) {
+      ##   stop("The value of gname must be the same across all periods for each particular individual.")
+      ## }
 
     }
   }
@@ -237,7 +215,7 @@ pre_process_did <- function(yname,
   if (!panel) {
 
     # check for complete cases
-    keepers <- complete.cases(cbind.data.frame(data[,c(tname, yname, gname)], model.matrix(xformla, data=data)))
+    keepers <- complete.cases(data)
     if (nrow(data[keepers,]) < nrow(data)) {
       warning(paste0("Dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data."))
       data <- data[keepers,]
@@ -286,6 +264,30 @@ pre_process_did <- function(yname,
   if (length(tlist)==2) {
     cband <- FALSE
   }
+
+  #-----------------------------------------------------------------------------
+  # more error handling after we have balanced the panel
+
+  # check against very small groups
+  gsize <- aggregate(data[,gname], by=list(data[,gname]), function(x) length(x)/length(tlist))
+
+  # how many in each group before give warning
+  # 5 is just a buffer, could pick something else, but seems to work fine
+  reqsize <- length(BMisc::rhs.vars(xformla)) + 5
+
+  # which groups to warn about
+  gsize <- subset(gsize, x < reqsize) # x is name of column from aggregate
+
+  # warn if some groups are small
+  if (nrow(gsize) > 0) {
+    gpaste <-  paste(gsize[,1], collapse=",")
+    warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
+
+    if ( (0 %in% gsize[,1]) & (control_group == "nevertreated") ) {
+      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
+    }
+  }
+  #----------------------------------------------------------------------------
 
   # How many time periods
   nT <- length(tlist)
