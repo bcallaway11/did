@@ -236,6 +236,7 @@ att_gt <- function(yname,
   # are clustered at the unit level
 
   # note to self: this def. won't work with unbalanced panel,
+  # same with clustered standard errors
   # but it is always ignored b/c bstrap has to be true in that case
   n <- dp$n
   V <- Matrix::t(inffunc)%*%inffunc/n
@@ -252,20 +253,17 @@ att_gt <- function(yname,
   }
 
   # Identify entries of main diagonal V that are zero or NA
-  #zero_na_sd_entry <- unique(which(is.na(Matrix::diag(V)))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
-  zero_na_sd_entry <- unique(which(is.na(se))) # unique( c( which(diag(V)==0),  which(is.na(diag(V)))))
+  zero_na_sd_entry <- unique(which(is.na(se))) 
 
   # bootstrap variance matrix
   if (bstrap) {
 
     bout <- mboot(inffunc, DIDparams=dp)
     bres <- bout$bres
-    #zero_na_sd_entry <- unique(c(zero_na_sd_entry, which(bout$se==0)))
+    
     if(length(zero_na_sd_entry)>0) {
-      #V[-zero_na_sd_entry, -zero_na_sd_entry] <- bout$V
       se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
     } else {
-      #V <- bout$V
       se <- bout$se
     }
   }
@@ -319,7 +317,7 @@ att_gt <- function(yname,
   # critical value from N(0,1), for pointwise
   cval <- qnorm(1-alp/2)
 
-  # in order to get uniform confidencs bands
+  # in order to get uniform confidence bands
   # HAVE to use the bootstrap
   if (bstrap){
     if (cband) {

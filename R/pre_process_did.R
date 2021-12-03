@@ -43,12 +43,26 @@ pre_process_did <- function(yname,
   if (!all( class(data) == "data.frame")) {
     data <- as.data.frame(data)
   }
+
+  # make sure time periods are numeric
+  if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
+
+  #  make sure gname is numeric
+  if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
+
+  # put in blank xformla if no covariates
+  if (is.null(xformla)) {
+    xformla <- ~1
+  }
+  
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
-  data$w <- w
+
+  if (".w" in colnames(data)) stop("`did` tried to use column named \".w\" internally, but there was already a column with this name")
+  data$.w <- w
 
   # Outcome variable will be denoted by y
-  data$y <- data[, yname]
+  # data$y <- data[, yname]
 
   # figure out the dates
   # list of dates from smallest to largest
@@ -67,21 +81,15 @@ pre_process_did <- function(yname,
   if ( length(glist[glist==0]) == 0) {
     if(control_group=="nevertreated"){
       stop("There is no available never-treated group")
-      #stop("It seems you do not have a never-treated group in the data. If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group. Otherwise, select control_group = \"notyettreated\" so you can use the not-yet treated units as a comparison group.")
     } else {
-      # no need to warn as this is expected case
-      # warning("It seems like that there is not a never-treated group in the data. In this case, we cannot identity the ATT(g,t) for the group that is treated last, nor any ATT(g,t) for t higher than or equal to the largest g.  If you do have a never-treated group in the data, make sure to set data[,gname] = 0 for the observation in this group.")
-
       # Drop all time periods with time periods >= latest treated
       data <- subset(data,(data[,tname] < max(glist,  na.rm = TRUE)))
       # Replace last treated time with zero
       lines.gmax <- data[,gname]==max(glist, na.rm = TRUE)
       data[lines.gmax,gname] <- 0
 
-      #figure out the dates
-      tlist <- unique(data[,tname])[order(unique(data[,tname]))] # this is going to be from smallest to largest
-      # Figure out the groups
-      glist <- unique(data[,gname])[order(unique(data[,gname]))]
+      tlist <- sort(unique(data[,tname]))
+      glist <- sort(unique(data[,gname]))
     }
   }
 
@@ -110,50 +118,28 @@ pre_process_did <- function(yname,
     glist <- glist[glist > first.period + anticipation]
 
   }
-
-
-  # make sure time periods are numeric
-  if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
-
-  #  make sure gname is numeric
-  if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
-
+  
   #  make sure id is numeric
   if (! is.null(idname)){
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
 
+    ## # checks below are useful, but removing due to being slow
+    ## # might ought to figure out a way to do these faster later
+    ## # these checks are also closely related to making sure
+    ## # that we have a well-balanced panel, so it might make
+    ## # sense to move them over to the BMisc package
+    
+    ## # Check if idname is unique by tname
+    ## n_id_year = all( table(data[, idname], data[, tname]) <= 1)
+    ## if (! n_id_year) stop("The value of idname must be the unique (by tname)")
 
-
-    # Check if idname is unique by tname
-    n_id_year = all( table(data[, idname], data[, tname]) <= 1)
-    if (! n_id_year) stop("The value of idname must be the unique (by tname)")
-
-    # make sure gname doesn't change across periods for particular individuals
-    if (!all(sapply( split(data, data[,idname]), function(df) {
-      length(unique(df[,gname]))==1
-    }))) {
-      stop("The value of gname must be the same across all periods for each particular individual.")
-    }
-  }
-
-  # This is a duplicate but I kept it before making the final changes
-  #if (panel) {
-  # check that id is numeric
-  #  if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
-
-  #check that first.treat doesn't change across periods for particular individuals
-  # if (!all(sapply( split(data, data[,idname]), function(df) {
-  #  length(unique(df[,gname]))==1
-  #}))) {
-  #  stop("The value of first.treat must be the same across all periods for each particular individual.")
-  #}
-  #}
-
-
-  # put in blank xformla if no covariates
-  if (is.null(xformla)) {
-    xformla <- ~1
+    ## # make sure gname doesn't change across periods for particular individuals
+    ## if (!all(sapply( split(data, data[,idname]), function(df) {
+    ##   length(unique(df[,gname]))==1
+    ## }))) {
+    ##   stop("The value of gname must be the same across all periods for each particular individual.")
+    ## }
   }
 
 
