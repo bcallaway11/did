@@ -146,7 +146,7 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  weights.ind  <-  dta$w
+  weights.ind  <-  dta$.w
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator

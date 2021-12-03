@@ -181,7 +181,7 @@ compute.att_gt <- function(dp) {
         Ypre <- if(tlist[(t+tfac)] > pret) disdat$y0 else disdat$y1
         Ypost <- if(tlist[(t+tfac)] > pret) disdat$y1 else disdat$y0
         n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
-        w <- disdat$w
+        w <- disdat$.w
 
         # matrix of covariates
         covariates <- model.matrix(xformla, data=disdat)
@@ -289,7 +289,7 @@ compute.att_gt <- function(dp) {
         post <- 1*(disdat[,tname] == tlist[t+tfac])
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
-        w <- disdat$w
+        w <- disdat$.w
 
         #-----------------------------------------------------------------------------
         # checks to make sure that we have enough observations
