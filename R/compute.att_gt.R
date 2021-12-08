@@ -134,39 +134,38 @@ compute.att_gt <- function(dp) {
       # sete up control group
       if(nevertreated){
         # use the "never treated" group as the control group
-        disdat$C <- 1*(disdat[,gname] == 0)
-        thisdata$C <- 1*(thisdata[,gname] == 0)
-        thisdata$G <- 1*(thisdata[,gname] == glist[g])
+        disdat$.C <- 1*(disdat[,gname] == 0)
+        thisdata$.C <- 1*(thisdata[,gname] == 0)
+        thisdata$.G <- 1*(thisdata[,gname] == glist[g])
       }
       if(!nevertreated){
         # use "not yet treated as control"
         # that is, never treated + units that are eventually treated,
         # but not treated by the current period
-        disdat$C <- 1 * ((disdat[,gname] == 0) |
+        disdat$.C <- 1 * ((disdat[,gname] == 0) |
                            ((disdat[,gname] > tlist[t+tfac]) &
                               (disdat[,gname] != glist[g])))
-        thisdata$C <- 1*((thisdata[,gname] == 0) |
+        thisdata$.C <- 1*((thisdata[,gname] == 0) |
                            ((thisdata[,gname] > tlist[t+tfac]) &
                               (thisdata[,gname] != glist[g])))
-        thisdata$G <- 1*(thisdata[,gname] == glist[g])
+        thisdata$.G <- 1*(thisdata[,gname] == glist[g])
       }
 
       # set up dummy for particular treated group
-      disdat$G <- 1*(disdat[,gname] == glist[g])
-
+      disdat$.G <- 1*(disdat[,gname] == glist[g])
+      disdat$.y <- disdat[,yname]
+      
       if (panel) {
 
         # transform  disdat it into "cross-sectional" data where one of the columns
         # contains the change in the outcome over time.
-        # dy is computed as latest year - earliest year. 
-        #disdat <- suppressWarnings(BMisc::panel2cs(disdat, yname, idname, tname))
         disdat <- BMisc::panel2cs2(disdat, yname, idname, tname, balance_panel=FALSE)
 
         # still total number of units (not just included in G or C)
         n <- nrow(disdat)
 
         # pick up the indices for units that will be used to compute ATT(g,t)
-        disidx <- disdat$G==1 | disdat$C==1
+        disidx <- disdat$.G==1 | disdat$.C==1
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- disdat[disidx,]
@@ -175,11 +174,11 @@ compute.att_gt <- function(dp) {
         disdat <- droplevels(disdat)
 
         # give short names for data in this iteration
-        G <- disdat$G
-        C <- disdat$C
+        G <- disdat$.G
+        C <- disdat$.C
         # handle pre-treatmen universal base period differenctly
-        Ypre <- if(tlist[(t+tfac)] > pret) disdat$y0 else disdat$y1
-        Ypost <- if(tlist[(t+tfac)] > pret) disdat$y1 else disdat$y0
+        Ypre <- if(tlist[(t+tfac)] > pret) disdat$.y0 else disdat$.y1
+        Ypost <- if(tlist[(t+tfac)] > pret) disdat$.y1 else disdat$.y0
         n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
         w <- disdat$.w
 
@@ -269,12 +268,12 @@ compute.att_gt <- function(dp) {
         # (2) you are in the right group (it is possible to be observed in
         # the right period but still not be part of the treated or control
         # group in that period here
-        rightids <- disdat$rowid[ disdat$G==1 | disdat$C==1]
+        rightids <- disdat$.rowid[ disdat$.G==1 | disdat$.C==1]
 
         # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
         # with true repeated cross sections, but should pick up the right time periods
         # only with unbalanced panel
-        disidx <- (data$rowid %in% rightids) & ( (data[,tname] == tlist[t+tfac]) | (data[,tname]==tlist[pret]))
+        disidx <- (data$.rowid %in% rightids) & ( (data[,tname] == tlist[t+tfac]) | (data[,tname]==tlist[pret]))
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- thisdata[disidx,]
@@ -283,9 +282,9 @@ compute.att_gt <- function(dp) {
         disdat <- droplevels(disdat)
 
         # give short names for data in this iteration
-        G <- disdat$G
-        C <- disdat$C
-        Y <- disdat$y
+        G <- disdat$.G
+        C <- disdat$.C
+        Y <- disdat[,yname]
         post <- 1*(disdat[,tname] == tlist[t+tfac])
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
@@ -387,7 +386,7 @@ compute.att_gt <- function(dp) {
       } else {
         # aggregate inf functions by id (order by id)
         aggte_inffunc = suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
-        disidx <- (unique(data$rowid) %in% aggte_inffunc[,1])
+        disidx <- (unique(data$.rowid) %in% aggte_inffunc[,1])
         inf.func[disidx] <- aggte_inffunc[,2]
       }
 

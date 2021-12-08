@@ -12,8 +12,8 @@ library(profvis)
 source("~/Dropbox/did/R/simulate_data.R")
 
 
-n <- 10000
-time.periods <- 20
+n <- 5000
+time.periods <- 8
 sp <- reset.sim(n=n, time.periods=time.periods)
 
 data <- build_sim_dataset(sp)
@@ -27,8 +27,12 @@ data$X4 <- rnorm(N)
 data$X5 <- rnorm(N)
 
 pt <- proc.time()
+
+profvis({
 cran_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-                   gname="G", est_method="dr")
+                  gname="G", est_method="dr", allow_unbalanced_panel=TRUE)
+})  
+
 cran_time <- proc.time() - pt
 cran_time
 
@@ -38,8 +42,12 @@ devtools::load_all("~/Dropbox/BMisc")
 devtools::load_all("~/Dropbox/did")
 
 pt <- proc.time()
+
+profvis({
 new_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-                   gname="G", est_method="dr")
+                 gname="G", est_method="dr", allow_unbalanced_panel=TRUE)
+})
+
 new_time <- proc.time() - pt
 new_time
 

@@ -4,17 +4,16 @@
 \alias{process_attgt}
 \title{Process Results from \code{\link[=compute.att_gt]{compute.att_gt()}}}
 \usage{
-process_attgt(attgt.results.list)
+process_attgt(attgt.list)
 }
 \arguments{
-\item{attgt.results.list}{list of results from \code{\link[=compute.att_gt]{compute.att_gt()}}}
+\item{attgt.list}{list of results from \code{\link[=compute.att_gt]{compute.att_gt()}}}
 }
 \value{
 list with elements:
 \item{group}{which group a set of results belongs to}
 \item{tt}{which time period a set of results belongs to}
 \item{att}{the group time average treatment effect}
-\item{inf.func}{the influence function for that group time average treatment effect}
 }
 \description{
 Process Results from \code{\link[=compute.att_gt]{compute.att_gt()}}

@@ -56,7 +56,7 @@ pre_process_did <- function(yname,
   }
 
   # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname)], model.frame(xformla, data=data))
+  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname)], model.frame(xformla, data=data))
   
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
@@ -65,7 +65,7 @@ pre_process_did <- function(yname,
   data$.w <- w
 
   # Outcome variable will be denoted by y
-  # data$y <- data[, yname]
+  # data$.y <- data[, yname]
 
   # figure out the dates
   # list of dates from smallest to largest
@@ -228,11 +228,11 @@ pre_process_did <- function(yname,
 
     # n-row data.frame to hold the influence function
     if (true_repeated_cross_sections) {
-      data$rowid <- seq(1:nrow(data))
-      idname <- "rowid"
+      data$.rowid <- seq(1:nrow(data))
+      idname <- ".rowid"
     } else {
       # set rowid to idname for repeated cross section/unbalanced
-      data$rowid <- data[, idname]
+      data$.rowid <- data[, idname]
     }
 
     # n is unique number of cross section observations

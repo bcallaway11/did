@@ -27,6 +27,6 @@ mpdta
 \description{
 A dataset containing (the log of) teen employment in 500 counties
 in the U.S. from 2004 to 2007.  This is a subset of the dataset used in Callaway and
-Sant'Anna (2020).  See that paper for additional descriptions.
+Sant'Anna (2021).  See that paper for additional descriptions.
 }
 \keyword{datasets}

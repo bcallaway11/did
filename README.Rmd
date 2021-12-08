@@ -32,6 +32,9 @@ cat(
   badger::badge_last_commit("bcallaway11/did")
 )
 ```
+
+[![codecov](https://codecov.io/gh/bcallaway11/did/branch/master/graph/badge.svg?token=DBYK1AUFS5)](https://codecov.io/gh/bcallaway11/did)
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 The **did** package contains tools for computing average treatment effect parameters in a Difference-in-Differences setup allowing for

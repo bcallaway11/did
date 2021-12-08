@@ -29,7 +29,8 @@ test_that("att_gt works w/o dynamics, time effects, or group effects", {
 
 test_that("att_gt works using ipw", {
   sp <- reset.sim()
-  data <- build_ipw_dataset(sp)
+  sp$reg <- FALSE
+  data <- build_sim_dataset(sp)
 
   # dr
   res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -37,7 +38,7 @@ test_that("att_gt works using ipw", {
 
 
   # ipw
-  res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  res_ipw <- att_gt(yname="Y", xformla=~1, data=data, tname="period", idname="id",
                 gname="G", est_method="ipw")
 
   expect_equal(res_dr$att[1], 1, tol=.5)
@@ -46,11 +47,15 @@ test_that("att_gt works using ipw", {
 
 test_that("two period case", {
   sp <- reset.sim(time.periods=2)
+  #sp$ipw <- FALSE
+  #sp$te.bet.X <- c(1, 2)
+  sp$n <- 10000
   data <- build_sim_dataset(sp)
   
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="ipw")
-
+              gname="G", est_method="reg")
+  res
+  
   agg_simple <- aggte(res, type="simple")
   agg_group <- aggte(res, type="group")
   agg_dynamic <- aggte(res, type="dynamic")
@@ -528,4 +533,29 @@ test_that("custom estimation method", {
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                 gname="G", est_method=DRDID::drdid_imp_panel, panel=TRUE)
   expect_equal(res$att[1], 1, tol=.5)  
+})
+
+
+
+test_that("sampling weights", {
+  # the idea here is that we can re-weight and should
+  # get the same thing as if we subset
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+  data2 <- data
+  keepids <- sample(unique(data$id), length(unique(data$id)))
+  data$w <- 1*(data$id %in% keepids) # weights shouldn't have to have mean/sum 1
+  data2 <- subset(data, id %in% keepids)
+
+  res_weights <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                        gname="G", est_method="reg", weightsname="w")
+
+  res_subset <- att_gt(yname="Y", xformla=~X, data=data2, tname="period", idname="id", control_group="notyettreated",
+                        gname="G", est_method="reg")
+
+  # test for same att's
+  expect_equal(res_weights$att[1], res_subset$att[1])
+  # test for same standard errors
+  expect_equal(res_weights$se[1], res_subset$se[1], tol=.02)
+
 })

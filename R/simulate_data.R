@@ -91,14 +91,13 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   gamG <- sp_list$gamG
   ipw <- sp_list$ipw
   reg <- sp_list$reg
-  
 
   X <- rnorm(n)
 
   if (ipw) {
     pr <- exp(outer(X,gamG)) / apply( exp(outer(X,gamG)), 1, sum)
   } else {
-    pr <- exp(outer(X^2,gamG)) / apply( exp(outer(X^2,gamG)), 1, sum)
+    pr <- exp(outer((pnorm(X)+0.5)^2,gamG)) / apply( exp(outer((pnorm(X)+0.5)^2,gamG)), 1, sum)
   }
 
   G <- apply(pr, 1, function(pvec) sample(seq(0,time.periods), size=1, prob=pvec))
@@ -187,108 +186,6 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   }
 
   ddf <- subset(ddf, G != 1)
-  ddf
-}
-
-
-
-build_ipw_dataset <- function(sp_list, panel=TRUE) {
-
-  #-----------------------------------------------------------------------------
-  # build dataset
-  # build things up from the generalized propensity score
-  #-----------------------------------------------------------------------------
-  time.periods <- sp_list$time.periods
-  nt <- sp_list$nt
-  bett <- sp_list$bett
-  thet=sp_list$thet
-  nu <- sp_list$nu
-  theu <- sp_list$theu
-  betu <- sp_list$betu
-  te.bet.ind <- sp_list$te.bet.ind
-  te.bet.X <- sp_list$te.bet.X
-  te.t <- sp_list$te.t
-  te.e <- sp_list$te.e
-  te <- sp_list$te
-  n <- sp_list$n
-  gamG <- sp_list$gamG
-  
-  X <- rnorm(n)
-
-  pr <- exp(outer(X,gamG)) / apply( exp(outer(X,gamG)), 1, sum)
-  GG <- apply(pr, 1, function(pvec) sample(seq(0,time.periods), size=1, prob=pvec))
-
-  G <- GG[GG>0]
-  nt <- length(G)
-  Xt <- X[GG>0]
-
-  # draw individual fixed effect
-  Ct <- rnorm(nt, mean=G)
-
-  # generate untreated potential outcomes in each time period
-  Ynames <- paste0("Y",1:time.periods)
-  Ynames <- paste0(1:time.periods)
-  Y0tmat <- sapply(1:time.periods, function(t) {
-    thet[t] + Ct + Xt*bett[t] + rnorm(nt)
-  })
-  Y0tdf <- as.data.frame(Y0tmat)
-  
-  # generate treated potential outcomes
-  Y1tdf <- sapply(1:time.periods, function(t) {
-    te.t[t] + te.bet.ind[G]*Ct + Xt*te.bet.X[t] + (G <= t)*te.e[sapply(1:nt, function(i) max(t-G[i]+1,1))] + te + rnorm(nt) # hack for the dynamic effects but ok
-  })
-
-  # generate observed data
-  Ytdf <- sapply(1:time.periods, function(t) {
-    (G<=t)*Y1tdf[,t] + (G>t)*Y0tdf[,t]
-  })
-  colnames(Ytdf) <- Ynames
-
-  # store observed data for treated group
-  dft <- cbind.data.frame(G,X=Xt,Ytdf)
-
-  # untreated units
-  nu <- n-nt
-  
-  # draw untreated covariate
-  Xu <- X[GG==0]
-
-  # draw untreated fixed effect
-  Cu <- rnorm(nu)
-
-
-  # generate untreated potential outcomes
-  Y0umat <- sapply(1:time.periods, function(t) {
-    theu[t] + Cu + rnorm(nu) + Xu*betu[t]
-  })
-  Y0udf <- as.data.frame(Y0umat)
-  colnames(Y0udf) <- Ynames
-
-  # store dataset of observed outcomes for untreated units
-  dfu <- cbind.data.frame(G=0,X=Xu,Y0udf)
-
-  # store overall dataset
-  df <- rbind.data.frame(dft, dfu)
-
-  # generate id variable
-  df$id <- 1:nrow(df)
-
-  # convert data from wide to long format
-  ddf <- tidyr::gather(df, period, Y, -G, -X, -id)
-  ddf$period <- as.numeric(ddf$period)
-  ddf$treat <- 1*(ddf$G > 0)
-  ddf <- ddf[order(ddf$id, ddf$period),] # reorder data
-
-  if (!panel) { # repeated cross sections
-    Time <- sample(1:time.periods, size=n, replace=TRUE, prob=rep(1/time.periods, time.periods))
-    right.row <- sapply( unique(ddf$id), function(i) {
-      which(ddf$id==i & ddf$period==Time[i])
-    })
-    ddf <- ddf[right.row,]
-  }
-  
-  ddf <- subset(ddf, G != 1)
-  
   ddf
 }
 

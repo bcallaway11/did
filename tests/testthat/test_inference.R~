@@ -1,0 +1,57 @@
+#-----------------------------------------------------------------------------
+#
+# These are tests for the inference procedure for computing ATT(g,t)'s and
+# different aggregation methods.  These tests are meant to run fast ---
+# they only confirm that standard errors are not changing across different
+# iterations of the code.  More extensive/direct tests are available at
+# did/tests/att_gt_inference_tests.Rmd.
+#
+# IMPORTANT: For these tests to run, version 2.0 of the did package should
+# be available at ~/R/old_packages/did
+# 
+#-----------------------------------------------------------------------------
+
+
+library(DRDID)
+library(BMisc)
+library(ggplot2)
+library(ggpubr)
+
+
+test_that("inference with balanced panel data and aggregations", {
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+
+  tryCatch(detach("package:did"), error=function(e) "")
+
+  library(did, lib.loc="~/R/old_packages/")
+  set.seed(1234)
+  # dr
+  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr")
+  # reg
+  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                    gname="G", est_method="reg")
+  # reg
+  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                    gname="G", est_method="ipw")
+  detach("package:did")
+
+  
+  devtools::load_all("~/Dropbox/did")
+  set.seed(1234)
+  #dr 
+  dr_new <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr")
+  # reg
+  reg_new <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                    gname="G", est_method="reg")
+  # reg
+  ipw_new <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                    gname="G", est_method="ipw")
+  detach("package:did")
+
+  expect_equal(dr_2.0$se[1], dr_new$se[1])
+  expect_equal(reg_2.0$se[1], reg_new$se[1])
+  expect_equal(ipw_2.0$se[1], ipw_new$se[1])
+})  
