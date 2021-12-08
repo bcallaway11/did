@@ -1,12 +1,22 @@
-# did 2.1
+# did 2.1.0
 
-  * completely removed `mp.spatt` and `mp.spatt.test` functions (which were the original names for `att_gt`)
-
-  * Simulation/testing code now exported
+  * Code is substantially faster/more memory efficient
 
   * Support for *universal* base period
   
-  * Moved from local testing to `testthat`
+  * Major improvements to unit testing 
+
+  * Completely removed `mp.spatt` and `mp.spatt.test` functions (which were the original names for `att_gt`)
+
+  * Simulation/testing code now exported
+  
+  * Removed some slow running checks
+  
+  * Multiplier bootstrap code is now written in C++
+  
+  * Improvements to error handling, added some additional warning messages, removed some unnecessary warning messages
+  
+  * Bug fixes for NA standard errors that occur with very small groups
 
 
 # did 2.0.1

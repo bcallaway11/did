@@ -28,12 +28,10 @@ cat(
   badger::badge_cran_release("did", "blue"),
   badger::badge_devel("bcallaway11/did", "blue"),
   badger::badge_cran_checks("did"),
-  badger::badge_codecov("bcallaway11/did"),
+  #badger::badge_codecov("bcallaway11/did"),
   badger::badge_last_commit("bcallaway11/did")
 )
 ```
-
-[![codecov](https://codecov.io/gh/bcallaway11/did/branch/master/graph/badge.svg?token=DBYK1AUFS5)](https://codecov.io/gh/bcallaway11/did)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
