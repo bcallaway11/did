@@ -235,7 +235,7 @@ aggregation</p>
     
 
 
-<p>Initial ATT(g,t) estimates from <code><a href='att_gt.html'>att_gt()</a></code><div class="r"></p><pre><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
+<p>Initial ATT(g,t) estimates from <code><a href='att_gt.html'>att_gt()</a></code><div class="sourceCode r"></p><pre><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
 <span class='va'>out</span> <span class='op'>&lt;-</span> <span class='fu'><a href='att_gt.html'>att_gt</a></span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
                tname<span class='op'>=</span><span class='st'>"year"</span>,
                idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
@@ -244,16 +244,16 @@ aggregation</p>
                data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
 </pre><p></div></p>
 <p>You can aggregate the ATT(g,t) in many ways.</p>
-<p><strong>Overall ATT:</strong><div class="r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"simple"</span><span class='op'>)</span>
+<p><strong>Overall ATT:</strong><div class="sourceCode r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"simple"</span><span class='op'>)</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Call:</span>
 <span class='co'>#&gt; aggte(MP = out, type = "simple")</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt;    ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.04         0.013    -0.0655     -0.0144 *</span>
+<span class='co'>#&gt;  -0.04        0.0129    -0.0652     -0.0147 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; ---</span>
@@ -262,77 +262,77 @@ aggregation</p>
 <span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
 </pre><p></div></p>
-<p><strong>Dynamic ATT (Event-Study):</strong><div class="r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"dynamic"</span><span class='op'>)</span>
+<p><strong>Dynamic ATT (Event-Study):</strong><div class="sourceCode r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"dynamic"</span><span class='op'>)</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Call:</span>
 <span class='co'>#&gt; aggte(MP = out, type = "dynamic")</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Overall summary of ATT’s based on event-study/dynamic aggregation:  </span>
+<span class='co'>#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
 <span class='co'>#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.0772        0.0205    -0.1174     -0.0371 *</span>
+<span class='co'>#&gt;  -0.0772        0.0209    -0.1182     -0.0363 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Dynamic Effects:</span>
 <span class='co'>#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;          -3   0.0305     0.0154       -0.0084      0.0694  </span>
-<span class='co'>#&gt;          -2  -0.0006     0.0134       -0.0343      0.0332  </span>
-<span class='co'>#&gt;          -1  -0.0245     0.0134       -0.0583      0.0094  </span>
-<span class='co'>#&gt;           0  -0.0199     0.0131       -0.0530      0.0131  </span>
-<span class='co'>#&gt;           1  -0.0510     0.0173       -0.0946     -0.0074 *</span>
-<span class='co'>#&gt;           2  -0.1373     0.0409       -0.2405     -0.0340 *</span>
-<span class='co'>#&gt;           3  -0.1008     0.0372       -0.1946     -0.0070 *</span>
+<span class='co'>#&gt;          -3   0.0305     0.0147       -0.0063      0.0673  </span>
+<span class='co'>#&gt;          -2  -0.0006     0.0134       -0.0341      0.0329  </span>
+<span class='co'>#&gt;          -1  -0.0245     0.0148       -0.0614      0.0125  </span>
+<span class='co'>#&gt;           0  -0.0199     0.0126       -0.0515      0.0116  </span>
+<span class='co'>#&gt;           1  -0.0510     0.0167       -0.0928     -0.0091 *</span>
+<span class='co'>#&gt;           2  -0.1373     0.0386       -0.2339     -0.0406 *</span>
+<span class='co'>#&gt;           3  -0.1008     0.0374       -0.1944     -0.0072 *</span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
 </pre><p></div></p>
-<p><strong>ATT for each group:</strong><div class="r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"group"</span><span class='op'>)</span>
+<p><strong>ATT for each group:</strong><div class="sourceCode r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"group"</span><span class='op'>)</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Call:</span>
 <span class='co'>#&gt; aggte(MP = out, type = "group")</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Overall summary of ATT’s based on group/cohort aggregation:  </span>
+<span class='co'>#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span>
 <span class='co'>#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.031        0.0119    -0.0544     -0.0076 *</span>
+<span class='co'>#&gt;  -0.031        0.0117     -0.054     -0.0081 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Group Effects:</span>
 <span class='co'>#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;   2004  -0.0797     0.0274       -0.1399     -0.0196 *</span>
-<span class='co'>#&gt;   2006  -0.0229     0.0167       -0.0596      0.0137  </span>
-<span class='co'>#&gt;   2007  -0.0261     0.0165       -0.0623      0.0102  </span>
+<span class='co'>#&gt;   2004  -0.0797     0.0293       -0.1444     -0.0151 *</span>
+<span class='co'>#&gt;   2006  -0.0229     0.0166       -0.0595      0.0137  </span>
+<span class='co'>#&gt;   2007  -0.0261     0.0174       -0.0645      0.0124  </span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
 </pre><p></div></p>
-<p><strong>ATT for each calendar year:</strong><div class="r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"calendar"</span><span class='op'>)</span>
+<p><strong>ATT for each calendar year:</strong><div class="sourceCode r"></p><pre><span class='fu'>aggte</span><span class='op'>(</span><span class='va'>out</span>, type <span class='op'>=</span> <span class='st'>"calendar"</span><span class='op'>)</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Call:</span>
 <span class='co'>#&gt; aggte(MP = out, type = "calendar")</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Overall summary of ATT’s based on calendar time aggregation:  </span>
+<span class='co'>#&gt; Overall summary of ATT's based on calendar time aggregation:  </span>
 <span class='co'>#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.0417        0.0173    -0.0757     -0.0077 *</span>
+<span class='co'>#&gt;  -0.0417        0.0163    -0.0736     -0.0098 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Time Effects:</span>
 <span class='co'>#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;  2004  -0.0105     0.0247       -0.0670      0.0460  </span>
-<span class='co'>#&gt;  2005  -0.0704     0.0313       -0.1418      0.0010  </span>
-<span class='co'>#&gt;  2006  -0.0488     0.0210       -0.0968     -0.0008 *</span>
-<span class='co'>#&gt;  2007  -0.0371     0.0134       -0.0677     -0.0064 *</span>
+<span class='co'>#&gt;  2004  -0.0105     0.0236       -0.0634      0.0424  </span>
+<span class='co'>#&gt;  2005  -0.0704     0.0329       -0.1441      0.0033  </span>
+<span class='co'>#&gt;  2006  -0.0488     0.0194       -0.0923     -0.0053 *</span>
+<span class='co'>#&gt;  2007  -0.0371     0.0144       -0.0694     -0.0047 *</span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>

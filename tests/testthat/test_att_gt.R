@@ -12,6 +12,7 @@ library(ggpubr)
 #-----------------------------------------------------------------------------
 test_that("att_gt works w/o dynamics, time effects, or group effects", {
   sp <- reset.sim()
+  sp$ipw <- FALSE
   data <- build_sim_dataset(sp)
 
   # dr
@@ -47,8 +48,7 @@ test_that("att_gt works using ipw", {
 
 test_that("two period case", {
   sp <- reset.sim(time.periods=2)
-  #sp$ipw <- FALSE
-  #sp$te.bet.X <- c(1, 2)
+  sp$ipw <- FALSE
   sp$n <- 10000
   data <- build_sim_dataset(sp)
   
@@ -104,7 +104,8 @@ test_that("repeated cross section", {
 
 test_that("ipw repeated cross sections", {
   sp <- reset.sim()
-  data <- build_ipw_dataset(sp, panel=FALSE)
+  sp$reg <- FALSE
+  data <- build_sim_dataset(sp, panel=FALSE)
 
   # dr
   res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -154,7 +155,8 @@ test_that("unbalanced panel", {
 
   # ipw version
   sp <- reset.sim()
-  data <- build_ipw_dataset(sp)
+  sp$reg <- FALSE
+  data <- build_sim_dataset(sp)
   data <- data[-2,]
 
   res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -173,7 +175,8 @@ test_that("unbalanced panel", {
 
 test_that("not yet treated comparison group", {
   sp <- reset.sim()
-  data <- build_ipw_dataset(sp, panel=FALSE)
+  sp$reg <- FALSE
+  data <- build_sim_dataset(sp, panel=FALSE)
 
   # dr
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
@@ -226,7 +229,8 @@ test_that("aggregations", {
   sp <- reset.sim(time.periods=time.periods)
   sp$te <- 0
   sp$te.bet.ind <- 1:time.periods
-  data <- build_ipw_dataset(sp, panel=FALSE)
+  sp$reg
+  data <- build_sim_dataset(sp, panel=FALSE)
 
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                 control_group="nevertreated",

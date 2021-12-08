@@ -3,8 +3,6 @@
 
 # Difference-in-Differences <img src="man/figures/logo.png" align="right" alt="" width="155" />
 
-    #> ✔ Setting active project to '/home/brant/Dropbox/did'
-
 [![](http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue)](https://cran.r-project.org/package=did)
 [![](http://cranlogs.r-pkg.org/badges/last-month/did?color=blue)](https://cran.r-project.org/package=did)
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
@@ -13,6 +11,9 @@
 checks](https://cranchecks.info/badges/summary/did)](https://cran.r-project.org/web/checks/check_results_did.html)
 [![](https://codecov.io/gh/bcallaway11/did/branch/master/graph/badge.svg)](https://codecov.io/gh/bcallaway11/did)
 [![](https://img.shields.io/github/last-commit/bcallaway11/did.svg)](https://github.com/bcallaway11/did/commits/master)
+
+[![codecov](https://codecov.io/gh/bcallaway11/did/branch/master/graph/badge.svg?token=DBYK1AUFS5)](https://codecov.io/gh/bcallaway11/did)
+
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
 The **did** package contains tools for computing average treatment
@@ -46,10 +47,11 @@ treatment effects or event-study-type estimands.
 There has been some recent work on DiD with multiple time periods. The
 **did** package implements the framework put forward in
 
-  - [Callaway, Brantly, and Pedro H.C. Sant'Anna.
-    Difference-in-differences with multiple time periods. Forthcoming at
-    the Journal of Econometrics
-    (2020).](https://authors.elsevier.com/a/1cFzc15Dji4pnC)
+  - [Callaway, Brantly and Pedro H.C. Sant’Anna.
+    "Difference-in-Differences with Multiple Time Periods." Journal of
+    Econometrics, Vol. 225, No. 2,
+    pp. 200-230, 2021.](https://doi.org/10.1016/j.jeconom.2020.12.001)
+    or [arXiv](https://arxiv.org/abs/1803.09015)
 
 **Higher level discussions of issues are available in**
 
@@ -76,7 +78,7 @@ devtools::install_github("bcallaway11/did")
 The following is a simplified example of the effect of states increasing
 their minimum wages on county-level teen employment rates which comes
 from [Callaway and Sant’Anna
-(2020)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+(2021)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
   - [More detailed examples are also
     available](https://bcallaway11.github.io/did/articles/did-basics.html)
@@ -135,18 +137,18 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0240       -0.0737      0.0527  
-#>   2004 2005  -0.0704     0.0321       -0.1550      0.0142  
-#>   2004 2006  -0.1373     0.0386       -0.2391     -0.0354 *
-#>   2004 2007  -0.1008     0.0361       -0.1959     -0.0057 *
-#>   2006 2004   0.0065     0.0242       -0.0571      0.0702  
-#>   2006 2005  -0.0028     0.0204       -0.0566      0.0511  
-#>   2006 2006  -0.0046     0.0173       -0.0501      0.0410  
-#>   2006 2007  -0.0412     0.0194       -0.0923      0.0098  
-#>   2007 2004   0.0305     0.0150       -0.0090      0.0700  
-#>   2007 2005  -0.0027     0.0176       -0.0491      0.0437  
-#>   2007 2006  -0.0311     0.0184       -0.0796      0.0175  
-#>   2007 2007  -0.0261     0.0165       -0.0694      0.0173  
+#>   2004 2004  -0.0105     0.0239       -0.0750      0.0540  
+#>   2004 2005  -0.0704     0.0343       -0.1632      0.0223  
+#>   2004 2006  -0.1373     0.0375       -0.2387     -0.0358 *
+#>   2004 2007  -0.1008     0.0354       -0.1965     -0.0052 *
+#>   2006 2004   0.0065     0.0226       -0.0545      0.0675  
+#>   2006 2005  -0.0028     0.0184       -0.0526      0.0471  
+#>   2006 2006  -0.0046     0.0187       -0.0552      0.0460  
+#>   2006 2007  -0.0412     0.0212       -0.0986      0.0161  
+#>   2007 2004   0.0305     0.0150       -0.0100      0.0710  
+#>   2007 2005  -0.0027     0.0160       -0.0459      0.0405  
+#>   2007 2006  -0.0311     0.0179       -0.0795      0.0174  
+#>   2007 2007  -0.0261     0.0179       -0.0743      0.0222  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -211,18 +213,18 @@ summary(es)
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.0772        0.0208    -0.1179     -0.0365 *
+#>  -0.0772        0.0216    -0.1197     -0.0348 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0142       -0.0059      0.0669  
-#>          -2  -0.0006     0.0131       -0.0342      0.0331  
-#>          -1  -0.0245     0.0148       -0.0623      0.0134  
-#>           0  -0.0199     0.0115       -0.0494      0.0096  
-#>           1  -0.0510     0.0166       -0.0936     -0.0083 *
-#>           2  -0.1373     0.0392       -0.2376     -0.0369 *
-#>           3  -0.1008     0.0349       -0.1903     -0.0113 *
+#>          -3   0.0305     0.0147       -0.0070      0.0680  
+#>          -2  -0.0006     0.0132       -0.0341      0.0329  
+#>          -1  -0.0245     0.0153       -0.0633      0.0144  
+#>           0  -0.0199     0.0116       -0.0495      0.0096  
+#>           1  -0.0510     0.0176       -0.0958     -0.0061 *
+#>           2  -0.1373     0.0381       -0.2343     -0.0402 *
+#>           3  -0.1008     0.0352       -0.1905     -0.0111 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -276,14 +278,14 @@ summary(group_effects)
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.031        0.0126    -0.0557     -0.0064 *
+#>  -0.031        0.0129    -0.0563     -0.0057 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0289       -0.1442     -0.0153 *
-#>   2006  -0.0229     0.0168       -0.0604      0.0146  
-#>   2007  -0.0261     0.0170       -0.0639      0.0118  
+#>   2004  -0.0797     0.0283       -0.1432     -0.0163 *
+#>   2006  -0.0229     0.0167       -0.0603      0.0145  
+#>   2007  -0.0261     0.0164       -0.0629      0.0108  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

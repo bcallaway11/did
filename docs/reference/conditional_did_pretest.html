@@ -301,18 +301,18 @@ Default is <code>FALSE</code>.</p></td>
     <p>Callaway, Brantly and Sant'Anna, Pedro H. C.  "Difference-in-Differences with Multiple Time Periods and an Application on the Minimum Wage and Employment." Working Paper <a href='https://arxiv.org/abs/1803.09015v2'>https://arxiv.org/abs/1803.09015v2</a> (2018).</p>
 
     <h2 class="hasAnchor" id="examples"><a class="anchor" href="#examples"></a>Examples</h2>
-    <pre class="examples"><div class='input'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span>
-<span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
-<span class='va'>pre.test</span> <span class='op'>&lt;-</span> <span class='fu'>conditional_did_pretest</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
-                                    tname<span class='op'>=</span><span class='st'>"year"</span>,
-                                    idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
-                                    gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
-                                    xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,
-                                    data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span>
-<span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>pre.test</span><span class='op'>)</span>
-<span class='op'>}</span>
-
-</div></pre>
+    <pre class="examples"><span class='r-in'><span class='kw'>if</span> <span class='op'>(</span><span class='cn'>FALSE</span><span class='op'>)</span> <span class='op'>{</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span></span>
+<span class='r-in'><span class='va'>pre.test</span> <span class='op'>&lt;-</span> <span class='fu'>conditional_did_pretest</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,</span>
+<span class='r-in'>                                    tname<span class='op'>=</span><span class='st'>"year"</span>,</span>
+<span class='r-in'>                                    idname<span class='op'>=</span><span class='st'>"countyreal"</span>,</span>
+<span class='r-in'>                                    gname<span class='op'>=</span><span class='st'>"first.treat"</span>,</span>
+<span class='r-in'>                                    xformla<span class='op'>=</span><span class='op'>~</span><span class='va'>lpop</span>,</span>
+<span class='r-in'>                                    data<span class='op'>=</span><span class='va'>mpdta</span><span class='op'>)</span></span>
+<span class='r-in'><span class='fu'><a href='https://rdrr.io/r/base/summary.html'>summary</a></span><span class='op'>(</span><span class='va'>pre.test</span><span class='op'>)</span></span>
+<span class='r-in'><span class='op'>}</span></span>
+<span class='r-in'></span>
+</pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">

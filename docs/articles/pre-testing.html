@@ -71,13 +71,13 @@
 
       
 
-      </header><script src="pre-testing_files/header-attrs-2.8/header-attrs.js"></script><div class="row">
+      </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Pre-Testing in a DiD Setup using the did Package</h1>
                         <h4 class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 class="date">2021-06-29</h4>
+            <h4 class="date">2021-12-08</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/pre-testing.Rmd"><code>vignettes/pre-testing.Rmd</code></a></small>
       <div class="hidden name"><code>pre-testing.Rmd</code></div>
@@ -131,7 +131,7 @@
 <span class="co"># generate data set with these parameters</span>
 <span class="co"># (main thing: it generates a dataset that satisfies</span>
 <span class="co"># parallel trends in all periods...including pre-treatment)</span>
-<span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">build_sim_dataset</span><span class="op">(</span><span class="op">)</span>
+<span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_sim_dataset.html">build_sim_dataset</a></span><span class="op">(</span><span class="op">)</span>
 
 <span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">data</span><span class="op">)</span>
 <span class="co">#&gt;       G        X id period         Y treat</span>
@@ -255,7 +255,7 @@
 <span class="co">#&gt; att_gt(yname = "Y", tname = "period", idname = "id", gname = "G", </span>
 <span class="co">#&gt;     data = data, bstrap = FALSE, cband = FALSE)</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group-Time Average Treatment Effects:</span>
 <span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Pointwise  Conf. Band]  </span>
@@ -290,7 +290,7 @@
 <div id="pitfall-selective-treatment-timing" class="section level4">
 <h4 class="hasAnchor">
 <a href="#pitfall-selective-treatment-timing" class="anchor"></a>Pitfall: Selective Treatment Timing</h4>
-<p>Sun and Abraham (2020) point out a major limitation of event study regressions: when there is <strong>selective treatment timing</strong> the <span class="math inline">\(\mu_l\)</span> end up being weighted averages of treatment effects <em>across different lengths of exposures</em>.</p>
+<p>Sun and Abraham (2021) point out a major limitation of event study regressions: when there is <strong>selective treatment timing</strong> the <span class="math inline">\(\mu_l\)</span> end up being weighted averages of treatment effects <em>across different lengths of exposures</em>.</p>
 <p><strong>Selective treatment timing</strong> means that individuals in different groups experience systematically different effects of participating in the treatment from individuals in other groups. For example, there would be selective treatment timing if individuals choose to be treated in earlier periods if they tend to experience larger benefits from participating in the treatment. This sort of selective treatment timing is likely to be present in many applications in economics / policy evaluation.</p>
 <p>Contrary to event study regressions, pre-tests based on group-time average treatment effects (or based on group-time average treatment effects that are aggregated into an event study plot) <strong>are still valid even in the presence of selective treatment timing</strong>.</p>
 <p>To see this in action, let’s keep the same example as before, but add selective treatment timing.</p>
@@ -308,7 +308,7 @@
 <span class="co"># generate data set with these parameters</span>
 <span class="co"># (main thing: it generates a dataset that satisfies</span>
 <span class="co"># parallel trends in all periods...including pre-treatment)</span>
-<span class="va">data</span> <span class="op">&lt;-</span> <span class="fu">build_sim_dataset</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<span class="va">data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_sim_dataset.html">build_sim_dataset</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># run through same code as in earlier example...omitted</span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
@@ -373,19 +373,19 @@
 <span class="co">#&gt; att_gt(yname = "Y", tname = "period", idname = "id", gname = "G", </span>
 <span class="co">#&gt;     data = data)</span>
 <span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group-Time Average Treatment Effects:</span>
 <span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;      2    2   5.0030     0.0888        4.7550      5.2509 *</span>
-<span class="co">#&gt;      2    3   4.0634     0.1148        3.7428      4.3839 *</span>
-<span class="co">#&gt;      2    4   3.1105     0.1457        2.7034      3.5175 *</span>
-<span class="co">#&gt;      3    2  -0.0276     0.0461       -0.1564      0.1013  </span>
-<span class="co">#&gt;      3    3   3.9993     0.1065        3.7020      4.2966 *</span>
-<span class="co">#&gt;      3    4   2.9554     0.1332        2.5835      3.3274 *</span>
-<span class="co">#&gt;      4    2  -0.0420     0.0500       -0.1816      0.0975  </span>
-<span class="co">#&gt;      4    3   0.0016     0.0475       -0.1310      0.1341  </span>
-<span class="co">#&gt;      4    4   2.0335     0.1395        1.6439      2.4230 *</span>
+<span class="co">#&gt;      2    2   5.0030     0.0873        4.7710      5.2349 *</span>
+<span class="co">#&gt;      2    3   4.0634     0.1168        3.7529      4.3738 *</span>
+<span class="co">#&gt;      2    4   3.1105     0.1487        2.7152      3.5057 *</span>
+<span class="co">#&gt;      3    2  -0.0276     0.0504       -0.1616      0.1064  </span>
+<span class="co">#&gt;      3    3   3.9993     0.1015        3.7296      4.2690 *</span>
+<span class="co">#&gt;      3    4   2.9554     0.1291        2.6124      3.2985 *</span>
+<span class="co">#&gt;      4    2  -0.0420     0.0519       -0.1800      0.0959  </span>
+<span class="co">#&gt;      4    3   0.0016     0.0500       -0.1312      0.1343  </span>
+<span class="co">#&gt;      4    4   2.0335     0.1486        1.6385      2.4284 *</span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -415,7 +415,7 @@
 <p>The <code>did</code> package contains an additional pre-test for the conditional parallel trends assumption in the <code>conditional_did_pretest</code> function.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># not run (this code can be substantially slower)</span>
-<span class="fu">reset.sim</span><span class="op">(</span><span class="op">)</span>
+<span class="fu"><a href="../reference/reset.sim.html">reset.sim</a></span><span class="op">(</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1814</span><span class="op">)</span>
 <span class="va">nt</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
 <span class="va">nu</span> <span class="op">&lt;-</span> <span class="fl">1000</span>
@@ -427,9 +427,9 @@
 <a href="#references" class="anchor"></a>References</h2>
 <ul>
 <li><p><a href="https://doi.org/10.1111/0034-6527.00321">Abadie, Alberto. “Semiparametric difference-in-differences estimators.” The Review of Economic Studies 72.1 (2005): 1-19.</a></p></li>
-<li><p><a href="https://arxiv.org/abs/1803.09015">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Forthcoming at the Journal of Econometrics (2020).</a>.</p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021</a>.</p></li>
 <li><p><a href="https://doi.org/10.2307/2971733">Heckman, James J., Hidehiko Ichimura, and Petra Todd. “Matching as an econometric evaluation estimator.” The Review of Economic Studies 65.2 (1998): 261-294.</a></p></li>
-<li><p><a href="http://economics.mit.edu/files/14964">Sun, Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in event studies with heterogeneous treatment effects.” Available at SSRN 3158747 (2020).</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006">Sun, Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in event studies with heterogeneous treatment effects.” Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
 </ul>
 </div>
   </div>

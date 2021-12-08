@@ -24,8 +24,6 @@ untreated potential outcomes.  If FALSE, sets parameters that
 will be incompatible with using regressions (i.e., regressions
 that include only linear term in X).  Either way, these
 paramters can be specified by the user if so desired.}
-
-\item{p}{The probability of being treated}
 }
 \value{
 list of simulation parameters
@@ -40,4 +38,3 @@ After calling this function, the user can change particular values of the
 parameters in order to generate dynamics, heterogeneous effects across
 groups, etc.
 }
-\keyword{internal}

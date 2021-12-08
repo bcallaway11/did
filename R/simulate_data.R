@@ -10,7 +10,6 @@
 #'
 #' @param time.periods The number of time periods to include
 #' @param n The total number of observations
-#' @param p The probability of being treated
 #' @param ipw If TRUE, sets parameters so that DGP is
 #'  compatible with recovering ATT(g,t)'s using IPW (i.e.,
 #'  where logit that just includes a linear term in X works).  If
@@ -26,7 +25,6 @@
 #'
 #' @return list of simulation parameters
 #' 
-#' @keywords internal
 #' @export
 reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
   #-----------------------------------------------------------------------------
@@ -70,7 +68,25 @@ reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
        )
 }
 
-
+#' @title build_sim_dataset
+#'
+#' @description A function for building simulated data
+#'
+#' @param sp_list A list of simulation parameters.  See `reset.sim` to generate
+#'  some default values for parameters
+#' @param panel whether to construct panel data (the default) or repeated
+#'  cross sections data
+#'
+#' @return a data.frame with the following columns
+#'   \itemize{
+#'     \item G observations group
+#'     \item X value of covariate
+#'     \item id observation's id
+#'     \item cluster observation's cluster (by construction there is no within-cluster correlation)
+#'     \item period time period for current observation
+#'     \item Y outcome
+#'     \item treat whether or not this unit is ever treated
+#'   }
 build_sim_dataset <- function(sp_list, panel=TRUE) {
   #-----------------------------------------------------------------------------
   # build dataset
@@ -190,15 +206,62 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
 }
 
 
-sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE, control.group="nevertreated",
+#' @title sim
+#' @description An internal function that builds simulated data, computes
+#'  ATT(g,t)'s and some aggregations.  It is useful for testing the inference
+#'  procedures in the `did` function.
+#'
+#' @inheritParams reset.sim
+#' @inheritParams build_sim_dataset
+#'
+#' @param ret which type of results to return.  The options are `Wpval` (returns
+#'  1 if the p-value from a Wald test that all pre-treatment ATT(g,t)'s are equal
+#'  is less than .05),
+#'  `cband`  (returns 1 if a uniform confidence band covers 0 for groups and times),
+#'  `simple` (returns 1 if, using the simple treatment effect aggregation results
+#'  in rejecting that this aggregated treatment effect parameter is equal to 0),
+#'  `dynamic` (returns 1 if the uniform confidence band from the dynamic treatment
+#'  effect aggregation covers 0 in all pre- and post-treatment periods).  The default
+#'  value is NULL, and in this case the function will just return the results from
+#'  the call to `att_gt`.
+#' @param bstrap whether or not to use the bootstrap to conduct inference (default is TRUE)
+#' @param cband whether or not to compute uniform confidence bands in the call to `att_gt`
+#'  (the default is TRUE)
+#' @param control_group Whether to use the "nevertreated" comparison group (the default)
+#'  or the "notyettreated" as the comparison group
+#' @param xformla Formula for covariates in `att_gt` (default is `~X`)
+#' @param est_method Which estimation method to use in `att_gt` (default is "dr")
+#' @param clustervars Any additional variables which should be clustered on
+#' @param panel whether to simulate panel data (the default) or otherwise repeated
+#'  cross sections data
+#' 
+#' @return When `ret=NULL`, returns the results of the call to `att_gt`, otherwise returns
+#'  1 if the specified test rejects or 0 if not.
+#' 
+#' @export
+sim <- function(sp_list,
+                ret=NULL,
+                bstrap=TRUE,
+                cband=TRUE,
+                control_group="nevertreated",
+                xformla=~X,
+                est_method="dr",
+                clustervars=NULL,
                 panel=TRUE) {
 
-  ddf <- build_sim_dataset(panel)
+  ddf <- build_sim_dataset(sp_list=sp_list,
+                           panel=panel)
+
+  time.periods <- sp_list$time.periods
+  te.e <- sp_list$te.e
+  te <- sp_list$te
   
   # get results
-  res <- att_gt(yname="Y", xformla=~X, data=ddf, tname="period", idname="id",
-                gname="G", est_method="reg", 
-                bstrap=bstrap, cband=cband, control_group=control.group,
+  res <- att_gt(yname="Y", xformla=xformla, data=ddf, tname="period", idname="id",
+                gname="G", 
+                bstrap=bstrap, cband=cband, control_group=control_group,
+                est_method=est_method,
+                clustervars=clustervars,
                 panel=panel)
 
 
@@ -208,8 +271,8 @@ sim <- function(ret=NULL, bstrap=FALSE, cband=FALSE, control.group="nevertreated
     rej <- 1*(res$Wpval < .05)
     return(rej)
   } else if (ret=="cband") {
-    cu <- res$att + res$c * sqrt(diag(res$V))/sqrt(res$n)
-    cl <- res$att - res$c * sqrt(diag(res$V))/sqrt(res$n)
+    cu <- res$att + res$c*res$se 
+    cl <- res$att - res$c*res$se
     covers0 <- 1*(all( (cu > 0) & (cl < 0)))
     return(covers0)
   } else if (ret=="simple") {

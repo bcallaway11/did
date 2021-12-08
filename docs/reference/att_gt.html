@@ -51,7 +51,7 @@
 setups where there are more than two periods of data and allowing for
 treatment to occur at different points in time and allowing for
 treatment effect heterogeneity and dynamics.
-See Callaway and Sant'Anna (2020) for a detailed description." />
+See Callaway and Sant'Anna (2021) for a detailed description." />
 <meta property="og:image" content="/logo.png" />
 
 
@@ -130,7 +130,7 @@ See Callaway and Sant'Anna (2020) for a detailed description." />
 setups where there are more than two periods of data and allowing for
 treatment to occur at different points in time and allowing for
 treatment effect heterogeneity and dynamics.
-See Callaway and Sant'Anna (2020) for a detailed description.</p>
+See Callaway and Sant'Anna (2021) for a detailed description.</p>
     </div>
 
     <pre class="usage"><span class='fu'>att_gt</span><span class='op'>(</span>
@@ -151,6 +151,7 @@ See Callaway and Sant'Anna (2020) for a detailed description.</p>
   biters <span class='op'>=</span> <span class='fl'>1000</span>,
   clustervars <span class='op'>=</span> <span class='cn'>NULL</span>,
   est_method <span class='op'>=</span> <span class='st'>"dr"</span>,
+  base_period <span class='op'>=</span> <span class='st'>"varying"</span>,
   print_details <span class='op'>=</span> <span class='cn'>FALSE</span>,
   pl <span class='op'>=</span> <span class='cn'>FALSE</span>,
   cores <span class='op'>=</span> <span class='fl'>1</span>
@@ -290,6 +291,31 @@ the only two that are required. <code>est_method</code> is only used
 if covariates are included.</p></td>
     </tr>
     <tr>
+      <th>base_period</th>
+      <td><p>Whether to use a "varying" base period or a
+"universal" base period.  Either choice results in the same
+post-treatment estimates of ATT(g,t)'s.  In pre-treatment
+periods, using a varying base period amounts to computing a
+pseudo-ATT in each treatment period by comparing the change
+in outcomes for a particular group relative to its comparison
+group in the pre-treatment periods (i.e., in pre-treatment
+periods this setting computes changes from period t-1 to period
+t, but repeatedly changes the value of t)</p>
+<p>A universal base period fixes the base period to always be
+(g-anticipation-1).  This does not compute
+pseudo-ATT(g,t)'s in pre-treatment periods, but rather
+reports average changes in outcomes from period t to
+(g-anticipation-1) for a particular group relative to its comparison
+group.  This is analogous to what is often reported in event
+study regressions.</p>
+<p>Using a varying base period results in an estimate of
+ATT(g,t) being reported in the period immediately before
+treatment.  Using a universal base period normalizes the
+estimate in the period right before treatment (or earlier when
+the user allows for anticipation) to be equal to 0, but one
+extra estimate in an earlier period.</p></td>
+    </tr>
+    <tr>
       <th>print_details</th>
       <td><p>Whether or not to show details/progress of computations.
 Default is <code>FALSE</code>.</p></td>
@@ -312,7 +338,7 @@ Default is <code>FALSE</code>.</p></td>
 treatment effects</p>
     <h2 class="hasAnchor" id="examples-"><a class="anchor" href="#examples-"></a>Examples:</h2>
 
-    <p><strong>Basic <code>att_gt()</code> call:</strong><div class="r"></p><pre><span class='co'># Example data</span>
+    <p><strong>Basic <code>att_gt()</code> call:</strong><div class="sourceCode r"></p><pre><span class='co'># Example data</span>
 <span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>mpdta</span><span class='op'>)</span>
 
 <span class='va'>out1</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
@@ -327,22 +353,22 @@ treatment effects</p>
 <span class='co'>#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
 <span class='co'>#&gt;     gname = "first.treat", xformla = NULL, data = mpdta)</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Group-Time Average Treatment Effects:</span>
 <span class='co'>#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;   2004 2004  -0.0105     0.0237       -0.0725      0.0515  </span>
-<span class='co'>#&gt;   2004 2005  -0.0704     0.0352       -0.1627      0.0218  </span>
-<span class='co'>#&gt;   2004 2006  -0.1373     0.0394       -0.2404     -0.0341 *</span>
-<span class='co'>#&gt;   2004 2007  -0.1008     0.0354       -0.1935     -0.0081 *</span>
-<span class='co'>#&gt;   2006 2004   0.0065     0.0241       -0.0566      0.0696  </span>
-<span class='co'>#&gt;   2006 2005  -0.0028     0.0199       -0.0550      0.0495  </span>
-<span class='co'>#&gt;   2006 2006  -0.0046     0.0184       -0.0528      0.0436  </span>
-<span class='co'>#&gt;   2006 2007  -0.0412     0.0212       -0.0969      0.0144  </span>
-<span class='co'>#&gt;   2007 2004   0.0305     0.0155       -0.0101      0.0711  </span>
-<span class='co'>#&gt;   2007 2005  -0.0027     0.0159       -0.0444      0.0390  </span>
-<span class='co'>#&gt;   2007 2006  -0.0311     0.0179       -0.0779      0.0157  </span>
-<span class='co'>#&gt;   2007 2007  -0.0261     0.0168       -0.0702      0.0181  </span>
+<span class='co'>#&gt;   2004 2004  -0.0105     0.0263       -0.0816      0.0605  </span>
+<span class='co'>#&gt;   2004 2005  -0.0704     0.0310       -0.1541      0.0133  </span>
+<span class='co'>#&gt;   2004 2006  -0.1373     0.0392       -0.2430     -0.0315 *</span>
+<span class='co'>#&gt;   2004 2007  -0.1008     0.0355       -0.1967     -0.0049 *</span>
+<span class='co'>#&gt;   2006 2004   0.0065     0.0231       -0.0560      0.0690  </span>
+<span class='co'>#&gt;   2006 2005  -0.0028     0.0203       -0.0575      0.0520  </span>
+<span class='co'>#&gt;   2006 2006  -0.0046     0.0175       -0.0519      0.0427  </span>
+<span class='co'>#&gt;   2006 2007  -0.0412     0.0189       -0.0922      0.0098  </span>
+<span class='co'>#&gt;   2007 2004   0.0305     0.0152       -0.0106      0.0716  </span>
+<span class='co'>#&gt;   2007 2005  -0.0027     0.0161       -0.0463      0.0408  </span>
+<span class='co'>#&gt;   2007 2006  -0.0311     0.0183       -0.0804      0.0183  </span>
+<span class='co'>#&gt;   2007 2007  -0.0261     0.0169       -0.0718      0.0196  </span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
@@ -350,7 +376,7 @@ treatment effects</p>
 <span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
 </pre><p></div></p>
-<p><strong>Using covariates:</strong><div class="r"></p><pre><span class='va'>out2</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+<p><strong>Using covariates:</strong><div class="sourceCode r"></p><pre><span class='va'>out2</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
                tname<span class='op'>=</span><span class='st'>"year"</span>,
                idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
                gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
@@ -362,22 +388,22 @@ treatment effects</p>
 <span class='co'>#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
 <span class='co'>#&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta)</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Group-Time Average Treatment Effects:</span>
 <span class='co'>#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;   2004 2004  -0.0145     0.0233       -0.0772      0.0481  </span>
-<span class='co'>#&gt;   2004 2005  -0.0764     0.0295       -0.1560      0.0031  </span>
-<span class='co'>#&gt;   2004 2006  -0.1404     0.0359       -0.2371     -0.0437 *</span>
-<span class='co'>#&gt;   2004 2007  -0.1069     0.0338       -0.1979     -0.0159 *</span>
-<span class='co'>#&gt;   2006 2004  -0.0005     0.0202       -0.0550      0.0540  </span>
-<span class='co'>#&gt;   2006 2005  -0.0062     0.0192       -0.0579      0.0455  </span>
-<span class='co'>#&gt;   2006 2006   0.0010     0.0203       -0.0536      0.0555  </span>
-<span class='co'>#&gt;   2006 2007  -0.0413     0.0196       -0.0940      0.0114  </span>
-<span class='co'>#&gt;   2007 2004   0.0267     0.0142       -0.0115      0.0649  </span>
-<span class='co'>#&gt;   2007 2005  -0.0046     0.0163       -0.0486      0.0394  </span>
-<span class='co'>#&gt;   2007 2006  -0.0284     0.0186       -0.0784      0.0215  </span>
-<span class='co'>#&gt;   2007 2007  -0.0288     0.0168       -0.0739      0.0163  </span>
+<span class='co'>#&gt;   2004 2004  -0.0145     0.0224       -0.0744      0.0454  </span>
+<span class='co'>#&gt;   2004 2005  -0.0764     0.0305       -0.1578      0.0050  </span>
+<span class='co'>#&gt;   2004 2006  -0.1404     0.0377       -0.2411     -0.0398 *</span>
+<span class='co'>#&gt;   2004 2007  -0.1069     0.0333       -0.1959     -0.0179 *</span>
+<span class='co'>#&gt;   2006 2004  -0.0005     0.0219       -0.0590      0.0580  </span>
+<span class='co'>#&gt;   2006 2005  -0.0062     0.0190       -0.0570      0.0446  </span>
+<span class='co'>#&gt;   2006 2006   0.0010     0.0193       -0.0506      0.0526  </span>
+<span class='co'>#&gt;   2006 2007  -0.0413     0.0199       -0.0944      0.0118  </span>
+<span class='co'>#&gt;   2007 2004   0.0267     0.0139       -0.0104      0.0639  </span>
+<span class='co'>#&gt;   2007 2005  -0.0046     0.0166       -0.0488      0.0397  </span>
+<span class='co'>#&gt;   2007 2006  -0.0284     0.0172       -0.0745      0.0176  </span>
+<span class='co'>#&gt;   2007 2007  -0.0288     0.0162       -0.0721      0.0146  </span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
@@ -385,7 +411,7 @@ treatment effects</p>
 <span class='co'>#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
 <span class='co'>#&gt; Estimation Method:  Doubly Robust</span>
 </pre><p></div></p>
-<p><strong>Specify comparison units:</strong><div class="r"></p><pre><span class='va'>out3</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
+<p><strong>Specify comparison units:</strong><div class="sourceCode r"></p><pre><span class='va'>out3</span> <span class='op'>&lt;-</span> <span class='fu'>att_gt</span><span class='op'>(</span>yname<span class='op'>=</span><span class='st'>"lemp"</span>,
                tname<span class='op'>=</span><span class='st'>"year"</span>,
                idname<span class='op'>=</span><span class='st'>"countyreal"</span>,
                gname<span class='op'>=</span><span class='st'>"first.treat"</span>,
@@ -398,22 +424,22 @@ treatment effects</p>
 <span class='co'>#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
 <span class='co'>#&gt;     gname = "first.treat", xformla = ~lpop, data = mpdta, control_group = "notyettreated")</span>
 <span class='co'>#&gt; </span>
-<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Forthcoming at the Journal of Econometrics &lt;https://arxiv.org/abs/1803.09015&gt;, 2020. </span>
+<span class='co'>#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Group-Time Average Treatment Effects:</span>
 <span class='co'>#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;   2004 2004  -0.0212     0.0233       -0.0818      0.0394  </span>
-<span class='co'>#&gt;   2004 2005  -0.0816     0.0288       -0.1565     -0.0067 *</span>
-<span class='co'>#&gt;   2004 2006  -0.1382     0.0373       -0.2351     -0.0413 *</span>
-<span class='co'>#&gt;   2004 2007  -0.1069     0.0330       -0.1927     -0.0211 *</span>
-<span class='co'>#&gt;   2006 2004  -0.0075     0.0221       -0.0649      0.0500  </span>
-<span class='co'>#&gt;   2006 2005  -0.0046     0.0188       -0.0535      0.0443  </span>
-<span class='co'>#&gt;   2006 2006   0.0087     0.0184       -0.0392      0.0565  </span>
-<span class='co'>#&gt;   2006 2007  -0.0413     0.0203       -0.0940      0.0114  </span>
-<span class='co'>#&gt;   2007 2004   0.0269     0.0146       -0.0111      0.0650  </span>
-<span class='co'>#&gt;   2007 2005  -0.0042     0.0156       -0.0448      0.0364  </span>
-<span class='co'>#&gt;   2007 2006  -0.0284     0.0183       -0.0760      0.0191  </span>
-<span class='co'>#&gt;   2007 2007  -0.0288     0.0165       -0.0717      0.0141  </span>
+<span class='co'>#&gt;   2004 2004  -0.0212     0.0217       -0.0799      0.0375  </span>
+<span class='co'>#&gt;   2004 2005  -0.0816     0.0274       -0.1555     -0.0077 *</span>
+<span class='co'>#&gt;   2004 2006  -0.1382     0.0365       -0.2367     -0.0397 *</span>
+<span class='co'>#&gt;   2004 2007  -0.1069     0.0356       -0.2031     -0.0107 *</span>
+<span class='co'>#&gt;   2006 2004  -0.0075     0.0231       -0.0698      0.0549  </span>
+<span class='co'>#&gt;   2006 2005  -0.0046     0.0180       -0.0532      0.0440  </span>
+<span class='co'>#&gt;   2006 2006   0.0087     0.0181       -0.0402      0.0575  </span>
+<span class='co'>#&gt;   2006 2007  -0.0413     0.0199       -0.0950      0.0124  </span>
+<span class='co'>#&gt;   2007 2004   0.0269     0.0131       -0.0085      0.0624  </span>
+<span class='co'>#&gt;   2007 2005  -0.0042     0.0155       -0.0460      0.0376  </span>
+<span class='co'>#&gt;   2007 2006  -0.0284     0.0181       -0.0773      0.0204  </span>
+<span class='co'>#&gt;   2007 2007  -0.0288     0.0171       -0.0749      0.0173  </span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
@@ -423,7 +449,7 @@ treatment effects</p>
 </pre><p></div></p>
     <h2 class="hasAnchor" id="references"><a class="anchor" href="#references"></a>References</h2>
 
-    <p>Callaway, Brantly and Sant'Anna, Pedro H. C. "Difference-in-Differences with Multiple Time Periods" Forthcoming at the Journal of Econometrics <a href='https://arxiv.org/abs/1803.09015'>https://arxiv.org/abs/1803.09015</a> (2020).</p>
+    <p>Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <a href='https://doi.org/10.1016/j.jeconom.2020.12.001'>https://doi.org/10.1016/j.jeconom.2020.12.001</a>, <a href='https://arxiv.org/abs/1803.09015'>https://arxiv.org/abs/1803.09015</a></p>
 
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">

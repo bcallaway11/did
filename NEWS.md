@@ -1,5 +1,7 @@
 # did 2.1
 
+  * completely removed `mp.spatt` and `mp.spatt.test` functions (which were the original names for `att_gt`)
+
   * Simulation/testing code now exported
 
   * Support for *universal* base period
