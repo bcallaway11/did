@@ -566,3 +566,33 @@ test_that("sampling weights", {
   expect_equal(res_weights$se[1], res_subset$se[1], tol=.02)
 
 })
+
+test_that("clustered standard errors", {
+  # check that we can compute when clustered standard errors are supplied
+  # either as numeric or as factor
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
+
+  data$cluster <- as.numeric(data$cluster)
+  res_numeric <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                   gname="G", est_method="dr", clustervars="cluster")
+
+  data$cluster <- as.factor(data$cluster)
+  res_factor <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                        gname="G", est_method="dr", clustervars="cluster")
+
+  # test for same att's
+  expect_equal(res_factor$att[1], res_numeric$att[1])
+  # test for same standard errors
+  expect_equal(res_factor$se[1], res_numeric$se[1], tol=.02)
+
+  #-----------------------------------------------------------------------------
+  # also, check that we error when clustering variable varies within unit
+  # over time
+
+  data$cluster <- as.numeric(data$cluster)
+  data[1,]$cluster <- data[1,]$cluster+1
+
+  expect_error(res_vc <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                        gname="G", est_method="dr", clustervars="cluster"), "handle time-varying cluster variables")
+})
