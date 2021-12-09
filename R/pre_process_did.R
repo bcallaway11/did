@@ -56,7 +56,15 @@ pre_process_did <- function(yname,
   }
 
   # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname)], model.frame(xformla, data=data))
+  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname)], model.frame(xformla, data=data, na.action=na.pass))
+
+  # check if any covariates were missing
+  n_orig <- nrow(data)
+  data <- data[complete.cases(data),]
+  n_diff <- n_orig - nrow(data)
+  if (n_diff != 0) {
+    warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
+  }
   
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
