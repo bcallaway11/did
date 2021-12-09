@@ -87,6 +87,8 @@ reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
 #'     \item Y outcome
 #'     \item treat whether or not this unit is ever treated
 #'   }
+#'
+#' @export
 build_sim_dataset <- function(sp_list, panel=TRUE) {
   #-----------------------------------------------------------------------------
   # build dataset
