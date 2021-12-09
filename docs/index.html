@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
 <script src="pkgdown.js"></script><meta property="og:title" content="Treatment Effects with Multiple Periods and Groups">
-<meta property="og:description" content="The standard Difference-in-Differences (DID) setup involves two periods and two groups -- a treated group and untreated group.  Many applications of DID methods involve more than two periods and have individuals that are treated at different points in time.  This package contains tools for computing average treatment effect parameters in Difference in Differences setups with more than two periods and with variation in treatment timing using the methods developed in Callaway and Sant'Anna (2020) &lt;doi:10.1016/j.jeconom.2020.12.001&gt;.  The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time.  These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these.  There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.">
+<meta property="og:description" content="The standard Difference-in-Differences (DID) setup involves two periods and two groups -- a treated group and untreated group.  Many applications of DID methods involve more than two periods and have individuals that are treated at different points in time.  This package contains tools for computing average treatment effect parameters in Difference in Differences setups with more than two periods and with variation in treatment timing using the methods developed in Callaway and Sant'Anna (2021) &lt;doi:10.1016/j.jeconom.2020.12.001&gt;.  The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time.  These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these.  There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.">
 <meta property="og:image" content="/logo.png">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.908</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.1.0</span>
       </span>
     </div>
 
@@ -78,7 +78,6 @@
 <a href="#difference-in-differences-" class="anchor"></a>Difference-in-Differences <img src="reference/figures/logo.png" align="right" alt="" width="155">
 </h1></div>
 
-<p><a href="https://codecov.io/gh/bcallaway11/did"><img src="https://codecov.io/gh/bcallaway11/did/branch/master/graph/badge.svg?token=DBYK1AUFS5" alt="codecov"></a></p>
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 <p>The <strong>did</strong> package contains tools for computing average treatment effect parameters in a Difference-in-Differences setup allowing for</p>
 <ul>
@@ -154,18 +153,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group-Time Average Treatment Effects:</span>
 <span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004 2004  -0.0105     0.0239       -0.0750      0.0540  </span>
-<span class="co">#&gt;   2004 2005  -0.0704     0.0343       -0.1632      0.0223  </span>
-<span class="co">#&gt;   2004 2006  -0.1373     0.0375       -0.2387     -0.0358 *</span>
-<span class="co">#&gt;   2004 2007  -0.1008     0.0354       -0.1965     -0.0052 *</span>
-<span class="co">#&gt;   2006 2004   0.0065     0.0226       -0.0545      0.0675  </span>
-<span class="co">#&gt;   2006 2005  -0.0028     0.0184       -0.0526      0.0471  </span>
-<span class="co">#&gt;   2006 2006  -0.0046     0.0187       -0.0552      0.0460  </span>
-<span class="co">#&gt;   2006 2007  -0.0412     0.0212       -0.0986      0.0161  </span>
-<span class="co">#&gt;   2007 2004   0.0305     0.0150       -0.0100      0.0710  </span>
-<span class="co">#&gt;   2007 2005  -0.0027     0.0160       -0.0459      0.0405  </span>
-<span class="co">#&gt;   2007 2006  -0.0311     0.0179       -0.0795      0.0174  </span>
-<span class="co">#&gt;   2007 2007  -0.0261     0.0179       -0.0743      0.0222  </span>
+<span class="co">#&gt;   2004 2004  -0.0105     0.0228       -0.0725      0.0514  </span>
+<span class="co">#&gt;   2004 2005  -0.0704     0.0324       -0.1585      0.0176  </span>
+<span class="co">#&gt;   2004 2006  -0.1373     0.0383       -0.2414     -0.0331 *</span>
+<span class="co">#&gt;   2004 2007  -0.1008     0.0353       -0.1967     -0.0049 *</span>
+<span class="co">#&gt;   2006 2004   0.0065     0.0229       -0.0558      0.0688  </span>
+<span class="co">#&gt;   2006 2005  -0.0028     0.0201       -0.0572      0.0517  </span>
+<span class="co">#&gt;   2006 2006  -0.0046     0.0171       -0.0510      0.0418  </span>
+<span class="co">#&gt;   2006 2007  -0.0412     0.0196       -0.0945      0.0120  </span>
+<span class="co">#&gt;   2007 2004   0.0305     0.0150       -0.0101      0.0711  </span>
+<span class="co">#&gt;   2007 2005  -0.0027     0.0156       -0.0450      0.0395  </span>
+<span class="co">#&gt;   2007 2006  -0.0311     0.0183       -0.0808      0.0186  </span>
+<span class="co">#&gt;   2007 2007  -0.0261     0.0176       -0.0739      0.0218  </span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -195,18 +194,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
 <span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0772        0.0216    -0.1197     -0.0348 *</span>
+<span class="co">#&gt;  -0.0772        0.0224    -0.1211     -0.0334 *</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Dynamic Effects:</span>
 <span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -3   0.0305     0.0147       -0.0070      0.0680  </span>
-<span class="co">#&gt;          -2  -0.0006     0.0132       -0.0341      0.0329  </span>
-<span class="co">#&gt;          -1  -0.0245     0.0153       -0.0633      0.0144  </span>
-<span class="co">#&gt;           0  -0.0199     0.0116       -0.0495      0.0096  </span>
-<span class="co">#&gt;           1  -0.0510     0.0176       -0.0958     -0.0061 *</span>
-<span class="co">#&gt;           2  -0.1373     0.0381       -0.2343     -0.0402 *</span>
-<span class="co">#&gt;           3  -0.1008     0.0352       -0.1905     -0.0111 *</span>
+<span class="co">#&gt;          -3   0.0305     0.0139       -0.0053      0.0663  </span>
+<span class="co">#&gt;          -2  -0.0006     0.0130       -0.0341      0.0329  </span>
+<span class="co">#&gt;          -1  -0.0245     0.0141       -0.0608      0.0119  </span>
+<span class="co">#&gt;           0  -0.0199     0.0117       -0.0501      0.0102  </span>
+<span class="co">#&gt;           1  -0.0510     0.0177       -0.0965     -0.0054 *</span>
+<span class="co">#&gt;           2  -0.1373     0.0395       -0.2392     -0.0353 *</span>
+<span class="co">#&gt;           3  -0.1008     0.0379       -0.1985     -0.0031 *</span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -234,14 +233,14 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span>
 <span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.031        0.0129    -0.0563     -0.0057 *</span>
+<span class="co">#&gt;  -0.031        0.0127    -0.0558     -0.0062 *</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group Effects:</span>
 <span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004  -0.0797     0.0283       -0.1432     -0.0163 *</span>
-<span class="co">#&gt;   2006  -0.0229     0.0167       -0.0603      0.0145  </span>
-<span class="co">#&gt;   2007  -0.0261     0.0164       -0.0629      0.0108  </span>
+<span class="co">#&gt;   2004  -0.0797     0.0297       -0.1414     -0.0181 *</span>
+<span class="co">#&gt;   2006  -0.0229     0.0164       -0.0570      0.0112  </span>
+<span class="co">#&gt;   2007  -0.0261     0.0179       -0.0632      0.0111  </span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -307,7 +306,6 @@
 <li><a href="https://cran.r-project.org/package=did"><img src="https://www.r-pkg.org/badges/version/did?color=blue"></a></li>
 <li><a href="https://github.com/bcallaway11/did"><img src="https://img.shields.io/badge/devel%20version-2.0.1.908-blue.svg"></a></li>
 <li><a href="https://cran.r-project.org/web/checks/check_results_did.html"><img src="https://cranchecks.info/badges/summary/did" alt="CRAN checks"></a></li>
-<li><a href="https://codecov.io/gh/bcallaway11/did"><img src="https://codecov.io/gh/bcallaway11/did/branch/master/graph/badge.svg"></a></li>
 <li><a href="https://github.com/bcallaway11/did/commits/master"><img src="https://img.shields.io/github/last-commit/bcallaway11/did.svg"></a></li>
 </ul>
 </div>

@@ -66,6 +66,7 @@ reference:
       - summary.AGGTEobj
       - summary.MP.TEST
       - print.MP
+      - print.AGGTEobj
   - title: "Classes"
     desc: >
       Classes available in the **did** package
@@ -83,6 +84,14 @@ reference:
       - pre_process_did
       - process_attgt
       - indicator
+      - build_sim_dataset
+      - reset.sim
+      - sim
+      - trimmer
+      - glance.AGGTEobj
+      - glance.MP
+      - tidy.AGGTEobj
+      - tidy.MP
   - title: "Data"
     desc: >
       Available datasets in the package
@@ -91,9 +100,3 @@ reference:
   - title: "Package Documentation"
     contents:
       - did
-  - title: "Deprecated Functions"
-    desc: >
-      Functions that are being replaced in version 2.0.0
-    contents:
-      - mp.spatt
-      - mp.spatt.test

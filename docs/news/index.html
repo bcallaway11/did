@@ -79,7 +79,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.0.1.908</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.1.0</span>
       </span>
     </div>
 
@@ -119,14 +119,20 @@
       <small>Source: <a href='https://github.com/bcallaway11/did/blob/master/NEWS.md'><code>NEWS.md</code></a></small>
     </div>
 
-    <div id="did-21" class="section level1">
-<h1 class="page-header" data-toc-text="2.1">
-<a href="#did-21" class="anchor"></a>did 2.1<small> Unreleased </small>
+    <div id="did-210" class="section level1">
+<h1 class="page-header" data-toc-text="2.1.0">
+<a href="#did-210" class="anchor"></a>did 2.1.0<small> Unreleased </small>
 </h1>
 <ul>
-<li><p>Simulation/testing code now exported</p></li>
+<li><p>Code is substantially faster/more memory efficient</p></li>
 <li><p>Support for <em>universal</em> base period</p></li>
-<li><p>Moved from local testing to <code>testthat</code></p></li>
+<li><p>Major improvements to unit testing</p></li>
+<li><p>Completely removed <code>mp.spatt</code> and <code>mp.spatt.test</code> functions (which were the original names for <code>att_gt</code>)</p></li>
+<li><p>Simulation/testing code now exported</p></li>
+<li><p>Removed some slow running checks</p></li>
+<li><p>Multiplier bootstrap code is now written in C++</p></li>
+<li><p>Improvements to error handling, added some additional warning messages, removed some unnecessary warning messages</p></li>
+<li><p>Bug fixes for NA standard errors that occur with very small groups</p></li>
 </ul>
 </div>
     <div id="did-201" class="section level1">
