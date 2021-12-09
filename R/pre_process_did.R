@@ -56,7 +56,7 @@ pre_process_did <- function(yname,
   }
 
   # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname)], model.frame(xformla, data=data, na.action=na.pass))
+  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname, clustervars)], model.frame(xformla, data=data, na.action=na.pass))
 
   # check if any covariates were missing
   n_orig <- nrow(data)

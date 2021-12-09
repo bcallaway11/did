@@ -82,7 +82,7 @@ mboot <- function(inf.func, DIDparams) {
     cluster <- dta[,clustervars]
     cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
-    bres <- sqrt(cluster_n)*BMisc::multiplier_bootstrap(cluster_mean_if, biters)
+    bres <- sqrt(n_clusters)*BMisc::multiplier_bootstrap(cluster_mean_if, biters)
     #bres <- sapply(1:biters, function(b) sqrt(n)*colMeans(Vmat[,b]*cluster_mean_if))
   }
   
