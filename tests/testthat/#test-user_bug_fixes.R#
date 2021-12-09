@@ -36,17 +36,18 @@ test_that("having column named t1 causes code to crash", {
   expect_false(is.null(out), "code crashed due to stange variable names")
 })
 
-test_that("having column named t1 causes code to crash", {
-  library(tidyverse)
+test_that("missing covariates", {
   data(mpdta, package="did")
 
-mpdta[1, "lpop"] <- NA
-out <- att_gt(yname = "lemp",
-              gname = "first.treat",
-              idname = "countyreal",
-              tname = "year",
-              xformla = ~lpop,
-              data = mpdta,
-              est_method = "reg",
-              control_group="notyettreated"
-)
+  mpdta[1, "lpop"] <- NA
+  out <- att_gt(yname = "lemp",
+                gname = "first.treat",
+                idname = "countyreal",
+                tname = "year",
+                xformla = ~lpop,
+                data = mpdta,
+                est_method = "reg",
+                control_group="notyettreated"
+                )
+
+})

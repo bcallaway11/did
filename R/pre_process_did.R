@@ -56,7 +56,7 @@ pre_process_did <- function(yname,
   }
 
   # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname)], model.frame(xformla, data=data))
+  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname)], model.frame(xformla, data=data)),
   
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
