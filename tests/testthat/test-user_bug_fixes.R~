@@ -1,0 +1,37 @@
+library(DRDID)
+library(BMisc)
+library(ggplot2)
+library(ggpubr)
+
+
+#-----------------------------------------------------------------------------
+#
+# These are tests (primarily coming from github) related to bugs
+# encountered by users.
+#
+#-----------------------------------------------------------------------------
+
+test_that("having column named t1 causes code to crash", {
+  data(mpdta)
+  out <- att_gt(yname = "lemp",
+                gname = "first.treat",
+                idname = "countyreal",
+                tname = "year",
+                xformla = ~1,
+                data = mpdta,
+                est_method = "reg",
+                control_group="notyettreated"
+                )
+  mpdta$t1 <- 1
+
+  out <- att_gt(yname = "lemp",
+                gname = "first.treat",
+                idname = "countyreal",
+                tname = "year",
+                xformla = ~1,
+                data = mpdta,
+                est_method = "reg",
+                control_group="notyettreated"
+                )
+  expect_false(is.null(out), "code crashed due to stange variable names")
+})
