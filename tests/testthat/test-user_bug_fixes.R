@@ -37,10 +37,11 @@ test_that("having column named t1 causes code to crash", {
 })
 
 test_that("missing covariates", {
+  # should warn about missing data but otherwise run
   data(mpdta, package="did")
 
   mpdta[1, "lpop"] <- NA
-  out <- att_gt(yname = "lemp",
+  expect_warning(out <- att_gt(yname = "lemp",
                 gname = "first.treat",
                 idname = "countyreal",
                 tname = "year",
@@ -48,6 +49,6 @@ test_that("missing covariates", {
                 data = mpdta,
                 est_method = "reg",
                 control_group="notyettreated"
-                )
+                ))
 
 })
