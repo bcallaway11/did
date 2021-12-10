@@ -1212,7 +1212,7 @@ In this vignette, we have shown that relying on TWFE event-study regressions can
 
 ## References
 
-* [Borusyak, Kirill, and Xavier Jaravel. "Revisiting Event Study Designs". Available at SSRN 2826228 (2018)](https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.png)
+* [Borusyak, Kirill, and Xavier Jaravel. "Revisiting Event Study Designs". Available at SSRN 2826228 (2018)](https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf)
 
 * [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
