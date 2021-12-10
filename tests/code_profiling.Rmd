@@ -5,11 +5,9 @@ output: html_document
 ## Example 1: Balanced Panel Data
 
 ```{r}
-detach("package:did")
-
 library(did)
 #library(profvis) # not used below, but useful for seeing more details about 
-# where speedups are happending
+# where speedups are happening
 packageVersion("did") # version 2.1.0
 
 n <- 5000
@@ -202,6 +200,4 @@ old_time
 
 This is about a 73% reduction in computation time (from 155 to 42 seconds for me).
 
-## Conclusion
 
-I hope you'll find the code useful.  As always, feel free to contact me if you run into issues.
