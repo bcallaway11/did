@@ -1,0 +1,25 @@
+Package: progressr
+Version: 0.9.0
+Title: An Inclusive, Unifying API for Progress Updates
+Description: A minimal, unifying API for scripts and packages to report progress updates from anywhere including when using parallel processing.  The package is designed such that the developer can to focus on what progress should be reported on without having to worry about how to present it.  The end user has full control of how, where, and when to render these progress updates, e.g. in the terminal using utils::txtProgressBar() or progress::progress_bar(), in a graphical user interface using utils::winProgressBar(), tcltk::tkProgressBar() or shiny::withProgress(), via the speakers using beep::beepr(), or on a file system via the size of a file. Anyone can add additional, customized, progression handlers. The 'progressr' package uses R's condition framework for signaling progress updated. Because of this, progress can be reported from almost anywhere in R, e.g. from classical for and while loops, from map-reduce API:s like the lapply() family of functions, 'purrr', 'plyr', and 'foreach'. It will also work with parallel processing via the 'future' framework, e.g. future.apply::future_lapply(), furrr::future_map(), and 'foreach' with 'doFuture'. The package is compatible with Shiny applications.
+Authors@R: c(
+  person("Henrik", "Bengtsson", role=c("aut", "cre", "cph"),
+         email = "henrikb@braju.com"))
+License: GPL (>= 3)
+Depends: R (>= 3.5.0)
+Imports: digest, utils
+Suggests: graphics, tcltk, beepr, crayon, pbmcapply, progress, purrr,
+        foreach, plyr, doFuture, future, future.apply, furrr,
+        rstudioapi, shiny, commonmark, base64enc, tools
+VignetteBuilder: progressr
+URL: https://progressr.futureverse.org,
+        https://github.com/HenrikBengtsson/progressr
+BugReports: https://github.com/HenrikBengtsson/progressr/issues
+RoxygenNote: 7.1.2
+NeedsCompilation: no
+Packaged: 2021-09-24 13:45:13 UTC; hb
+Author: Henrik Bengtsson [aut, cre, cph]
+Maintainer: Henrik Bengtsson <henrikb@braju.com>
+Repository: CRAN
+Date/Publication: 2021-09-24 14:30:02 UTC
+Built: R 4.0.3; ; 2021-12-10 21:31:27 UTC; unix

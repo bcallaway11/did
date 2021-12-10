@@ -1,0 +1,28 @@
+Package: conquer
+Type: Package
+Title: Convolution-Type Smoothed Quantile Regression
+Version: 1.2.1
+Date: 2021-10-31
+Authors@R: c(person("Xuming", "He", email = "xmhe@umich.edu", role = "aut"),
+             person("Xiaoou", "Pan", email = "xip024@ucsd.edu", role = c("aut", "cre")), 
+             person("Kean Ming", "Tan", email = "keanming@umich.edu", role = "aut"),
+             person("Wen-Xin", "Zhou", email = "wez243@ucsd.edu", role = "aut"))
+Description: Estimation and inference for conditional linear quantile regression models using a convolution smoothed approach. In the low-dimensional setting, efficient gradient-based methods are employed for fitting both a single model and a regression process over a quantile range. Normal-based and (multiplier) bootstrap confidence intervals for all slope coefficients are constructed. In high dimensions, the conquer methods complemented with l_1-penalization and iteratively reweighted l_1-penalization are used to fit sparse models.
+Depends: R (>= 3.5.0)
+License: GPL-3
+Encoding: UTF-8
+URL: https://github.com/XiaoouPan/conquer
+SystemRequirements: C++11
+Imports: Rcpp (>= 1.0.3), Matrix, matrixStats, stats, caret
+LinkingTo: Rcpp, RcppArmadillo (>= 0.9.850.1.0)
+RoxygenNote: 7.1.1
+NeedsCompilation: yes
+Packaged: 2021-11-01 06:17:48 UTC; xopan
+Author: Xuming He [aut],
+  Xiaoou Pan [aut, cre],
+  Kean Ming Tan [aut],
+  Wen-Xin Zhou [aut]
+Maintainer: Xiaoou Pan <xip024@ucsd.edu>
+Repository: CRAN
+Date/Publication: 2021-11-01 15:50:04 UTC
+Built: R 4.0.3; x86_64-pc-linux-gnu; 2021-12-10 21:35:53 UTC; unix

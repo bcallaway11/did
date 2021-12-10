@@ -1,0 +1,9 @@
+future.apply            future.apply: Apply Function to Elements in
+                        Parallel using Futures
+future_Map              Apply a Function to Multiple List or Vector
+                        Arguments
+future_apply            Apply Functions Over Array Margins via Futures
+future_by               Apply a Function to a Data Frame Split by
+                        Factors via Futures
+future_eapply           Apply a Function over a List or Vector via
+                        Futures

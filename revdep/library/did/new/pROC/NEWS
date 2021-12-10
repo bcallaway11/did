@@ -1,0 +1,239 @@
+1.18.0 (2021-09-02):
+  * Add CI of the estimate for 'roc.test' (DeLong, paired only for now) (code contributed by Zane Billings) (pr #95) 
+  * Fix documentation and alternative hypothesis for Venkatraman test (issue #92)
+
+1.17.0.1 (2021-01-07):
+  * Fix CRAN incoming checks as requested by CRAN
+
+1.17.0 (2020-12-29)
+  * Accept more values in 'input' of coords (issue #67)
+  * Accept 'kappa' for the 'power.roc.test' of two ROC curves (issue #82)
+  * The 'input' argument to 'coords' for 'smooth.roc' curves no longer has a default
+  * The 'x' argument to 'coords' for 'smooth.roc' can now be set to 'all' (also the default)
+  * Fix bootstrap roc.test and cov with 'smooth.roc' curves
+  * The 'ggroc' function can now plot 'smooth.roc' curves (issue #86)
+  * Remove warnings with 'warnPartialMatchDollar' option (issue #87)
+  * Make tests depending on vdiffr conditional (issue #88)
+
+1.16.2 (2020-03-19)
+  * Skip test depending on Rcpp version
+
+1.16.1 (2020-01-13)
+  * Skip timing-dependent test failing occasionally on CRAN
+
+1.16.0 (2020-01-12)
+  * BACKWARD INCOMPATIBLE CHANGE: 'transpose' argument to 'coords' switched to FALSE by default (issue #54)
+  * BACKWARD INCOMPATIBLE CHANGE: 'ci.coords' return value is now of list type and easier to use
+  * Fix one-sided DeLong test for curves with 'direction=">"' (issue #64)
+  * Fix an error in 'ci.coords' due to expected NA values in some coords (like "precision") (issue #65)
+  * Ordrered predictors are converted to numeric in a more robust way (issue #63)
+  * Cleaned up 'power.roc.test' code (issue #50)
+  * Fix pairing with 'roc.formula' and warn if 'na.action' is not set to "na.pass" or "na.fail" (issue #68)
+  * Fix 'ci.coords' not working with 'smooth.roc' curves
+  
+1.15.3 (2019-07-21)
+  * Fix: previous version accidentally set transpose = FALSE, should only be for next major release
+
+1.15.2 (2019-07-20)
+  * Fix -Inf threshold in coords for curves with 'direction = ">"' (issue #60)
+  * Restore lazy loading of the data and fix an 'R CMD check' warning "Variables with usage in documentation object 'aSAH' not in code"
+
+1.15.1 (2019-07-17)
+  * Fix erroneous error in 'ci.coords' with 'ret="threshold"' (issue #57)
+  * Fix vdiffr unit tests with ggplot2 3.2.0 (issue #53)
+  * Keep list order in 'ggroc' (issue #58)
+
+1.15.0 (2019-06-01)
+  * 'roc' now prints messages when autodetecting 'levels' and 'direction' by default. Turn off with 'quiet = TRUE' or set these values explicitly
+  * Speedup with 'algorithm = 2' (issue #44) and in 'coords' (issue #52)
+  * New 'algorithm = 6' (used by default) uses 'algorithm = 2' for numeric data, and 'algorithm = 3' for ordered vectors
+  * New 'roc.data.frame' method and 'roc_' function for use in pipelines
+  * 'coords' can now returns 'youden' and 'closest.topleft" values (issue #48)
+  * New 'transpose' argument for 'coords', TRUE by default (issue #54)
+  * Use text instead of Tcl/Tk progress bar by default (issue #51)
+  * Fix 'method = "density"' smoothing when called directly from 'roc' (issue #49)
+  * Renamed 'roc' argument 'n' to 'smooth.n'
+  * Fixed 'are.paired' ignoring smoothing arguments of 'roc2' with 'return.paired.rocs'
+  * New 'ret' option "all" in 'coords' (issue #47)
+  * 'drop' in 'coords' now drops the dimension of 'ret' too (#issue 43)
+
+1.14.0 (2019-03-12)
+  * The 'multiclass.roc' function now accepts multivariate decision values (code contributed by Matthias Döring)
+  * 'ggroc' supports multiple aesthetics (issue #42)
+  * Make 'ggplot2' dependency optional
+  * CSuggested packages can be installed interactively when required
+  * Passing both 'cases' and 'controls' or 'response' and 'predictor' arguments is now an error
+  * Many small bug fixes
+
+1.13.0 (2018-09-23)
+  * 'roc' now returns 'NaN' when predictor contains infinite values (issue #30)
+  * Better handling of near-ties near +-Infinity and 0
+  * 'ggroc' supports aes="group" to allow curves with identical aesthetics
+
+1.12.1 (2018-05-06)
+  * Fix a regression causing the allocation of a very large vector (issue #29)
+
+1.12.0 (2018-05-05)
+  * Fix bug that crashed DeLong calculations when predictor had near-ties close to the floating point precision limit that were rounded back to a predictor value (issue #25)
+  * Fix bug that crashed 'ci.auc' and 'var' if 'direction' was ">" and 'percent=TRUE' (issue #25)
+  * Fix bug causing 'ci' to return 'NaN' values with 'method="delong"' when cases or controls had a single observation (issue #27)
+  * Fix 'power.roc.curve' failed with curves having 'percent=TRUE'
+  * Fix 'ci(..., of="coords")' returned the 'ci' function instead of the CI
+  * C++ code now check for user interrupts regularly with Rcpp::checkUserInterrupt()
+  * Better error message for 'ci.coords' attempting to return 'threshold'
+  * New algorithm = 5 (used by default) chooses the algorithm based on the number of thresholds to avoid worst case with algorithm = 3
+
+1.11.0 (2018-03-24)
+  * Added argument 'legacy.axes' to 'ggroc'
+  * Fix NOTE about 'apparent S3 methods exported but not registered' in 'R CMD check'
+
+1.10.0 (2017-06-10)
+  * Basic ggplot2 support (one and multiple ROC curves)
+  * Implement 'precision' and 'recall' for 'coords'
+  * Fix: properly handle NAs in cases when passing cases/controls to 'roc' (thanks Thomas König for the report)
+  * Fix various minor bugs detected with new unit tests
+  
+ 1.9.1 (2017-02-05)
+  * Fix: 'subset' and 'na.action' arguments now handled properly in 'roc.formula' (thanks Terry Therneau for the report)
+  * Added policies to handle the case where a ROC curve has multiple "best" threshold in 'ci' (thanks Nicola Toschi for the report)
+  * Support 'xlim' and 'ylim' gracefully in 'plot.roc'
+  * Improved validation of input class 'levels' and 'direction'; messages when auto-detecting, use 'quiet' to turn on
+  * Removed extraneous 'name' attribute on the 'p.value' (thanks Paweł Kleka for the report)
+  * Faster DeLong algorithm (code contributed by Stefan Siegert)
+
+1.8 (2015-05-04)
+  * NAMESPACE now properly exports the methods as S3 methods.
+  * Now uses and works with 'requireNamespace'
+  * Add ability to supply two ordered factors with identical levels as control / cases
+  * Deprecate dangerous use of a matrix as response / predictor with a warning
+  * Forward 'best.method' and 'best.weights' arguments to 'coords' in 'ci.thresholds'
+  * Fix CITATION file as per CRAN request
+  * pAUC correction is undefined for partial AUC below the diagonal (result < 0.5) and now returns NA (with a warning). Thanks Vincenzo Lagani for the report.
+
+1.7.3 (2014-06-14)
+  * Fixed AUC of binomial-smoothed ROC off by 100^2 (thanks Bao-Li Chang for the report)
+  * Fix print of logcondens-smoothed ROC
+
+1.7.2 (2014-04-05)
+  * Fixed bug where 'ci.coords' with 'x="best"' would fail if one or more resampled ROC curve had multiple "best" thresholds
+  * Fixed bug in 'ci.coords': passing more than one value in 'x' now works
+  * Fixed typo in documentation of 'direction' argument to 'roc' (thanks Le Kang for the report)
+  * Add a warning when computing statistics of ROC curve with AUC = 1
+  * Require latest version of Rcpp to avoid weird errors (thanks Tom Liptrot for the report)
+
+1.7.1 (2014-02-20)
+  * Close SOCK cluster on Windows with parallel=TRUE
+  * Fixed really use algorithm 1 when microbenchmark fails
+
+1.7 (2014-02-19)
+  * Faster algorithm for DeLong 'roc.test', 'power.roc.test', 'ci.auc', 'var' and 'cov' function (no large matrix allocation)
+  * Handling Math and Operations correctly on 'auc' and 'ci' objects (see '?groupGeneric.pROC')
+  * The 'formula' for 'roc.formula' can now provide several predictors and a list of ROC curves will be returned
+  * Fixed documentation of 'ci.coords' with examples
+  * Fixed binormal AUC computed with triangulation despite the claim in the documentation
+  * Fixed unstated requirement on Rcpp >= 0.10.5
+
+1.6.0.1 (2013-12-28)
+  * Removed erroneous error message displayed when predictors and responses were not vectors
+
+1.6 (2013-12-26)
+  * New 'power.roc.test' function for sample size and power computations
+  * New 'cov' and 'var' functions supports new "obuchowski" method
+  * New 'ci.coords' function to compute CI of arbitrary coords
+  * 'coords' accepts new 'ret' value "1-accuracy"
+  * Introducing various algorithms to compute sensitivities and specificites, with a more vectorized code or Rcpp. See 'algorithm' in ?roc for more details on the trade-offs of the different methods.
+  * Faster algorithm for DeLong 'roc.test', 'ci', 'var' and 'cov' function (thanks Kazuki Yoshida).
+  * 'are.paired' now also checks for identical 'levels'
+  * Fixed a warning generated in the examples
+  * Fixed several bugs related with 'smooth.roc' curves
+  * Additional input data sanity checks
+  * Now requires R >= 2.13 (in fact, since 1.5.1, thanks Emmanuel Curis for the report)
+  * Progress bars now defaults to text on Macs where 'tcltk' seems broken (thanks Gerard Smits for the report)
+
+1.5.4 (2012-08-31)
+  * Running less smooth.roc examples with logcondens because they take too much time (requested by Uwe Ligges)
+
+1.5.3 (2012-08-31)
+  * AUC specification was lost when roc.test, cov or var was passed an 'auc' object.
+  * Correct computation of "accuracy" in 'coords' (thanks to Kosuke Yoshihara for the report)
+
+1.5.1 (2012-03-09)
+  * Faster loading of the package (thanks to Prof Brian Ripley and Glenn Lawyer for the report)
+
+1.5 (2011-12-11)
+  * New 'cov' and 'var' functions
+  * 'coords' accepts new 'ret' values: "accuracy", "tn", "tp", "fn", "fp", "npv", "ppv", "1-specificity", "1-sensitivity", "1-npv", "1-ppv", "npe" and "ppe"
+  * New 'legacy.axes' argument to 'plot' 1-specificity rather than specificity
+  * New 'axes' argument to turn off the plotting of the axis
+  * New 'logcondens' and 'logcondens.smooth' (Univariate Log-Concave Density Estimation) smoothing methods
+  * New function 'has.partial.auc' to determine if an AUC is full or partial
+  * New argument 'drop' for 'coords'
+  * 'auc' and 'multiclass.auc' objects now also have secondary class 'numeric'
+  * Updated load call
+  * Delong's CI reversed in ROC curves with direction=">"
+  * Delong's CI AUC returned values > 1 or < 0 in some rare cases
+  * Minor improvements in documentation
+
+1.4.4 (2011-08-09)
+  * Fixed alternative for one-tailed tests (thanks to Lisa Koch for the report)
+  * Removed COPYING file to fix a warning in r-devel.
+
+1.4.3 (2011-03-17)
+  * Updated citation
+
+1.4.2 (2011-03-03)
+  * Fixed bootstrap 'roc.test' generating NAs when 'smooth.roc's were used with 'reuse.auc=FALSE' (thanks to Buddy for the report)
+  * Documented a warning that was missing in roc.test
+  * Updated citation
+  
+1.4.1 (2011-01-27)
+  * 'venkatraman''s test for unpaired ROC curves
+  
+1.4 (2011-01-21)
+  * 'smooth' does not apply on 'ordered' factors anymore
+  * Multi-class AUC support
+  * Can choose how 'best' thresold is determined ('best.method' and 'best.weights' in 'coords' and 'print.thres.best.method' and 'print.thres.best.weights' in 'plot.roc')
+  * Minor fixes in documentation
+  * 'print' now prints the response instead of "response" and more informative data in 'htest's
+  * Bootstrap with 'ci.auc' consumes much less memory
+  * Unpaired bootstrap and DeLong's test
+  * Specificity and sensitivity tests (in 'roc.test')
+
+1.3.2 (2010-08-24)
+  * 'print.auc' printed incorrect CI in 'plot.roc' (thanks to Alexander B. Leichtle for the report)
+  * Failed to detect local maximas in 'coords' when 2 or less points were selected
+  * Don't consider ROC extremities (+-Inf at 1.0/0.0 SE<->SP) as local maximas
+
+1.3.1 (2010-08-18)
+  * Sensitivity and specificity were inverted in coords when results were reported as list
+  * Faster checks with '\dontrun{}' in 'roc.test'
+
+1.3 (2010-08-13)
+  * '...' not passed correctly in 'plot.ci.se' with 'type="bars"' resulting in an error
+  * CI is not re-computed by default in 'smooth.roc'. You can still turn it on with 'reuse.ci=TRUE'
+  * New function 'are.paired'
+  * Local maximas could be incorrectly detected in 'coords' (and 'plot.roc') with 'predictor's containing more than 2 levels.
+  * New method 'venkatraman' for 'roc.test'
+  * MASS and tcltk packages are now only suggested instead of required
+
+1.2.1 (2010-05-11)
+  * Handle 'method' arguments for 'smooth.roc' and 'ci.auc' separately in 'roc.default'
+  * Added 'auc.polygon.*' and 'max.auc.polygon.*' arguments for 'polygon' in 'plot.roc'
+
+1.2 (2010-05-09)
+  * Added DeLong method in 'ci.auc'
+  * Return value of 'ci.auc' does not contain an 'aucs' item anymore
+  * Put most examples with bootstrap within '\dontrun{}' blocks for faster (but less useful) checks execution
+
+1.1 (2010-05-05)
+  * Added 'lines.roc' functions for ROC
+  * Added 'type' argument for both 'lines.roc' and 'plot.roc'
+  * Added 'print.auc.col' argument to 'plot.roc'
+  * Fixed a warning in 'roc.test.default' when the class of 'predictor1' had several elements
+  * Fixed an encoding failure during the checks on MacOS X
+
+1.0.1 (2010-04-28)
+  * Reduced examples execution time. Added low 'boot.n' in the slowest examples and 'reuse.auc' and 'reuse.ci' arguments in smooth.roc.roc
+
+1.0 (2010-04-27)
+  * First public release

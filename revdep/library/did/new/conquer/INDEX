@@ -1,0 +1,9 @@
+conquer                 Convolution-Type Smoothed Quantile Regression
+conquer-package         Conquer: Convolution-Type Smoothed Quantile
+                        Regression
+conquer.cv.reg          Cross-Validated Penalized Convolution-Type
+                        Smoothed Quantile Regression
+conquer.process         Convolution-Type Smoothed Quantile Regression
+                        Process
+conquer.reg             Penalized Convolution-Type Smoothed Quantile
+                        Regression

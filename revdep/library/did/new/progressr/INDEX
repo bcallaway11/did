@@ -1,0 +1,36 @@
+handler_ascii_alert     Progression Handler: Progress Reported as ASCII
+                        BEL Symbols (Audio or Blink) in the Terminal
+handler_beepr           Progression Handler: Progress Reported as
+                        'beepr' Sounds (Audio)
+handler_debug           Progression Handler: Progress Reported as Debug
+                        Information (Text) in the Terminal
+handler_filesize        Progression Handler: Progress Reported as the
+                        Size of a File on the File System
+handler_pbcol           Progression Handler: Progress Reported as an
+                        ANSI Background Color in the Terminal
+handler_pbmcapply       Progression Handler: Progress Reported via
+                        'pbmcapply' Progress Bars (Text) in the
+                        Terminal
+handler_progress        Progression Handler: Progress Reported via
+                        'progress' Progress Bars (Text) in the Terminal
+handler_rstudio         Progression Handler: Progress Reported in the
+                        RStudio Console
+handler_tkprogressbar   Progression Handler: Progress Reported as a
+                        Tcl/Tk Progress Bars in the GUI
+handler_txtprogressbar
+                        Progression Handler: Progress Reported as Plain
+                        Progress Bars (Text) in the Terminal
+handler_void            Progression Handler: No Progress Report
+handler_winprogressbar
+                        Progression Handler: Progress Reported as a MS
+                        Windows Progress Bars in the GUI
+handlers                Control How Progress is Reported
+progress_progressr      Use Progressr with Plyr Map-Reduce Functions
+progressor              Create a Progressor Function that Signals
+                        Progress Updates
+progressr               progressr: A Unifying API for Progress Updates
+withProgressShiny       Use Progressr in Shiny Apps: Plug-in Backward
+                        Compatibility Replacement for
+                        shiny::withProgress()
+with_progress           Report on Progress while Evaluating an R
+                        Expression

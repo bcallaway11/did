@@ -1,0 +1,3 @@
+GeomLabelRepel          GeomLabelRepel
+geom_label_repel        Repulsive textual annotations.
+position_nudge_repel    Nudge labels a fixed distance from points

@@ -1,0 +1,5 @@
+pbapply                 Adding Progress Bar to '*apply' Functions
+pboptions               Creating Progress Bar and Setting Options
+splitpb                 Divide Tasks for Progress-bar Friendly
+                        Distribution in a Cluster
+timerProgressBar        Timer Progress Bar

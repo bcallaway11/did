@@ -1,0 +1,43 @@
+Log of changes to SQUAREM
+
+   o	first release:  August 8, 2010
+
+   o	second release:  August 9, 2010
+		- fixed a bug in `cyclem1' and `cyclem2' that croped up when testing under Windows 64-bit.  This was due to QR-decomposition using LAPACK.  
+
+   o	third release:  September 26, 2010
+	- modified the `cat' statement such that it is effective only when trace = TRUE
+
+   o	fourth release:  December 31, 2010
+	- There was a bug in the check for convergence in all the 4 functions: squarem1, squarem2, cyclem1 and cyclem2.   It was pointed out by Roger Koenker.  It is now fixed.
+	- A slight change was made to documentation regarding the objective function.
+
+   o	Fifth release:  August 10, 2016
+	- created vignettes with several examples showing how to accelerate convergence using SQUAREM
+	- created demo examples showing how to use SQUAREM to accelerate convergence
+
+   o   	October 19, 2016
+	- return intermediate parameter vector and merit function values
+
+   o   	January 2, 2020
+	- changed code for detecting "try-error" to conform to the changes in latest R release
+
+  o   	February 21, 2020
+	- Added citation information for how to cite the package
+
+  o   	June 04, 2020
+	- Modified the code to output updated parameters from EM algorithm immediately before breaking for convergence
+
+  o   	August 19, 2020
+	- Fixed a couple of lines in squarem2() to output updated parameters from EM algorithm 
+	immediately before breaking for convergence - thanks to Dan Schaid (Mayo) for pointing this out
+	
+	o   October 21, 2020
+	- Added the option to either "minimize"" or "maximize" the objective function
+	- Control parameter `minimize' can be set to TRUE (for minimization) or FALSE (for maximization)
+	
+	o   January 12, 2021
+	- Added the option to output the residuals when objective funcion is NOT given
+	- also added this option to `fpiter'
+	- In order to use this option, the user has to set `intermed=TRUE'
+	- this option is not available for higher-order squarem algorithms 

@@ -1,0 +1,28 @@
+AGGTEobj                AGGTEobj
+DIDparams               DIDparams
+MP                      MP
+MP.TEST                 MP.TEST
+aggte                   Aggregate Group-Time Average Treatment Effects
+att_gt                  Group-Time Average Treatment Effects
+conditional_did_pretest
+                        Pre-Test of Conditional Parallel Trends
+                        Assumption
+did                     Difference in Differences
+ggdid                   Plot 'did' objects using 'ggplot2'
+ggdid.AGGTEobj          Plot 'AGGTEobj' objects
+ggdid.MP                Plot 'MP' objects using 'ggplot2'
+indicator               indicator
+mboot                   Multiplier Bootstrap
+mp.spatt                Group-Time Average Treatment Effects with
+                        Multiple Periods
+mp.spatt.test           mp.spatt.test
+mpdta                   County Teen Employment Dataset
+pre_process_did         Process 'did' Function Arguments
+print.MP                print.MP
+process_attgt           Process Results from 'compute.att_gt'
+summary.AGGTEobj        Summary Aggregate Treatment Effect Parameter
+                        Objects
+summary.MP              summary.MP
+summary.MP.TEST         summary.MP.TEST
+test.mboot              Multiplier Bootstrap for Conditional Moment
+                        Test

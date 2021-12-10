@@ -1,0 +1,44 @@
+Package: lava
+Type: Package
+Title: Latent Variable Models
+Version: 1.6.10
+Date: 2021-09-01
+Authors@R: c(person("Klaus K.", "Holst", email="klaus@holst.it", role=c("aut", "cre")),
+             person("Brice", "Ozenne", role = "ctb"),
+             person("Thomas", "Gerds", role = "ctb"))
+Author: Klaus K. Holst [aut, cre],
+  Brice Ozenne [ctb],
+  Thomas Gerds [ctb]
+Maintainer: Klaus K. Holst <klaus@holst.it>
+Description: A general implementation of Structural Equation Models
+	with latent variables (MLE, 2SLS, and composite likelihood
+	estimators) with both continuous, censored, and ordinal
+	outcomes (Holst and Budtz-Joergensen (2013) <doi:10.1007/s00180-012-0344-y>).
+	Mixture latent variable models and non-linear latent variable models
+	(Holst and Budtz-Joergensen (2019) <doi:10.1093/biostatistics/kxy082>).
+	The package also provides methods for graph exploration (d-separation,
+	back-door criterion), simulation of general non-linear latent variable
+	models, and estimation of influence functions for a broad range of
+	statistical models.
+URL: https://kkholst.github.io/lava/
+Additional_repositories: https://kkholst.github.io/r_repo/
+BugReports: https://github.com/kkholst/lava/issues
+License: GPL-3
+LazyLoad: yes
+Depends: R (>= 3.0)
+Imports: future.apply, progressr, grDevices, graphics, methods,
+        numDeriv, stats, survival, SQUAREM, utils
+Suggests: KernSmooth, Matrix, Rgraphviz, data.table, ellipse, fields,
+        geepack, gof (>= 0.9), graph, knitr, bookdown, rmarkdown,
+        igraph (>= 0.6), lava.tobit (>= 0.4.7), lavaSearch2, lme4,
+        magrittr, mets (>= 1.1), nlme, optimx, polycor, quantreg, rgl,
+        R.rsp (>= 0.40), testthat (>= 0.11), visNetwork, zoo
+VignetteBuilder: knitr
+ByteCompile: yes
+Encoding: UTF-8
+RoxygenNote: 7.1.1
+NeedsCompilation: no
+Packaged: 2021-09-01 15:58:20 UTC; klaus
+Repository: CRAN
+Date/Publication: 2021-09-02 14:50:18 UTC
+Built: R 4.0.3; ; 2021-12-10 21:23:03 UTC; unix

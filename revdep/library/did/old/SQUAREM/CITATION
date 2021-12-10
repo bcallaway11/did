@@ -1,0 +1,18 @@
+bibentry(bibtype = "Article",
+  title        = "{SQUAREM}: An {R} Package for Off-the-Shelf Acceleration of {EM}, {MM} and Other {EM}-Like Monotone Algorithms",
+  author       = c(person(given = "Yu",
+                          family = "Du",
+                          email = "ydu10@jhu.edu"),
+                   person(given = "Ravi",
+                          family = "Varadhan",
+                          email = "rvaradhan@jhmi.edu")),
+  journal      = "Journal of Statistical Software",
+  year         = "2020",
+  volume       = "92",
+  number       = "7",
+  pages        = "1--41",
+  doi          = "10.18637/jss.v092.i07",
+
+  header       = "To cite SQUAREM in publications use:"
+)
+

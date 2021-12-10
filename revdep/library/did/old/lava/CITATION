@@ -1,0 +1,56 @@
+author1 <- "Klaus K. Holst and Esben Budtz-Joergensen"
+year1 <- 2013
+journal1 <- "Computational Statistics"
+title1 <- "Linear Latent Variable Models: The lava-package"
+doi1 <- "10.1007/s00180-012-0344-y"
+volume1 <- 28
+number1 <- 4
+pages1 <- "1385-1452"
+textver1 <- paste(author1, " (", year1, "). ",
+                  title1, ". ", journal1,
+                  ", ", volume1, " (", number1 ,")",
+                ", pp. ", pages1,
+                ". doi: ", doi1, ".", sep="")
+
+author2 <- "Klaus K. Holst and Esben Budtz-Joergensen"
+year2 <- 2020
+journal2 <- "Biostatistics"
+title2 <- "A two-stage estimation procedure for non-linear structural equation models"
+doi2 <- "10.1093/biostatistics/kxy082"
+volume2 <- 21
+number2 <- 4
+pages2 <- "676-691"
+textver2 <- paste(author2, " (", year2, "). ",
+                  title2, ". ", journal2,
+                  ", ",
+                  volume2, " (", number2 ,")",
+                  ", pp. ", pages2,
+                  ". doi: ", doi2, ".", sep="")
+
+
+citHeader("To cite 'lava' in publications use:")
+
+citEntry(entry="Article",
+         title = title1,
+         author = author1,
+         year = year1,
+         volume = volume1,
+         number = number1,
+         pages = pages1,
+ 	 journal = journal1,
+	 doi = doi1,
+         textVersion = textver1)
+
+
+citEntry(entry="Article",
+         title = title2,
+         author = author2,
+         year = year2,
+         volume = volume2,
+         number = number2,
+         pages = pages2,
+ 	 journal = journal2,
+	 doi = doi2,
+         textVersion = textver2)
+
+

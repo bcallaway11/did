@@ -1,0 +1,44 @@
+ggsci-package           Scientific Journal and Sci-Fi Themed Color
+                        Palettes for 'ggplot2'
+pal_aaas                AAAS Journal Color Palettes
+pal_d3                  D3.js Color Palettes
+pal_futurama            The Futurama Color Palettes
+pal_gsea                The GSEA GenePattern Color Palettes
+pal_igv                 Integrative Genomics Viewer (IGV) Color
+                        Palettes
+pal_jama                Journal of the American Medical Association
+                        Color Palettes
+pal_jco                 Journal of Clinical Oncology Color Palettes
+pal_lancet              Lancet Journal Color Palettes
+pal_locuszoom           LocusZoom Color Palette
+pal_material            Material Design Color Palettes
+pal_nejm                NEJM Color Palettes
+pal_npg                 NPG Journal Color Palettes
+pal_rickandmorty        Rick and Morty Color Palettes
+pal_simpsons            The Simpsons Color Palettes
+pal_startrek            Star Trek Color Palettes
+pal_tron                Tron Legacy Color Palettes
+pal_uchicago            The University of Chicago Color Palettes
+pal_ucscgb              UCSC Genome Browser Color Palette
+rgb_gsea                The GSEA GenePattern Color Palettes
+rgb_material            Material Design Color Palettes
+scale_color_aaas        AAAS Journal Color Scales
+scale_color_d3          D3.js Color Scales
+scale_color_futurama    The Futurama Color Scales
+scale_color_gsea        The GSEA GenePattern Color Scales
+scale_color_igv         Integrative Genomics Viewer (IGV) Color Scales
+scale_color_jama        Journal of the American Medical Association
+                        Color Scales
+scale_color_jco         Journal of Clinical Oncology Color Scales
+scale_color_lancet      Lancet Journal Color Scales
+scale_color_locuszoom   LocusZoom Color Scales
+scale_color_material    Material Design Color Palettes
+scale_color_nejm        NEJM Color Scales
+scale_color_npg         NPG Journal Color Scales
+scale_color_rickandmorty
+                        Rick and Morty Color Scales
+scale_color_simpsons    The Simpsons Color Scales
+scale_color_startrek    Star Trek Color Scales
+scale_color_tron        Tron Legacy Color Scales
+scale_color_uchicago    The University of Chicago Color Scales
+scale_color_ucscgb      UCSC Genome Browser Color Scales

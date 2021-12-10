@@ -1,0 +1,13 @@
+citHeader("If you use pROC in published research, please cite the following paper:")
+
+citEntry(entry="Article",
+         title = "pROC: an open-source package for R and S+ to analyze and compare ROC curves",
+         author = personList(as.person("Xavier Robin"), as.person("Natacha Turck") , as.person("Alexandre Hainard") , as.person("Natalia Tiberti") , as.person("Frédérique Lisacek") , as.person("Jean-Charles Sanchez"), as.person("Markus Müller")),
+         year = 2011,
+         journal = "BMC Bioinformatics",
+         volume = 12,
+         pages = 77,
+         #doi = "10.1186/1471-2105-12-77", # removed: takes too much space
+         #url = "http://www.biomedcentral.com/1471-2105/12/77/",
+         textVersion = "Xavier Robin, Natacha Turck, Alexandre Hainard, Natalia Tiberti, Frédérique Lisacek, Jean-Charles Sanchez and Markus Müller (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. BMC Bioinformatics, 12, p. 77.\n DOI: 10.1186/1471-2105-12-77 <http://www.biomedcentral.com/1471-2105/12/77/>"
+         )

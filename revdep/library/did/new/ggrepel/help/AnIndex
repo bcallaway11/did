@@ -1,0 +1,8 @@
+ggrepel-package	ggrepel
+GeomLabelRepel	ggrepel-ggproto
+GeomTextRepel	ggrepel-ggproto
+geom_label_repel	geom_text_repel
+geom_text_repel	geom_text_repel
+ggrepel	ggrepel
+PositionNudgeRepel	ggrepel-ggproto
+position_nudge_repel	position_nudge_repel

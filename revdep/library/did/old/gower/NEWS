@@ -1,0 +1,28 @@
+version 0.2.2
+- Fix: for small numbers of records and high number of threads, the output
+  would depend on 'nthreads'. (Thanks to Matt Austin for reporing). Gower
+  now only paralellizes when more than 1000 records are presented.
+
+version 0.2.1
+- moved test framework to 'tinytest'
+
+version 0.2.0
+- gower_dist and gower_topn gain `weight` argument for weighted matching (thanks to David Turner)
+- gower_dist and gower_topn gain `ignore_case` argument for automatic column matching.
+- gower_dist now returns numeric(0) invisibly when there are no columns to compare.
+- gower_topn now returns a list with empty matrices when there are no columns to compare.
+- gower_topn now warns when n>nrow(y) and sets n=nrow(y)
+- bugfix: comparing factors with characters would cause a crash (thanks to Max Kuhn)
+
+version 0.1.2
+- fixed valgrind warning
+- registered native routines, as now recommended by CRAN
+
+version 0.1.1
+- gower_dist now issues warning when nr of rows on input do not divide (recycling)
+- Code now depends on gcc version for compatability with Windows + R<=3.2.x
+- Bugfix: bad range calculation caused faulty distance computation
+
+version 0.1.0 
+- First release
+

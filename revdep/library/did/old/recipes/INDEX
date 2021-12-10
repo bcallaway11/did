@@ -1,0 +1,117 @@
+add_step                Add a New Operation to the Current Recipe
+bake                    Apply a trained preprocessing recipe
+check_class             Check Variable Class
+check_cols              Check if all Columns are Present
+check_missing           Check for Missing Values
+check_new_values        Check for New Values
+check_range             Check Range Consistency
+detect_step             Detect if a particular step or check is used in
+                        a recipe
+discretize              Discretize Numeric Variables
+formula.recipe          Create a Formula from a Prepared Recipe
+fully_trained           Check to see if a recipe is trained/prepared
+has_role                Role Selection
+juice                   Extract transformed training set
+names0                  Naming Tools
+prep                    Estimate a preprocessing recipe
+prepper                 Wrapper function for preparing recipes within
+                        resampling
+print.recipe            Print a Recipe
+recipe                  Create a recipe for preprocessing data
+recipes                 recipes: A package for computing and
+                        preprocessing design matrices.
+recipes_eval_select     Evaluate a selection with tidyselect semantics
+                        specific to recipes
+roles                   Manually Alter Roles
+selections              Methods for Selecting Variables in Step
+                        Functions
+step_BoxCox             Box-Cox Transformation for Non-Negative Data
+step_YeoJohnson         Yeo-Johnson Transformation
+step_arrange            Sort rows using dplyr
+step_bin2factor         Create a Factors from A Dummy Variable
+step_bs                 B-Spline Basis Functions
+step_center             Centering numeric data
+step_classdist          Distances to Class Centroids
+step_corr               High Correlation Filter
+step_count              Create Counts of Patterns using Regular
+                        Expressions
+step_cut                Cut a numeric variable into a factor
+step_date               Date Feature Generator
+step_depth              Data Depths
+step_discretize         Discretize Numeric Variables
+step_dummy              Dummy Variables Creation
+step_dummy_multi_choice
+                        Multiple Choice Dummy Variables Creation
+step_factor2string      Convert Factors to Strings
+step_filter             Filter rows using dplyr
+step_geodist            Distance between two locations
+step_harmonic           Add sin and cos terms for harmonic analysis
+step_holiday            Holiday Feature Generator
+step_hyperbolic         Hyperbolic Transformations
+step_ica                ICA Signal Extraction
+step_impute_bag         Impute via bagged trees
+step_impute_knn         Impute via k-nearest neighbors
+step_impute_linear      Impute numeric variables via a linear model
+step_impute_lower       Impute numeric data below the threshold of
+                        measurement
+step_impute_mean        Impute numeric data using the mean
+step_impute_median      Impute numeric data using the median
+step_impute_mode        Impute nominal data using the most common value
+step_impute_roll        Impute numeric data using a rolling window
+                        statistic
+step_indicate_na        Create Missing Data Column Indicators
+step_integer            Convert values to predefined integers
+step_interact           Create Interaction Variables
+step_intercept          Add intercept (or constant) column
+step_inverse            Inverse Transformation
+step_invlogit           Inverse Logit Transformation
+step_isomap             Isomap Embedding
+step_kpca               Kernel PCA Signal Extraction
+step_kpca_poly          Polynomial Kernel PCA Signal Extraction
+step_kpca_rbf           Radial Basis Function Kernel PCA Signal
+                        Extraction
+step_lag                Create a lagged predictor
+step_lincomb            Linear Combination Filter
+step_log                Logarithmic Transformation
+step_logit              Logit Transformation
+step_mutate             Add new variables using dplyr
+step_mutate_at          Mutate multiple columns using dplyr
+step_naomit             Remove observations with missing values
+step_nnmf               NNMF Signal Extraction
+step_normalize          Center and scale numeric data
+step_novel              Simple Value Assignments for Novel Factor
+                        Levels
+step_ns                 Natural Spline Basis Functions
+step_num2factor         Convert Numbers to Factors
+step_nzv                Near-Zero Variance Filter
+step_ordinalscore       Convert Ordinal Factors to Numeric Scores
+step_other              Collapse Some Categorical Levels
+step_pca                PCA Signal Extraction
+step_pls                Partial Least Squares Feature Extraction
+step_poly               Orthogonal Polynomial Basis Functions
+step_profile            Create a Profiling Version of a Data Set
+step_range              Scaling Numeric Data to a Specific Range
+step_ratio              Ratio Variable Creation
+step_regex              Create Dummy Variables using Regular
+                        Expressions
+step_relevel            Relevel factors to a desired level
+step_relu               Apply (Smoothed) Rectified Linear
+                        Transformation
+step_rename             Rename variables by name using dplyr
+step_rename_at          Rename multiple columns using dplyr
+step_rm                 General Variable Filter
+step_sample             Sample rows using dplyr
+step_scale              Scaling Numeric Data
+step_select             Select variables using dplyr
+step_shuffle            Shuffle Variables
+step_slice              Filter rows by position using dplyr
+step_spatialsign        Spatial Sign Preprocessing
+step_sqrt               Square Root Transformation
+step_string2factor      Convert Strings to Factors
+step_unknown            Assign missing categories to "unknown"
+step_unorder            Convert Ordered Factors to Unordered Factors
+step_window             Moving Window Functions
+step_zv                 Zero Variance Filter
+summary.recipe          Summarize a recipe
+tidy.step_BoxCox        Tidy the Result of a Recipe
+update.step             Update a recipe step
