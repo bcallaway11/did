@@ -33,10 +33,10 @@
 #'  all lengths of exposure are computed.
 #' @param na.rm Logical value if we are to remove missing Values from analyses. Defaults is FALSE.
 #' @param bstrap Boolean for whether or not to compute standard errors using
-#'  the multiplier boostrap.  If standard errors are clustered, then one
+#'  the multiplier bootstrap.  If standard errors are clustered, then one
 #'  must set `bstrap=TRUE`. Default is value set in the MP object.  If bstrap is `FALSE`, then analytical
 #'  standard errors are reported.
-#' @param biters The number of boostrap iterations to use.  The default is the value set in the MP object,
+#' @param biters The number of bootstrap iterations to use.  The default is the value set in the MP object,
 #'  and this is only applicable if `bstrap=TRUE`.
 #'
 #' @param cband Boolean for whether or not to compute a uniform confidence

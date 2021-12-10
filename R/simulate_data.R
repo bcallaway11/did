@@ -21,7 +21,7 @@
 #'  untreated potential outcomes.  If FALSE, sets parameters that
 #'  will be incompatible with using regressions (i.e., regressions
 #'  that include only linear term in X).  Either way, these
-#'  paramters can be specified by the user if so desired.
+#'  parameters can be specified by the user if so desired.
 #'
 #' @return list of simulation parameters
 #' 

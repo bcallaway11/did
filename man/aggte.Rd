@@ -53,11 +53,11 @@ all lengths of exposure are computed.}
 \item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
+the multiplier bootstrap.  If standard errors are clustered, then one
 must set \code{bstrap=TRUE}. Default is value set in the MP object.  If bstrap is \code{FALSE}, then analytical
 standard errors are reported.}
 
-\item{biters}{The number of boostrap iterations to use.  The default is the value set in the MP object,
+\item{biters}{The number of bootstrap iterations to use.  The default is the value set in the MP object,
 and this is only applicable if \code{bstrap=TRUE}.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
@@ -106,7 +106,7 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> 
 #>    ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.04        0.0133     -0.066     -0.0139 *
+#>  -0.04        0.0121    -0.0637     -0.0162 *
 #> 
 #> 
 #> ---
@@ -126,18 +126,18 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0772        0.0211    -0.1186     -0.0359 *
+#>  -0.0772        0.0212    -0.1187     -0.0358 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0163       -0.0112      0.0722  
-#>          -2  -0.0006     0.0134       -0.0349      0.0338  
-#>          -1  -0.0245     0.0149       -0.0628      0.0138  
-#>           0  -0.0199     0.0121       -0.0509      0.0111  
-#>           1  -0.0510     0.0162       -0.0926     -0.0094 *
-#>           2  -0.1373     0.0388       -0.2366     -0.0379 *
-#>           3  -0.1008     0.0340       -0.1880     -0.0136 *
+#>          -3   0.0305     0.0161       -0.0103      0.0714  
+#>          -2  -0.0006     0.0132       -0.0340      0.0329  
+#>          -1  -0.0245     0.0143       -0.0607      0.0118  
+#>           0  -0.0199     0.0118       -0.0499      0.0100  
+#>           1  -0.0510     0.0165       -0.0928     -0.0091 *
+#>           2  -0.1373     0.0403       -0.2394     -0.0351 *
+#>           3  -0.1008     0.0369       -0.1943     -0.0074 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -155,14 +155,14 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.031        0.0126    -0.0558     -0.0062 *
+#>  -0.031        0.0133    -0.0572     -0.0049 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0302       -0.1476     -0.0119 *
-#>   2006  -0.0229     0.0169       -0.0610      0.0152  
-#>   2007  -0.0261     0.0164       -0.0628      0.0107  
+#>   2004  -0.0797     0.0284       -0.1455     -0.0140 *
+#>   2006  -0.0229     0.0159       -0.0597      0.0138  
+#>   2007  -0.0261     0.0176       -0.0668      0.0147  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -180,15 +180,15 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on calendar time aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0417        0.0166    -0.0743     -0.0091 *
+#>  -0.0417        0.0172    -0.0754      -0.008 *
 #> 
 #> 
 #> Time Effects:
 #>  Time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>  2004  -0.0105     0.0252       -0.0683      0.0473  
-#>  2005  -0.0704     0.0330       -0.1462      0.0054  
-#>  2006  -0.0488     0.0192       -0.0930     -0.0047 *
-#>  2007  -0.0371     0.0144       -0.0701     -0.0041 *
+#>  2004  -0.0105     0.0252       -0.0681      0.0471  
+#>  2005  -0.0704     0.0339       -0.1480      0.0072  
+#>  2006  -0.0488     0.0213       -0.0976     -0.0001 *
+#>  2007  -0.0371     0.0136       -0.0681     -0.0060 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

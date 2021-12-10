@@ -8,7 +8,7 @@
 #' @param CvMcval CvM critical value
 #' @param CvMpval p-value for CvM test
 #' @param KS Kolmogorov-Smirnov test statistic
-#' @param KSb a vector of boostrapped KS test statistics
+#' @param KSb a vector of bootstrapped KS test statistics
 #' @param KScval KS critical value
 #' @param KSpval p-value for KS test
 #' @param clustervars vector of which variables were clustered on for the test

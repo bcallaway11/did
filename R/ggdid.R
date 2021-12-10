@@ -27,7 +27,7 @@ ggdid <- function(object, ...) {
 #' @description A function to plot `MP` objects
 #'
 #' @inheritParams ggdid
-#' @param ylim optional y limits for the plot; settng here makes the y limits
+#' @param ylim optional y limits for the plot; setting here makes the y limits
 #'  the same across different plots
 #' @param xlab optional x-axis label
 #' @param ylab optional y-axis label

@@ -28,7 +28,7 @@ MP.TEST(
 
 \item{KS}{Kolmogorov-Smirnov test statistic}
 
-\item{KSb}{a vector of boostrapped KS test statistics}
+\item{KSb}{a vector of bootstrapped KS test statistics}
 
 \item{KScval}{KS critical value}
 

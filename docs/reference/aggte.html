@@ -196,13 +196,13 @@ all lengths of exposure are computed.</p></td>
     <tr>
       <th>bstrap</th>
       <td><p>Boolean for whether or not to compute standard errors using
-the multiplier boostrap.  If standard errors are clustered, then one
+the multiplier bootstrap.  If standard errors are clustered, then one
 must set <code>bstrap=TRUE</code>. Default is value set in the MP object.  If bstrap is <code>FALSE</code>, then analytical
 standard errors are reported.</p></td>
     </tr>
     <tr>
       <th>biters</th>
-      <td><p>The number of boostrap iterations to use.  The default is the value set in the MP object,
+      <td><p>The number of bootstrap iterations to use.  The default is the value set in the MP object,
 and this is only applicable if <code>bstrap=TRUE</code>.</p></td>
     </tr>
     <tr>
@@ -253,7 +253,7 @@ aggregation</p>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt;    ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.04        0.0133     -0.066     -0.0139 *</span>
+<span class='co'>#&gt;  -0.04        0.0121    -0.0637     -0.0162 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; ---</span>
@@ -272,18 +272,18 @@ aggregation</p>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
 <span class='co'>#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.0772        0.0211    -0.1186     -0.0359 *</span>
+<span class='co'>#&gt;  -0.0772        0.0212    -0.1187     -0.0358 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Dynamic Effects:</span>
 <span class='co'>#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;          -3   0.0305     0.0163       -0.0112      0.0722  </span>
-<span class='co'>#&gt;          -2  -0.0006     0.0134       -0.0349      0.0338  </span>
-<span class='co'>#&gt;          -1  -0.0245     0.0149       -0.0628      0.0138  </span>
-<span class='co'>#&gt;           0  -0.0199     0.0121       -0.0509      0.0111  </span>
-<span class='co'>#&gt;           1  -0.0510     0.0162       -0.0926     -0.0094 *</span>
-<span class='co'>#&gt;           2  -0.1373     0.0388       -0.2366     -0.0379 *</span>
-<span class='co'>#&gt;           3  -0.1008     0.0340       -0.1880     -0.0136 *</span>
+<span class='co'>#&gt;          -3   0.0305     0.0161       -0.0103      0.0714  </span>
+<span class='co'>#&gt;          -2  -0.0006     0.0132       -0.0340      0.0329  </span>
+<span class='co'>#&gt;          -1  -0.0245     0.0143       -0.0607      0.0118  </span>
+<span class='co'>#&gt;           0  -0.0199     0.0118       -0.0499      0.0100  </span>
+<span class='co'>#&gt;           1  -0.0510     0.0165       -0.0928     -0.0091 *</span>
+<span class='co'>#&gt;           2  -0.1373     0.0403       -0.2394     -0.0351 *</span>
+<span class='co'>#&gt;           3  -0.1008     0.0369       -0.1943     -0.0074 *</span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
@@ -300,14 +300,14 @@ aggregation</p>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span>
 <span class='co'>#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.031        0.0126    -0.0558     -0.0062 *</span>
+<span class='co'>#&gt;  -0.031        0.0133    -0.0572     -0.0049 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Group Effects:</span>
 <span class='co'>#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;   2004  -0.0797     0.0302       -0.1476     -0.0119 *</span>
-<span class='co'>#&gt;   2006  -0.0229     0.0169       -0.0610      0.0152  </span>
-<span class='co'>#&gt;   2007  -0.0261     0.0164       -0.0628      0.0107  </span>
+<span class='co'>#&gt;   2004  -0.0797     0.0284       -0.1455     -0.0140 *</span>
+<span class='co'>#&gt;   2006  -0.0229     0.0159       -0.0597      0.0138  </span>
+<span class='co'>#&gt;   2007  -0.0261     0.0176       -0.0668      0.0147  </span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>
@@ -324,15 +324,15 @@ aggregation</p>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Overall summary of ATT's based on calendar time aggregation:  </span>
 <span class='co'>#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class='co'>#&gt;  -0.0417        0.0166    -0.0743     -0.0091 *</span>
+<span class='co'>#&gt;  -0.0417        0.0172    -0.0754      -0.008 *</span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; </span>
 <span class='co'>#&gt; Time Effects:</span>
 <span class='co'>#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class='co'>#&gt;  2004  -0.0105     0.0252       -0.0683      0.0473  </span>
-<span class='co'>#&gt;  2005  -0.0704     0.0330       -0.1462      0.0054  </span>
-<span class='co'>#&gt;  2006  -0.0488     0.0192       -0.0930     -0.0047 *</span>
-<span class='co'>#&gt;  2007  -0.0371     0.0144       -0.0701     -0.0041 *</span>
+<span class='co'>#&gt;  2004  -0.0105     0.0252       -0.0681      0.0471  </span>
+<span class='co'>#&gt;  2005  -0.0704     0.0339       -0.1480      0.0072  </span>
+<span class='co'>#&gt;  2006  -0.0488     0.0213       -0.0976     -0.0001 *</span>
+<span class='co'>#&gt;  2007  -0.0371     0.0136       -0.0681     -0.0060 *</span>
 <span class='co'>#&gt; ---</span>
 <span class='co'>#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class='co'>#&gt; </span>

@@ -20,7 +20,7 @@
 \arguments{
 \item{object}{either a \code{MP} object or \code{AGGTEobj} object. See \code{help(ggdid.MP)} and \code{help(ggdid.AGGTEobj)}.}
 
-\item{ylim}{optional y limits for the plot; settng here makes the y limits
+\item{ylim}{optional y limits for the plot; setting here makes the y limits
 the same across different plots}
 
 \item{xlab}{optional x-axis label}

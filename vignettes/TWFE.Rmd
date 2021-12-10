@@ -802,7 +802,7 @@ ES_plot_CS_ny
 As expected, the results look good, too
 
 
-## Setup wirh Heterogeneous Treatment Effects
+## Setup with Heterogeneous Treatment Effects
 
 Now, we want to consider a setup with heterogeneous treatment effect dynamics and with a "never-treated" group. This DGP is a modification of the one we have considered above, where now the "unit-specific" treatment effect at time $t$ is given by
 $$ \tau_{i,t} = \mu_g \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},$$

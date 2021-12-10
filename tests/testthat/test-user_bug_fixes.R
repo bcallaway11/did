@@ -66,8 +66,8 @@ test_that("repeated cross sections small groups with covariates", {
   dropids <- dropids[-c(1,2,3)] # keep three observations from group 2
   data <- subset(data, !(id %in% dropids))
 
-  res_dr <- att_gt(yname="Y", xformla=~X+X2+X3, data=data, tname="period", idname="id",
-                   gname="G", est_method=DRDID::drdid_rc1, panel=FALSE)
+  expect_warning(res_dr <- att_gt(yname="Y", xformla=~X+X2+X3, data=data, tname="period", idname="id",
+                   gname="G", est_method=DRDID::drdid_rc1, panel=FALSE), "there are some small groups")
 
   expect_true(is.numeric(res_dr$se[1]))
 
@@ -93,14 +93,15 @@ test_that("fewer time periods than groups", {
 
   res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr")
-  expect_equal(res_dr$att[1], 1, tol=.5)
+  res_idx <- which(res_dr$group==2 & res_dr$t==3)
+  expect_equal(res_dr$att[res_idx], 2, tol=.5)
 
   dyn_agg <- aggte(res_dr, type="dynamic")
   dyn_idx <- which(dyn_agg$egt==3)
   expect_equal(dyn_agg$att.egt[dyn_idx], 4, tol=.5)
   expect_false(any(is.na(dyn_agg$att.egt)))
 
-  skip_if_cran()
+  skip_on_cran()
   group_agg <- aggte(res_dr, type="group")
   group_idx <- which(group_agg$egt==3)
   #this seems to fail for groups that are exactly equal to

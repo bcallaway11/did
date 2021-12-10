@@ -809,9 +809,9 @@
 <p>As expected, the results look good, too</p>
 </div>
 </div>
-<div id="setup-wirh-heterogeneous-treatment-effects" class="section level2">
+<div id="setup-with-heterogeneous-treatment-effects" class="section level2">
 <h2 class="hasAnchor">
-<a href="#setup-wirh-heterogeneous-treatment-effects" class="anchor"></a>Setup wirh Heterogeneous Treatment Effects</h2>
+<a href="#setup-with-heterogeneous-treatment-effects" class="anchor"></a>Setup with Heterogeneous Treatment Effects</h2>
 <p>Now, we want to consider a setup with heterogeneous treatment effect dynamics and with a “never-treated” group. This DGP is a modification of the one we have considered above, where now the “unit-specific” treatment effect at time <span class="math inline">\(t\)</span> is given by <span class="math display">\[ \tau_{i,t} = \mu_g \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},\]</span> where we set <span class="math inline">\(\mu_{1986} = 3\)</span>, <span class="math inline">\(\mu_{1992} = 2\)</span> and <span class="math inline">\(\mu_{1998} = 1\)</span>. This implies that for the group who started treatment in 1986, its average treatment effects evolves with elapsed time as <span class="math inline">\(3,6, 9,\dots\)</span>. For the group that started treatment in 1992 (1998), its average treatment effect evolves with elapsed time as <span class="math inline">\(2,4, 6,\dots\)</span> (<span class="math inline">\(1,2, 3,\dots\)</span>). Of course, treatment effect is zero for the “never-treated” cohort (<span class="math inline">\(g=2004\)</span>, which later we will relabel to <span class="math inline">\(g=\infty\)</span>). This is a DGP where “early-treated” units benefit more from the treatment than “later-treated” units.</p>
 <p>Given that each group has same size (on average), the true average treatment effect dynamic across treated groups is <span class="math inline">\((3+2+1)/3 = 2\)</span> at the time a unit is treated, <span class="math inline">\(2 \times (3+2+1)/3 = 4\)</span> in the first period after treatment started, etc.</p>
 <div id="visualizing-the-dgp-2" class="section level3">
