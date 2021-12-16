@@ -6,7 +6,7 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue)](https://cran.r-project.org/package=did)
 [![](http://cranlogs.r-pkg.org/badges/last-month/did?color=blue)](https://cran.r-project.org/package=did)
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
-[![](https://img.shields.io/badge/devel%20version-2.1.0-blue.svg)](https://github.com/bcallaway11/did)
+[![](https://img.shields.io/badge/devel%20version-2.1.1-blue.svg)](https://github.com/bcallaway11/did)
 [![CRAN
 checks](https://cranchecks.info/badges/summary/did)](https://cran.r-project.org/web/checks/check_results_did.html)
 [![](https://img.shields.io/github/last-commit/bcallaway11/did.svg)](https://github.com/bcallaway11/did/commits/master)
@@ -134,18 +134,18 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0252       -0.0765      0.0555  
-#>   2004 2005  -0.0704     0.0324       -0.1552      0.0144  
-#>   2004 2006  -0.1373     0.0389       -0.2393     -0.0353 *
-#>   2004 2007  -0.1008     0.0350       -0.1924     -0.0092 *
-#>   2006 2004   0.0065     0.0232       -0.0543      0.0674  
-#>   2006 2005  -0.0028     0.0193       -0.0533      0.0478  
-#>   2006 2006  -0.0046     0.0184       -0.0528      0.0436  
-#>   2006 2007  -0.0412     0.0204       -0.0948      0.0123  
-#>   2007 2004   0.0305     0.0162       -0.0120      0.0730  
-#>   2007 2005  -0.0027     0.0158       -0.0441      0.0387  
-#>   2007 2006  -0.0311     0.0178       -0.0778      0.0156  
-#>   2007 2007  -0.0261     0.0170       -0.0707      0.0186  
+#>   2004 2004  -0.0105     0.0235       -0.0747      0.0537  
+#>   2004 2005  -0.0704     0.0328       -0.1600      0.0192  
+#>   2004 2006  -0.1373     0.0378       -0.2403     -0.0342 *
+#>   2004 2007  -0.1008     0.0331       -0.1912     -0.0104 *
+#>   2006 2004   0.0065     0.0236       -0.0578      0.0708  
+#>   2006 2005  -0.0028     0.0205       -0.0587      0.0532  
+#>   2006 2006  -0.0046     0.0192       -0.0570      0.0478  
+#>   2006 2007  -0.0412     0.0200       -0.0959      0.0134  
+#>   2007 2004   0.0305     0.0162       -0.0138      0.0748  
+#>   2007 2005  -0.0027     0.0174       -0.0501      0.0446  
+#>   2007 2006  -0.0311     0.0194       -0.0840      0.0219  
+#>   2007 2007  -0.0261     0.0178       -0.0746      0.0225  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -210,18 +210,18 @@ summary(es)
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.0772        0.0203    -0.1169     -0.0375 *
+#>  -0.0772        0.0216    -0.1196     -0.0348 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0148       -0.0084      0.0694  
-#>          -2  -0.0006     0.0138       -0.0369      0.0358  
-#>          -1  -0.0245     0.0132       -0.0591      0.0102  
-#>           0  -0.0199     0.0117       -0.0509      0.0110  
-#>           1  -0.0510     0.0161       -0.0933     -0.0086 *
-#>           2  -0.1373     0.0375       -0.2361     -0.0384 *
-#>           3  -0.1008     0.0352       -0.1936     -0.0080 *
+#>          -3   0.0305     0.0153       -0.0101      0.0712  
+#>          -2  -0.0006     0.0134       -0.0361      0.0350  
+#>          -1  -0.0245     0.0155       -0.0656      0.0166  
+#>           0  -0.0199     0.0126       -0.0533      0.0135  
+#>           1  -0.0510     0.0163       -0.0941     -0.0078 *
+#>           2  -0.1373     0.0387       -0.2398     -0.0347 *
+#>           3  -0.1008     0.0376       -0.2006     -0.0011 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -275,14 +275,14 @@ summary(group_effects)
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.031        0.0126    -0.0557     -0.0064 *
+#>  -0.031        0.0125    -0.0554     -0.0066 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0285       -0.1420     -0.0175 *
-#>   2006  -0.0229     0.0173       -0.0606      0.0148  
-#>   2007  -0.0261     0.0174       -0.0640      0.0119  
+#>   2004  -0.0797     0.0283       -0.1427     -0.0168 *
+#>   2006  -0.0229     0.0168       -0.0603      0.0145  
+#>   2007  -0.0261     0.0176       -0.0651      0.0130  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
