@@ -1,5 +1,0 @@
-example(gof)
-example(effects)
-example(estimate.default)
-example(modelsearch)
-example(predict.lvm)
