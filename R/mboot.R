@@ -76,19 +76,13 @@ mboot <- function(inf.func, DIDparams) {
   # multiplier bootstrap
   n_clusters <- n
   if (length(clustervars)==0) {
-    #Umat <- matrix(sample(c(-1,1), size=n*biters, replace=TRUE), nrow=n)
-    #bres <- sapply(1:biters, function(b) sqrt(n)*colMeans(Umat[,b]*inf.func))
-    #bres <- sqrt(n)*BMisc::element_wise_mult(Umat, inf.func)
     bres <- sqrt(n)*BMisc::multiplier_bootstrap(inf.func, biters)
   } else {
-    #n1 <- length(unique(data[,clustervars]))
-    #Vmat <- matrix(sample(c(-1,1), size=n1*biters, replace=TRUE), nrow=n1)
     n_clusters <- length(unique(data[,clustervars]))
-    cluster <- dta[,clustervars]
+    cluster <- unique(dta[,c(idname,clustervars)])[,2]
     cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
     bres <- sqrt(n_clusters)*BMisc::multiplier_bootstrap(cluster_mean_if, biters)
-    #bres <- sapply(1:biters, function(b) sqrt(n)*colMeans(Vmat[,b]*cluster_mean_if))
   }
   
   

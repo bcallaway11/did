@@ -574,11 +574,11 @@ test_that("clustered standard errors", {
   data <- build_sim_dataset(sp)
 
   data$cluster <- as.numeric(data$cluster)
-  res_numeric <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+  res_numeric <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr", clustervars="cluster")
 
   data$cluster <- as.factor(data$cluster)
-  res_factor <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+  res_factor <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", 
                         gname="G", est_method="dr", clustervars="cluster")
 
   # test for same att's
@@ -587,12 +587,34 @@ test_that("clustered standard errors", {
   expect_equal(res_factor$se[1], res_numeric$se[1], tol=.02)
 
   #-----------------------------------------------------------------------------
+  # clustered standard errors with unbalanced panel
+  data <- data[-3,] # drop one observation
+  res_ub <- att_gt(yname="Y",
+              tname="period",
+              idname="id",
+              gname="G",
+              xformla=~X,
+              data=data,
+              panel=TRUE,
+              allow_unbalanced_panel=TRUE,
+              clustervars="cluster")
+  expect_equal(res_ub$att[1], 1, tol=.5)
+
+  #-----------------------------------------------------------------------------
   # also, check that we error when clustering variable varies within unit
   # over time
-
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
   data$cluster <- as.numeric(data$cluster)
   data[1,]$cluster <- data[1,]$cluster+1
 
   expect_error(res_vc <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
                         gname="G", est_method="dr", clustervars="cluster"), "handle time-varying cluster variables")
+
+  #-----------------------------------------------------------------------------
+  # clustered standard errors with repeated cross sections data
+  data <- build_sim_dataset(sp, panel=FALSE)
+  res_rc <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                   gname="G", est_method="dr", clustervars="cluster", panel=FALSE)
+  expect_equal(res_rc$att[1], 1, tol=.5)
 })

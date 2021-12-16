@@ -1,3 +1,7 @@
+# did 2.1.1
+
+  * Bug fixes related unbalanced panel and clustered standard errors
+
 # did 2.1.0
 
   * Code is substantially faster/more memory efficient
