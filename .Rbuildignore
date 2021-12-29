@@ -14,3 +14,4 @@
 Icon?
 ^codecov\.yml$
 ^\.github$
+^inst/profiling
