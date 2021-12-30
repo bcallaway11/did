@@ -13,10 +13,9 @@ knitr::opts_chunk$set(
 ```
 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
-source("setup_sims.R")
-fldr <- "~/Dropbox/did/R/"
-sapply(paste0(fldr,list.files(fldr)), source)
-remotes::install_github("pedrohcgs/DRDID")
+source(here::here("vignettes/setup_sims.R"))
+devtools::load_all()
+# remotes::install_github("pedrohcgs/DRDID")
 library(BMisc)
 library(ggplot2)
 library(gridExtra)
