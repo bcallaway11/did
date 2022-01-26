@@ -1,6 +1,10 @@
 # did 2.1.1
 
   * Bug fixes related unbalanced panel and clustered standard errors
+  
+  * Bug fixes for conditional_did_pretest
+  
+  * Even faster bootstrap code (thanks Kyle Butts)
 
 # did 2.1.0
 

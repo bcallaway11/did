@@ -6,16 +6,11 @@
 # iterations of the code.  More extensive/direct tests are available at
 # did/tests/att_gt_inference_tests.Rmd.
 #
-# IMPORTANT: For these tests to run, version 2.0.0 of the did package should
-# be available.  The path of to the old version should be set in the
-# following variable.
-old_did_path <- "~/R/old_packages/did"
-#
-# The following code will install version 2.0.0 of the did package into
-# the directory above:
-# install.packages("did", version="2.0.0", lib=old_did_path)
+# IMPORTANT: For these tests to run, version 2.0 of the did package should
+# be available at ~/R/old_packages/did
 # 
 #-----------------------------------------------------------------------------
+
 
 library(DRDID)
 library(BMisc)

@@ -41,6 +41,8 @@ conditional_did_pretest <- function(yname,
                                     pl=FALSE,
                                     cores=1) {
 
+  message("We are no longer updating this function.  It should continue to work, but most users find the pre-tests already reported by the `att_gt` function to be sufficient for most empirical applications.")
+
   # this is a DIDparams object
   dp <- pre_process_did(yname=yname,
                         tname=tname,
@@ -126,11 +128,11 @@ conditional_did_pretest <- function(yname,
     Jres <- compute.att_gt(thisdp)
 
     # turn in into more usable format
-    J.results <- process_attgt(Jres)
+    J.results <- process_attgt(Jres$attgt.list)
     group <- J.results$group
     att <- J.results$att
     tt <- J.results$tt
-    inf.func <- J.results$inf.func
+    inf.func <- Jres$inffunc
 
     # return the results for this weighting function
     list(J=att, group=group, t=tt, inf.func=inf.func)
