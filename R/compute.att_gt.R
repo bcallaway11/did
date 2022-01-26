@@ -174,8 +174,11 @@ compute.att_gt <- function(dp) {
         C <- disdat$.C
 
         # handle pre-treatment universal base period differently
-        Ypre <- if(tlist[(t+tfac)] > pret) disdat$.y0 else disdat$.y1
-        Ypost <- if(tlist[(t+tfac)] > pret) disdat$.y1 else disdat$.y0
+        # we need to do this because panel2cs2 just puts later period
+        # in .y1, but if we are in a pre-treatment period with a universal
+        # base period, then the "base period" is actually the later period
+        Ypre <- if(tlist[(t+tfac)] > tlist[pret]) disdat$.y0 else disdat$.y1
+        Ypost <- if(tlist[(t+tfac)] > tlist[pret]) disdat$.y1 else disdat$.y0
         w <- disdat$.w
 
         # matrix of covariates
@@ -279,8 +282,6 @@ compute.att_gt <- function(dp) {
         C <- disdat$.C
         Y <- disdat[,yname]
         post <- 1*(disdat[,tname] == tlist[t+tfac])
-        # handle pre-treatment universal base period differently
-        if (!(tlist[(t+tfac)] > pret)) post <- 1-post
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
         w <- disdat$.w
