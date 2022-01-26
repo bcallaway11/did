@@ -5,6 +5,10 @@
   * Bug fixes for conditional_did_pretest
   
   * Even faster bootstrap code (thanks Kyle Butts)
+  
+  * Updated version requirement for `BMisc` package
+  
+  * Bug fix for unbalanced panel and repeated cross sections in pre-treatment periods using universal base period
 
 # did 2.1.0
 

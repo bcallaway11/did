@@ -279,6 +279,8 @@ compute.att_gt <- function(dp) {
         C <- disdat$.C
         Y <- disdat[,yname]
         post <- 1*(disdat[,tname] == tlist[t+tfac])
+        # handle pre-treatment universal base period differently
+        if (!(tlist[(t+tfac)] > pret)) post <- 1-post
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
         w <- disdat$.w
