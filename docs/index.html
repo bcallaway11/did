@@ -26,6 +26,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-home">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -38,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.1</span>
       </span>
     </div>
 
@@ -56,7 +58,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/bcallaway11/did/">
+  <a href="https://github.com/bcallaway11/did/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
      
   </a>
@@ -73,9 +75,8 @@
 
       </header><div class="row">
   <div class="contents col-md-9">
-<div id="difference-in-differences-" class="section level1">
-<div class="page-header"><h1 class="hasAnchor">
-<a href="#difference-in-differences-" class="anchor"></a>Difference-in-Differences <img src="reference/figures/logo.png" align="right" alt="" width="155">
+<div class="section level1">
+<div class="page-header"><h1 id="difference-in-differences-">Difference-in-Differences <img src="reference/figures/logo.png" align="right" alt="" width="155"><a class="anchor" aria-label="anchor" href="#difference-in-differences-"></a>
 </h1></div>
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -88,42 +89,42 @@
 </ul>
 <p>The main parameters are <strong>group-time average treatment effects</strong>. These are the average treatment effect for a particular group (group is defined by treatment timing) in a particular time period. These parameters are a natural generalization of the average treatment effect on the treated (ATT) which is identified in the textbook case with two periods and two groups to the case with multiple periods.</p>
 <p>Group-time average treatment effects are also natural building blocks for more aggregated treatment effect parameters such as overall treatment effects or event-study-type estimands.</p>
-<div id="getting-started" class="section level2">
-<h2 class="hasAnchor">
-<a href="#getting-started" class="anchor"></a>Getting Started</h2>
+<div class="section level2">
+<h2 id="getting-started">Getting Started<a class="anchor" aria-label="anchor" href="#getting-started"></a>
+</h2>
 <p>There has been some recent work on DiD with multiple time periods. The <strong>did</strong> package implements the framework put forward in</p>
 <ul>
 <li>
-<a href="https://doi.org/10.1016/j.jeconom.2020.12.001">Callaway, Brantly and Pedro H.C. Sant’Anna. “Difference-in-Differences with Multiple Time Periods.” Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021.</a> or <a href="https://arxiv.org/abs/1803.09015">arXiv</a>
+<a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway, Brantly and Pedro H.C. Sant’Anna. “Difference-in-Differences with Multiple Time Periods.” Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021.</a> or <a href="https://arxiv.org/abs/1803.09015" class="external-link">arXiv</a>
 </li>
 </ul>
 <p><strong>Higher level discussions of issues are available in</strong></p>
 <ul>
-<li><a href="https://bcallaway11.github.io/did/articles/multi-period-did.html">Our approach to DiD with multiple time periods</a></li>
+<li><a href="https://bcallaway11.github.io/did/articles/multi-period-did.html" class="external-link">Our approach to DiD with multiple time periods</a></li>
 </ul>
 </div>
-<div id="installation" class="section level2">
-<h2 class="hasAnchor">
-<a href="#installation" class="anchor"></a>Installation</h2>
+<div class="section level2">
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h2>
 <p>You can install <strong>did</strong> from CRAN with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html">install.packages</a></span><span class="op">(</span><span class="st">"did"</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"did"</span><span class="op">)</span></code></pre></div>
 <p>or get the latest version from github with:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># install.packages("devtools")</span>
-<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/remote-reexports.html">install_github</a></span><span class="op">(</span><span class="st">"bcallaway11/did"</span><span class="op">)</span></code></pre></div>
+<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/remote-reexports.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"bcallaway11/did"</span><span class="op">)</span></code></pre></div>
 </div>
-<div id="a-short-example" class="section level2">
-<h2 class="hasAnchor">
-<a href="#a-short-example" class="anchor"></a>A short example</h2>
-<p>The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from <a href="https://authors.elsevier.com/a/1cFzc15Dji4pnC">Callaway and Sant’Anna (2021)</a>.</p>
+<div class="section level2">
+<h2 id="a-short-example">A short example<a class="anchor" aria-label="anchor" href="#a-short-example"></a>
+</h2>
+<p>The following is a simplified example of the effect of states increasing their minimum wages on county-level teen employment rates which comes from <a href="https://authors.elsevier.com/a/1cFzc15Dji4pnC" class="external-link">Callaway and Sant’Anna (2021)</a>.</p>
 <ul>
-<li><a href="https://bcallaway11.github.io/did/articles/did-basics.html">More detailed examples are also available</a></li>
+<li><a href="https://bcallaway11.github.io/did/articles/did-basics.html" class="external-link">More detailed examples are also available</a></li>
 </ul>
 <p>A subset of the data is available in the package and can be loaded by</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R">  <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://bcallaway11.github.io/did/">did</a></span><span class="op">)</span>
-  <span class="fu"><a href="https://rdrr.io/r/utils/data.html">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R">  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bcallaway11.github.io/did/" class="external-link">did</a></span><span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></code></pre></div>
 <p>The dataset contains 500 observations of county-level teen employment rates from 2003-2007. Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for more details). The important variables in the dataset are</p>
 <ul>
 <li><p><strong>lemp</strong> This is the log of county-level teen employment. It is the outcome variable</p></li>
@@ -143,7 +144,7 @@
               <span class="op">)</span></code></pre></div>
 <p><strong>att_gt</strong> returns a class <strong>MP</strong> object. This has a lot of information, but most importantly is has estimates of the group-time average treatment effects and their standard errors. To see these, we can call the <strong>summary</strong> function</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
 <span class="co">#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
@@ -153,18 +154,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group-Time Average Treatment Effects:</span>
 <span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004 2004  -0.0105     0.0252       -0.0765      0.0555  </span>
-<span class="co">#&gt;   2004 2005  -0.0704     0.0324       -0.1552      0.0144  </span>
-<span class="co">#&gt;   2004 2006  -0.1373     0.0389       -0.2393     -0.0353 *</span>
-<span class="co">#&gt;   2004 2007  -0.1008     0.0350       -0.1924     -0.0092 *</span>
-<span class="co">#&gt;   2006 2004   0.0065     0.0232       -0.0543      0.0674  </span>
-<span class="co">#&gt;   2006 2005  -0.0028     0.0193       -0.0533      0.0478  </span>
-<span class="co">#&gt;   2006 2006  -0.0046     0.0184       -0.0528      0.0436  </span>
-<span class="co">#&gt;   2006 2007  -0.0412     0.0204       -0.0948      0.0123  </span>
-<span class="co">#&gt;   2007 2004   0.0305     0.0162       -0.0120      0.0730  </span>
-<span class="co">#&gt;   2007 2005  -0.0027     0.0158       -0.0441      0.0387  </span>
-<span class="co">#&gt;   2007 2006  -0.0311     0.0178       -0.0778      0.0156  </span>
-<span class="co">#&gt;   2007 2007  -0.0261     0.0170       -0.0707      0.0186  </span>
+<span class="co">#&gt;   2004 2004  -0.0105     0.0235       -0.0747      0.0537  </span>
+<span class="co">#&gt;   2004 2005  -0.0704     0.0328       -0.1600      0.0192  </span>
+<span class="co">#&gt;   2004 2006  -0.1373     0.0378       -0.2403     -0.0342 *</span>
+<span class="co">#&gt;   2004 2007  -0.1008     0.0331       -0.1912     -0.0104 *</span>
+<span class="co">#&gt;   2006 2004   0.0065     0.0236       -0.0578      0.0708  </span>
+<span class="co">#&gt;   2006 2005  -0.0028     0.0205       -0.0587      0.0532  </span>
+<span class="co">#&gt;   2006 2006  -0.0046     0.0192       -0.0570      0.0478  </span>
+<span class="co">#&gt;   2006 2007  -0.0412     0.0200       -0.0959      0.0134  </span>
+<span class="co">#&gt;   2007 2004   0.0305     0.0162       -0.0138      0.0748  </span>
+<span class="co">#&gt;   2007 2005  -0.0027     0.0174       -0.0501      0.0446  </span>
+<span class="co">#&gt;   2007 2006  -0.0311     0.0194       -0.0840      0.0219  </span>
+<span class="co">#&gt;   2007 2007  -0.0261     0.0178       -0.0746      0.0225  </span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -174,7 +175,7 @@
 <p>This provides estimates of group-time average treatment effects for all groups in all time periods. Group-time average treatment effects are identified when <code>t &gt;= g</code> (these are post-treatment time periods for each group), but <strong>summary</strong> reports them even in periods when <code>t &lt; g</code> – these can be used to pre-test for the parallel trends assumption. The <code>P-value for pre-test of parallel trends assumption</code> is for a Wald pre-test of the parallel trends assumption. Here the parallel trends assumption would not be rejected at conventional significance levels.</p>
 <p>It is often also convenient to plot the group-time average treatment effects. This can be done using the <strong>ggdid</strong> command:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">out</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.25</span>,<span class="fl">.1</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="fu"><a href="reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">out</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.25</span>,<span class="fl">.1</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <p><img src="reference/figures/README-unnamed-chunk-9-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>The red dots in the plot are pre-treatment group-time average treatment effects . Here they are provided with 95% simultaneous confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects. Under the parallel trends assumption, these can be interpreted as policy effects – here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.</p>
 <p><strong>Event Studies</strong></p>
@@ -184,7 +185,7 @@
 <code class="sourceCode R"><span class="va">es</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></code></pre></div>
 <p>Just like for group-time average treatment effects, these can be summarized and plotted. First, the summary</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">es</span><span class="op">)</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">es</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
 <span class="co">#&gt; aggte(MP = out, type = "dynamic")</span>
@@ -194,18 +195,18 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
 <span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0772        0.0203    -0.1169     -0.0375 *</span>
+<span class="co">#&gt;  -0.0772        0.0216    -0.1196     -0.0348 *</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Dynamic Effects:</span>
 <span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -3   0.0305     0.0148       -0.0084      0.0694  </span>
-<span class="co">#&gt;          -2  -0.0006     0.0138       -0.0369      0.0358  </span>
-<span class="co">#&gt;          -1  -0.0245     0.0132       -0.0591      0.0102  </span>
-<span class="co">#&gt;           0  -0.0199     0.0117       -0.0509      0.0110  </span>
-<span class="co">#&gt;           1  -0.0510     0.0161       -0.0933     -0.0086 *</span>
-<span class="co">#&gt;           2  -0.1373     0.0375       -0.2361     -0.0384 *</span>
-<span class="co">#&gt;           3  -0.1008     0.0352       -0.1936     -0.0080 *</span>
+<span class="co">#&gt;          -3   0.0305     0.0153       -0.0101      0.0712  </span>
+<span class="co">#&gt;          -2  -0.0006     0.0134       -0.0361      0.0350  </span>
+<span class="co">#&gt;          -1  -0.0245     0.0155       -0.0656      0.0166  </span>
+<span class="co">#&gt;           0  -0.0199     0.0126       -0.0533      0.0135  </span>
+<span class="co">#&gt;           1  -0.0510     0.0163       -0.0941     -0.0078 *</span>
+<span class="co">#&gt;           2  -0.1373     0.0387       -0.2398     -0.0347 *</span>
+<span class="co">#&gt;           3  -0.1008     0.0376       -0.2006     -0.0011 *</span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -223,7 +224,7 @@
 <p>To compute this overall average treatment effect parameter, use</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">group_effects</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">group_effects</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">group_effects</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
 <span class="co">#&gt; aggte(MP = out, type = "group")</span>
@@ -233,14 +234,14 @@
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span>
 <span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.031        0.0126    -0.0557     -0.0064 *</span>
+<span class="co">#&gt;  -0.031        0.0125    -0.0554     -0.0066 *</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Group Effects:</span>
 <span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004  -0.0797     0.0285       -0.1420     -0.0175 *</span>
-<span class="co">#&gt;   2006  -0.0229     0.0173       -0.0606      0.0148  </span>
-<span class="co">#&gt;   2007  -0.0261     0.0174       -0.0640      0.0119  </span>
+<span class="co">#&gt;   2004  -0.0797     0.0283       -0.1427     -0.0168 *</span>
+<span class="co">#&gt;   2006  -0.0229     0.0168       -0.0603      0.0145  </span>
+<span class="co">#&gt;   2007  -0.0261     0.0176       -0.0651      0.0130  </span>
 <span class="co">#&gt; ---</span>
 <span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
 <span class="co">#&gt; </span>
@@ -248,15 +249,15 @@
 <span class="co">#&gt; Estimation Method:  Outcome Regression</span></code></pre></div>
 <p>Of particular interest is the <code>Overall ATT</code> in the results. Here, we estimate that increasing the minimum wage decreased teen employment by 3.1% and the effect is marginally statistically significant.</p>
 </div>
-<div id="additional-resources" class="section level2">
-<h2 class="hasAnchor">
-<a href="#additional-resources" class="anchor"></a>Additional Resources</h2>
+<div class="section level2">
+<h2 id="additional-resources">Additional Resources<a class="anchor" aria-label="anchor" href="#additional-resources"></a>
+</h2>
 <p>We have provided several more vignettes that may be helpful for using the <strong>did</strong> package</p>
 <ul>
-<li><p><a href="https://bcallaway11.github.io/did/articles/did-basics.html">Getting Started with the did Package</a></p></li>
-<li><p><a href="https://bcallaway11.github.io/did/articles/multi-period-did.html">Introduction to DiD with Multiple Time Periods</a></p></li>
-<li><p><a href="https://bcallaway11.github.io/did/articles/pre-testing.html">Pre-Testing in a DiD Setup using the did Package</a></p></li>
-<li><p><a href="https://bcallaway11.github.io/did/articles/extensions.html">Writing Extensions to the did Package</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/did-basics.html" class="external-link">Getting Started with the did Package</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/multi-period-did.html" class="external-link">Introduction to DiD with Multiple Time Periods</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/pre-testing.html" class="external-link">Pre-Testing in a DiD Setup using the did Package</a></p></li>
+<li><p><a href="https://bcallaway11.github.io/did/articles/extensions.html" class="external-link">Writing Extensions to the did Package</a></p></li>
 </ul>
 </div>
 </div>
@@ -264,61 +265,64 @@
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <div class="links">
-<h2>Links</h2>
+<h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
-<li>Download from CRAN at <br><a href="https://cloud.r-project.org/package=did">https://​cloud.r-project.org/​package=did</a>
-</li>
-<li>Browse source code at <br><a href="https://github.com/bcallaway11/did/">https://​github.com/​bcallaway11/​did/​</a>
-</li>
-<li>Source Code at <br><a href="https://github.com/bcallaway11/did">https://​github.com/​bcallaway11/​did</a>
-</li>
-<li>Report Bugs or Feature Requests at <br><a href="https://github.com/bcallaway11/did/issues">https://​github.com/​bcallaway11/​did/​issues</a>
-</li>
-</ul>
-</div>
-<div class="license">
-<h2>License</h2>
-<ul class="list-unstyled">
-<li><a href="https://www.r-project.org/Licenses/GPL-2">GPL-2</a></li>
-</ul>
-</div>
-<div class="citation">
-<h2>Citation</h2>
-<ul class="list-unstyled">
-<li><a href="authors.html">Citing did</a></li>
-</ul>
-</div>
-<div class="developers">
-<h2>Developers</h2>
-<ul class="list-unstyled">
-<li>
-<a href="https://bcallaway11.github.io/">Brantly Callaway</a> <br><small class="roles"> Author, maintainer </small>  </li>
-<li>
-<a href="https://pedrohcgs.github.io/">Pedro H. C. Sant'Anna</a> <br><small class="roles"> Author </small>  </li>
+<li><a href="https://cloud.r-project.org/package=did" class="external-link">View on CRAN</a></li>
+<li><a href="https://github.com/bcallaway11/did/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/bcallaway11/did" class="external-link">Source Code</a></li>
+<li><a href="https://github.com/bcallaway11/did/issues" class="external-link">Report Bugs or Feature Requests</a></li>
 </ul>
 </div>
 
-  <div class="dev-status">
-<h2>Dev status</h2>
+<div class="license">
+<h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
-<li><a href="https://cran.r-project.org/package=did"><img src="http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue"></a></li>
-<li><a href="https://cran.r-project.org/package=did"><img src="http://cranlogs.r-pkg.org/badges/last-month/did?color=blue"></a></li>
-<li><a href="https://cran.r-project.org/package=did"><img src="https://www.r-pkg.org/badges/version/did?color=blue"></a></li>
-<li><a href="https://github.com/bcallaway11/did"><img src="https://img.shields.io/badge/devel%20version-2.1.0-blue.svg"></a></li>
-<li><a href="https://cran.r-project.org/web/checks/check_results_did.html"><img src="https://cranchecks.info/badges/summary/did" alt="CRAN checks"></a></li>
-<li><a href="https://github.com/bcallaway11/did/commits/master"><img src="https://img.shields.io/github/last-commit/bcallaway11/did.svg"></a></li>
+<li><a href="https://www.r-project.org/Licenses/GPL-2" class="external-link">GPL-2</a></li>
 </ul>
 </div>
+
+
+<div class="citation">
+<h2 data-toc-skip>Citation</h2>
+<ul class="list-unstyled">
+<li><a href="authors.html#citation">Citing did</a></li>
+</ul>
 </div>
+
+<div class="developers">
+<h2 data-toc-skip>Developers</h2>
+<ul class="list-unstyled">
+<li>
+<a href="https://bcallaway11.github.io/" class="external-link">Brantly Callaway</a> <br><small class="roles"> Author, maintainer </small>  </li>
+<li>
+<a href="https://pedrohcgs.github.io/" class="external-link">Pedro H. C. Sant'Anna</a> <br><small class="roles"> Author </small>  </li>
+</ul>
+</div>
+
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://cran.r-project.org/package=did" class="external-link"><img src="http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue"></a></li>
+<li><a href="https://cran.r-project.org/package=did" class="external-link"><img src="http://cranlogs.r-pkg.org/badges/last-month/did?color=blue"></a></li>
+<li><a href="https://cran.r-project.org/package=did" class="external-link"><img src="https://www.r-pkg.org/badges/version/did?color=blue"></a></li>
+<li><a href="https://github.com/bcallaway11/did" class="external-link"><img src="https://img.shields.io/badge/devel%20version-2.1.1-blue.svg"></a></li>
+<li><a href="https://cran.r-project.org/web/checks/check_results_did.html" class="external-link"><img src="https://cranchecks.info/badges/summary/did" alt="CRAN checks"></a></li>
+<li><a href="https://github.com/bcallaway11/did/commits/master" class="external-link"><img src="https://img.shields.io/github/last-commit/bcallaway11/did.svg"></a></li>
+</ul>
+</div>
+
+  </div>
 </div>
 
 
       <footer><div class="copyright">
-  <p>Developed by <a href="https://bcallaway11.github.io/">Brantly Callaway</a>, <a href="https://pedrohcgs.github.io/">Pedro H. C. Sant'Anna</a>.</p>
+  <p></p>
+<p>Developed by <a href="https://bcallaway11.github.io/" class="external-link">Brantly Callaway</a>, <a href="https://pedrohcgs.github.io/" class="external-link">Pedro H. C. Sant’Anna</a>.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
 </div>
 
       </footer>
@@ -326,6 +330,8 @@
 
   
 
+
+  
 
   </body>
 </html>

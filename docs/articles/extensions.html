@@ -26,6 +26,8 @@
 <![endif]-->
 </head>
 <body data-spy="scroll" data-target="#toc">
+    
+
     <div class="container template-article">
       <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -38,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">2.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.1</span>
       </span>
     </div>
 
@@ -56,7 +58,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/bcallaway11/did/">
+  <a href="https://github.com/bcallaway11/did/" class="external-link">
     <span class="fab fa-github fa-lg"></span>
      
   </a>
@@ -75,20 +77,20 @@
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
       <h1 data-toc-skip>Writing Extensions to the did Package</h1>
-                        <h4 class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
+                        <h4 data-toc-skip class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 class="date">2021-12-10</h4>
+            <h4 data-toc-skip class="date">2022-01-27</h4>
       
-      <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/master/vignettes/extensions.Rmd"><code>vignettes/extensions.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/extensions.Rmd" class="external-link"><code>vignettes/extensions.Rmd</code></a></small>
       <div class="hidden name"><code>extensions.Rmd</code></div>
 
     </div>
 
     
     
-<div id="introduction" class="section level2">
-<h2 class="hasAnchor">
-<a href="#introduction" class="anchor"></a>Introduction</h2>
+<div class="section level2">
+<h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
+</h2>
 <p>This vignette provides an example of extending the ideas of the <strong>did</strong> package to some other cases.</p>
 <ul>
 <li><p>We see the central idea of our approach to DiD to be for researchers to carefully make the comparisons that they want to make. It can be tricky to operationalize this though. And our code does not come close to covering all possible cases where one would like for identification to hold under some type of parallel trends assumption.</p></li>
@@ -97,9 +99,9 @@
 <li><p>For this vignette, there’s some math. The notation may be self-explanatory, but see our <a href="multi-period-did.html">Introduction to DiD with Multiple Time Periods</a> for precise explanations of the notation.</p></li>
 </ul>
 </div>
-<div id="did-with-anticipation" class="section level2">
-<h2 class="hasAnchor">
-<a href="#did-with-anticipation" class="anchor"></a>DiD with Anticipation</h2>
+<div class="section level2">
+<h2 id="did-with-anticipation">DiD with Anticipation<a class="anchor" aria-label="anchor" href="#did-with-anticipation"></a>
+</h2>
 <p>The example we give next is one where individuals <strong>anticipate</strong> participating in the treatment and adjust their behavior (or at least their outcomes change) before they actually participate in the treatment. This is a feature of some applications in economics – for example, in labor applications such as job training or job displacement, individual’s earnings often “dip” just before they actually participate in the treatment. One solution to this is to impose that parallel trends holds, but adjust the periods over which it holds. One version of this is to make the assumption that</p>
 <p><strong>Parallel Trends with Anticipation</strong> For all groups and time periods such that <span class="math inline">\(t \ge g-1\)</span> <span class="math display">\[
   E[Y_t(0) - Y_{g-2}(0) | G=g] = E[Y_t(0) - Y_{g-2}(0) | C=1] 
@@ -110,9 +112,9 @@
 \]</span></p>
 <p>This is very similar to the main case covered in the <strong>did</strong> package (see discussion in our <a href="multi-period-did.html">Introduction to DiD with Multiple Time Periods</a> vignette), except that the “base period” here is <span class="math inline">\((g-2)\)</span> (two periods before individuals in group <span class="math inline">\(g\)</span> become treated) rather than <span class="math inline">\((g-1)\)</span> (one period before individuals in group <span class="math inline">\(g\)</span> become treated) which is the setup used in the <strong>did</strong> package.</p>
 <p>If you are worried that that units anticipate treatment participation two periods before treatment actually starts, you could address this by setting the base period to be <span class="math inline">\((g-3)\)</span> instead. It is worth pointing out, however, that there is a tradeoff. Allowing for more periods of anticipation will require that the parallel trends assumption hold over more periods in order to identify the group-time average treatment effects. At any rate, for this vignette, we stick with the case where a researcher wants to allow anticipation exactly one period before units participate in the treatment.</p>
-<div id="computing-treatment-effects-under-did-with-anticipation" class="section level3">
-<h3 class="hasAnchor">
-<a href="#computing-treatment-effects-under-did-with-anticipation" class="anchor"></a>Computing Treatment Effects under DiD with Anticipation</h3>
+<div class="section level3">
+<h3 id="computing-treatment-effects-under-did-with-anticipation">Computing Treatment Effects under DiD with Anticipation<a class="anchor" aria-label="anchor" href="#computing-treatment-effects-under-did-with-anticipation"></a>
+</h3>
 <p>To start with, we want to point out that the important part for this vignette is not so much this particular application, but rather just to demonstrate how to write the code for this particular case.</p>
 <ul>
 <li><p>The code below should be instructive for extending these sorts of ideas to other cases that may show up in applications.</p></li>
@@ -121,9 +123,9 @@
 <p>To start with, we’ve constructed a dataset (called <code>dta</code>) that has anticipation. All groups follow parallel trends (in the absence of treatment) except in the period immediately before treatment (due to treatment anticipation). In those periods, outcomes for individuals who participate in the treatment “dip” – here, they decrease by 1 in the pre-treatment period. In post-treatment periods, the effect of participating in the treatment is equal to 1. This is simulated data, but it has features that would be common in, for example, an application evaluating the effect of a job training program.</p>
 <p>Here is what the data looks like</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
 <span class="co">#&gt; [1] 35940</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
 <span class="co">#&gt;       G          X id period        Y treat</span>
 <span class="co">#&gt; 1     4 -0.9499532  1      1 4.152386     1</span>
 <span class="co">#&gt; 8001  4 -0.9499532  1      2 3.675474     1</span>
@@ -145,7 +147,7 @@
                           <span class="op">)</span>
 
 <span class="co"># summarize the results</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html">summary</a></span><span class="op">(</span><span class="va">attgt.ignoredip</span><span class="op">)</span>
+<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">attgt.ignoredip</span><span class="op">)</span>
 <span class="co">#&gt; </span>
 <span class="co">#&gt; Call:</span>
 <span class="co">#&gt; att_gt(yname = "Y", tname = "period", idname = "id", gname = "G", </span>
@@ -178,10 +180,10 @@
 <span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">attgt.ignoredip</span>, <span class="st">"dynamic"</span><span class="op">)</span><span class="op">)</span>
 
 <span class="co"># add actual treatment effects to the plot</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
-<span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind.data.frame</a></span><span class="op">(</span>e <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>,<span class="fl">2</span><span class="op">)</span>, att.e <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="op">-</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span>
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>
+<span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind.data.frame</a></span><span class="op">(</span>e <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>,<span class="fl">2</span><span class="op">)</span>, att.e <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="op">-</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">e</span>, y <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>, inherit.aes <span class="op">=</span> <span class="cn">FALSE</span>, color <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span>
 <span class="va">p</span></code></pre></div>
 <p><img src="extensions_files/figure-html/unnamed-chunk-4-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>In the figure, the blue line is the “truth”. You can see that anticipation leads to two things. First, it leads to rejecting the parallel trends assumptions – you can correctly visualize the anticipation effects here and this is quite helpful for understanding what is going on. Second, however, the anticipation effects feed into the treatment effect estimates. Here, we over-estimate the effect of participating in the treatment due to the anticipation. Also, note that this example is really simple, and it would be easy to come up with cases where the results were much more complicated by anticipation.</p>
@@ -195,19 +197,19 @@
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">compute.attgt</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">dta</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># pick up all groups</span>
-  <span class="va">groups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">dta</span><span class="op">$</span><span class="va">G</span><span class="op">)</span>
+  <span class="va">groups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">dta</span><span class="op">$</span><span class="va">G</span><span class="op">)</span>
 
   <span class="co"># pick up all time periods</span>
-  <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">dta</span><span class="op">$</span><span class="va">period</span><span class="op">)</span>
+  <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">dta</span><span class="op">$</span><span class="va">period</span><span class="op">)</span>
 
   <span class="co"># sort the groups and drop the untreated group</span>
-  <span class="va">groups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html">sort</a></span><span class="op">(</span><span class="va">groups</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>
+  <span class="va">groups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">groups</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="fl">1</span><span class="op">]</span>
 
   <span class="co"># sort the time periods and drop the first two</span>
   <span class="co"># (can't compute treatment effects for these two</span>
   <span class="co"># periods with one-period anticipation -- w/o anticipation</span>
   <span class="co"># we would just drop one period here)</span>
-  <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html">sort</a></span><span class="op">(</span><span class="va">time.periods</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">2</span><span class="op">)</span><span class="op">]</span>
+  <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">time.periods</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">2</span><span class="op">)</span><span class="op">]</span>
 
   <span class="co"># drop last time period (because we don't know if</span>
   <span class="co"># these units are affected by anticipation or not</span>
@@ -215,11 +217,11 @@
   <span class="co"># (if you were worried about more than one anticipation</span>
   <span class="co"># period here, would need to drop more time periods</span>
   <span class="co"># from the end)</span>
-  <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="va">time.periods</span><span class="op">[</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">time.periods</span><span class="op">)</span><span class="op">]</span>
+  <span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="va">time.periods</span><span class="op">[</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">time.periods</span><span class="op">)</span><span class="op">]</span>
 
   <span class="co"># list to store all group-time average treatment effects</span>
   <span class="co"># that we calculate</span>
-  <span class="va">attgt.list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span>
+  <span class="va">attgt.list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>
   <span class="va">counter</span> <span class="op">&lt;-</span> <span class="fl">1</span>
 
   <span class="co"># loop over all groups</span>
@@ -251,27 +253,27 @@
       <span class="co"># of the data and estimate a 2x2 DiD</span>
 
       <span class="co"># get group g and untreated group</span>
-      <span class="va">this.data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">dta</span>, <span class="va">G</span><span class="op">==</span><span class="va">g</span> <span class="op">|</span> <span class="va">G</span><span class="op">==</span><span class="fl">0</span><span class="op">)</span>
+      <span class="va">this.data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">dta</span>, <span class="va">G</span><span class="op">==</span><span class="va">g</span> <span class="op">|</span> <span class="va">G</span><span class="op">==</span><span class="fl">0</span><span class="op">)</span>
 
       <span class="co"># get current period and base period data</span>
-      <span class="va">this.data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">tp</span> <span class="op">|</span> <span class="va">period</span><span class="op">==</span><span class="va">base.period</span><span class="op">)</span>
+      <span class="va">this.data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">tp</span> <span class="op">|</span> <span class="va">period</span><span class="op">==</span><span class="va">base.period</span><span class="op">)</span>
 
       <span class="co"># set up to compute 2x2 estimator</span>
-      <span class="va">Ypost</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">tp</span><span class="op">)</span><span class="op">$</span><span class="va">Y</span>
-      <span class="va">Ypre</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">base.period</span><span class="op">)</span><span class="op">$</span><span class="va">Y</span>
+      <span class="va">Ypost</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">tp</span><span class="op">)</span><span class="op">$</span><span class="va">Y</span>
+      <span class="va">Ypre</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">base.period</span><span class="op">)</span><span class="op">$</span><span class="va">Y</span>
 
       <span class="co"># dummy variable being in group g</span>
-      <span class="va">G</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">*</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">tp</span><span class="op">)</span><span class="op">$</span><span class="va">G</span> <span class="op">==</span> <span class="va">g</span><span class="op">)</span>
+      <span class="va">G</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">*</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">this.data</span>, <span class="va">period</span><span class="op">==</span><span class="va">tp</span><span class="op">)</span><span class="op">$</span><span class="va">G</span> <span class="op">==</span> <span class="va">g</span><span class="op">)</span>
 
       <span class="co"># compute 2x2 estimator using DRDID package</span>
       <span class="co"># (in this unconditional case, it would be straightforward</span>
       <span class="co"># to calculate the 2x2 att just using averages, but we</span>
       <span class="co"># like the DRDID package as it will work for more complicated</span>
       <span class="co"># cases as well)</span>
-      <span class="va">attgt</span> <span class="op">&lt;-</span> <span class="fu">DRDID</span><span class="fu">::</span><span class="fu"><a href="https://pedrohcgs.github.io/DRDID/reference/reg_did_panel.html">reg_did_panel</a></span><span class="op">(</span><span class="va">Ypost</span>, <span class="va">Ypre</span>, <span class="va">G</span>, covariates<span class="op">=</span><span class="cn">NULL</span><span class="op">)</span><span class="op">$</span><span class="va">ATT</span>
+      <span class="va">attgt</span> <span class="op">&lt;-</span> <span class="fu">DRDID</span><span class="fu">::</span><span class="fu"><a href="https://pedrohcgs.github.io/DRDID/reference/reg_did_panel.html" class="external-link">reg_did_panel</a></span><span class="op">(</span><span class="va">Ypost</span>, <span class="va">Ypre</span>, <span class="va">G</span>, covariates<span class="op">=</span><span class="cn">NULL</span><span class="op">)</span><span class="op">$</span><span class="va">ATT</span>
 
       <span class="co"># save results</span>
-      <span class="va">attgt.list</span><span class="op">[[</span><span class="va">counter</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>att<span class="op">=</span><span class="va">attgt</span>, group<span class="op">=</span><span class="va">g</span>, time.period<span class="op">=</span><span class="va">tp</span><span class="op">)</span>
+      <span class="va">attgt.list</span><span class="op">[[</span><span class="va">counter</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>att<span class="op">=</span><span class="va">attgt</span>, group<span class="op">=</span><span class="va">g</span>, time.period<span class="op">=</span><span class="va">tp</span><span class="op">)</span>
       <span class="va">counter</span> <span class="op">&lt;-</span> <span class="va">counter</span><span class="op">+</span><span class="fl">1</span>
       <span class="co">#----------------------------------------------------</span>
 
@@ -282,44 +284,44 @@
   <span class="co"># aggregate into dynamic effects</span>
   
   <span class="co"># turn results into a data.frame</span>
-  <span class="va">attgt.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="st">"rbind.data.frame"</span>, <span class="va">attgt.list</span><span class="op">)</span>
+  <span class="va">attgt.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="st">"rbind.data.frame"</span>, <span class="va">attgt.list</span><span class="op">)</span>
 
   <span class="co"># add event time to the results</span>
   <span class="va">attgt.results</span><span class="op">$</span><span class="va">e</span> <span class="op">&lt;-</span> <span class="va">attgt.results</span><span class="op">$</span><span class="va">time.period</span> <span class="op">-</span> <span class="va">attgt.results</span><span class="op">$</span><span class="va">group</span>
   
   <span class="co"># calculate relative sizes of each group</span>
   <span class="co"># (will be used as weights)</span>
-  <span class="va">n.group</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">groups</span>, <span class="kw">function</span><span class="op">(</span><span class="va">gg</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">dta</span>, <span class="va">G</span><span class="op">==</span><span class="va">gg</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">n.group</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">groups</span>, <span class="kw">function</span><span class="op">(</span><span class="va">gg</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">dta</span>, <span class="va">G</span><span class="op">==</span><span class="va">gg</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
   <span class="co"># merge in group sizes</span>
-  <span class="va">ngroup.mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span><span class="va">groups</span>, <span class="va">n.group</span><span class="op">)</span>
-  <span class="va">attgt.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html">merge</a></span><span class="op">(</span><span class="va">attgt.results</span>, <span class="va">ngroup.mat</span>, by.x <span class="op">=</span> <span class="st">"group"</span>, by.y <span class="op">=</span> <span class="st">"groups"</span><span class="op">)</span>
+  <span class="va">ngroup.mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">groups</span>, <span class="va">n.group</span><span class="op">)</span>
+  <span class="va">attgt.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge</a></span><span class="op">(</span><span class="va">attgt.results</span>, <span class="va">ngroup.mat</span>, by.x <span class="op">=</span> <span class="st">"group"</span>, by.y <span class="op">=</span> <span class="st">"groups"</span><span class="op">)</span>
 
   <span class="co"># event times to calculate dynamic effects</span>
-  <span class="va">eseq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html">unique</a></span><span class="op">(</span><span class="va">attgt.results</span><span class="op">$</span><span class="va">e</span><span class="op">)</span> 
-  <span class="va">eseq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html">sort</a></span><span class="op">(</span><span class="va">eseq</span><span class="op">)</span>
+  <span class="va">eseq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">attgt.results</span><span class="op">$</span><span class="va">e</span><span class="op">)</span> 
+  <span class="va">eseq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">eseq</span><span class="op">)</span>
 
   <span class="co"># calculate average effects by event time</span>
-  <span class="va">att.e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="op">)</span>
+  <span class="va">att.e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span>
   <span class="va">counter</span> <span class="op">&lt;-</span> <span class="fl">1</span>
   <span class="kw">for</span> <span class="op">(</span><span class="va">this.e</span> <span class="kw">in</span> <span class="va">eseq</span><span class="op">)</span> <span class="op">{</span>
     <span class="co"># get subset of results at this event time</span>
-    <span class="va">res.e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html">subset</a></span><span class="op">(</span><span class="va">attgt.results</span>, <span class="va">e</span><span class="op">==</span><span class="va">this.e</span><span class="op">)</span>
+    <span class="va">res.e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">attgt.results</span>, <span class="va">e</span><span class="op">==</span><span class="va">this.e</span><span class="op">)</span>
 
     <span class="co"># calculate weights by group size</span>
-    <span class="va">res.e</span><span class="op">$</span><span class="va">weight</span> <span class="op">&lt;-</span> <span class="va">res.e</span><span class="op">$</span><span class="va">n.group</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">res.e</span><span class="op">$</span><span class="va">n.group</span><span class="op">)</span>
+    <span class="va">res.e</span><span class="op">$</span><span class="va">weight</span> <span class="op">&lt;-</span> <span class="va">res.e</span><span class="op">$</span><span class="va">n.group</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">res.e</span><span class="op">$</span><span class="va">n.group</span><span class="op">)</span>
 
     <span class="co"># calculate dynamic effect as weighted average</span>
-    <span class="va">att.e</span><span class="op">[</span><span class="va">counter</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">res.e</span><span class="op">$</span><span class="va">att</span> <span class="op">*</span> <span class="va">res.e</span><span class="op">$</span><span class="va">weight</span><span class="op">)</span>
+    <span class="va">att.e</span><span class="op">[</span><span class="va">counter</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">res.e</span><span class="op">$</span><span class="va">att</span> <span class="op">*</span> <span class="va">res.e</span><span class="op">$</span><span class="va">weight</span><span class="op">)</span>
 
     <span class="co"># on to the next one</span>
     <span class="va">counter</span> <span class="op">&lt;-</span> <span class="va">counter</span><span class="op">+</span><span class="fl">1</span>
   <span class="op">}</span>
 
   <span class="co"># store dynamic effects results</span>
-  <span class="va">dyn.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind.data.frame</a></span><span class="op">(</span>e <span class="op">=</span> <span class="va">eseq</span>, att.e <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>
+  <span class="va">dyn.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind.data.frame</a></span><span class="op">(</span>e <span class="op">=</span> <span class="va">eseq</span>, att.e <span class="op">=</span> <span class="va">att.e</span><span class="op">)</span>
 
   <span class="co"># return group-time average treatment effects and dynamic effects</span>
-  <span class="kw"><a href="https://rdrr.io/r/base/function.html">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>attgt.results<span class="op">=</span><span class="va">attgt.results</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"group"</span>,<span class="st">"att"</span>,<span class="st">"time.period"</span><span class="op">)</span><span class="op">]</span>,
+  <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>attgt.results<span class="op">=</span><span class="va">attgt.results</span><span class="op">[</span>,<span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"group"</span>,<span class="st">"att"</span>,<span class="st">"time.period"</span><span class="op">)</span><span class="op">]</span>,
               dyn.results<span class="op">=</span><span class="va">dyn.results</span><span class="op">)</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>Now, we have a function to compute group-time average treatment effects and dynamic effects. Let’s use it on the data that we have</p>
@@ -347,12 +349,12 @@
 <span class="va">biters</span> <span class="op">&lt;-</span> <span class="fl">100</span>
 
 <span class="co"># list to store bootstrap results</span>
-<span class="va">boot.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">)</span>
+<span class="va">boot.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>
 
 <span class="co"># loop for each nonparametric bootstrap iteration</span>
 <span class="kw">for</span> <span class="op">(</span><span class="va">b</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">biters</span><span class="op">)</span> <span class="op">{</span>
   <span class="co"># draw a bootstrap sample; here, we'll call an outside function</span>
-  <span class="va">bdata</span> <span class="op">&lt;-</span> <span class="fu">BMisc</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BMisc/man/blockBootSample.html">blockBootSample</a></span><span class="op">(</span><span class="va">dta</span>, <span class="st">"id"</span><span class="op">)</span>
+  <span class="va">bdata</span> <span class="op">&lt;-</span> <span class="fu">BMisc</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/BMisc/man/blockBootSample.html" class="external-link">blockBootSample</a></span><span class="op">(</span><span class="va">dta</span>, <span class="st">"id"</span><span class="op">)</span>
 
   <span class="co"># call our function for estimating dynamic effects on the</span>
   <span class="co"># bootstrapped data</span>
@@ -360,30 +362,30 @@
 <span class="op">}</span>
 
 <span class="co"># use the bootstrapped results to compute standard errors</span>
-<span class="va">boot.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html">simplify2array</a></span><span class="op">(</span><span class="va">boot.res</span><span class="op">)</span><span class="op">)</span>
-<span class="va">boot.se</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html">apply</a></span><span class="op">(</span><span class="va">boot.res</span>, <span class="fl">2</span>, <span class="va">sd</span><span class="op">)</span>
+<span class="va">boot.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">simplify2array</a></span><span class="op">(</span><span class="va">boot.res</span><span class="op">)</span><span class="op">)</span>
+<span class="va">boot.se</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">boot.res</span>, <span class="fl">2</span>, <span class="va">sd</span><span class="op">)</span>
 
 <span class="co"># add the standard errors to the main results</span>
 <span class="va">dyn.results</span> <span class="op">&lt;-</span> <span class="va">anticipation.results</span><span class="op">$</span><span class="va">dyn.results</span>
 <span class="va">dyn.results</span><span class="op">$</span><span class="va">att.se</span> <span class="op">&lt;-</span> <span class="va">boot.se</span></code></pre></div>
 <p>Finally, we can translate these into a plot. [One last thing here, to keep things very simple, we are going to plot pointwise confidence intervals, but we strongly suggest computing simultaneous confidence bands in practice.]</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">dyn.results</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span>
-  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span>
+<code class="sourceCode R"><span class="va">p</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">dyn.results</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html" class="external-link">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span>, ymax<span class="op">=</span><span class="op">(</span><span class="va">att.e</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">att.se</span><span class="op">)</span><span class="op">)</span>, width<span class="op">=</span><span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span>
 
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
-<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html">geom_point</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
+<span class="va">p</span> <span class="op">&lt;-</span> <span class="va">p</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span>data<span class="op">=</span><span class="va">truth</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">e</span>, y<span class="op">=</span><span class="va">att.e</span><span class="op">)</span>, inherit.aes<span class="op">=</span><span class="cn">FALSE</span>, color<span class="op">=</span><span class="st">"blue"</span><span class="op">)</span>
 <span class="va">p</span></code></pre></div>
 <p><img src="extensions_anticipation.png" style="width:90.0%"></p>
 <p>Here, the black line is our estimate and the blue line is the “truth”. You can immediately see that we get things right here when we account for anticipation. The only other thing to notice is that we do not estimate dynamic effects at as many different lengths of exposure, but that is the price to pay for accounting for anticipation.</p>
 </div>
 </div>
-<div id="conclusion" class="section level2">
-<h2 class="hasAnchor">
-<a href="#conclusion" class="anchor"></a>Conclusion</h2>
+<div class="section level2">
+<h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
+</h2>
 <p>In this vignette, we illustrated how one could apply the principles in the <strong>did</strong> package to the case where units anticipate participating in the treatment. This is a relatively straightforward exercise, and we think that showing this sort of extension is potentially useful for other situations that do not fit exactly into the cases covered by the <strong>did</strong> package.</p>
 </div>
   </div>
@@ -399,11 +401,13 @@
 
 
       <footer><div class="copyright">
-  <p>Developed by <a href="https://bcallaway11.github.io/">Brantly Callaway</a>, <a href="https://pedrohcgs.github.io/">Pedro H. C. Sant'Anna</a>.</p>
+  <p></p>
+<p>Developed by <a href="https://bcallaway11.github.io/" class="external-link">Brantly Callaway</a>, <a href="https://pedrohcgs.github.io/" class="external-link">Pedro H. C. Sant’Anna</a>.</p>
 </div>
 
 <div class="pkgdown">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/">pkgdown</a> 1.6.1.</p>
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
 </div>
 
       </footer>
@@ -411,6 +415,8 @@
 
   
 
+
+  
 
   </body>
 </html>
