@@ -1,3 +1,5 @@
+* There is one error at https://cloud.r-project.org/web/checks/check_results_did.html.  It's origin is that my package is downstream dependent of `nloptr`.  That package appears to have been updated yesterday, and it appears that is issue is now fixed.
+
 ## Test environments
 
 * local Ubuntu 20.04, R 4.0.3

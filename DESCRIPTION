@@ -17,8 +17,7 @@ Imports:
     ggpubr,
     DRDID,
     generics,
-    tidyr,
-    data.table
+    tidyr
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 VignetteBuilder: knitr
