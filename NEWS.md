@@ -1,3 +1,7 @@
+# did 2.2.0
+
+  * added wrapper function for HonestDiD package
+
 # did 2.1.1
 
   * Bug fixes related unbalanced panel and clustered standard errors
