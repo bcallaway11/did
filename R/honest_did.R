@@ -5,6 +5,7 @@
 #' @description a function to compute a sensitivity analysis
 #'  using the approach of Rambachan and Roth (2021)
 #' @param es an event study
+#' @export
 honest_did <- function(es, ...) {
   UseMethod("honest_did", es)
 }
@@ -25,7 +26,9 @@ honest_did <- function(es, ...) {
 #'  conducts a sensitivity analysis based on the relative magnitudes
 #'  of deviations from parallel trends in pre-treatment periods).
 #' @inheritParams HonestDiD::createSensitivityResults
-#' @inheritParams HonestDid::createSensitivityResults_relativeMagnitudes
+#' @inheritParams HonestDiD::createSensitivityResults_relativeMagnitudes
+#' 
+#' @export
 honest_did.AGGTEobj <- function(es,
                                 e=0,
                                 type=c("smoothness", "relative_magnitude"),
