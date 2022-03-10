@@ -59,7 +59,7 @@ honest_did.AGGTEobj <- function(es,
   }
   
   # recover influence function for event study estimates
-  es_inf_func <- cs_es$inf.function$dynamic.inf.func.e
+  es_inf_func <- es$inf.function$dynamic.inf.func.e
 
   # recover variance-covariance matrix
   n <- nrow(es_inf_func)
@@ -72,14 +72,14 @@ honest_did.AGGTEobj <- function(es,
 
   baseVec1 <- basisVector(index=(e+1),size=npost)
 
-  orig_ci <- constructOriginalCS(betahat = cs_es$att.egt,
+  orig_ci <- constructOriginalCS(betahat = es$att.egt,
                                  sigma = V, numPrePeriods = npre,
                                  numPostPeriods = npost,
                                  l_vec = baseVec1)
 
   if (type=="relative_magnitude") {
     if (is.null(method)) method <- "C-LF"
-    robust_ci <- createSensitivityResults_relativeMagnitudes(betahat = cs_es$att.egt, sigma = V, 
+    robust_ci <- createSensitivityResults_relativeMagnitudes(betahat = es$att.egt, sigma = V, 
                                                              numPrePeriods = npre, 
                                                              numPostPeriods = npost,
                                                              bound=bound,
@@ -95,7 +95,7 @@ honest_did.AGGTEobj <- function(es,
                                                              parallel=parallel)
     
   } else if (type=="smoothness") {
-    robust_ci <- createSensitivityResults(betahat = cs_es$att.egt,
+    robust_ci <- createSensitivityResults(betahat = es$att.egt,
                                           sigma = V, 
                                           numPrePeriods = npre, 
                                           numPostPeriods = npost,

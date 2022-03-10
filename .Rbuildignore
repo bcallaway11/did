@@ -16,3 +16,4 @@ Icon?
 ^\.github$
 ^inst/profiling
 ^CRAN-SUBMISSION$
+^CITATION\.cff$
