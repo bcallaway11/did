@@ -89,9 +89,9 @@ honest_did.AGGTEobj <- function(es,
                                                              monotonicityDirection=monotonicityDirection,
                                                              biasDirection=biasDirection,
                                                              alpha=alpha,
-                                                             gridPoints=100,
-                                                             grid.lb=-1,
-                                                             grid.ub=1,
+                                                             gridPoints=gridPoints,
+                                                             grid.lb=grid.lb,
+                                                             grid.ub=grid.ub,
                                                              parallel=parallel)
     
   } else if (type=="smoothness") {
