@@ -69,6 +69,9 @@ compute.aggte <- function(MP,
   MP$DIDparams$cband <- cband
   dp <- MP$DIDparams
 
+  if(!(type %in% c("simple", "dynamic", "group", "calendar"))) {
+    stop('`type` must be one of c("simple", "dynamic", "group", "calendar")')
+  }
 
   if(na.rm){
     notna <- !is.na(att)
