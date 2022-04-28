@@ -1,6 +1,8 @@
 # did 2.2.0
 
   * added wrapper function for HonestDiD package
+  
+  * Fix bug for setups where `gname` is not contained in `tname` (but is in the `tname` range)
 
 # did 2.1.1
 

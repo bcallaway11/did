@@ -37,7 +37,9 @@ pre_process_did <- function(yname,
   #-----------------------------------------------------------------------------
   # set control group
   control_group <- control_group[1]
-
+  if(!(control_group %in% c("nevertreated","notyettreated"))){
+    stop("control_group must be either 'nevertreated' or 'notyettreated'")
+  }
   # make sure dataset is a data.frame
   # this gets around RStudio's default of reading data as tibble
   if (!all( class(data) == "data.frame")) {
@@ -65,7 +67,7 @@ pre_process_did <- function(yname,
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
   }
-  
+
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
 
@@ -129,7 +131,7 @@ pre_process_did <- function(yname,
     glist <- glist[glist > first.period + anticipation]
 
   }
-  
+
   #  make sure id is numeric
   if (! is.null(idname)){
     #  make sure id is numeric
@@ -140,7 +142,7 @@ pre_process_did <- function(yname,
     ## # these checks are also closely related to making sure
     ## # that we have a well-balanced panel, so it might make
     ## # sense to move them over to the BMisc package
-    
+
     ## # Check if idname is unique by tname
     ## n_id_year = all( table(data[, idname], data[, tname]) <= 1)
     ## if (! n_id_year) stop("The value of idname must be the unique (by tname)")
@@ -154,7 +156,7 @@ pre_process_did <- function(yname,
   }
 
 
-  
+
   # if user specifies repeated cross sections,
   # set that it really is repeated cross sections
   true_repeated_cross_sections <- FALSE
@@ -204,7 +206,7 @@ pre_process_did <- function(yname,
         stop("All observations dropped to converted data to balanced panel. Consider setting `panel = FALSE' and/or revisit 'idname'.")
       }
 
-      n <- nrow(data[ data[,tname]==tlist[1], ]) 
+      n <- nrow(data[ data[,tname]==tlist[1], ])
 
       # slow, repeated check here...
       ## # check that first.treat doesn't change across periods for particular individuals

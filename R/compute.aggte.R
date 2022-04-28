@@ -130,15 +130,17 @@ compute.aggte <- function(MP,
   originalgroup <- group
   originalglist <- glist
   originaltlist <- tlist
-  uniquet <- seq(1,length(unique(t)))
+  # In case g's are not part of tlist
+  originalgtlist <- sort(unique(c(originaltlist,originalglist)))
+  uniquet <- seq(1,length(unique(originalgtlist)))
   # function to switch from "new" t values to  original t values
   t2orig <- function(t) {
-    unique(c(originalt,0))[which(c(uniquet,0)==t)]
+    unique(c(originalgtlist,0))[which(c(uniquet,0)==t)]
   }
   # function to switch between "original"
   #  t values and new t values
   orig2t <- function(orig) {
-    new_t <- c(uniquet,0)[which(unique(c(originalt,0))==orig)]
+    new_t <- c(uniquet,0)[which(unique(c(originalgtlist,0))==orig)]
     out <- ifelse(length(new_t) == 0, NA, new_t)
     out
   }
