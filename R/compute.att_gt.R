@@ -81,15 +81,6 @@ compute.att_gt <- function(dp) {
     # loop over time periods
     for (t in 1:tlist.length) {
 
-      # use "not yet treated as control"
-      # that is, never treated + units that are eventually treated,
-      # but not treated by the current period
-      if(!nevertreated) {
-        data$.C <- 1 * ((data[,gname] == 0) |
-                            ((data[,gname] > tlist[t+tfac]) &
-                               (data[,gname] != glist[g])))
-      }
-
       #-----------------------------------------------------------------------------
       # Set pret
 
@@ -102,11 +93,21 @@ compute.att_gt <- function(dp) {
         pret <- tail(which( (tlist+anticipation) < glist[g]),1)
       }
 
+      # use "not yet treated as control"
+      # that is, never treated + units that are eventually treated,
+      # but not treated by the current period
+      if(!nevertreated) {
+        data$.C <- 1 * ((data[,gname] == 0) |
+                            ((data[,gname] > tlist[max(t,pret)+tfac]) &
+                               (data[,gname] != glist[g])))
+      }
+
 
       # check if in post-treatment period
       if ((glist[g]<=tlist[(t+tfac)])) {
 
-        # most recent pre-treatment period (g-delta-1)
+        # update pre-period if in post-treatment period to
+        # be  period (g-delta-1)
         pret <- tail(which( (tlist+anticipation) < glist[g]),1)
 
         # print a warning message if there are no pre-treatment period

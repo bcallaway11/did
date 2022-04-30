@@ -116,3 +116,33 @@ test_that("fewer time periods than groups", {
   # improve this test if ever get this working
   expect_false(is.na(cal_agg$att.egt[1]))
 })
+
+
+test_that("0 pre-treatment estimates when outcomes are 0", {
+  # from https://github.com/bcallaway11/did/issues/126
+  sp <- reset.sim(time.periods=10)
+  data <- build_sim_dataset(sp)
+  data <- subset(data, G != 0) # drop never treated
+  data <- subset(data, G > 6)
+  data <- subset(data, period > 5)
+  data$Y[(data$period < data$G)] <- 0 # set pre-treatment = 0
+  res <- att_gt(yname="Y",
+                tname="period",
+                idname="id",
+                gname="G",
+                data=data,
+                control_group = "notyettreated",
+                base_period="universal")
+  res_idx <- which(res$group==9 & res$t==7)
+  expect_equal(res$att[res_idx],0)
+
+  res <- att_gt(yname="Y",
+                tname="period",
+                idname="id",
+                gname="G",
+                data=data,
+                control_group = "notyettreated",
+                base_period="varying")
+  res_idx <- which(res$group==9 & res$t==7)
+  expect_equal(res$att[res_idx],0)
+})

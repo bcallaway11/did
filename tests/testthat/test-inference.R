@@ -48,7 +48,7 @@ test_that("inference with balanced panel data and aggregations", {
   # aggregations
   dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
   group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="cal")
+  cal_2.0 <- aggte(dr_2.0, type="calendar")
   detach("package:did")
 
   
@@ -68,7 +68,7 @@ test_that("inference with balanced panel data and aggregations", {
   # aggregations
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
-  cal_new <- aggte(dr_new, type="cal")
+  cal_new <- aggte(dr_new, type="calendar")
   detach("package:did")
 
   # checks for ATT(g,t)'s
@@ -123,7 +123,7 @@ test_that("inference with clustering", {
   # aggregations
   dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
   group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="cal")
+  cal_2.0 <- aggte(dr_2.0, type="calendar")
   detach("package:did")
 
   
@@ -143,7 +143,7 @@ test_that("inference with clustering", {
   # aggregations
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
-  cal_new <- aggte(dr_new, type="cal")
+  cal_new <- aggte(dr_new, type="calendar")
   detach("package:did")
 
   # checks for ATT(g,t)'s
@@ -223,7 +223,7 @@ test_that("inference with repeated cross sections", {
   # aggregations
   dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
   group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="cal")
+  cal_2.0 <- aggte(dr_2.0, type="calendar")
   detach("package:did")
 
   
@@ -243,7 +243,7 @@ test_that("inference with repeated cross sections", {
   # aggregations
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
-  cal_new <- aggte(dr_new, type="cal")
+  cal_new <- aggte(dr_new, type="calendar")
   detach("package:did")
 
   # checks for ATT(g,t)'s
@@ -298,7 +298,7 @@ test_that("inference with repeated cross sections and clustering", {
   # aggregations
   dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
   group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="cal")
+  cal_2.0 <- aggte(dr_2.0, type="calendar")
   detach("package:did")
 
   
@@ -318,7 +318,7 @@ test_that("inference with repeated cross sections and clustering", {
   # aggregations
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
-  cal_new <- aggte(dr_new, type="cal")
+  cal_new <- aggte(dr_new, type="calendar")
   detach("package:did")
 
   # checks for ATT(g,t)'s
@@ -375,7 +375,7 @@ test_that("inference with unbalanced panel", {
   # aggregations
   dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
   group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="cal")
+  cal_2.0 <- aggte(dr_2.0, type="calendar")
   detach("package:did")
 
   
@@ -395,7 +395,7 @@ test_that("inference with unbalanced panel", {
   # aggregations
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
-  cal_new <- aggte(dr_new, type="cal")
+  cal_new <- aggte(dr_new, type="calendar")
   detach("package:did")
 
   # checks for ATT(g,t)'s
@@ -450,7 +450,7 @@ test_that("inference with unbalanced panel and clustering", {
   # aggregations
   dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
   group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="cal")
+  cal_2.0 <- aggte(dr_2.0, type="calendar")
   detach("package:did")
 
   
@@ -470,7 +470,7 @@ test_that("inference with unbalanced panel and clustering", {
   # aggregations
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
-  cal_new <- aggte(dr_new, type="cal")
+  cal_new <- aggte(dr_new, type="calendar")
   detach("package:did")
 
   # checks for ATT(g,t)'s
