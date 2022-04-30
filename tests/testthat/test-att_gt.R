@@ -318,11 +318,14 @@ test_that("min and max length of exposures", {
   time.periods <- 4
   sp$te <- 0
   sp$te.e <- 1:time.periods
+  sp$bett <- sp$betu <- rep(0,time.periods)
   data <- build_sim_dataset(sp)
 
-  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+  res <- att_gt(yname="Y", xformla=~1, data=data, tname="period",
+                idname="id",
                 control_group="nevertreated",
-                gname="G", est_method="dr", panel=FALSE)
+                gname="G", est_method="reg", panel=TRUE,
+                base_period="varying")
   
   agg_dynamic <- aggte(res, type="dynamic", min_e=-1, max_e=1)
   agg_idx <- which(agg_dynamic$egt == 1)
