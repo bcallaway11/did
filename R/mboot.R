@@ -17,7 +17,7 @@
 mboot <- function(inf.func, DIDparams) {
 
   # setup needed variables
-  data <- DIDparams$data
+  data <- as.data.frame(DIDparams$data)
   idname <- DIDparams$idname
   clustervars <- DIDparams$clustervars
   biters <- DIDparams$biters
@@ -84,11 +84,11 @@ mboot <- function(inf.func, DIDparams) {
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
     bres <- sqrt(n_clusters)*BMisc::multiplier_bootstrap(cluster_mean_if, biters)
   }
-  
-  
+
+
   # handle vector and matrix case differently, so you get nxk matrix
   # ifelse(class(bres)=="matrix", bres <- t(bres), bres <- as.matrix(bres))
-  
+
   if (isTRUE(class(bres) == "numeric")) bres <- as.matrix(bres)
 
   # Non-degenerate dimensions

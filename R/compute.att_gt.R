@@ -20,7 +20,7 @@ compute.att_gt <- function(dp) {
   #-----------------------------------------------------------------------------
   # unpack DIDparams
   #-----------------------------------------------------------------------------
-  data <- dp$data
+  data <- as.data.frame(dp$data)
   yname <- dp$yname
   tname <- dp$tname
   idname <- dp$idname

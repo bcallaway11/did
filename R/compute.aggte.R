@@ -38,7 +38,7 @@ compute.aggte <- function(MP,
 
 
   gname <- dp$gname
-  data <- dp$data
+  data <- as.data.frame(dp$data)
   tname <- dp$tname
   idname <- dp$idname
   if(is.null(clustervars)){
@@ -334,8 +334,13 @@ compute.aggte <- function(MP,
 
     # if we balance the sample with resepect to event time
     if (!is.null(balance_e)) {
-      eseq <- eseq[ (eseq <= balance_e) & (eseq >= balance_e - t2orig(maxT) + t2orig(1))]
       include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance_e)
+
+      eseq <- unique(originalt[include.balanced.gt] - originalgroup[include.balanced.gt])
+      eseq <- eseq[order(eseq)]
+
+      eseq <- eseq[ (eseq <= balance_e) & (eseq >= balance_e - t2orig(maxT) + t2orig(1))]
+
     }
 
     # only looks at some event times
@@ -563,7 +568,7 @@ wif <- function(keepers, pg, weights.ind, G, group) {
       sum(pg[keepers])
   })
   # effect of estimating weights in the denominator
-  if2 <- rowSums( sapply( keepers, function(k) {
+  if2 <- base::rowSums( sapply( keepers, function(k) {
     weights.ind*1*BMisc::TorF(G==group[k]) - pg[k]
   })) %*%
     t(pg[keepers]/(sum(pg[keepers])^2))
