@@ -372,16 +372,17 @@ test_that("anticipation", {
 
   # test for previous bug when using anticipation and
   # a notyettreated comparison group
+  data <- subset(data, G != 0)
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                 idname="id",
-                control_group="nevertreated",
+                control_group="notyettreated",
                 gname="G", est_method="dr",
                 anticipation=1
                 )
 
   agg_dynamic <- aggte(res, type="dynamic")
-  agg_idx <- which(agg_dynamic$egt==2)
-  expect_equal(agg_dynamic$att.egt[agg_idx], 2, tol=.5)
+  agg_idx <- which(agg_dynamic$egt==0)
+  expect_equal(agg_dynamic$att.egt[agg_idx], 0, tol=.3)
 })
 
 test_that("significance level and uniform confidence bands", {
