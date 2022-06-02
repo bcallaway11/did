@@ -95,10 +95,10 @@ compute.att_gt <- function(dp) {
 
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,
-      # but not treated by the current period
+      # but not treated by the current period (+ anticipation)
       if(!nevertreated) {
         data$.C <- 1 * ((data[,gname] == 0) |
-                            ((data[,gname] > tlist[max(t,pret)+tfac]) &
+                            ((data[,gname] > (tlist[max(t,pret)+tfac]+anticipation)) &
                                (data[,gname] != glist[g])))
       }
 

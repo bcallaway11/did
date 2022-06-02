@@ -96,13 +96,17 @@ pre_process_did <- function(yname,
       stop("There is no available never-treated group")
     } else {
       # Drop all time periods with time periods >= latest treated
-      data <- subset(data,(data[,tname] < max(glist,  na.rm = TRUE)))
+      data <- subset(data,(data[,tname] < (max(glist)-anticipation)))
       # Replace last treated time with zero
-      lines.gmax <- data[,gname]==max(glist, na.rm = TRUE)
-      data[lines.gmax,gname] <- 0
+      # lines.gmax <- data[,gname]==max(glist, na.rm = TRUE)
+      # data[lines.gmax,gname] <- 0
 
       tlist <- sort(unique(data[,tname]))
       glist <- sort(unique(data[,gname]))
+
+      # don't comput ATT(g,t) for groups that are only treated at end
+      # and only play a role as a comparison group
+      glist <- glist[ glist < max(glist)] 
     }
   }
 
@@ -250,19 +254,19 @@ pre_process_did <- function(yname,
     n <- length(unique(data[,idname]))
   }
 
-  # Update tlist and glist because of data handling
-  # figure out the dates
-  # list of dates from smallest to largest
-  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
-  # list of treated groups (by time) from smallest to largest
-  glist <- unique(data[,gname])[order(unique(data[,gname]))]
+  ## # Update tlist and glist because of data handling
+  ## # figure out the dates
+  ## # list of dates from smallest to largest
+  ## tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  ## # list of treated groups (by time) from smallest to largest
+  ## glist <- unique(data[,gname])[order(unique(data[,gname]))]
 
-  # Only the treated groups
-  glist <- glist[glist>0]
+  ## # Only the treated groups
+  ## glist <- glist[glist>0]
 
-  # drop groups treated in the first period or before
-  first.period <- tlist[1]
-  glist <- glist[glist > first.period + anticipation]
+  ## # drop groups treated in the first period or before
+  ## first.period <- tlist[1]
+  ## glist <- glist[glist > first.period + anticipation]
 
   # Check if groups is empty (usually a problem with the way people defined groups)
   if(length(glist)==0){

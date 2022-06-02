@@ -5,6 +5,8 @@
   * Fix bug for setups where `gname` is not contained in `tname` (but is in the `tname` range)
   
   * Fix bug for including too many groups with universal base period in pre-treatment periods
+  
+  * Bug fix for anticipation using `notyettreated` comparison group
 
 # did 2.1.1
 
