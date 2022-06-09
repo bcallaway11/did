@@ -100,11 +100,9 @@ bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
 
-\item{pl}{Whether or not to use parallel processing
-(not implemented yet)}
+\item{pl}{Whether or not to use parallel processing}
 
-\item{cores}{The number of cores to use for parallel processing
-(not implemented yet)}
+\item{cores}{The number of cores to use for parallel processing}
 
 \item{est_method}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the \code{DRDID} package.  Other built-in methods

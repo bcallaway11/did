@@ -154,11 +154,9 @@ extra estimate in an earlier period.}
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
 
-\item{pl}{Whether or not to use parallel processing
-(not implemented yet)}
+\item{pl}{Whether or not to use parallel processing}
 
-\item{cores}{The number of cores to use for parallel processing
-(not implemented yet)}
+\item{cores}{The number of cores to use for parallel processing}
 
 \item{call}{Function call to att_gt}
 }

@@ -86,7 +86,9 @@ and "calendar."
 \section{Examples}{
 
 
-Initial ATT(g,t) estimates from \code{\link[=att_gt]{att_gt()}}\if{html}{\out{<div class="sourceCode r">}}\preformatted{data(mpdta)
+Initial ATT(g,t) estimates from \code{\link[=att_gt]{att_gt()}}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{data(mpdta)
 out <- att_gt(yname="lemp",
                tname="year",
                idname="countyreal",
@@ -97,7 +99,9 @@ out <- att_gt(yname="lemp",
 
 You can aggregate the ATT(g,t) in many ways.
 
-\strong{Overall ATT:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "simple")
+\strong{Overall ATT:}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "simple")
 #> 
 #> Call:
 #> aggte(MP = out, type = "simple")
@@ -106,7 +110,7 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> 
 #>    ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.04        0.0119    -0.0633     -0.0166 *
+#>  -0.04        0.0131    -0.0656     -0.0143 *
 #> 
 #> 
 #> ---
@@ -116,7 +120,9 @@ You can aggregate the ATT(g,t) in many ways.
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{Dynamic ATT (Event-Study):}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "dynamic")
+\strong{Dynamic ATT (Event-Study):}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "dynamic")
 #> 
 #> Call:
 #> aggte(MP = out, type = "dynamic")
@@ -126,18 +132,18 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0772        0.0211    -0.1185      -0.036 *
+#>  -0.0772        0.0191    -0.1147     -0.0398 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0141       -0.0038      0.0649  
-#>          -2  -0.0006     0.0129       -0.0320      0.0309  
-#>          -1  -0.0245     0.0144       -0.0596      0.0107  
-#>           0  -0.0199     0.0120       -0.0491      0.0092  
-#>           1  -0.0510     0.0179       -0.0947     -0.0073 *
-#>           2  -0.1373     0.0407       -0.2363     -0.0382 *
-#>           3  -0.1008     0.0363       -0.1892     -0.0125 *
+#>          -3   0.0305     0.0150       -0.0090      0.0700  
+#>          -2  -0.0006     0.0139       -0.0371      0.0360  
+#>          -1  -0.0245     0.0142       -0.0619      0.0130  
+#>           0  -0.0199     0.0119       -0.0511      0.0112  
+#>           1  -0.0510     0.0169       -0.0953     -0.0066 *
+#>           2  -0.1373     0.0405       -0.2437     -0.0308 *
+#>           3  -0.1008     0.0356       -0.1945     -0.0071 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -145,7 +151,9 @@ You can aggregate the ATT(g,t) in many ways.
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{ATT for each group:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "group")
+\strong{ATT for each group:}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "group")
 #> 
 #> Call:
 #> aggte(MP = out, type = "group")
@@ -155,14 +163,14 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.031        0.0126    -0.0557     -0.0063 *
+#>  -0.031        0.0128     -0.056      -0.006 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0283       -0.1460     -0.0135 *
-#>   2006  -0.0229     0.0184       -0.0660      0.0202  
-#>   2007  -0.0261     0.0181       -0.0685      0.0163  
+#>   2004  -0.0797     0.0286       -0.1467     -0.0128 *
+#>   2006  -0.0229     0.0169       -0.0624      0.0166  
+#>   2007  -0.0261     0.0168       -0.0653      0.0132  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -170,7 +178,9 @@ You can aggregate the ATT(g,t) in many ways.
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
 
-\strong{ATT for each calendar year:}\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "calendar")
+\strong{ATT for each calendar year:}
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{aggte(out, type = "calendar")
 #> 
 #> Call:
 #> aggte(MP = out, type = "calendar")
@@ -180,15 +190,15 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on calendar time aggregation:  
 #>      ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.0417        0.0177    -0.0765     -0.0069 *
+#>  -0.0417        0.0168    -0.0747     -0.0087 *
 #> 
 #> 
 #> Time Effects:
 #>  Time Estimate Std. Error [95\% Simult.  Conf. Band]  
-#>  2004  -0.0105     0.0242       -0.0679      0.0469  
-#>  2005  -0.0704     0.0308       -0.1434      0.0026  
-#>  2006  -0.0488     0.0204       -0.0971     -0.0005 *
-#>  2007  -0.0371     0.0148       -0.0720     -0.0021 *
+#>  2004  -0.0105     0.0255       -0.0700      0.0490  
+#>  2005  -0.0704     0.0326       -0.1463      0.0055  
+#>  2006  -0.0488     0.0207       -0.0971     -0.0005 *
+#>  2007  -0.0371     0.0135       -0.0684     -0.0057 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

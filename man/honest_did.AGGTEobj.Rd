@@ -42,7 +42,7 @@ of deviations from parallel trends in pre-treatment periods).}
   }
 
 \item{Mvec}{
-  Vector of M values for which the user wishes to construct robust confidence intervals. If NULL, the function constructs a grid of length 10 that starts at M = 0 and ends at M equal to the upper bound constructed from the pre-periods using the function DeltaSD_upperBound_Mpre if number of pre-periods > 1 or the standard deviation of the first post-period coefficient if number of pre-periods = 1. Default equals null.
+  Vector of M values for which the user wishes to construct robust confidence intervals. If NULL, the function constructs a grid of length 10 that starts at M = 0 and ends at M equal to the upper bound constructed from the pre-periods using the function DeltaSD_upperBound_Mpre if number of pre-periods > 1 or the standard deviation of the first pre-period coefficient if number of pre-periods = 1. Default equals null.
   }
 
 \item{Mbarvec}{
