@@ -82,7 +82,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
     cluster <- unique(dta[,c(idname,clustervars)])[,2]
     cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
-    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_mean_if, biters, pl, cores) 
+    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_mean_if, biters, pl, cores)
   }
 
 
@@ -131,8 +131,9 @@ run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
   # From tests, this is about where it becomes worth it to parallelize
   if(n > 2500 & pl == TRUE & cores > 1) {
     results = parallel::mclapply(
-      chunks, 
-      FUN = parallel.function
+      chunks,
+      FUN = parallel.function,
+      mc.cores = cores
     )
     results = do.call(rbind, results)
   } else {
