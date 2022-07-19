@@ -62,40 +62,52 @@ common issues that users run into.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">trimmer</span><span class="op">(</span>
-  <span class="va">g</span>,
-  <span class="va">tname</span>,
-  <span class="va">idname</span>,
-  <span class="va">gname</span>,
-  <span class="va">xformla</span>,
-  <span class="va">data</span>,
-  control_group <span class="op">=</span> <span class="st">"notyettreated"</span>,
-  threshold <span class="op">=</span> <span class="fl">0.999</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">trimmer</span><span class="op">(</span></span>
+<span>  <span class="va">g</span>,</span>
+<span>  <span class="va">tname</span>,</span>
+<span>  <span class="va">idname</span>,</span>
+<span>  <span class="va">gname</span>,</span>
+<span>  <span class="va">xformla</span>,</span>
+<span>  <span class="va">data</span>,</span>
+<span>  control_group <span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
+<span>  threshold <span class="op">=</span> <span class="fl">0.999</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>g</dt>
 <dd><p>is a particular group (below I pass in 2009)</p></dd>
+
+
 <dt>tname</dt>
 <dd><p>The name of the column containing the time periods</p></dd>
+
+
 <dt>idname</dt>
 <dd><p>The individual (cross-sectional unit) id name</p></dd>
+
+
 <dt>gname</dt>
 <dd><p>The name of the variable in <code>data</code> that
 contains the first period when a particular observation is treated.
 This should be a positive number for all observations in treated groups.
 It defines which "group" a unit belongs to.  It should be 0 for units
 in the untreated group.</p></dd>
+
+
 <dt>xformla</dt>
 <dd><p>A formula for the covariates to include in the
 model.  It should be of the form <code>~ X1 + X2</code>.  Default
 is NULL which is equivalent to <code>xformla=~1</code>.  This is
 used to create a matrix of covariates which is then passed
 to the 2x2 DID estimator chosen in <code>est_method</code>.</p></dd>
+
+
 <dt>data</dt>
 <dd><p>The name of the data.frame that contains the data</p></dd>
+
+
 <dt>control_group</dt>
 <dd><p>Which units to use the control group.
 The default is "nevertreated" which sets the control group
@@ -108,13 +120,18 @@ in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
 participated yet.</p></dd>
+
+
 <dt>threshold</dt>
 <dd><p>the cutoff for which observations are flagged as
 likely violators of the support condition.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>list of ids of observations that likely violate support conditions</p>
+    
+
+<p>list of ids of observations that likely violate support conditions</p>
     </div>
 
   </div>
@@ -129,7 +146,7 @@ likely violators of the support condition.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

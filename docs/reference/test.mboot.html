@@ -58,27 +58,36 @@ for the pre-test of the conditional parallel trends assumption</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">test.mboot</span><span class="op">(</span><span class="va">inf.func</span>, <span class="va">DIDparams</span>, cores <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">test.mboot</span><span class="op">(</span><span class="va">inf.func</span>, <span class="va">DIDparams</span>, cores <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>inf.func</dt>
 <dd><p>an influence function</p></dd>
+
+
 <dt>DIDparams</dt>
 <dd><p>DIDparams object</p></dd>
+
+
 <dt>cores</dt>
 <dd><p>The number of cores to use to bootstrap the test
 statistic in parallel.  Default is <code>cores=1</code> which
 corresponds to not running parallel.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>list</p>
+    
+
+<p>list</p>
 <dl><dt>bres</dt>
 <dd><p>CvM test statistics for each bootstrap iteration</p></dd>
+
 <dt>crit.val</dt>
 <dd><p>critical value for CvM test statistic</p></dd>
+
 </dl></div>
 
   </div>
@@ -93,7 +102,7 @@ corresponds to not running parallel.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

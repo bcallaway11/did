@@ -60,29 +60,33 @@ group-time average treatment effects</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">AGGTEobj</span><span class="op">(</span>
-  overall.att <span class="op">=</span> <span class="cn">NULL</span>,
-  overall.se <span class="op">=</span> <span class="cn">NULL</span>,
-  type <span class="op">=</span> <span class="st">"simple"</span>,
-  egt <span class="op">=</span> <span class="cn">NULL</span>,
-  att.egt <span class="op">=</span> <span class="cn">NULL</span>,
-  se.egt <span class="op">=</span> <span class="cn">NULL</span>,
-  crit.val.egt <span class="op">=</span> <span class="cn">NULL</span>,
-  inf.function <span class="op">=</span> <span class="cn">NULL</span>,
-  min_e <span class="op">=</span> <span class="cn">NULL</span>,
-  max_e <span class="op">=</span> <span class="cn">NULL</span>,
-  balance_e <span class="op">=</span> <span class="cn">NULL</span>,
-  call <span class="op">=</span> <span class="cn">NULL</span>,
-  DIDparams <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">AGGTEobj</span><span class="op">(</span></span>
+<span>  overall.att <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  overall.se <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"simple"</span>,</span>
+<span>  egt <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  att.egt <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  se.egt <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  crit.val.egt <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inf.function <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  min_e <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_e <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  balance_e <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  call <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  DIDparams <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>overall.att</dt>
 <dd><p>The estimated overall ATT</p></dd>
+
+
 <dt>overall.se</dt>
 <dd><p>Standard error for overall ATT</p></dd>
+
+
 <dt>type</dt>
 <dd><p>Which type of aggregated treatment effect parameter to compute.
 One option is "simple" (this just computes a weighted average of all
@@ -97,28 +101,44 @@ the overall effect averages the effect across different groups); and
 "calendar" (this computes average treatment effects across different
 time periods; here the overall effect averages the effect across each
 time period).</p></dd>
+
+
 <dt>egt</dt>
 <dd><p>Holds the length of exposure (for dynamic effects), the
 group (for selective treatment timing), or the time period (for calendar
 time effects)</p></dd>
+
+
 <dt>att.egt</dt>
 <dd><p>The ATT specific to egt</p></dd>
+
+
 <dt>se.egt</dt>
 <dd><p>The standard error specific to egt</p></dd>
+
+
 <dt>crit.val.egt</dt>
 <dd><p>A critical value for computing uniform confidence
 bands for dynamic effects, selective treatment timing, or time period
 effects.</p></dd>
+
+
 <dt>inf.function</dt>
 <dd><p>The influence function of the chosen aggregated parameters</p></dd>
+
+
 <dt>min_e</dt>
 <dd><p>For event studies, this is the smallest event time to compute
 dynamic effects for.  By default, <code>min_e = -Inf</code> so that effects at
 all lengths of exposure are computed.</p></dd>
+
+
 <dt>max_e</dt>
 <dd><p>For event studies, this is the largest event time to compute
 dynamic effects for.  By default, <code>max_e = Inf</code> so that effects at
 all lengths of exposure are computed.</p></dd>
+
+
 <dt>balance_e</dt>
 <dd><p>If set (and if one computes dynamic effects), it balances
 the sample with respect to event time.  For example, if <code>balance.e=2</code>,
@@ -126,14 +146,21 @@ the sample with respect to event time.  For example, if <code>balance.e=2</code>
 at least three periods. (the initial period when <code>e=0</code> as well as the
 next two periods when <code>e=1</code> and the <code>e=2</code>).  This ensures that
 the composition of groups does not change when event time changes.</p></dd>
+
+
 <dt>call</dt>
 <dd><p>The function call to aggte</p></dd>
+
+
 <dt>DIDparams</dt>
 <dd><p>A DIDparams object</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>an AGGTEobj</p>
+    
+
+<p>an AGGTEobj</p>
     </div>
 
   </div>
@@ -148,7 +175,7 @@ the composition of groups does not change when event time changes.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

@@ -17,3 +17,4 @@ Icon?
 ^inst/profiling
 ^CRAN-SUBMISSION$
 ^CITATION\.cff$
+^R/honest_did$

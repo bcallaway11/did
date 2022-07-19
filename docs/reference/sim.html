@@ -60,17 +60,17 @@ procedures in the <code>did</code> function.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">sim</span><span class="op">(</span>
-  <span class="va">sp_list</span>,
-  ret <span class="op">=</span> <span class="cn">NULL</span>,
-  bstrap <span class="op">=</span> <span class="cn">TRUE</span>,
-  cband <span class="op">=</span> <span class="cn">TRUE</span>,
-  control_group <span class="op">=</span> <span class="st">"nevertreated"</span>,
-  xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,
-  est_method <span class="op">=</span> <span class="st">"dr"</span>,
-  clustervars <span class="op">=</span> <span class="cn">NULL</span>,
-  panel <span class="op">=</span> <span class="cn">TRUE</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">sim</span><span class="op">(</span></span>
+<span>  <span class="va">sp_list</span>,</span>
+<span>  ret <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  bstrap <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  cband <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  control_group <span class="op">=</span> <span class="st">"nevertreated"</span>,</span>
+<span>  xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,</span>
+<span>  est_method <span class="op">=</span> <span class="st">"dr"</span>,</span>
+<span>  clustervars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  panel <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -78,6 +78,8 @@ procedures in the <code>did</code> function.</p>
     <dl><dt>sp_list</dt>
 <dd><p>A list of simulation parameters.  See <code>reset.sim</code> to generate
 some default values for parameters</p></dd>
+
+
 <dt>ret</dt>
 <dd><p>which type of results to return.  The options are <code>Wpval</code> (returns
 1 if the p-value from a Wald test that all pre-treatment ATT(g,t)'s are equal
@@ -89,27 +91,44 @@ in rejecting that this aggregated treatment effect parameter is equal to 0),
 effect aggregation covers 0 in all pre- and post-treatment periods).  The default
 value is NULL, and in this case the function will just return the results from
 the call to <code>att_gt</code>.</p></dd>
+
+
 <dt>bstrap</dt>
 <dd><p>whether or not to use the bootstrap to conduct inference (default is TRUE)</p></dd>
+
+
 <dt>cband</dt>
 <dd><p>whether or not to compute uniform confidence bands in the call to <code>att_gt</code>
 (the default is TRUE)</p></dd>
+
+
 <dt>control_group</dt>
 <dd><p>Whether to use the "nevertreated" comparison group (the default)
 or the "notyettreated" as the comparison group</p></dd>
+
+
 <dt>xformla</dt>
 <dd><p>Formula for covariates in <code>att_gt</code> (default is <code>~X</code>)</p></dd>
+
+
 <dt>est_method</dt>
 <dd><p>Which estimation method to use in <code>att_gt</code> (default is "dr")</p></dd>
+
+
 <dt>clustervars</dt>
 <dd><p>Any additional variables which should be clustered on</p></dd>
+
+
 <dt>panel</dt>
 <dd><p>whether to simulate panel data (the default) or otherwise repeated
 cross sections data</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>When <code>ret=NULL</code>, returns the results of the call to <code>att_gt</code>, otherwise returns
+    
+
+<p>When <code>ret=NULL</code>, returns the results of the call to <code>att_gt</code>, otherwise returns
 1 if the specified test rejects or 0 if not.</p>
     </div>
 
@@ -125,7 +144,7 @@ cross sections data</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

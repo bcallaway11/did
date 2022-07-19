@@ -62,29 +62,40 @@ various aggregated treatment effect parameters.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">get_agg_inf_func</span><span class="op">(</span><span class="va">att</span>, <span class="va">inffunc1</span>, <span class="va">whichones</span>, <span class="va">weights.agg</span>, wif <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_agg_inf_func</span><span class="op">(</span><span class="va">att</span>, <span class="va">inffunc1</span>, <span class="va">whichones</span>, <span class="va">weights.agg</span>, wif <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>att</dt>
 <dd><p>vector of group-time average treatment effects</p></dd>
+
+
 <dt>inffunc1</dt>
 <dd><p>influence function for all group-time average treatment effects
 (matrix)</p></dd>
+
+
 <dt>whichones</dt>
 <dd><p>which elements of att will be used to compute the aggregated
 treatment effect parameter</p></dd>
+
+
 <dt>weights.agg</dt>
 <dd><p>the weights to apply to each element of att(whichones);
 should have the same dimension as att(whichones)</p></dd>
+
+
 <dt>wif</dt>
 <dd><p>extra influence function term coming from estimating the weights;
 should be n x k matrix where k is dimension of whichones</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>nx1 influence function</p>
+    
+
+<p>nx1 influence function</p>
     </div>
 
   </div>
@@ -99,7 +110,7 @@ should be n x k matrix where k is dimension of whichones</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

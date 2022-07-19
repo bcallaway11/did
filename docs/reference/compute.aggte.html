@@ -58,26 +58,28 @@ average treatment effects</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">compute.aggte</span><span class="op">(</span>
-  <span class="va">MP</span>,
-  type <span class="op">=</span> <span class="st">"group"</span>,
-  balance_e <span class="op">=</span> <span class="cn">NULL</span>,
-  min_e <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,
-  max_e <span class="op">=</span> <span class="cn">Inf</span>,
-  na.rm <span class="op">=</span> <span class="cn">FALSE</span>,
-  bstrap <span class="op">=</span> <span class="cn">NULL</span>,
-  biters <span class="op">=</span> <span class="cn">NULL</span>,
-  cband <span class="op">=</span> <span class="cn">NULL</span>,
-  alp <span class="op">=</span> <span class="cn">NULL</span>,
-  clustervars <span class="op">=</span> <span class="cn">NULL</span>,
-  call <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compute.aggte</span><span class="op">(</span></span>
+<span>  <span class="va">MP</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"group"</span>,</span>
+<span>  balance_e <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  min_e <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
+<span>  max_e <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  na.rm <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  bstrap <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  biters <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cband <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alp <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  clustervars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  call <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>MP</dt>
 <dd><p>an MP object (i.e., the results of the <code><a href="att_gt.html">att_gt()</a></code> method)</p></dd>
+
+
 <dt>type</dt>
 <dd><p>Which type of aggregated treatment effect parameter to compute.
 One option is "simple" (this just computes a weighted average of all
@@ -92,6 +94,8 @@ the overall effect averages the effect across different groups); and
 "calendar" (this computes average treatment effects across different
 time periods; here the overall effect averages the effect across each
 time period).</p></dd>
+
+
 <dt>balance_e</dt>
 <dd><p>If set (and if one computes dynamic effects), it balances
 the sample with respect to event time.  For example, if <code>balance.e=2</code>,
@@ -99,16 +103,24 @@ the sample with respect to event time.  For example, if <code>balance.e=2</code>
 at least three periods. (the initial period when <code>e=0</code> as well as the
 next two periods when <code>e=1</code> and the <code>e=2</code>).  This ensures that
 the composition of groups does not change when event time changes.</p></dd>
+
+
 <dt>min_e</dt>
 <dd><p>For event studies, this is the smallest event time to compute
 dynamic effects for.  By default, <code>min_e = -Inf</code> so that effects at
 all lengths of exposure are computed.</p></dd>
+
+
 <dt>max_e</dt>
 <dd><p>For event studies, this is the largest event time to compute
 dynamic effects for.  By default, <code>max_e = Inf</code> so that effects at
 all lengths of exposure are computed.</p></dd>
+
+
 <dt>na.rm</dt>
 <dd><p>Logical value if we are to remove missing Values from analyses. Defaults is FALSE.</p></dd>
+
+
 <dt>bstrap</dt>
 <dd><p>Boolean for whether or not to compute standard errors using
 the multiplier bootstrap.  If standard errors are clustered, then one
@@ -116,28 +128,41 @@ must set <code>bstrap=TRUE</code>. Default is <code>TRUE</code> (in addition, cb
 is also by default <code>TRUE</code> indicating that uniform confidence bands
 will be returned.  If bstrap is <code>FALSE</code>, then analytical
 standard errors are reported.</p></dd>
+
+
 <dt>biters</dt>
 <dd><p>The number of bootstrap iterations to use.  The default is 1000,
 and this is only applicable if <code>bstrap=TRUE</code>.</p></dd>
+
+
 <dt>cband</dt>
 <dd><p>Boolean for whether or not to compute a uniform confidence
 band that covers all of the group-time average treatment effects
 with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
 bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
 <code>TRUE</code>.</p></dd>
+
+
 <dt>alp</dt>
 <dd><p>the significance level, default is 0.05</p></dd>
+
+
 <dt>clustervars</dt>
 <dd><p>A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
 level. By default, we cluster at individual level (when <code>bstrap=TRUE</code>).</p></dd>
+
+
 <dt>call</dt>
 <dd><p>The function call to aggte</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p><code><a href="AGGTEobj.html">AGGTEobj</a></code> object</p>
+    
+
+<p><code><a href="AGGTEobj.html">AGGTEobj</a></code> object</p>
     </div>
 
   </div>
@@ -152,7 +177,7 @@ level. By default, we cluster at individual level (when <code>bstrap=TRUE</code>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

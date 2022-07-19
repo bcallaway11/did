@@ -62,25 +62,27 @@ and "calendar."</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">aggte</span><span class="op">(</span>
-  <span class="va">MP</span>,
-  type <span class="op">=</span> <span class="st">"group"</span>,
-  balance_e <span class="op">=</span> <span class="cn">NULL</span>,
-  min_e <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,
-  max_e <span class="op">=</span> <span class="cn">Inf</span>,
-  na.rm <span class="op">=</span> <span class="cn">FALSE</span>,
-  bstrap <span class="op">=</span> <span class="cn">NULL</span>,
-  biters <span class="op">=</span> <span class="cn">NULL</span>,
-  cband <span class="op">=</span> <span class="cn">NULL</span>,
-  alp <span class="op">=</span> <span class="cn">NULL</span>,
-  clustervars <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">aggte</span><span class="op">(</span></span>
+<span>  <span class="va">MP</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"group"</span>,</span>
+<span>  balance_e <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  min_e <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>,</span>
+<span>  max_e <span class="op">=</span> <span class="cn">Inf</span>,</span>
+<span>  na.rm <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  bstrap <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  biters <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cband <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alp <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  clustervars <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>MP</dt>
 <dd><p>an MP object (i.e., the results of the <code><a href="att_gt.html">att_gt()</a></code> method)</p></dd>
+
+
 <dt>type</dt>
 <dd><p>Which type of aggregated treatment effect parameter to compute.
 One option is "simple" (this just computes a weighted average of all
@@ -95,6 +97,8 @@ the overall effect averages the effect across different groups); and
 "calendar" (this computes average treatment effects across different
 time periods; here the overall effect averages the effect across each
 time period).</p></dd>
+
+
 <dt>balance_e</dt>
 <dd><p>If set (and if one computes dynamic effects), it balances
 the sample with respect to event time.  For example, if <code>balance.e=2</code>,
@@ -102,41 +106,60 @@ the sample with respect to event time.  For example, if <code>balance.e=2</code>
 at least three periods. (the initial period when <code>e=0</code> as well as the
 next two periods when <code>e=1</code> and the <code>e=2</code>).  This ensures that
 the composition of groups does not change when event time changes.</p></dd>
+
+
 <dt>min_e</dt>
 <dd><p>For event studies, this is the smallest event time to compute
 dynamic effects for.  By default, <code>min_e = -Inf</code> so that effects at
 all lengths of exposure are computed.</p></dd>
+
+
 <dt>max_e</dt>
 <dd><p>For event studies, this is the largest event time to compute
 dynamic effects for.  By default, <code>max_e = Inf</code> so that effects at
 all lengths of exposure are computed.</p></dd>
+
+
 <dt>na.rm</dt>
 <dd><p>Logical value if we are to remove missing Values from analyses. Defaults is FALSE.</p></dd>
+
+
 <dt>bstrap</dt>
 <dd><p>Boolean for whether or not to compute standard errors using
 the multiplier bootstrap.  If standard errors are clustered, then one
 must set <code>bstrap=TRUE</code>. Default is value set in the MP object.  If bstrap is <code>FALSE</code>, then analytical
 standard errors are reported.</p></dd>
+
+
 <dt>biters</dt>
 <dd><p>The number of bootstrap iterations to use.  The default is the value set in the MP object,
 and this is only applicable if <code>bstrap=TRUE</code>.</p></dd>
+
+
 <dt>cband</dt>
 <dd><p>Boolean for whether or not to compute a uniform confidence
 band that covers all of the group-time average treatment effects
 with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
 bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
 the value set in the MP object</p></dd>
+
+
 <dt>alp</dt>
 <dd><p>the significance level, default is value set in the MP object.</p></dd>
+
+
 <dt>clustervars</dt>
 <dd><p>A vector of variables to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
 level. Default is the variables set in the MP object</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An <code><a href="AGGTEobj.html">AGGTEobj</a></code> object that holds the results from the
+    
+
+<p>An <code><a href="AGGTEobj.html">AGGTEobj</a></code> object that holds the results from the
 aggregation</p>
     </div>
     <div id="examples">
@@ -144,105 +167,105 @@ aggregation</p>
     
 
 
-<p>Initial ATT(g,t) estimates from <code><a href="att_gt.html">att_gt()</a></code></p><div class="sourceCode r"><pre><code><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span>
-<span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname<span class="op">=</span><span class="st">"lemp"</span>,
-               tname<span class="op">=</span><span class="st">"year"</span>,
-               idname<span class="op">=</span><span class="st">"countyreal"</span>,
-               gname<span class="op">=</span><span class="st">"first.treat"</span>,
-               xformla<span class="op">=</span><span class="cn">NULL</span>,
-               data<span class="op">=</span><span class="va">mpdta</span><span class="op">)</span></code></pre><p></p></div>
+<p>Initial ATT(g,t) estimates from <code><a href="att_gt.html">att_gt()</a></code></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></span>
+<span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname<span class="op">=</span><span class="st">"lemp"</span>,</span>
+<span>               tname<span class="op">=</span><span class="st">"year"</span>,</span>
+<span>               idname<span class="op">=</span><span class="st">"countyreal"</span>,</span>
+<span>               gname<span class="op">=</span><span class="st">"first.treat"</span>,</span>
+<span>               xformla<span class="op">=</span><span class="cn">NULL</span>,</span>
+<span>               data<span class="op">=</span><span class="va">mpdta</span><span class="op">)</span></span></code></pre><p></p></div>
 <p>You can aggregate the ATT(g,t) in many ways.</p>
-<p><strong>Overall ATT:</strong></p><div class="sourceCode r"><pre><code><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"simple"</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = out, type = "simple")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;    ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.04        0.0119    -0.0633     -0.0166 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre><p></p></div>
-<p><strong>Dynamic ATT (Event-Study):</strong></p><div class="sourceCode r"><pre><code><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = out, type = "dynamic")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
-<span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0772        0.0211    -0.1185      -0.036 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Dynamic Effects:</span>
-<span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -3   0.0305     0.0141       -0.0038      0.0649  </span>
-<span class="co">#&gt;          -2  -0.0006     0.0129       -0.0320      0.0309  </span>
-<span class="co">#&gt;          -1  -0.0245     0.0144       -0.0596      0.0107  </span>
-<span class="co">#&gt;           0  -0.0199     0.0120       -0.0491      0.0092  </span>
-<span class="co">#&gt;           1  -0.0510     0.0179       -0.0947     -0.0073 *</span>
-<span class="co">#&gt;           2  -0.1373     0.0407       -0.2363     -0.0382 *</span>
-<span class="co">#&gt;           3  -0.1008     0.0363       -0.1892     -0.0125 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre><p></p></div>
-<p><strong>ATT for each group:</strong></p><div class="sourceCode r"><pre><code><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = out, type = "group")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span>
-<span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.031        0.0126    -0.0557     -0.0063 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Group Effects:</span>
-<span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004  -0.0797     0.0283       -0.1460     -0.0135 *</span>
-<span class="co">#&gt;   2006  -0.0229     0.0184       -0.0660      0.0202  </span>
-<span class="co">#&gt;   2007  -0.0261     0.0181       -0.0685      0.0163  </span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre><p></p></div>
-<p><strong>ATT for each calendar year:</strong></p><div class="sourceCode r"><pre><code><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"calendar"</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = out, type = "calendar")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on calendar time aggregation:  </span>
-<span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0417        0.0177    -0.0765     -0.0069 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Time Effects:</span>
-<span class="co">#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;  2004  -0.0105     0.0242       -0.0679      0.0469  </span>
-<span class="co">#&gt;  2005  -0.0704     0.0308       -0.1434      0.0026  </span>
-<span class="co">#&gt;  2006  -0.0488     0.0204       -0.0971     -0.0005 *</span>
-<span class="co">#&gt;  2007  -0.0371     0.0148       -0.0720     -0.0021 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre><p></p></div>
+<p><strong>Overall ATT:</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"simple"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = out, type = "simple")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;    ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  -0.04        0.0116    -0.0628     -0.0171 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
+<p><strong>Dynamic ATT (Event-Study):</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = out, type = "dynamic")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span></span>
+<span><span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  -0.0772        0.0208     -0.118     -0.0365 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Dynamic Effects:</span></span>
+<span><span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;          -3   0.0305     0.0152       -0.0098      0.0708  </span></span>
+<span><span class="co">#&gt;          -2  -0.0006     0.0138       -0.0371      0.0359  </span></span>
+<span><span class="co">#&gt;          -1  -0.0245     0.0140       -0.0615      0.0126  </span></span>
+<span><span class="co">#&gt;           0  -0.0199     0.0118       -0.0511      0.0113  </span></span>
+<span><span class="co">#&gt;           1  -0.0510     0.0173       -0.0967     -0.0053 *</span></span>
+<span><span class="co">#&gt;           2  -0.1373     0.0367       -0.2345     -0.0401 *</span></span>
+<span><span class="co">#&gt;           3  -0.1008     0.0375       -0.2002     -0.0014 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
+<p><strong>ATT for each group:</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = out, type = "group")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span></span>
+<span><span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  -0.031        0.0123    -0.0552     -0.0068 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Group Effects:</span></span>
+<span><span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;   2004  -0.0797     0.0302       -0.1463     -0.0132 *</span></span>
+<span><span class="co">#&gt;   2006  -0.0229     0.0174       -0.0612      0.0154  </span></span>
+<span><span class="co">#&gt;   2007  -0.0261     0.0173       -0.0643      0.0121  </span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
+<p><strong>ATT for each calendar year:</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"calendar"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = out, type = "calendar")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on calendar time aggregation:  </span></span>
+<span><span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  -0.0417        0.0164    -0.0739     -0.0095 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Time Effects:</span></span>
+<span><span class="co">#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;  2004  -0.0105     0.0235       -0.0684      0.0474  </span></span>
+<span><span class="co">#&gt;  2005  -0.0704     0.0295       -0.1430      0.0021  </span></span>
+<span><span class="co">#&gt;  2006  -0.0488     0.0205       -0.0993      0.0016  </span></span>
+<span><span class="co">#&gt;  2007  -0.0371     0.0139       -0.0714     -0.0028 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
     </div>
 
   </div>
@@ -257,7 +280,7 @@ aggregation</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

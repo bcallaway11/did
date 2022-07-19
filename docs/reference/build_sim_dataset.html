@@ -56,7 +56,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">build_sim_dataset</span><span class="op">(</span><span class="va">sp_list</span>, panel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">build_sim_dataset</span><span class="op">(</span><span class="va">sp_list</span>, panel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -64,13 +64,18 @@
     <dl><dt>sp_list</dt>
 <dd><p>A list of simulation parameters.  See <code>reset.sim</code> to generate
 some default values for parameters</p></dd>
+
+
 <dt>panel</dt>
 <dd><p>whether to construct panel data (the default) or repeated
 cross sections data</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>a data.frame with the following columns</p><ul><li><p>G observations group</p></li>
+    
+
+<p>a data.frame with the following columns</p><ul><li><p>G observations group</p></li>
 <li><p>X value of covariate</p></li>
 <li><p>id observation's id</p></li>
 <li><p>cluster observation's cluster (by construction there is no within-cluster correlation)</p></li>
@@ -91,7 +96,7 @@ cross sections data</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

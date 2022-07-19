@@ -56,59 +56,71 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">DIDparams</span><span class="op">(</span>
-  <span class="va">yname</span>,
-  <span class="va">tname</span>,
-  idname <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">gname</span>,
-  xformla <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">data</span>,
-  <span class="va">control_group</span>,
-  anticipation <span class="op">=</span> <span class="fl">0</span>,
-  weightsname <span class="op">=</span> <span class="cn">NULL</span>,
-  alp <span class="op">=</span> <span class="fl">0.05</span>,
-  bstrap <span class="op">=</span> <span class="cn">TRUE</span>,
-  biters <span class="op">=</span> <span class="fl">1000</span>,
-  clustervars <span class="op">=</span> <span class="cn">NULL</span>,
-  cband <span class="op">=</span> <span class="cn">TRUE</span>,
-  print_details <span class="op">=</span> <span class="cn">TRUE</span>,
-  pl <span class="op">=</span> <span class="cn">FALSE</span>,
-  cores <span class="op">=</span> <span class="fl">1</span>,
-  est_method <span class="op">=</span> <span class="st">"dr"</span>,
-  base_period <span class="op">=</span> <span class="st">"varying"</span>,
-  panel <span class="op">=</span> <span class="cn">TRUE</span>,
-  <span class="va">true_repeated_cross_sections</span>,
-  n <span class="op">=</span> <span class="cn">NULL</span>,
-  nG <span class="op">=</span> <span class="cn">NULL</span>,
-  nT <span class="op">=</span> <span class="cn">NULL</span>,
-  tlist <span class="op">=</span> <span class="cn">NULL</span>,
-  glist <span class="op">=</span> <span class="cn">NULL</span>,
-  call <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">DIDparams</span><span class="op">(</span></span>
+<span>  <span class="va">yname</span>,</span>
+<span>  <span class="va">tname</span>,</span>
+<span>  idname <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">gname</span>,</span>
+<span>  xformla <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">control_group</span>,</span>
+<span>  anticipation <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  weightsname <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alp <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  bstrap <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  biters <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  clustervars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cband <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  print_details <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  pl <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cores <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  est_method <span class="op">=</span> <span class="st">"dr"</span>,</span>
+<span>  base_period <span class="op">=</span> <span class="st">"varying"</span>,</span>
+<span>  panel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">true_repeated_cross_sections</span>,</span>
+<span>  n <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nG <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nT <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tlist <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  glist <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  call <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>yname</dt>
 <dd><p>The name of the outcome variable</p></dd>
+
+
 <dt>tname</dt>
 <dd><p>The name of the column containing the time periods</p></dd>
+
+
 <dt>idname</dt>
 <dd><p>The individual (cross-sectional unit) id name</p></dd>
+
+
 <dt>gname</dt>
 <dd><p>The name of the variable in <code>data</code> that
 contains the first period when a particular observation is treated.
 This should be a positive number for all observations in treated groups.
 It defines which "group" a unit belongs to.  It should be 0 for units
 in the untreated group.</p></dd>
+
+
 <dt>xformla</dt>
 <dd><p>A formula for the covariates to include in the
 model.  It should be of the form <code>~ X1 + X2</code>.  Default
 is NULL which is equivalent to <code>xformla=~1</code>.  This is
 used to create a matrix of covariates which is then passed
 to the 2x2 DID estimator chosen in <code>est_method</code>.</p></dd>
+
+
 <dt>data</dt>
 <dd><p>The name of the data.frame that contains the data</p></dd>
+
+
 <dt>control_group</dt>
 <dd><p>Which units to use the control group.
 The default is "nevertreated" which sets the control group
@@ -121,15 +133,23 @@ in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
 participated yet.</p></dd>
+
+
 <dt>anticipation</dt>
 <dd><p>The number of time periods before participating
 in the treatment where units can anticipate participating in the
 treatment and therefore it can affect their untreated potential outcomes</p></dd>
+
+
 <dt>weightsname</dt>
 <dd><p>The name of the column containing the sampling weights.
 If not set, all observations have same weight.</p></dd>
+
+
 <dt>alp</dt>
 <dd><p>the significance level, default is 0.05</p></dd>
+
+
 <dt>bstrap</dt>
 <dd><p>Boolean for whether or not to compute standard errors using
 the multiplier bootstrap.  If standard errors are clustered, then one
@@ -137,29 +157,43 @@ must set <code>bstrap=TRUE</code>. Default is <code>TRUE</code> (in addition, cb
 is also by default <code>TRUE</code> indicating that uniform confidence bands
 will be returned.  If bstrap is <code>FALSE</code>, then analytical
 standard errors are reported.</p></dd>
+
+
 <dt>biters</dt>
 <dd><p>The number of bootstrap iterations to use.  The default is 1000,
 and this is only applicable if <code>bstrap=TRUE</code>.</p></dd>
+
+
 <dt>clustervars</dt>
 <dd><p>A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
 level. By default, we cluster at individual level (when <code>bstrap=TRUE</code>).</p></dd>
+
+
 <dt>cband</dt>
 <dd><p>Boolean for whether or not to compute a uniform confidence
 band that covers all of the group-time average treatment effects
 with fixed probability <code>1-alp</code>.  In order to compute uniform confidence
 bands, <code>bstrap</code> must also be set to <code>TRUE</code>.  The default is
 <code>TRUE</code>.</p></dd>
+
+
 <dt>print_details</dt>
 <dd><p>Whether or not to show details/progress of computations.
 Default is <code>FALSE</code>.</p></dd>
+
+
 <dt>pl</dt>
 <dd><p>Whether or not to use parallel processing
 (not implemented yet)</p></dd>
+
+
 <dt>cores</dt>
 <dd><p>The number of cores to use for parallel processing
 (not implemented yet)</p></dd>
+
+
 <dt>est_method</dt>
 <dd><p>the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the <code>DRDID</code> package.  Other built-in methods
@@ -179,6 +213,8 @@ covariates.  The function should return a list that includes
 The function can return other things as well, but these are
 the only two that are required. <code>est_method</code> is only used
 if covariates are included.</p></dd>
+
+
 <dt>base_period</dt>
 <dd><p>Whether to use a "varying" base period or a
 "universal" base period.  Either choice results in the same
@@ -202,6 +238,8 @@ treatment.  Using a universal base period normalizes the
 estimate in the period right before treatment (or earlier when
 the user allows for anticipation) to be equal to 0, but one
 extra estimate in an earlier period.</p></dd>
+
+
 <dt>panel</dt>
 <dd><p>Whether or not the data is a panel dataset.
 The panel dataset should be provided in long format -- that
@@ -210,24 +248,39 @@ particular point in time.  The default is TRUE.  When
 is using a panel dataset, the variable <code>idname</code> must
 be set.  When <code>panel=FALSE</code>, the data is treated
 as repeated cross sections.</p></dd>
+
+
 <dt>true_repeated_cross_sections</dt>
 <dd><p>Whether or not the data really
 is repeated cross sections.  (We include this because unbalanced
 panel code runs through the repeated cross sections code)</p></dd>
+
+
 <dt>n</dt>
 <dd><p>The number of observations.  This is equal to the
 number of units (which may be different from the number
 of rows in a panel dataset).</p></dd>
+
+
 <dt>nG</dt>
 <dd><p>The number of groups</p></dd>
+
+
 <dt>nT</dt>
 <dd><p>The number of time periods</p></dd>
+
+
 <dt>tlist</dt>
 <dd><p>a vector containing each time period</p></dd>
+
+
 <dt>glist</dt>
 <dd><p>a vector containing each group</p></dd>
+
+
 <dt>call</dt>
 <dd><p>Function call to att_gt</p></dd>
+
 </dl></div>
 
   </div>
@@ -242,7 +295,7 @@ of rows in a panel dataset).</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

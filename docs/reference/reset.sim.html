@@ -68,15 +68,19 @@ groups, etc.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">reset.sim</span><span class="op">(</span>time.periods <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">5000</span>, ipw <span class="op">=</span> <span class="cn">TRUE</span>, reg <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">reset.sim</span><span class="op">(</span>time.periods <span class="op">=</span> <span class="fl">4</span>, n <span class="op">=</span> <span class="fl">5000</span>, ipw <span class="op">=</span> <span class="cn">TRUE</span>, reg <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>time.periods</dt>
 <dd><p>The number of time periods to include</p></dd>
+
+
 <dt>n</dt>
 <dd><p>The total number of observations</p></dd>
+
+
 <dt>ipw</dt>
 <dd><p>If TRUE, sets parameters so that DGP is
 compatible with recovering ATT(g,t)'s using IPW (i.e.,
@@ -84,6 +88,8 @@ where logit that just includes a linear term in X works).  If
 FALSE, sets parameters that will be incompatible with IPW.
 Either way, these parameters can be specified by the user
 if so desired.</p></dd>
+
+
 <dt>reg</dt>
 <dd><p>If TRUE, sets parameters so that DGP is compatible
 with recovering ATT(g,t)'s using regressions on untreated
@@ -91,10 +97,13 @@ untreated potential outcomes.  If FALSE, sets parameters that
 will be incompatible with using regressions (i.e., regressions
 that include only linear term in X).  Either way, these
 parameters can be specified by the user if so desired.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>list of simulation parameters</p>
+    
+
+<p>list of simulation parameters</p>
     </div>
 
   </div>
@@ -109,7 +118,7 @@ parameters can be specified by the user if so desired.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

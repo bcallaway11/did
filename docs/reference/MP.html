@@ -56,60 +56,87 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">MP</span><span class="op">(</span>
-  <span class="va">group</span>,
-  <span class="va">t</span>,
-  <span class="va">att</span>,
-  <span class="va">V_analytical</span>,
-  <span class="va">se</span>,
-  <span class="va">c</span>,
-  <span class="va">inffunc</span>,
-  n <span class="op">=</span> <span class="cn">NULL</span>,
-  W <span class="op">=</span> <span class="cn">NULL</span>,
-  Wpval <span class="op">=</span> <span class="cn">NULL</span>,
-  aggte <span class="op">=</span> <span class="cn">NULL</span>,
-  alp <span class="op">=</span> <span class="fl">0.05</span>,
-  DIDparams <span class="op">=</span> <span class="cn">NULL</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">MP</span><span class="op">(</span></span>
+<span>  <span class="va">group</span>,</span>
+<span>  <span class="va">t</span>,</span>
+<span>  <span class="va">att</span>,</span>
+<span>  <span class="va">V_analytical</span>,</span>
+<span>  <span class="va">se</span>,</span>
+<span>  <span class="va">c</span>,</span>
+<span>  <span class="va">inffunc</span>,</span>
+<span>  n <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  W <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  Wpval <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  aggte <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  alp <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  DIDparams <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>group</dt>
 <dd><p>which group (defined by period first treated) an group-time average treatment effect is for</p></dd>
+
+
 <dt>t</dt>
 <dd><p>which time period a group-time average treatment effect is for</p></dd>
+
+
 <dt>att</dt>
 <dd><p>the group-average treatment effect for group <code>group</code> and time
 period <code>t</code></p></dd>
+
+
 <dt>V_analytical</dt>
 <dd><p>Analytical estimator for the asymptotic variance-covariance matrix for group-time average treatment effects</p></dd>
+
+
 <dt>se</dt>
 <dd><p>standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.</p></dd>
+
+
 <dt>c</dt>
 <dd><p>simultaneous critical value if one is obtaining simultaneous confidence
 bands. Otherwise it reports the critical value based on pointwise normal
 approximation.</p></dd>
+
+
 <dt>inffunc</dt>
 <dd><p>the influence function for estimating group-time average treatment effects</p></dd>
+
+
 <dt>n</dt>
 <dd><p>the number of unique cross-sectional units (unique values of idname)</p></dd>
+
+
 <dt>W</dt>
 <dd><p>the Wald statistic for pre-testing the common trends assumption</p></dd>
+
+
 <dt>Wpval</dt>
 <dd><p>the p-value of the Wald statistic for pre-testing the
 common trends assumption</p></dd>
+
+
 <dt>aggte</dt>
 <dd><p>an aggregate treatment effects object</p></dd>
+
+
 <dt>alp</dt>
 <dd><p>the significance level, default is 0.05</p></dd>
+
+
 <dt>DIDparams</dt>
 <dd><p>a <code><a href="DIDparams.html">DIDparams</a></code> object.  A way to optionally return the parameters
 of the call to <code><a href="att_gt.html">att_gt()</a></code> or <code><a href="conditional_did_pretest.html">conditional_did_pretest()</a></code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>MP object</p>
+    
+
+<p>MP object</p>
     </div>
 
   </div>
@@ -124,7 +151,7 @@ of the call to <code><a href="att_gt.html">att_gt()</a></code> or <code><a href=
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer></div>

@@ -40,7 +40,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.1</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.2.0.901</span>
       </span>
     </div>
 
@@ -79,7 +79,7 @@
       <h1 data-toc-skip>Getting Started with the did Package</h1>
                         <h4 data-toc-skip class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 data-toc-skip class="date">2022-01-27</h4>
+            <h4 data-toc-skip class="date">2022-07-19</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/did-basics.Rmd" class="external-link"><code>vignettes/did-basics.Rmd</code></a></small>
       <div class="hidden name"><code>did-basics.Rmd</code></div>
@@ -144,74 +144,76 @@
 </h3>
 <p><strong>Building the dataset</strong></p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># set seed so everything is reproducible</span>
-<span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1814</span><span class="op">)</span>
-
-<span class="co"># generate dataset with 4 time periods</span>
-<span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fl">4</span>
-
-<span class="co"># add dynamic effects</span>
-<span class="va">te.e</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="va">time.periods</span>
-
-<span class="co"># generate data set with these parameters</span>
-<span class="co"># here, we dropped all units who are treated in time period 1 as they do not help us recover ATT(g,t)'s.</span>
-<span class="va">dta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_sim_dataset.html">build_sim_dataset</a></span><span class="op">(</span><span class="op">)</span>
-
-<span class="co"># How many observations remained after dropping the ``always-treated'' units</span>
-<span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
-<span class="co">#&gt; [1] 27952</span>
-<span class="co">#This is what the data looks like</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span>
-<span class="co">#&gt;       G        X id period         Y treat</span>
-<span class="co">#&gt; 1     2 0.530541  1      1  4.795125     1</span>
-<span class="co">#&gt; 8001  2 0.530541  1      2  7.159789     1</span>
-<span class="co">#&gt; 16001 2 0.530541  1      3  8.482624     1</span>
-<span class="co">#&gt; 24001 2 0.530541  1      4 11.288278     1</span>
-<span class="co">#&gt; 2     4 1.123550  2      1  4.375698     1</span>
-<span class="co">#&gt; 8002  4 1.123550  2      2  9.285481     1</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># set seed so everything is reproducible</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1814</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># generate dataset with 4 time periods</span></span>
+<span><span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
+<span></span>
+<span><span class="co"># add dynamic effects</span></span>
+<span><span class="va">sp</span><span class="op">$</span><span class="va">te.e</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="va">time.periods</span></span>
+<span></span>
+<span><span class="co"># generate data set with these parameters</span></span>
+<span><span class="co"># here, we dropped all units who are treated in time period 1 as they do not help us recover ATT(g,t)'s.</span></span>
+<span><span class="va">dta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_sim_dataset.html">build_sim_dataset</a></span><span class="op">(</span><span class="va">sp</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># How many observations remained after dropping the ``always-treated'' units</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 15916</span></span>
+<span><span class="co">#This is what the data looks like</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dta</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 7</span></span></span>
+<span><span class="co">#&gt;       G      X    id cluster period     Y treat</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>     3 -<span style="color: #BB0000;">0.876</span>     1       5      1  5.56     1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>     3 -<span style="color: #BB0000;">0.876</span>     1       5      2  4.35     1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>     3 -<span style="color: #BB0000;">0.876</span>     1       5      3  7.13     1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>     3 -<span style="color: #BB0000;">0.876</span>     1       5      4  6.24     1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>     2 -<span style="color: #BB0000;">0.874</span>     2      36      1 -<span style="color: #BB0000;">3.66</span>     1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>     2 -<span style="color: #BB0000;">0.874</span>     2      36      2 -<span style="color: #BB0000;">1.27</span>     1</span></span></code></pre></div>
 <p><strong>Estimating Group-Time Average Treatment Effects</strong></p>
 <p>The main function to estimate group-time average treatment effects is the <code>att_gt</code> function. <a href="../reference/att_gt.html">See documentation here</a>. The most basic call to <code>att_gt</code> is given in the following</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># estimate group-time average treatment effects using att_gt method</span>
-<span class="va">example_attgt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,
-                        tname <span class="op">=</span> <span class="st">"period"</span>,
-                        idname <span class="op">=</span> <span class="st">"id"</span>,
-                        gname <span class="op">=</span> <span class="st">"G"</span>,
-                        xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,
-                        data <span class="op">=</span> <span class="va">dta</span>
-                        <span class="op">)</span>
-
-<span class="co"># summarize the results</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; att_gt(yname = "Y", tname = "period", idname = "id", gname = "G", </span>
-<span class="co">#&gt;     xformla = ~X, data = dta)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Group-Time Average Treatment Effects:</span>
-<span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;      2    2   0.9615     0.0608        0.8026      1.1205 *</span>
-<span class="co">#&gt;      2    3   2.0424     0.0590        1.8882      2.1966 *</span>
-<span class="co">#&gt;      2    4   3.0104     0.0608        2.8513      3.1694 *</span>
-<span class="co">#&gt;      3    2  -0.0392     0.0577       -0.1902      0.1117  </span>
-<span class="co">#&gt;      3    3   1.0877     0.0552        0.9434      1.2321 *</span>
-<span class="co">#&gt;      3    4   1.9938     0.0569        1.8450      2.1425 *</span>
-<span class="co">#&gt;      4    2  -0.0537     0.0587       -0.2071      0.0997  </span>
-<span class="co">#&gt;      4    3   0.0382     0.0530       -0.1004      0.1769  </span>
-<span class="co">#&gt;      4    4   0.9410     0.0542        0.7992      1.0828 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.79243</span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># estimate group-time average treatment effects using att_gt method</span></span>
+<span><span class="va">example_attgt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
+<span>                        tname <span class="op">=</span> <span class="st">"period"</span>,</span>
+<span>                        idname <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                        gname <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>                        xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,</span>
+<span>                        data <span class="op">=</span> <span class="va">dta</span></span>
+<span>                        <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># summarize the results</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; att_gt(yname = "Y", tname = "period", idname = "id", gname = "G", </span></span>
+<span><span class="co">#&gt;     xformla = ~X, data = dta)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Group-Time Average Treatment Effects:</span></span>
+<span><span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;      2    2   0.9209     0.0618        0.7523      1.0896 *</span></span>
+<span><span class="co">#&gt;      2    3   1.9875     0.0676        1.8029      2.1720 *</span></span>
+<span><span class="co">#&gt;      2    4   2.9552     0.0626        2.7845      3.1259 *</span></span>
+<span><span class="co">#&gt;      3    2  -0.0433     0.0634       -0.2163      0.1297  </span></span>
+<span><span class="co">#&gt;      3    3   1.1080     0.0675        0.9239      1.2922 *</span></span>
+<span><span class="co">#&gt;      3    4   2.0590     0.0649        1.8820      2.2360 *</span></span>
+<span><span class="co">#&gt;      4    2   0.0023     0.0643       -0.1732      0.1779  </span></span>
+<span><span class="co">#&gt;      4    3   0.0615     0.0651       -0.1162      0.2393  </span></span>
+<span><span class="co">#&gt;      4    4   0.9523     0.0696        0.7624      1.1423 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.60857</span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre></div>
 <p>The summary of <code>example_attgt</code> provides estimates of the group-time average treatment effects in the column labeled <code>att</code>, and the corresponding bootstrapped-based standard errors are given in the column <code>se</code>. The corresponding groups and times are given in the columns <code>group</code> and <code>time</code>. Under the no-anticipation and parallel trends assumptions, group-time average treatment effects are identified in periods when <span class="math inline">\(t \geq g\)</span> (i.e., post-treatment periods for each group). The table also reports pseudo group-time average treatment effects when <span class="math inline">\(t &lt; g\)</span> (i.e., pre-treatment periods for group <span class="math inline">\(g\)</span>). These can be used as a pre-test for the parallel trends assumption (as long as we assume that the no-anticipation assumption indeed holds). In addition, the results of a Wald pre-test of the parallel trends assumption is reported in the summary of the results. <a href="pre-testing.html">A much more detailed discussion of using the <strong>did</strong> package for pre-testing is available here</a>.</p>
 <p>Next, we’ll demonstrate how to plot group-time average treatment effects. To plot these, use the <code>ggdid</code> function which builds off the <code>ggplot2</code> package.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># plot the results</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">example_attgt</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># plot the results</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">example_attgt</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-5-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>The resulting figure is one that contains separate plots for each group. Notice in the figure above, the first plot is labeled “Group 2”, the second “Group 3”, etc. Then, the figure contains estimates of group-time average treatment effects for each group in each time period along with a simultaneous confidence interval. The red dots in the plots are pre-treatment pseudo group-time average treatment effects and are most useful for pre-testing the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects and should be interpreted as the average effect of participating in the treatment for units in a particular group at a particular point in time.</p>
 </div>
@@ -222,7 +224,7 @@
 <div class="section level4">
 <h4 id="adjustments-for-multiple-hypothesis-testing">Adjustments for Multiple Hypothesis Testing<a class="anchor" aria-label="anchor" href="#adjustments-for-multiple-hypothesis-testing"></a>
 </h4>
-<p>By default, the <code>did</code> package reports simultaneous confidence bands in plots of group-time average treatment effects with multiple time periods – these are confidence bands that are robust to multiple hypothesis testing [essentially, the idea here is to use the same standard errors but make an adjustment to the critical value to account for multiple testing – in the example in this section, the critical value for a 95% uniform confidence band is 2.61 instead of 1.96]. You can turn this off and compute analytical standard errors and corresponding figures with <em>pointwise</em> confidence intervals by setting <code>bstrap=FALSE, cband=FALSE</code> in the call to <code>att_gt</code>…<strong>but we don’t recommend it</strong>!</p>
+<p>By default, the <code>did</code> package reports simultaneous confidence bands in plots of group-time average treatment effects with multiple time periods – these are confidence bands that are robust to multiple hypothesis testing [essentially, the idea here is to use the same standard errors but make an adjustment to the critical value to account for multiple testing – in the example in this section, the critical value for a 95% uniform confidence band is 2.73 instead of 1.96]. You can turn this off and compute analytical standard errors and corresponding figures with <em>pointwise</em> confidence intervals by setting <code>bstrap=FALSE, cband=FALSE</code> in the call to <code>att_gt</code>…<strong>but we don’t recommend it</strong>!</p>
 </div>
 <div class="section level4">
 <h4 id="aggregating-group-time-average-treatment-effects">Aggregating group-time average treatment effects<a class="anchor" aria-label="anchor" href="#aggregating-group-time-average-treatment-effects"></a>
@@ -233,24 +235,24 @@
 </h5>
 <p>One idea that is likely to immediately come to mind is to just return a weighted average of all group-time average treatment effects with weights proportional to the group size. This is available by calling the <code>aggte</code> function with <code>type = simple</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">agg.simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"simple"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.simple</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = example_attgt, type = "simple")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  1.6557        0.0317     1.5935      1.7179 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">agg.simple</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"simple"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.simple</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = example_attgt, type = "simple")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  1.6583        0.0364     1.5869      1.7297 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre></div>
 <p>This sort of aggregation immediately avoids the negative weights issue that two-way fixed effects regressions can suffer from, but we often think that <em>there are better alternatives</em>. In particular, this <code>simple</code> aggregation tends to overweight the effect of early-treated groups simply because we observe more of them during post-treatment periods. We think there are likely to be better alternatives in most applications.</p>
 </div>
 <div class="section level5">
@@ -258,33 +260,33 @@
 </h5>
 <p>One of the most common alternative approaches is to aggregate group-time effects into an event study plot. Group-time average treatment effects can immediately be averaged into average treatment effects at different lengths of exposure to the treatment using the following code:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">agg.es</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.es</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = example_attgt, type = "dynamic")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
-<span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  2.0086        0.0364     1.9373      2.0798 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Dynamic Effects:</span>
-<span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -2  -0.0537     0.0585       -0.1984      0.0910  </span>
-<span class="co">#&gt;          -1  -0.0011     0.0325       -0.0814      0.0793  </span>
-<span class="co">#&gt;           0   0.9988     0.0280        0.9294      1.0681 *</span>
-<span class="co">#&gt;           1   2.0166     0.0413        1.9145      2.1186 *</span>
-<span class="co">#&gt;           2   3.0104     0.0652        2.8490      3.1717 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.es</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">agg.es</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.es</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = example_attgt, type = "dynamic")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span></span>
+<span><span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  1.9904        0.0377     1.9165      2.0644 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Dynamic Effects:</span></span>
+<span><span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;          -2   0.0023     0.0672       -0.1784      0.1830  </span></span>
+<span><span class="co">#&gt;          -1   0.0105     0.0402       -0.0975      0.1185  </span></span>
+<span><span class="co">#&gt;           0   0.9929     0.0302        0.9118      1.0740 *</span></span>
+<span><span class="co">#&gt;           1   2.0231     0.0438        1.9053      2.1410 *</span></span>
+<span><span class="co">#&gt;           2   2.9552     0.0628        2.7863      3.1241 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.es</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-7-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>In this figure, the x-axis is the length of exposure to the treatment. Length of exposure equal to 0 provides the average effect of participating in the treatment across groups in the time period when they first participate in the treatment (instantaneous treatment effect). Length of exposure equal to -1 corresponds to the time period before groups first participate in the treatment, and length of exposure equal to 1 corresponds to the first time period after initial exposure to the treatment.</p>
 <p>As we would expect based on the data that we generated, it looks like parallel trends holds in pre-treatment periods and the effect of participating in the treatment is increasing with length of exposure of the treatment.</p>
@@ -295,31 +297,31 @@
 </h5>
 <p>Another idea is to look at average effects specific to each group. It is also straightforward to aggregate group-time average treatment effects into group-specific average treatment effects using the following code:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">agg.gs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.gs</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = example_attgt, type = "group")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span>
-<span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  1.4801        0.0279     1.4254      1.5348 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Group Effects:</span>
-<span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;      2   2.0048     0.0487        1.8802      2.1294 *</span>
-<span class="co">#&gt;      3   1.5407     0.0510        1.4103      1.6711 *</span>
-<span class="co">#&gt;      4   0.9410     0.0532        0.8048      1.0772 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.gs</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">agg.gs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.gs</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = example_attgt, type = "group")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span></span>
+<span><span class="co">#&gt;    ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  1.488        0.0305     1.4283      1.5477 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Group Effects:</span></span>
+<span><span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;      2   1.9545     0.0509        1.8264      2.0827 *</span></span>
+<span><span class="co">#&gt;      3   1.5835     0.0568        1.4405      1.7265 *</span></span>
+<span><span class="co">#&gt;      4   0.9523     0.0656        0.7870      1.1176 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.gs</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-8-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>In this figure, the y-axis is categorized by group. The x-axis provides estimates of the average effect of participating in the treatment for units in each group averaged across all time periods after that group becomes treated. In our example, the average effect of participating in the treatment is largest for group 2 – this is because the effect of treatment here increases with length of exposure to the treatment, and they are the group that is exposed to the treatment for the longest.</p>
 <p>The Overall ATT averages the group-specific treatment effects across groups. In our view, <em>this parameter is a leading choice as an overall summary effect of participating in the treatment</em>. It is the average effect of participating in the treatment that was experienced across all units that participate in the treatment in any period. In this sense, it has a similar interpretation to the ATT in the textbook case where there are exactly two periods and two groups.</p>
@@ -329,31 +331,31 @@
 </h5>
 <p>Finally, the <code>did</code> package allows aggregations across different time periods. To do this</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">agg.ct</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"calendar"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.ct</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = example_attgt, type = "calendar")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on calendar time aggregation:  </span>
-<span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  1.4822        0.0317       1.42      1.5444 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Time Effects:</span>
-<span class="co">#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;     2   0.9615     0.0549        0.8321      1.0909 *</span>
-<span class="co">#&gt;     3   1.5353     0.0472        1.4240      1.6466 *</span>
-<span class="co">#&gt;     4   1.9498     0.0409        1.8534      2.0462 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.ct</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">agg.ct</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">example_attgt</span>, type <span class="op">=</span> <span class="st">"calendar"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">agg.ct</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = example_attgt, type = "calendar")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on calendar time aggregation:  </span></span>
+<span><span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  1.4808        0.0366      1.409      1.5526 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Time Effects:</span></span>
+<span><span class="co">#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;     2   0.9209     0.0662        0.7645      1.0774 *</span></span>
+<span><span class="co">#&gt;     3   1.5491     0.0508        1.4291      1.6692 *</span></span>
+<span><span class="co">#&gt;     4   1.9724     0.0501        1.8538      2.0910 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.ct</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-9-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>In this figure, the x-axis is the time period and the estimates along the y-axis are the average effect of participating in the treatment in a particular time period for all groups that participated in the treatment in that time period.</p>
 </div>
@@ -370,15 +372,15 @@
 </h4>
 <p>By default, the <code>did</code> package uses the group of units that never participate in the treatment as the control group. In this case, if there is no group that never participates, then the <code>did</code> package will drop the last period and set units that do not become treated until the last period as the control group (this will also throw a warning). The other option for the control group is to use the “not yet treated”. The “not yet treated” include the never treated as well as those units that, for a particular point in time, have not been treated yet (though they eventually become treated). This group is at least as large as the never treated group though it changes across time periods. To use the “not yet treated” as the control, set the option <code>control_group="notyettreated"</code>.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">example_attgt_altcontrol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,
-                                   tname <span class="op">=</span> <span class="st">"period"</span>,
-                                   idname <span class="op">=</span> <span class="st">"id"</span>,
-                                   gname <span class="op">=</span> <span class="st">"G"</span>,
-                                   xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,
-                                   data <span class="op">=</span> <span class="va">dta</span>,
-                                   control_group <span class="op">=</span> <span class="st">"notyettreated"</span>          
-                                   <span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt_altcontrol</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">example_attgt_altcontrol</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
+<span>                                   tname <span class="op">=</span> <span class="st">"period"</span>,</span>
+<span>                                   idname <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                                   gname <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>                                   xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,</span>
+<span>                                   data <span class="op">=</span> <span class="va">dta</span>,</span>
+<span>                                   control_group <span class="op">=</span> <span class="st">"notyettreated"</span>          </span>
+<span>                                   <span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt_altcontrol</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="repeated-cross-sections">Repeated cross sections<a class="anchor" aria-label="anchor" href="#repeated-cross-sections"></a>
@@ -395,15 +397,15 @@
 </h4>
 <p>The <code>did</code> package implements all the <span class="math inline">\(2 \times 2\)</span> DiD estimators that are in the <code>DRDID</code> package. By default, the <code>did</code> package uses “doubly robust” estimators that are based on first step linear regressions for the outcome variable and logit for the generalized propensity score. The other options are “ipw” for inverse probability weighting and “reg” for regression.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">example_attgt_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,
-                            tname <span class="op">=</span> <span class="st">"period"</span>,
-                            idname <span class="op">=</span> <span class="st">"id"</span>,
-                            gname <span class="op">=</span> <span class="st">"G"</span>,
-                            xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,
-                            data <span class="op">=</span> <span class="va">data</span>,
-                            est_method <span class="op">=</span> <span class="st">"reg"</span>
-                            <span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt_reg</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">example_attgt_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
+<span>                            tname <span class="op">=</span> <span class="st">"period"</span>,</span>
+<span>                            idname <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                            gname <span class="op">=</span> <span class="st">"G"</span>,</span>
+<span>                            xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,</span>
+<span>                            data <span class="op">=</span> <span class="va">data</span>,</span>
+<span>                            est_method <span class="op">=</span> <span class="st">"reg"</span></span>
+<span>                            <span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt_reg</span><span class="op">)</span></span></code></pre></div>
 <p>The argument <code>est_method</code> is also available to pass in a custom function for estimating DiD with 2 periods and 2 groups. <a href="../reference/att_gt.html">See its documentation for more details</a>. <strong>Fair Warning:</strong> this is very advanced use of the <code>did</code> package and should be done with caution.</p>
 </div>
 </div>
@@ -413,17 +415,17 @@
 </h2>
 <p>Next, we use a subset of data that comes from <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2020)</a>. This is a dataset that contains county-level teen employment rates from 2003-2007. The data can be loaded by</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></span></code></pre></div>
 <p><code>mpdta</code> is a balanced panel with 2500 observations. And the dataset looks like</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span>
-<span class="co">#&gt;     year countyreal     lpop     lemp first.treat treat</span>
-<span class="co">#&gt; 866 2003       8001 5.896761 8.461469        2007     1</span>
-<span class="co">#&gt; 841 2004       8001 5.896761 8.336870        2007     1</span>
-<span class="co">#&gt; 842 2005       8001 5.896761 8.340217        2007     1</span>
-<span class="co">#&gt; 819 2006       8001 5.896761 8.378161        2007     1</span>
-<span class="co">#&gt; 827 2007       8001 5.896761 8.487352        2007     1</span>
-<span class="co">#&gt; 937 2003       8019 2.232377 4.997212        2007     1</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></span>
+<span><span class="co">#&gt;     year countyreal     lpop     lemp first.treat treat</span></span>
+<span><span class="co">#&gt; 866 2003       8001 5.896761 8.461469        2007     1</span></span>
+<span><span class="co">#&gt; 841 2004       8001 5.896761 8.336870        2007     1</span></span>
+<span><span class="co">#&gt; 842 2005       8001 5.896761 8.340217        2007     1</span></span>
+<span><span class="co">#&gt; 819 2006       8001 5.896761 8.378161        2007     1</span></span>
+<span><span class="co">#&gt; 827 2007       8001 5.896761 8.487352        2007     1</span></span>
+<span><span class="co">#&gt; 937 2003       8019 2.232377 4.997212        2007     1</span></span></code></pre></div>
 <p><strong>Data Requirements</strong></p>
 <p>In particular applications, the dataset should look like this with the key parts being:</p>
 <ul>
@@ -441,48 +443,48 @@
 <p><strong>Side Comment:</strong> This is just an example of how to use our method in a real-world setup. To really evaluate the effect of the minimum wage on teen employment, one would need to be more careful along a number of dimensions. Thus, results displayed here should be interpreted as illustrative only.</p>
 <p>We’ll consider two cases. For the first case, we will not condition on any covariates. For the second, we will condition on the log of county population (in a “real” application, one might want to condition on more covariates).</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># estimate group-time average treatment effects without covariates</span>
-<span class="va">mw.attgt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,
-                   gname <span class="op">=</span> <span class="st">"first.treat"</span>,
-                   idname <span class="op">=</span> <span class="st">"countyreal"</span>,
-                   tname <span class="op">=</span> <span class="st">"year"</span>,
-                   xformla <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,
-                   data <span class="op">=</span> <span class="va">mpdta</span>,
-                   <span class="op">)</span>
-
-<span class="co"># summarize the results</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mw.attgt</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span>
-<span class="co">#&gt;     gname = "first.treat", xformla = ~1, data = mpdta)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Group-Time Average Treatment Effects:</span>
-<span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;   2004 2004  -0.0105     0.0253       -0.0798      0.0588  </span>
-<span class="co">#&gt;   2004 2005  -0.0704     0.0331       -0.1610      0.0201  </span>
-<span class="co">#&gt;   2004 2006  -0.1373     0.0391       -0.2444     -0.0301 *</span>
-<span class="co">#&gt;   2004 2007  -0.1008     0.0361       -0.1997     -0.0020 *</span>
-<span class="co">#&gt;   2006 2004   0.0065     0.0239       -0.0590      0.0720  </span>
-<span class="co">#&gt;   2006 2005  -0.0028     0.0193       -0.0555      0.0500  </span>
-<span class="co">#&gt;   2006 2006  -0.0046     0.0185       -0.0553      0.0461  </span>
-<span class="co">#&gt;   2006 2007  -0.0412     0.0212       -0.0992      0.0168  </span>
-<span class="co">#&gt;   2007 2004   0.0305     0.0158       -0.0127      0.0738  </span>
-<span class="co">#&gt;   2007 2005  -0.0027     0.0162       -0.0470      0.0416  </span>
-<span class="co">#&gt;   2007 2006  -0.0311     0.0172       -0.0783      0.0161  </span>
-<span class="co">#&gt;   2007 2007  -0.0261     0.0162       -0.0703      0.0182  </span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.16812</span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span>
-
-<span class="co"># plot the results</span>
-<span class="co"># set ylim so that all plots have the same scale along y-axis</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.attgt</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># estimate group-time average treatment effects without covariates</span></span>
+<span><span class="va">mw.attgt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,</span>
+<span>                   gname <span class="op">=</span> <span class="st">"first.treat"</span>,</span>
+<span>                   idname <span class="op">=</span> <span class="st">"countyreal"</span>,</span>
+<span>                   tname <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>                   xformla <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,</span>
+<span>                   data <span class="op">=</span> <span class="va">mpdta</span>,</span>
+<span>                   <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># summarize the results</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mw.attgt</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; att_gt(yname = "lemp", tname = "year", idname = "countyreal", </span></span>
+<span><span class="co">#&gt;     gname = "first.treat", xformla = ~1, data = mpdta)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Group-Time Average Treatment Effects:</span></span>
+<span><span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;   2004 2004  -0.0105     0.0248       -0.0777      0.0567  </span></span>
+<span><span class="co">#&gt;   2004 2005  -0.0704     0.0319       -0.1566      0.0158  </span></span>
+<span><span class="co">#&gt;   2004 2006  -0.1373     0.0399       -0.2453     -0.0292 *</span></span>
+<span><span class="co">#&gt;   2004 2007  -0.1008     0.0365       -0.1995     -0.0021 *</span></span>
+<span><span class="co">#&gt;   2006 2004   0.0065     0.0225       -0.0543      0.0674  </span></span>
+<span><span class="co">#&gt;   2006 2005  -0.0028     0.0203       -0.0577      0.0522  </span></span>
+<span><span class="co">#&gt;   2006 2006  -0.0046     0.0179       -0.0529      0.0437  </span></span>
+<span><span class="co">#&gt;   2006 2007  -0.0412     0.0202       -0.0959      0.0135  </span></span>
+<span><span class="co">#&gt;   2007 2004   0.0305     0.0156       -0.0117      0.0727  </span></span>
+<span><span class="co">#&gt;   2007 2005  -0.0027     0.0160       -0.0460      0.0405  </span></span>
+<span><span class="co">#&gt;   2007 2006  -0.0311     0.0177       -0.0789      0.0167  </span></span>
+<span><span class="co">#&gt;   2007 2007  -0.0261     0.0172       -0.0725      0.0204  </span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; P-value for pre-test of parallel trends assumption:  0.16812</span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
+<span></span>
+<span><span class="co"># plot the results</span></span>
+<span><span class="co"># set ylim so that all plots have the same scale along y-axis</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.attgt</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-14-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>There are a few things to notice in this case</p>
 <ul>
@@ -490,77 +492,77 @@
 <li><p>There is some evidence of negative effects of the minimum wage on employment. Two group-time average treatment effects are negative and statistically different from 0. These results also suggest that it may be helpful to aggregate the group-time average treatment effects.</p></li>
 </ul>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># aggregate the group-time average treatment effects</span>
-<span class="va">mw.dyn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">mw.attgt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mw.dyn</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = mw.attgt, type = "dynamic")</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
-<span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0772        0.0203     -0.117     -0.0375 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Dynamic Effects:</span>
-<span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -3   0.0305     0.0143       -0.0054      0.0664  </span>
-<span class="co">#&gt;          -2  -0.0006     0.0128       -0.0326      0.0315  </span>
-<span class="co">#&gt;          -1  -0.0245     0.0141       -0.0598      0.0108  </span>
-<span class="co">#&gt;           0  -0.0199     0.0117       -0.0493      0.0095  </span>
-<span class="co">#&gt;           1  -0.0510     0.0168       -0.0931     -0.0088 *</span>
-<span class="co">#&gt;           2  -0.1373     0.0385       -0.2338     -0.0407 *</span>
-<span class="co">#&gt;           3  -0.1008     0.0357       -0.1903     -0.0113 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># aggregate the group-time average treatment effects</span></span>
+<span><span class="va">mw.dyn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">mw.attgt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mw.dyn</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = mw.attgt, type = "dynamic")</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span></span>
+<span><span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  -0.0772        0.0205    -0.1174     -0.0371 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Dynamic Effects:</span></span>
+<span><span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;          -3   0.0305     0.0158       -0.0097      0.0707  </span></span>
+<span><span class="co">#&gt;          -2  -0.0006     0.0123       -0.0320      0.0308  </span></span>
+<span><span class="co">#&gt;          -1  -0.0245     0.0160       -0.0651      0.0162  </span></span>
+<span><span class="co">#&gt;           0  -0.0199     0.0123       -0.0511      0.0112  </span></span>
+<span><span class="co">#&gt;           1  -0.0510     0.0166       -0.0932     -0.0087 *</span></span>
+<span><span class="co">#&gt;           2  -0.1373     0.0385       -0.2351     -0.0394 *</span></span>
+<span><span class="co">#&gt;           3  -0.1008     0.0344       -0.1882     -0.0134 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-15-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>These continue to be simultaneous confidence bands for dynamic effects. The results are broadly similar to the ones from the group-time average treatment effects: one fails to reject parallel trends in pre-treatment periods and it looks like somewhat negative effects of the minimum wage on youth employment.</p>
 <p>One potential issue with these dynamic effect estimators is that the composition of the groups changes with different lengths of exposure in the event study plots. For example, for the group of states who increased their minimum wage in 2007, we can only identify the instantaneous average effect of the minimum wage (<span class="math inline">\(e=0\)</span>), whereas for states that raised their minimum wage in 2004 (2006), we can identify the average effect of the minimum wage on event-times <span class="math inline">\(e=0,1,2,3\)</span> (<span class="math inline">\(e=0,1\)</span>). When computing the event-study plot for <span class="math inline">\(e=0\)</span>, we would aggregate the effects for all three groups, but this is not the case when <span class="math inline">\(e=1,2,3\)</span>. If the effects of the minimum wage are systematically different across groups (here, there is not much evidence of this as the effect for all groups seems to be close to 0 on impact and perhaps becoming more negative over time), then this can lead to confounding dynamics and selective treatment timing among different groups.</p>
 <p>One way to combat this is to balance the sample by (i) only including groups that are exposed to the treatment for at least a certain number of time periods and (ii) only look at dynamic effects in those time periods. In the <code>did</code> package, one can do this by specifying the <code>balance_e</code> option. Here, we set <code>balance_e = 1</code> – what this does is to only consider groups of states that are treated in 2004 and 2006 (so we can compute event-study-type parameters for them for <span class="math inline">\(e=0,1\)</span>), drops the group treated in 2007 (as we can not compute the event-study-type parameter with <span class="math inline">\(e=1\)</span> for this group)), and then only looks at instantaneous average effects and the average effect one period after states raised the minimum wage.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mw.dyn.balance</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">mw.attgt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span>, balance_e<span class="op">=</span><span class="fl">1</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mw.dyn.balance</span><span class="op">)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Call:</span>
-<span class="co">#&gt; aggte(MP = mw.attgt, type = "dynamic", balance_e = 1)</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span>
-<span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span>
-<span class="co">#&gt;  -0.0288        0.0127    -0.0536     -0.0039 *</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Dynamic Effects:</span>
-<span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span>
-<span class="co">#&gt;          -2   0.0065     0.0241       -0.0537      0.0667  </span>
-<span class="co">#&gt;          -1  -0.0028     0.0192       -0.0508      0.0453  </span>
-<span class="co">#&gt;           0  -0.0066     0.0144       -0.0425      0.0294  </span>
-<span class="co">#&gt;           1  -0.0510     0.0178       -0.0953     -0.0066 *</span>
-<span class="co">#&gt; ---</span>
-<span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span>
-<span class="co">#&gt; </span>
-<span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span>
-<span class="co">#&gt; Estimation Method:  Doubly Robust</span>
-<span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn.balance</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mw.dyn.balance</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">mw.attgt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span>, balance_e<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mw.dyn.balance</span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Call:</span></span>
+<span><span class="co">#&gt; aggte(MP = mw.attgt, type = "dynamic", balance_e = 1)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. &lt;https://doi.org/10.1016/j.jeconom.2020.12.001&gt;, &lt;https://arxiv.org/abs/1803.09015&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span></span>
+<span><span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
+<span><span class="co">#&gt;  -0.0288        0.0138    -0.0558     -0.0017 *</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Dynamic Effects:</span></span>
+<span><span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
+<span><span class="co">#&gt;          -2   0.0065     0.0247       -0.0523      0.0653  </span></span>
+<span><span class="co">#&gt;          -1  -0.0028     0.0202       -0.0509      0.0454  </span></span>
+<span><span class="co">#&gt;           0  -0.0066     0.0151       -0.0426      0.0294  </span></span>
+<span><span class="co">#&gt;           1  -0.0510     0.0173       -0.0922     -0.0097 *</span></span>
+<span><span class="co">#&gt; ---</span></span>
+<span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
+<span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn.balance</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>,<span class="fl">.3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="did-basics_files/figure-html/unnamed-chunk-16-1.png" width="90%" style="display: block; margin: auto;"></p>
 <p>Finally, we can run all the same results including a covariate. In this application the results turn out to be nearly identical, and here we provide just the code for estimating the group-time average treatment effects while including covariates. The other steps are otherwise the same.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="va">mw.attgt.X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,
-                   gname <span class="op">=</span> <span class="st">"first.treat"</span>,
-                   idname <span class="op">=</span> <span class="st">"countyreal"</span>,
-                   tname <span class="op">=</span> <span class="st">"year"</span>,
-                   xformla <span class="op">=</span> <span class="op">~</span><span class="va">lpop</span>,
-                   data <span class="op">=</span> <span class="va">mpdta</span>,
-                   <span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mw.attgt.X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"lemp"</span>,</span>
+<span>                   gname <span class="op">=</span> <span class="st">"first.treat"</span>,</span>
+<span>                   idname <span class="op">=</span> <span class="st">"countyreal"</span>,</span>
+<span>                   tname <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>                   xformla <span class="op">=</span> <span class="op">~</span><span class="va">lpop</span>,</span>
+<span>                   data <span class="op">=</span> <span class="va">mpdta</span>,</span>
+<span>                   <span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="common-issues-with-the-did-package">Common Issues with the did package<a class="anchor" aria-label="anchor" href="#common-issues-with-the-did-package"></a>
@@ -595,7 +597,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.2.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
 </div>
 
       </footer>

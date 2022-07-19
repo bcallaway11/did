@@ -16,8 +16,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-
-
 # Introduction
 
 This vignette discusses the basics of using Difference-in-Differences (DiD) designs to identify and estimate the average effect of participating in a treatment with a particular focus on tools from the **did** package. The background article for it is [Callaway and Sant'Anna (2021), "Difference-in-Differences with Multiple Time Periods"](https://doi.org/10.1016/j.jeconom.2020.12.001).
