@@ -4,7 +4,7 @@
 \alias{mboot}
 \title{Multiplier Bootstrap}
 \usage{
-mboot(inf.func, DIDparams)
+mboot(inf.func, DIDparams, pl = FALSE, cores = 1)
 }
 \arguments{
 \item{inf.func}{an influence function}

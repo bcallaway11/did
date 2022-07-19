@@ -38,9 +38,7 @@
 #' @param print_details Whether or not to show details/progress of computations.
 #'   Default is `FALSE`.
 #' @param pl Whether or not to use parallel processing
-#'  (not implemented yet)
 #' @param cores The number of cores to use for parallel processing
-#'  (not implemented yet)
 #' @param est_method the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 #' approach in the `DRDID` package.  Other built-in methods
 #' include "ipw" for inverse probability weighting and "reg" for
@@ -258,7 +256,7 @@ att_gt <- function(yname,
   # bootstrap variance matrix
   if (bstrap) {
 
-    bout <- mboot(inffunc, DIDparams=dp)
+    bout <- mboot(inffunc, DIDparams=dp, pl=pl, cores=cores)
     bres <- bout$bres
     
     if(length(zero_na_sd_entry)>0) {

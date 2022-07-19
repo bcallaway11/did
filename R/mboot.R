@@ -14,7 +14,7 @@
 #' \item{crit.val}{a critical value for computing uniform confidence bands}
 #'
 #' @export
-mboot <- function(inf.func, DIDparams) {
+mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
   # setup needed variables
   data <- as.data.frame(DIDparams$data)
@@ -76,13 +76,13 @@ mboot <- function(inf.func, DIDparams) {
   # multiplier bootstrap
   n_clusters <- n
   if (length(clustervars)==0) {
-    bres <- sqrt(n)*BMisc::multiplier_bootstrap(inf.func, biters)
+    bres <- sqrt(n) * run_multiplier_bootstrap(inf.func, biters, pl, cores)
   } else {
     n_clusters <- length(unique(data[,clustervars]))
     cluster <- unique(dta[,c(idname,clustervars)])[,2]
     cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
-    bres <- sqrt(n_clusters)*BMisc::multiplier_bootstrap(cluster_mean_if, biters)
+    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_mean_if, biters, pl, cores)
   }
 
 
@@ -116,4 +116,28 @@ mboot <- function(inf.func, DIDparams) {
   #se[se==0] <- NA
 
   list(bres = bres, V = V, se = se, crit.val = crit.val)
+}
+
+run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
+  ngroups = ceiling(biters/cores)
+  chunks = rep(ngroups, cores)
+  # Round down so you end up with the right number of biters
+  chunks[1] = chunks[1] + biters - sum(chunks)
+
+  n <- nrow(inf.func)
+  parallel.function <- function(biters) {
+    BMisc::multiplier_bootstrap(inf.func, biters)
+  }
+  # From tests, this is about where it becomes worth it to parallelize
+  if(n > 2500 & pl == TRUE & cores > 1) {
+    results = parallel::mclapply(
+      chunks,
+      FUN = parallel.function,
+      mc.cores = cores
+    )
+    results = do.call(rbind, results)
+  } else {
+    results = BMisc::multiplier_bootstrap(inf.func, biters)
+  }
+  return(results)
 }
