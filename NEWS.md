@@ -1,4 +1,4 @@
-# did 2.2.0
+# did 2.1.2
 
   * Added wrapper function for HonestDiD package
   
