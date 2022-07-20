@@ -19,7 +19,7 @@ uniform confidence bands."><meta property="og:image" content="/logo.png"><!-- ma
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.2.0.901</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.2</span>
       </span>
     </div>
 
@@ -60,7 +60,7 @@ uniform confidence bands.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">mboot</span><span class="op">(</span><span class="va">inf.func</span>, <span class="va">DIDparams</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">mboot</span><span class="op">(</span><span class="va">inf.func</span>, <span class="va">DIDparams</span>, pl <span class="op">=</span> <span class="cn">FALSE</span>, cores <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -71,6 +71,16 @@ uniform confidence bands.</p>
 
 <dt>DIDparams</dt>
 <dd><p>DIDparams object</p></dd>
+
+
+<dt>pl</dt>
+<dd><p>whether or not to use parallel processing in the multiplier
+bootstrap, default=FALSE</p></dd>
+
+
+<dt>cores</dt>
+<dd><p>the number of cores to use with parallel processing,
+default=1</p></dd>
 
 </dl></div>
     <div id="value">
@@ -104,7 +114,7 @@ uniform confidence bands.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

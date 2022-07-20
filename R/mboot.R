@@ -6,6 +6,10 @@
 #'
 #' @param inf.func an influence function
 #' @param DIDparams DIDparams object
+#' @param pl whether or not to use parallel processing in the multiplier
+#'  bootstrap, default=FALSE
+#' @param cores the number of cores to use with parallel processing,
+#'  default=1
 #'
 #' @return list with elements
 #' \item{bres}{results from each bootstrap iteration}

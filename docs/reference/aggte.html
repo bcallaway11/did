@@ -20,7 +20,7 @@ and "calendar."'><meta property="og:image" content="/logo.png"><!-- mathjax --><
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.2.0.901</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.2</span>
       </span>
     </div>
 
@@ -167,7 +167,8 @@ aggregation</p>
     
 
 
-<p>Initial ATT(g,t) estimates from <code><a href="att_gt.html">att_gt()</a></code></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></span>
+<p>Initial ATT(g,t) estimates from <code><a href="att_gt.html">att_gt()</a></code></p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mpdta</span><span class="op">)</span></span>
 <span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname<span class="op">=</span><span class="st">"lemp"</span>,</span>
 <span>               tname<span class="op">=</span><span class="st">"year"</span>,</span>
 <span>               idname<span class="op">=</span><span class="st">"countyreal"</span>,</span>
@@ -175,7 +176,8 @@ aggregation</p>
 <span>               xformla<span class="op">=</span><span class="cn">NULL</span>,</span>
 <span>               data<span class="op">=</span><span class="va">mpdta</span><span class="op">)</span></span></code></pre><p></p></div>
 <p>You can aggregate the ATT(g,t) in many ways.</p>
-<p><strong>Overall ATT:</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"simple"</span><span class="op">)</span></span>
+<p><strong>Overall ATT:</strong></p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"simple"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
 <span><span class="co">#&gt; aggte(MP = out, type = "simple")</span></span>
@@ -184,7 +186,7 @@ aggregation</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;    ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
-<span><span class="co">#&gt;  -0.04        0.0116    -0.0628     -0.0171 *</span></span>
+<span><span class="co">#&gt;  -0.04        0.0119    -0.0632     -0.0167 *</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; ---</span></span>
@@ -192,7 +194,8 @@ aggregation</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
-<p><strong>Dynamic ATT (Event-Study):</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
+<p><strong>Dynamic ATT (Event-Study):</strong></p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
 <span><span class="co">#&gt; aggte(MP = out, type = "dynamic")</span></span>
@@ -202,24 +205,25 @@ aggregation</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Overall summary of ATT's based on event-study/dynamic aggregation:  </span></span>
 <span><span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
-<span><span class="co">#&gt;  -0.0772        0.0208     -0.118     -0.0365 *</span></span>
+<span><span class="co">#&gt;  -0.0772        0.0203    -0.1171     -0.0374 *</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Dynamic Effects:</span></span>
 <span><span class="co">#&gt;  Event time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
-<span><span class="co">#&gt;          -3   0.0305     0.0152       -0.0098      0.0708  </span></span>
-<span><span class="co">#&gt;          -2  -0.0006     0.0138       -0.0371      0.0359  </span></span>
-<span><span class="co">#&gt;          -1  -0.0245     0.0140       -0.0615      0.0126  </span></span>
-<span><span class="co">#&gt;           0  -0.0199     0.0118       -0.0511      0.0113  </span></span>
-<span><span class="co">#&gt;           1  -0.0510     0.0173       -0.0967     -0.0053 *</span></span>
-<span><span class="co">#&gt;           2  -0.1373     0.0367       -0.2345     -0.0401 *</span></span>
-<span><span class="co">#&gt;           3  -0.1008     0.0375       -0.2002     -0.0014 *</span></span>
+<span><span class="co">#&gt;          -3   0.0305     0.0157       -0.0094      0.0704  </span></span>
+<span><span class="co">#&gt;          -2  -0.0006     0.0138       -0.0357      0.0346  </span></span>
+<span><span class="co">#&gt;          -1  -0.0245     0.0148       -0.0621      0.0132  </span></span>
+<span><span class="co">#&gt;           0  -0.0199     0.0128       -0.0525      0.0126  </span></span>
+<span><span class="co">#&gt;           1  -0.0510     0.0182       -0.0972     -0.0047 *</span></span>
+<span><span class="co">#&gt;           2  -0.1373     0.0403       -0.2398     -0.0347 *</span></span>
+<span><span class="co">#&gt;           3  -0.1008     0.0353       -0.1906     -0.0110 *</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
-<p><strong>ATT for each group:</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span></span>
+<p><strong>ATT for each group:</strong></p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"group"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
 <span><span class="co">#&gt; aggte(MP = out, type = "group")</span></span>
@@ -229,20 +233,21 @@ aggregation</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Overall summary of ATT's based on group/cohort aggregation:  </span></span>
 <span><span class="co">#&gt;     ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
-<span><span class="co">#&gt;  -0.031        0.0123    -0.0552     -0.0068 *</span></span>
+<span><span class="co">#&gt;  -0.031        0.0119    -0.0543     -0.0077 *</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Group Effects:</span></span>
 <span><span class="co">#&gt;  Group Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
-<span><span class="co">#&gt;   2004  -0.0797     0.0302       -0.1463     -0.0132 *</span></span>
-<span><span class="co">#&gt;   2006  -0.0229     0.0174       -0.0612      0.0154  </span></span>
-<span><span class="co">#&gt;   2007  -0.0261     0.0173       -0.0643      0.0121  </span></span>
+<span><span class="co">#&gt;   2004  -0.0797     0.0288       -0.1447     -0.0148 *</span></span>
+<span><span class="co">#&gt;   2006  -0.0229     0.0172       -0.0618      0.0160  </span></span>
+<span><span class="co">#&gt;   2007  -0.0261     0.0165       -0.0633      0.0112  </span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span></code></pre><p></p></div>
-<p><strong>ATT for each calendar year:</strong></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"calendar"</span><span class="op">)</span></span>
+<p><strong>ATT for each calendar year:</strong></p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">out</span>, type <span class="op">=</span> <span class="st">"calendar"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
 <span><span class="co">#&gt; aggte(MP = out, type = "calendar")</span></span>
@@ -252,15 +257,15 @@ aggregation</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Overall summary of ATT's based on calendar time aggregation:  </span></span>
 <span><span class="co">#&gt;      ATT    Std. Error     [ 95%  Conf. Int.]  </span></span>
-<span><span class="co">#&gt;  -0.0417        0.0164    -0.0739     -0.0095 *</span></span>
+<span><span class="co">#&gt;  -0.0417        0.0173    -0.0756     -0.0078 *</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Time Effects:</span></span>
 <span><span class="co">#&gt;  Time Estimate Std. Error [95% Simult.  Conf. Band]  </span></span>
-<span><span class="co">#&gt;  2004  -0.0105     0.0235       -0.0684      0.0474  </span></span>
-<span><span class="co">#&gt;  2005  -0.0704     0.0295       -0.1430      0.0021  </span></span>
-<span><span class="co">#&gt;  2006  -0.0488     0.0205       -0.0993      0.0016  </span></span>
-<span><span class="co">#&gt;  2007  -0.0371     0.0139       -0.0714     -0.0028 *</span></span>
+<span><span class="co">#&gt;  2004  -0.0105     0.0245       -0.0669      0.0459  </span></span>
+<span><span class="co">#&gt;  2005  -0.0704     0.0332       -0.1469      0.0061  </span></span>
+<span><span class="co">#&gt;  2006  -0.0488     0.0201       -0.0951     -0.0025 *</span></span>
+<span><span class="co">#&gt;  2007  -0.0371     0.0142       -0.0697     -0.0044 *</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -280,7 +285,7 @@ aggregation</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.5.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
 </div>
 
       </footer></div>

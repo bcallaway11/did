@@ -10,4 +10,5 @@
 #' @import ggpubr
 #' @import BMisc
 #' @importFrom tidyr gather
+#' @importFrom methods is
 NULL

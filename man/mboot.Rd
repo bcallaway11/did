@@ -10,6 +10,12 @@ mboot(inf.func, DIDparams, pl = FALSE, cores = 1)
 \item{inf.func}{an influence function}
 
 \item{DIDparams}{DIDparams object}
+
+\item{pl}{whether or not to use parallel processing in the multiplier
+bootstrap, default=FALSE}
+
+\item{cores}{the number of cores to use with parallel processing,
+default=1}
 }
 \value{
 list with elements

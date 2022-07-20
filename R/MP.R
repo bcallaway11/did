@@ -110,7 +110,7 @@ summary.MP <- function(object, ...) {
 
   # estimation method text
   est_method <- mpobj$DIDparams$est_method
-  if (class(est_method)=="character") {
+  if ( is(est_method,"character") ) {
     est_method_text <- est_method
     if (est_method == "dr") {
       est_method_text <- "Doubly Robust"
