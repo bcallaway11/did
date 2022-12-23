@@ -65,7 +65,11 @@ honest_did.AGGTEobj <- function(es,
   n <- nrow(es_inf_func)
   V <- t(es_inf_func) %*% es_inf_func / (n*n) 
 
-
+  #Remove the coefficient normalized to zero
+  referencePeriodIndex <- which(es$egt == -1)
+  V <- V[-referencePeriodIndex,-referencePeriodIndex]
+  beta <- es$att.egt[-referencePeriodIndex]
+  
   nperiods <- nrow(V)
   npre <- sum(1*(es$egt < 0))
   npost <- nperiods - npre
