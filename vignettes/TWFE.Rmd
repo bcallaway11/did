@@ -135,7 +135,7 @@ plot1 <- data %>%
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 12))  +
   ggtitle("One draw of the DGP with homogeneous effects across cohorts \n and with all groups being eventually treated")+
-  theme(plot.title = element_text(hjust = 0.5, size=12))
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
 
 plot1
 
@@ -223,7 +223,7 @@ ES_plot_classical <- data_classical %>%
         axis.text = element_text(size = 12)) +
   ggtitle("TWFE event-study regression with binned end-points")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -309,7 +309,7 @@ ES_plot_sat <- data_sat %>%
         axis.text = element_text(size = 12)) +
   ggtitle("TWFE event-study regression with 'all' leads and lags")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
         
@@ -340,7 +340,7 @@ run_CS <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group= "notyettreated",
+                     control_group = "notyettreated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)
@@ -378,7 +378,7 @@ ES_plot_CS <- data_CS %>%
         axis.text = element_text(size = 12)) +
   ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated")+
     scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -487,7 +487,7 @@ plot2 <- data %>%
   scale_color_manual(labels = c("1986", "1992", "1998", "Never-treated"),
                      values = c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3"))+
   ggtitle("One draw of the DGP with homogeneous effects across cohorts \n and with a never-treated group")+
-  theme(plot.title = element_text(hjust = 0.5, size=12))
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
 
 plot2 
 
@@ -568,7 +568,7 @@ ES_plot_classical_never <- data_classical_never %>%
         axis.text = element_text(size = 12))+
   ggtitle("TWFE event-study regression with binned end-points")+
     scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -650,7 +650,7 @@ ES_plot_sat_never <- data_sat_never %>%
         axis.text = element_text(size = 12))+
   ggtitle("TWFE event-study regression with 'all' leads and lags")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -664,7 +664,7 @@ ES_plot_sat_never
 As the result above shows, when you have a never-treated group, treatment effects are homogeneous across cohorts, and you do not bin event-times, TWFE event-study regressions do recover the true underlying dynamic treatment effects. 
 
 
-### Using the Callaway and Sant'Anna (202) framework
+### Using the Callaway and Sant'Anna (2021) framework
 
 Next, we show that the procedure put forward by Callaway and Sant'Anna (2021) and implemented in our **did** can also be used in this setup.
 
@@ -686,7 +686,7 @@ run_CS_never <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group= "never_treated",
+                     control_group = "never_treated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)
@@ -724,7 +724,7 @@ ES_plot_CS_never <- data_CS_never %>%
         axis.text = element_text(size = 12))+
   ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Never-treated units")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -751,7 +751,7 @@ run_CS_ny <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group= "notyettreated",
+                     control_group = "notyettreated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)
@@ -789,7 +789,7 @@ ES_plot_CS_ny <- data_CS_ny %>%
         axis.text = element_text(size = 12))+
   ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated units")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -895,7 +895,7 @@ plot3 <- data %>%
   scale_color_manual(labels = c("1986", "1992", "1998", "Never-treated"),
                      values = c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3")) +
   ggtitle("One draw of the DGP with heterogeneous treatment effect dynamics across cohorts \n and with a never-treated group")+
-  theme(plot.title = element_text(hjust = 0.5, size=12))
+  theme(plot.title = element_text(hjust = 0.5, size = 12))
 
 plot3 
 
@@ -976,7 +976,7 @@ ES_plot_classical_never_het <- data_classical_never_het %>%
         axis.text = element_text(size = 12))+
   ggtitle("TWFE event-study regression with binned end-points")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -1058,7 +1058,7 @@ ES_plot_sat_never_het <- data_sat_never_het %>%
         axis.text = element_text(size = 12))+
   ggtitle("TWFE event-study regression with 'all' leads and lags")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -1090,7 +1090,7 @@ run_CS_never_het <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group= "never_treated",
+                     control_group = "never_treated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)
@@ -1128,7 +1128,7 @@ ES_plot_CS_never_het <- data_CS_never_het %>%
         axis.text = element_text(size = 12))+
   ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Never-treated units")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
@@ -1156,7 +1156,7 @@ run_CS_ny_het <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group= "notyettreated",
+                     control_group = "notyettreated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)
@@ -1194,7 +1194,7 @@ ES_plot_CS_ny_het <- data_CS_ny_het %>%
         axis.text = element_text(size = 12))+
   ggtitle("Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated units")+
   scale_color_manual(values = colors) + 
-  theme(plot.title = element_text(hjust = 0.5, size=12),
+  theme(plot.title = element_text(hjust = 0.5, size = 12),
         legend.position = "bottom", 
         legend.title = element_blank())
 
