@@ -288,7 +288,7 @@ mw.attgt <- att_gt(yname = "lemp",
                    idname = "countyreal",
                    tname = "year",
                    xformla = ~1,
-                   data = mpdta,
+                   data = mpdta
                    )
 
 # summarize the results
@@ -296,7 +296,7 @@ summary(mw.attgt)
 
 # plot the results
 # set ylim so that all plots have the same scale along y-axis
-ggdid(mw.attgt, ylim = c(-.3,.3))
+ggdid(mw.attgt, ylim = c(-.3, .3))
 ```
 
 There are a few things to notice in this case
@@ -309,7 +309,7 @@ There are a few things to notice in this case
 # aggregate the group-time average treatment effects
 mw.dyn <- aggte(mw.attgt, type = "dynamic")
 summary(mw.dyn)
-ggdid(mw.dyn, ylim = c(-.3,.3))
+ggdid(mw.dyn, ylim = c(-.3, .3))
 ```
 
 These continue to be simultaneous confidence bands for dynamic effects. The results are broadly similar to the ones from the group-time average treatment effects:  one fails to reject parallel trends in pre-treatment periods and it looks like somewhat negative effects of the minimum wage on youth employment.
@@ -320,21 +320,21 @@ One way to combat this is to balance the sample by (i) only including groups tha
 are treated in 2004 and 2006 (so we can compute event-study-type parameters for them for $e=0,1$), drops the group treated in 2007 (as we can not compute the event-study-type parameter with $e=1$ for this group)), and then only looks at instantaneous average effects and the average effect one period after states raised the minimum wage.
 
 ```{r,  fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
-mw.dyn.balance <- aggte(mw.attgt, type = "dynamic", balance_e=1)
+mw.dyn.balance <- aggte(mw.attgt, type = "dynamic", balance_e = 1)
 summary(mw.dyn.balance)
-ggdid(mw.dyn.balance, ylim = c(-.3,.3))
+ggdid(mw.dyn.balance, ylim = c(-.3, .3))
 ```
 
 Finally, we can run all the same results including a covariate.  In this application the results turn out to be nearly identical, and here we provide just the code for estimating the group-time average treatment effects while including covariates.  The other steps are otherwise the same.
 
 ```{r eval=FALSE}
 mw.attgt.X <- att_gt(yname = "lemp",
-                   gname = "first.treat",
-                   idname = "countyreal",
-                   tname = "year",
-                   xformla = ~lpop,
-                   data = mpdta,
-                   )
+                     gname = "first.treat",
+                     idname = "countyreal",
+                     tname = "year",
+                     xformla = ~lpop,
+                     data = mpdta
+                     )
 ```
 
 

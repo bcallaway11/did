@@ -101,8 +101,8 @@ Dtl <- sapply(-(time.periods-1):(time.periods-2), function(l) {
     dtl
 })
 Dtl <- as.data.frame(Dtl)
-cnames1 <- paste0("Dtmin",(time.periods-1):1)
-colnames(Dtl) <- c(cnames1, paste0("Dt",0:(time.periods-2)))
+cnames1 <- paste0("Dtmin", (time.periods-1):1)
+colnames(Dtl) <- c(cnames1, paste0("Dt", 0:(time.periods-2)))
 data <- cbind.data.frame(data, Dtl)
 row.names(data) <- NULL
 
@@ -118,8 +118,8 @@ library(plm)
 # run event study regression
 # normalize effect to be 0 in pre-treatment period
 es <- plm(Y ~ Dtmin3 + Dtmin2 + Dt0 + Dt1 + Dt2, 
-          data=data, model="within", effect="twoways",
-          index=c("id","period"))
+          data = data, model = "within", effect = "twoways",
+          index = c("id", "period"))
 
 summary(es)
 
@@ -141,11 +141,11 @@ cmat <- data.frame(coefs=coefs, ses=ses, exposure=exposure)
 
 library(ggplot2)
 
-ggplot(data=cmat, mapping=aes(y=coefs, x=exposure)) +
-  geom_line(linetype="dashed") +
+ggplot(data = cmat, mapping = aes(y = coefs, x = exposure)) +
+  geom_line(linetype = "dashed") +
   geom_point() + 
-  geom_errorbar(aes(ymin=(coefs-1.96*ses), ymax=(coefs+1.96*ses)), width=0.2) +
-  ylim(c(-2,5)) +
+  geom_errorbar(aes(ymin = (coefs-1.96*ses), ymax = (coefs+1.96*ses)), width = 0.2) +
+  ylim(c(-2, 5)) +
   theme_bw()
 ```
 
@@ -154,13 +154,13 @@ You will notice that everything looks good here.  The pre-test performs well (th
 We can compare this to what happens using the `did` package:
 ```{r, fig.width=8,fig.height=10, fig.align='center', out.width="90%", dpi = 200}
 # estimate group-group time average treatment effects
-did_att_gt <- att_gt(yname="Y",
-                     tname="period",
-                     idname="id",
-                     gname="G",
-                     data=data,
-                     bstrap=FALSE,
-                     cband=FALSE)
+did_att_gt <- att_gt(yname = "Y",
+                     tname = "period",
+                     idname = "id",
+                     gname = "G",
+                     data = data,
+                     bstrap = FALSE,
+                     cband = FALSE)
 summary(did_att_gt)
 
 # plot them
@@ -170,7 +170,7 @@ ggdid(did_att_gt)
 
 ```{r, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 # aggregate them into event study plot
-did_es <- aggte(did_att_gt, type="dynamic")
+did_es <- aggte(did_att_gt, type = "dynamic")
 
 # plot the event study
 ggdid(did_es)
@@ -228,8 +228,8 @@ Dtl <- sapply(-(time.periods-1):(time.periods-2), function(l) {
     dtl
 })
 Dtl <- as.data.frame(Dtl)
-cnames1 <- paste0("Dtmin",(time.periods-1):1)
-colnames(Dtl) <- c(cnames1, paste0("Dt",0:(time.periods-2)))
+cnames1 <- paste0("Dtmin", (time.periods-1):1)
+colnames(Dtl) <- c(cnames1, paste0("Dt", 0:(time.periods-2)))
 data <- cbind.data.frame(data, Dtl)
 row.names(data) <- NULL
 
@@ -245,8 +245,8 @@ library(plm)
 # run event study regression
 # normalize effect to be 0 in pre-treatment period
 es <- plm(Y ~ Dtmin3 + Dtmin2 + Dt0 + Dt1 + Dt2, 
-          data=data, model="within", effect="twoways", 
-          index=c("id","period"))
+          data = data, model = "within", effect = "twoways", 
+          index = c("id", "period"))
 
 summary(es)
 ```
@@ -267,7 +267,7 @@ coefs <- c(coefs1[idx.pre], 0, coefs1[idx.post])
 ses <- c(ses1[idx.pre], 0, ses1[idx.post])
 exposure <- -(time.periods-1):(time.periods-2)
 
-cmat <- data.frame(coefs=coefs, ses=ses, exposure=exposure)
+cmat <- data.frame(coefs = coefs, ses = ses, exposure = exposure)
 ```
 
 
@@ -275,11 +275,11 @@ cmat <- data.frame(coefs=coefs, ses=ses, exposure=exposure)
 # run through same code as before...omitted
 
 # new event study plot
-ggplot(data=cmat, mapping=aes(y=coefs, x=exposure)) +
-  geom_line(linetype="dashed") +
+ggplot(data = cmat, mapping = aes(y = coefs, x = exposure)) +
+  geom_line(linetype = "dashed") +
   geom_point() + 
-  geom_errorbar(aes(ymin=(coefs-1.96*ses), ymax=(coefs+1.96*ses)), width=0.2) +
-  ylim(c(-2,5)) +
+  geom_errorbar(aes(ymin = (coefs-1.96*ses), ymax = (coefs+1.96*ses)), width = 0.2) +
+  ylim(c(-2, 5)) +
   theme_bw()
 ```
 
@@ -288,11 +288,11 @@ In contrast to the last case, it is clear that things have gone wrong here.  **P
 We can compare this to what happens using the `did` package:
 ```{r, fig.width=8,fig.height=10, fig.align='center', out.width="90%", dpi = 200}
 # estimate group-group time average treatment effects
-did.att.gt <- att_gt(yname="Y",
-                     tname="period",
-                     idnam="id",
-                     gname="G",
-                     data=data
+did.att.gt <- att_gt(yname = "Y",
+                     tname = "period",
+                     idnam = "id",
+                     gname = "G",
+                     data = data
                      )
 summary(did.att.gt)
 
@@ -303,7 +303,7 @@ ggdid(did.att.gt)
 
 ```{r, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 # aggregate them into event study plot
-did.es <- aggte(did.att.gt, type="dynamic")
+did.es <- aggte(did.att.gt, type = "dynamic")
 
 # plot the event study
 ggdid(did.es)
@@ -325,7 +325,7 @@ reset.sim()
 set.seed(1814)
 nt <- 1000
 nu <- 1000
-cdp <- conditional_did_pretest("Y", "period", "id", "G", xformla=~X, data=data)
+cdp <- conditional_did_pretest("Y", "period", "id", "G", xformla = ~X, data = data)
 cdp
 ```
 
