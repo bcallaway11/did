@@ -76,10 +76,12 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Introduction to DiD with Multiple Time Periods</h1>
-                        <h4 data-toc-skip class="author">Brantly Callaway and Pedro H.C. Sant’Anna</h4>
+      <h1 data-toc-skip>Introduction to DiD with Multiple Time
+Periods</h1>
+                        <h4 data-toc-skip class="author">Brantly
+Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 data-toc-skip class="date">2022-07-19</h4>
+            <h4 data-toc-skip class="date">2023-08-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/multi-period-did.Rmd" class="external-link"><code>vignettes/multi-period-did.Rmd</code></a></small>
       <div class="hidden name"><code>multi-period-did.Rmd</code></div>
@@ -91,166 +93,461 @@
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>Difference-in-differences is one of the most common approaches for identifying and estimating the causal effect of participating in a treatment on some outcome.</p>
-<p>The “canonical” version of DiD involves two periods and two groups. The <em>untreated group</em> never participates in the treatment, and the <em>treated group</em> becomes treated in the second period.</p>
-<p>However, much applied work deals with cases where there are more than two time periods and different units can become treated at different points in time. Regardless of the number of time periods, by far the leading approach in applied work is to try to estimate the effect of the treatment using a two-way fixed effects (TWFE) linear regression. This works great in the case with two periods, but there are a number of recent methodological papers that suggest that there may be substantial drawbacks to using TWFE with multiple time periods.</p>
-<p>This vignette briefly discusses the emerging literature on DiD with multiple time periods – both issues with standard approaches as well as remedies for these potential problems. The <code>did</code> package implements a number of these remedies. A vignette for how to use the <code>did</code> package is available <a href="did-basics.html">here</a>. The background article for these vignettes is <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2021), “Difference-in-Differences with Multiple Time Periods”</a>.</p>
+<p>Difference-in-differences is one of the most common approaches for
+identifying and estimating the causal effect of participating in a
+treatment on some outcome.</p>
+<p>The “canonical” version of DiD involves two periods and two groups.
+The <em>untreated group</em> never participates in the treatment, and
+the <em>treated group</em> becomes treated in the second period.</p>
+<p>However, much applied work deals with cases where there are more than
+two time periods and different units can become treated at different
+points in time. Regardless of the number of time periods, by far the
+leading approach in applied work is to try to estimate the effect of the
+treatment using a two-way fixed effects (TWFE) linear regression. This
+works great in the case with two periods, but there are a number of
+recent methodological papers that suggest that there may be substantial
+drawbacks to using TWFE with multiple time periods.</p>
+<p>This vignette briefly discusses the emerging literature on DiD with
+multiple time periods – both issues with standard approaches as well as
+remedies for these potential problems. The <code>did</code> package
+implements a number of these remedies. A vignette for how to use the
+<code>did</code> package is available <a href="did-basics.html">here</a>. The background article for these
+vignettes is <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and
+Sant’Anna (2021), “Difference-in-Differences with Multiple Time
+Periods”</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="background">Background<a class="anchor" aria-label="anchor" href="#background"></a>
 </h2>
-<p>To start with, we’ll consider some background material in this section. First, we’ll discuss DiD with two time periods and two groups – this is the “canonical” case of DiD. Second, we briefly consider issues with TWFE linear regressions when there are multiple time periods.</p>
+<p>To start with, we’ll consider some background material in this
+section. First, we’ll discuss DiD with two time periods and two groups –
+this is the “canonical” case of DiD. Second, we briefly consider issues
+with TWFE linear regressions when there are multiple time periods.</p>
 <div class="section level3">
 <h3 id="did-with-2-periods-and-2-groups">DiD with 2 Periods and 2 Groups<a class="anchor" aria-label="anchor" href="#did-with-2-periods-and-2-groups"></a>
 </h3>
-<p>The baseline case for DiD is the one with two periods (let’s call these periods <span class="math inline">\(t\)</span> and <span class="math inline">\(t-1\)</span>) and two groups (a treated group and an untreated group).</p>
+<p>The baseline case for DiD is the one with two periods (let’s call
+these periods <span class="math inline">\(t\)</span> and <span class="math inline">\(t-1\)</span>) and two groups (a treated group and
+an untreated group).</p>
 <p><strong>Notation / Setup</strong></p>
 <ul>
-<li><p>For <span class="math inline">\(s \in \{t,t-1\}\)</span>, <span class="math inline">\(Y_{is}(0)\)</span> is unit <span class="math inline">\(i\)</span>’s <em>untreated potential outcomes</em> – this is the outcome that unit <span class="math inline">\(i\)</span> would experience in period <span class="math inline">\(s\)</span> if they <em>did not</em> participate in the treatment</p></li>
-<li><p>For <span class="math inline">\(s \in \{t,t-1\}\)</span>, <span class="math inline">\(Y_{is}(1)\)</span> is unit <span class="math inline">\(i\)</span>’s <em>treated potential outcome</em> – this is the outcome that unit <span class="math inline">\(i\)</span> would experience in period <span class="math inline">\(s\)</span> if they <em>did</em> participate in the treatment.</p></li>
-<li><p>Set <span class="math inline">\(D=1\)</span> for units in the treated group and <span class="math inline">\(D=0\)</span> for units in the untreated group</p></li>
-<li><p>In the first period, no one participates in the treatment. In the second period, units in the treated group become treated. This means that observed outcomes are given by <span class="math display">\[
-Y_{it-1} = Y_{it-1}(0) \quad \textrm{and} \quad Y_{it} = D_i Y_{it}(1) + (1-D_i) Y_{it}(0)
-\]</span> In other words, in the first period, we observe untreated potential outcomes for everyone (there is a no-anticipation assumption built in here). In the second period, we observe treated potential outcomes for units that actually participate in the treatment and untreated potential outcomes for units that do not participate in the treatment.</p></li>
-<li><p>The main parameter of interest in most DiD designs is the Average Treatment Effect on the Treated (ATT). It is given by <span class="math display">\[
+<li><p>For <span class="math inline">\(s \in \{t,t-1\}\)</span>, <span class="math inline">\(Y_{is}(0)\)</span> is unit <span class="math inline">\(i\)</span>’s <em>untreated potential outcomes</em>
+– this is the outcome that unit <span class="math inline">\(i\)</span>
+would experience in period <span class="math inline">\(s\)</span> if
+they <em>did not</em> participate in the treatment</p></li>
+<li><p>For <span class="math inline">\(s \in \{t,t-1\}\)</span>, <span class="math inline">\(Y_{is}(1)\)</span> is unit <span class="math inline">\(i\)</span>’s <em>treated potential outcome</em> –
+this is the outcome that unit <span class="math inline">\(i\)</span>
+would experience in period <span class="math inline">\(s\)</span> if
+they <em>did</em> participate in the treatment.</p></li>
+<li><p>Set <span class="math inline">\(D=1\)</span> for units in the
+treated group and <span class="math inline">\(D=0\)</span> for units in
+the untreated group</p></li>
+<li><p>In the first period, no one participates in the treatment. In the
+second period, units in the treated group become treated. This means
+that observed outcomes are given by <span class="math display">\[
+Y_{it-1} = Y_{it-1}(0) \quad \textrm{and} \quad Y_{it} = D_i Y_{it}(1) +
+(1-D_i) Y_{it}(0)
+\]</span> In other words, in the first period, we observe untreated
+potential outcomes for everyone (there is a no-anticipation assumption
+built in here). In the second period, we observe treated potential
+outcomes for units that actually participate in the treatment and
+untreated potential outcomes for units that do not participate in the
+treatment.</p></li>
+<li><p>The main parameter of interest in most DiD designs is the Average
+Treatment Effect on the Treated (ATT). It is given by <span class="math display">\[
 ATT = E[Y_t(1) - Y_t(0) | D=1]
-\]</span> This is the difference between treated and untreated potential outcomes, on average, for units in the treated group.</p></li>
+\]</span> This is the difference between treated and untreated potential
+outcomes, on average, for units in the treated group.</p></li>
 </ul>
-<p>The main assumption in DiD designs is called the parallel trends assumption:</p>
+<p>The main assumption in DiD designs is called the parallel trends
+assumption:</p>
 <p><strong>Parallel Trends Assumption</strong></p>
 <p><span class="math display">\[
   E[Y_t(0) - Y_{t-1}(0)| D=1] = E[ Y_t(0)-Y_{t-1} | D=0]
 \]</span></p>
-<p>In words, this assumption says that the change (or “path”) in outcomes over time that units in the treated group <em>would have experienced if they had not participated in the treatment</em> is the same as the path of outcomes that units in the untreated group actually experienced. The parallel trends assumption allows for the level of untreated potential outcomes to differ across groups and is consistent with, for example, fixed effects models for untreated potential outcomes where the mean of the unobserved fixed effect can be different across groups.</p>
-<p>This assumption is potentially useful because the path of untreated potential outcomes for units in the treated group (the term on the left in the above equation) is not known, but the researcher does observe the path of untreated potential outcomes for units in the untreated group (term on the right in the above equation). In fact, it is straightforward to show that, under the parallel trends assumption, the <span class="math inline">\(ATT\)</span> is identified and given by <span class="math display">\[
+<p>In words, this assumption says that the change (or “path”) in
+outcomes over time that units in the treated group <em>would have
+experienced if they had not participated in the treatment</em> is the
+same as the path of outcomes that units in the untreated group actually
+experienced. The parallel trends assumption allows for the level of
+untreated potential outcomes to differ across groups and is consistent
+with, for example, fixed effects models for untreated potential outcomes
+where the mean of the unobserved fixed effect can be different across
+groups.</p>
+<p>This assumption is potentially useful because the path of untreated
+potential outcomes for units in the treated group (the term on the left
+in the above equation) is not known, but the researcher does observe the
+path of untreated potential outcomes for units in the untreated group
+(term on the right in the above equation). In fact, it is
+straightforward to show that, under the parallel trends assumption, the
+<span class="math inline">\(ATT\)</span> is identified and given by
+<span class="math display">\[
   ATT = E[ Y_t - Y_{t-1}| D=1] - E[ Y_t - Y_{t-1}| D=0]
 \]</span></p>
-<p>That is, the <span class="math inline">\(ATT\)</span> is the difference between the mean change in outcomes over time experienced by units in the treated group adjusted by the mean change in outcomes over time experienced by units in the untreated group; the latter term, under the parallel trends assumption, is what the path of outcomes for units in the treated group would have been if they had not participated in the treatment.</p>
+<p>That is, the <span class="math inline">\(ATT\)</span> is the
+difference between the mean change in outcomes over time experienced by
+units in the treated group adjusted by the mean change in outcomes over
+time experienced by units in the untreated group; the latter term, under
+the parallel trends assumption, is what the path of outcomes for units
+in the treated group would have been if they had not participated in the
+treatment.</p>
 </div>
 <div class="section level3">
 <h3 id="two-way-fixed-effects-regressions">Two way fixed effects regressions<a class="anchor" aria-label="anchor" href="#two-way-fixed-effects-regressions"></a>
 </h3>
-<p>Now let’s move to a more general case where there are <span class="math inline">\(\mathcal{T}\)</span> total time periods. Denote particular time periods by <span class="math inline">\(t\)</span> where <span class="math inline">\(t=1,\ldots,\mathcal{T}\)</span>.</p>
-<p>By far the most common approach to <em>trying</em> to estimate the effect of a binary treatment in this setup is the TWFE linear regression. This is a regression like <span class="math display">\[
+<p>Now let’s move to a more general case where there are <span class="math inline">\(\mathcal{T}\)</span> total time periods. Denote
+particular time periods by <span class="math inline">\(t\)</span> where
+<span class="math inline">\(t=1,\ldots,\mathcal{T}\)</span>.</p>
+<p>By far the most common approach to <em>trying</em> to estimate the
+effect of a binary treatment in this setup is the TWFE linear
+regression. This is a regression like <span class="math display">\[
 Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
-\]</span> where <span class="math inline">\(\theta_t\)</span> is a time fixed effect, <span class="math inline">\(\eta_i\)</span> is a unit fixed effect, <span class="math inline">\(D_{it}\)</span> is a treatment dummy variable, <span class="math inline">\(v_{it}\)</span> are time varying unobservables that are mean independent of everything else, and <span class="math inline">\(\alpha\)</span> is presumably the parameter of interest. <span class="math inline">\(\alpha\)</span> is often interpreted as the <em>average effect</em> of participating in the treatment.</p>
-<p>Although this is essentially a standard approach in applied work, there are a number of recent papers that point out potentially severe drawbacks of using the TWFE estimation procedure. These include: Borusyak and Jaravel (2018), Goodman-Bacon (2021), de Chaisemartin and D’Haultfoeuille (2020), and Sun and Abraham (2021).</p>
+\]</span> where <span class="math inline">\(\theta_t\)</span> is a time
+fixed effect, <span class="math inline">\(\eta_i\)</span> is a unit
+fixed effect, <span class="math inline">\(D_{it}\)</span> is a treatment
+dummy variable, <span class="math inline">\(v_{it}\)</span> are time
+varying unobservables that are mean independent of everything else, and
+<span class="math inline">\(\alpha\)</span> is presumably the parameter
+of interest. <span class="math inline">\(\alpha\)</span> is often
+interpreted as the <em>average effect</em> of participating in the
+treatment.</p>
+<p>Although this is essentially a standard approach in applied work,
+there are a number of recent papers that point out potentially severe
+drawbacks of using the TWFE estimation procedure. These include:
+Borusyak and Jaravel (2018), Goodman-Bacon (2021), de Chaisemartin and
+D’Haultfoeuille (2020), and Sun and Abraham (2021).</p>
 <p><strong>When will TWFE work?</strong></p>
 <ol style="list-style-type: decimal">
-<li><p>Effects really aren’t heterogeneous. If the effect of participating in the treatment really is <span class="math inline">\(\alpha\)</span> for all units, TWFE will work great. That being said, in many applications, treatment effects are very likely to be heterogeneous – they may vary across different units or exhibit dynamics or change across different time periods. In particular applications, this is worth thinking about, but, at least in our view, we think that heterogeneous effects of participating in some treatment is the leading case.</p></li>
-<li><p>There are only two time periods. This is the canonical case (2 periods, one group becomes treated in the second period, the other is never treated). In this case, under parallel trends an no-anticipation, <span class="math inline">\(\alpha\)</span> is going to be numerically equal to the <span class="math inline">\(ATT\)</span>. In other words, in this case, even though it looks like you have restricted the effect of participating in the treatment to be the same across all units, TWFE exhibits <em>robustness</em> to treatment effect heterogeneity. Unfortunately, this robustness to treatment effect heterogeneity does not continue to hold when there are more periods and groups become treated at different points in time.</p></li>
+<li><p>Effects really aren’t heterogeneous. If the effect of
+participating in the treatment really is <span class="math inline">\(\alpha\)</span> for all units, TWFE will work
+great. That being said, in many applications, treatment effects are very
+likely to be heterogeneous – they may vary across different units or
+exhibit dynamics or change across different time periods. In particular
+applications, this is worth thinking about, but, at least in our view,
+we think that heterogeneous effects of participating in some treatment
+is the leading case.</p></li>
+<li><p>There are only two time periods. This is the canonical case (2
+periods, one group becomes treated in the second period, the other is
+never treated). In this case, under parallel trends an no-anticipation,
+<span class="math inline">\(\alpha\)</span> is going to be numerically
+equal to the <span class="math inline">\(ATT\)</span>. In other words,
+in this case, even though it looks like you have restricted the effect
+of participating in the treatment to be the same across all units, TWFE
+exhibits <em>robustness</em> to treatment effect heterogeneity.
+Unfortunately, this robustness to treatment effect heterogeneity does
+not continue to hold when there are more periods and groups become
+treated at different points in time.</p></li>
 </ol>
-<p><strong>Why is TWFE not robust to treatment effect heterogeneity?</strong></p>
-<p>There are entire papers written about this, see, e.g., Borusyak and Jaravel (2018), Goodman-Bacon (2021), de Chaisemartin and D’Haultfoeuille (2020), and Sun and Abraham (2021). But here is the short version: in a TWFE regression, units whose treatment status doesn’t change over time serve as the comparison group for units whose treatment status does change over time. With multiple time periods and variation of treatment timing, some of these comparisons are:</p>
+<p><strong>Why is TWFE not robust to treatment effect
+heterogeneity?</strong></p>
+<p>There are entire papers written about this, see, e.g., Borusyak and
+Jaravel (2018), Goodman-Bacon (2021), de Chaisemartin and
+D’Haultfoeuille (2020), and Sun and Abraham (2021). But here is the
+short version: in a TWFE regression, units whose treatment status
+doesn’t change over time serve as the comparison group for units whose
+treatment status does change over time. With multiple time periods and
+variation of treatment timing, some of these comparisons are:</p>
 <ul>
-<li><p>newly treated units relative to ``never treated’’ units (good!)</p></li>
-<li><p>newly treated units relative to ``not-yet treated’’ units (good!)</p></li>
-<li><p>newly treated units relative to already treated units (bad!!!)</p></li>
+<li><p>newly treated units relative to ``never treated’’ units
+(good!)</p></li>
+<li><p>newly treated units relative to ``not-yet treated’’ units
+(good!)</p></li>
+<li><p>newly treated units relative to already treated units
+(bad!!!)</p></li>
 </ul>
-<p>The first of these two comparisons are good (or at least in the spirit of DiD) in that they take the path of outcomes experienced by units that become treated and adjust it by the path of outcomes experienced by units that are not participating in the treatment. The third comparison is different though: it adjusts the path of outcomes for newly treated units by the path of outcomes for already treated units. But this is not the path of untreated potential outcomes, it includes <em>treatment effect dynamics</em>. Thus, these dynamics appear in <span class="math inline">\(\alpha\)</span>, <em>making it very hard to give a clear causal interpretation</em>.</p>
-<p>And this issue can have potentially severe consequences. For example, it is possible to come up with examples where the effect of participating in the treatment is positive for all units in all time periods, but the TWFE estimation procedure leads to estimating a negative effect of participating in the treatment. Even in the case where ``negative weights’’ can be ruled out, <span class="math inline">\(\alpha\)</span> recover a weighted average of <span class="math inline">\(ATT's\)</span>, though these weights are hard to interpret.</p>
+<p>The first of these two comparisons are good (or at least in the
+spirit of DiD) in that they take the path of outcomes experienced by
+units that become treated and adjust it by the path of outcomes
+experienced by units that are not participating in the treatment. The
+third comparison is different though: it adjusts the path of outcomes
+for newly treated units by the path of outcomes for already treated
+units. But this is not the path of untreated potential outcomes, it
+includes <em>treatment effect dynamics</em>. Thus, these dynamics appear
+in <span class="math inline">\(\alpha\)</span>, <em>making it very hard
+to give a clear causal interpretation</em>.</p>
+<p>And this issue can have potentially severe consequences. For example,
+it is possible to come up with examples where the effect of
+participating in the treatment is positive for all units in all time
+periods, but the TWFE estimation procedure leads to estimating a
+negative effect of participating in the treatment. Even in the case
+where ``negative weights’’ can be ruled out, <span class="math inline">\(\alpha\)</span> recover a weighted average of
+<span class="math inline">\(ATT's\)</span>, though these weights are
+hard to interpret.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="treatment-effects-in-difference-in-differences-designs-with-multiple-periods">Treatment Effects in Difference in Differences Designs with Multiple Periods<a class="anchor" aria-label="anchor" href="#treatment-effects-in-difference-in-differences-designs-with-multiple-periods"></a>
+<h2 id="treatment-effects-in-difference-in-differences-designs-with-multiple-periods">Treatment Effects in Difference in Differences Designs with Multiple
+Periods<a class="anchor" aria-label="anchor" href="#treatment-effects-in-difference-in-differences-designs-with-multiple-periods"></a>
 </h2>
-<p>In light of the potential problems with TWFE regressions in DiD designs with multiple periods, are there alternative approaches that can be used in this case?</p>
-<p>Yes, and it turns out that it is not all that complicated! It is just a matter of using the ``good/desirable’’ comparisons between groups instead of all possible comparisons.</p>
-<p>To fix ideas, let’s provide some extended notation and be clear about the identifying assumptions that we are going to make.</p>
+<p>In light of the potential problems with TWFE regressions in DiD
+designs with multiple periods, are there alternative approaches that can
+be used in this case?</p>
+<p>Yes, and it turns out that it is not all that complicated! It is just
+a matter of using the ``good/desirable’’ comparisons between groups
+instead of all possible comparisons.</p>
+<p>To fix ideas, let’s provide some extended notation and be clear about
+the identifying assumptions that we are going to make.</p>
 <p><strong>Notation</strong></p>
 <ul>
-<li><p><span class="math inline">\(Y_{it}(0)\)</span> is unit <span class="math inline">\(i\)</span>’s untreated potential outcome. This is the outcome that unit <span class="math inline">\(i\)</span> would experience in period <span class="math inline">\(t\)</span> if they do not participate in the treatment.</p></li>
-<li><p><span class="math inline">\(Y_{it}(g)\)</span> is unit <span class="math inline">\(i\)</span>’s potential outcome in time period <span class="math inline">\(t\)</span> if they become treated in period <span class="math inline">\(g\)</span>.</p></li>
-<li><p><span class="math inline">\(G_i\)</span> is the time period when unit <span class="math inline">\(i\)</span> becomes treated (often <em>groups</em> are defined by the time period when a unit becomes treated; hence, the <span class="math inline">\(G\)</span> notation).</p></li>
-<li><p><span class="math inline">\(C_i\)</span> is an indicator variable for whether unit <span class="math inline">\(i\)</span> is in a <strong>never-treated</strong> group.</p></li>
-<li><p><span class="math inline">\(D_{it}\)</span> is an indicator variable for whether unit <span class="math inline">\(i\)</span> has been treated by time <span class="math inline">\(t\)</span>.</p></li>
-<li><p><span class="math inline">\(Y_{it}\)</span> is unit <span class="math inline">\(i\)</span>’s observed outcome in time period <span class="math inline">\(t\)</span>. For units in the never-treated group, <span class="math inline">\(Y_{it} = Y_{it}(0)\)</span> in all time periods. For units in other groups, we observe <span class="math inline">\(Y_{it} = \mathbf{1}\{ G_i &gt; t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)\)</span>. The notation here is a bit complicated, but in words, we observe untreated potential outcomes for units that have not yet participated in the treatment, and we observe treated potential outcomes for units once they start to participate in the treatment (and these can depend on <em>when</em> they became treated). Implicit in this notation there is a <strong>no treatment anticipation</strong> assumption, which can be relaxed as discussed in <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2021), “Difference-in-Differences with Multiple Time Periods”</a>.</p></li>
-<li><p><span class="math inline">\(X_i\)</span> vector of pre-treatment covariates.</p></li>
+<li><p><span class="math inline">\(Y_{it}(0)\)</span> is unit <span class="math inline">\(i\)</span>’s untreated potential outcome. This is
+the outcome that unit <span class="math inline">\(i\)</span> would
+experience in period <span class="math inline">\(t\)</span> if they do
+not participate in the treatment.</p></li>
+<li><p><span class="math inline">\(Y_{it}(g)\)</span> is unit <span class="math inline">\(i\)</span>’s potential outcome in time period
+<span class="math inline">\(t\)</span> if they become treated in period
+<span class="math inline">\(g\)</span>.</p></li>
+<li><p><span class="math inline">\(G_i\)</span> is the time period when
+unit <span class="math inline">\(i\)</span> becomes treated (often
+<em>groups</em> are defined by the time period when a unit becomes
+treated; hence, the <span class="math inline">\(G\)</span>
+notation).</p></li>
+<li><p><span class="math inline">\(C_i\)</span> is an indicator variable
+for whether unit <span class="math inline">\(i\)</span> is in a
+<strong>never-treated</strong> group.</p></li>
+<li><p><span class="math inline">\(D_{it}\)</span> is an indicator
+variable for whether unit <span class="math inline">\(i\)</span> has
+been treated by time <span class="math inline">\(t\)</span>.</p></li>
+<li><p><span class="math inline">\(Y_{it}\)</span> is unit <span class="math inline">\(i\)</span>’s observed outcome in time period <span class="math inline">\(t\)</span>. For units in the never-treated group,
+<span class="math inline">\(Y_{it} = Y_{it}(0)\)</span> in all time
+periods. For units in other groups, we observe <span class="math inline">\(Y_{it} = \mathbf{1}\{ G_i &gt; t\} Y_{it}(0) +
+\mathbf{1}\{G_i \leq t \} Y_{it}(G_i)\)</span>. The notation here is a
+bit complicated, but in words, we observe untreated potential outcomes
+for units that have not yet participated in the treatment, and we
+observe treated potential outcomes for units once they start to
+participate in the treatment (and these can depend on <em>when</em> they
+became treated). Implicit in this notation there is a <strong>no
+treatment anticipation</strong> assumption, which can be relaxed as
+discussed in <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and
+Sant’Anna (2021), “Difference-in-Differences with Multiple Time
+Periods”</a>.</p></li>
+<li><p><span class="math inline">\(X_i\)</span> vector of pre-treatment
+covariates.</p></li>
 </ul>
 <div class="section level3">
 <h3 id="main-assumptions">Main Assumptions<a class="anchor" aria-label="anchor" href="#main-assumptions"></a>
 </h3>
-<p><strong>Staggered Treatment Adoption Assumption</strong> Recall that <span class="math inline">\(D_{it} = 1\)</span> if a unit <span class="math inline">\(i\)</span> has been treated by time <span class="math inline">\(t\)</span> and <span class="math inline">\(D_{it}=0\)</span> otherwise. Then, for <span class="math inline">\(t=1,...,\mathcal{T}-1\)</span>, <span class="math inline">\(D_{it} = 1 \implies D_{it+1} = 1\)</span>.</p>
-<p>Staggered treatment adoption implies that once a unit participates in the treatment, they remain treated. In other words, units do not “forget” about their treatment experience. This is a leading case in many applications in economics. For example, it would be the case for policies that roll out to different locations over some period of time. It would also be the case for many unit-level treatments that have a “scarring” effect. For example, in the context of job training, many applications consider participating in the treatment <em>ever</em> as defining treatment.</p>
-<p>Within the DiD context, we believe it is hard to analyze non-staggered treatment setups <strong>without</strong> further restricting treatment effect heterogeneity across time, groups, treatment sequences, etc. That is the main reason we focus on this leading case.</p>
-<p><strong>Parallel Trends Assumption based on never-treated units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span>, <span class="math display">\[
+<p><strong>Staggered Treatment Adoption Assumption</strong> Recall that
+<span class="math inline">\(D_{it} = 1\)</span> if a unit <span class="math inline">\(i\)</span> has been treated by time <span class="math inline">\(t\)</span> and <span class="math inline">\(D_{it}=0\)</span> otherwise. Then, for <span class="math inline">\(t=1,...,\mathcal{T}-1\)</span>, <span class="math inline">\(D_{it} = 1 \implies D_{it+1} = 1\)</span>.</p>
+<p>Staggered treatment adoption implies that once a unit participates in
+the treatment, they remain treated. In other words, units do not
+“forget” about their treatment experience. This is a leading case in
+many applications in economics. For example, it would be the case for
+policies that roll out to different locations over some period of time.
+It would also be the case for many unit-level treatments that have a
+“scarring” effect. For example, in the context of job training, many
+applications consider participating in the treatment <em>ever</em> as
+defining treatment.</p>
+<p>Within the DiD context, we believe it is hard to analyze
+non-staggered treatment setups <strong>without</strong> further
+restricting treatment effect heterogeneity across time, groups,
+treatment sequences, etc. That is the main reason we focus on this
+leading case.</p>
+<p><strong>Parallel Trends Assumption based on never-treated
+units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span>, <span class="math display">\[
   E[ Y_t(0) - Y_{t-1}(0) | G=g] = E[ Y_t(0) - Y_{t-1}(0)| C=1]
 \]</span></p>
-<p>This is a natural extension of the parallel trends assumption in the two periods and two groups case. It says that, in the absence of treatment, average untreated potential outcomes for the group first treated in time <span class="math inline">\(g\)</span> and for the “never treated” group would have followed parallel paths in all post-treatment periods <span class="math inline">\(t \ge g\)</span>.</p>
-<p>Note that the aforementioned parallel trend assumption rely on using the ``never treated’’ units as comparison group for all “eventually treated” groups. This presumes that (i) a (large enough) “never-treated” group is available in the data, and (ii) these units are “similar enough” to the eventually treated units such that they can indeed be used as a valid comparison group. In situations where these conditions are not satisfied, one can use an alternative parallel trends assumption that uses the <strong>not-yet treated</strong> units as valid comparison groups.</p>
-<p><strong>Parallel Trends Assumption based on not-yet treated units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(s,t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span> and <span class="math inline">\(s \ge t\)</span> <span class="math display">\[
-  E[ Y_t(0) - Y_{t-1}(0) | G=g] = E[ Y_t(0) - Y_{t-1}(0)| D_s=0, G\not=g]
-\]</span> In plain English, this assumption states that one can use the not-yet-treated by time <span class="math inline">\(s\)</span> (<span class="math inline">\(s \ge t\)</span>) units as valid comparison groups when computing the average treatment effect for the group first treated in time <span class="math inline">\(g\)</span>. In general, this assumption uses more data when constructing comparison groups. However, as noted in <a href="https://www.journals.uchicago.edu/doi/full/10.1086/711509" class="external-link">Marcus and Sant’Anna (2021)</a>, this assumption does restrict some pre-treatment trends across different groups. In other words, there is no free-lunch.</p>
+<p>This is a natural extension of the parallel trends assumption in the
+two periods and two groups case. It says that, in the absence of
+treatment, average untreated potential outcomes for the group first
+treated in time <span class="math inline">\(g\)</span> and for the
+“never treated” group would have followed parallel paths in all
+post-treatment periods <span class="math inline">\(t \ge g\)</span>.</p>
+<p>Note that the aforementioned parallel trend assumption rely on using
+the ``never treated’’ units as comparison group for all “eventually
+treated” groups. This presumes that (i) a (large enough) “never-treated”
+group is available in the data, and (ii) these units are “similar
+enough” to the eventually treated units such that they can indeed be
+used as a valid comparison group. In situations where these conditions
+are not satisfied, one can use an alternative parallel trends assumption
+that uses the <strong>not-yet treated</strong> units as valid comparison
+groups.</p>
+<p><strong>Parallel Trends Assumption based on not-yet treated
+units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(s,t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span> and <span class="math inline">\(s
+\ge t\)</span> <span class="math display">\[
+  E[ Y_t(0) - Y_{t-1}(0) | G=g] = E[ Y_t(0) - Y_{t-1}(0)| D_s=0,
+G\not=g]
+\]</span> In plain English, this assumption states that one can use the
+not-yet-treated by time <span class="math inline">\(s\)</span> (<span class="math inline">\(s \ge t\)</span>) units as valid comparison groups
+when computing the average treatment effect for the group first treated
+in time <span class="math inline">\(g\)</span>. In general, this
+assumption uses more data when constructing comparison groups. However,
+as noted in <a href="https://www.journals.uchicago.edu/doi/full/10.1086/711509" class="external-link">Marcus
+and Sant’Anna (2021)</a>, this assumption does restrict some
+pre-treatment trends across different groups. In other words, there is
+no free-lunch.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="group-time-average-treatment-effects">Group-Time Average Treatment Effects<a class="anchor" aria-label="anchor" href="#group-time-average-treatment-effects"></a>
 </h2>
-<p>The above assumptions are natural extensions of the identifying assumptions in the two periods and two groups case to the multiple periods case.</p>
-<p>Likewise, a natural way to generalize the parameter of interest (the ATT) from the two periods and two groups case to the multiple periods case is to define <strong>group-time average treatment effects</strong>:</p>
+<p>The above assumptions are natural extensions of the identifying
+assumptions in the two periods and two groups case to the multiple
+periods case.</p>
+<p>Likewise, a natural way to generalize the parameter of interest (the
+ATT) from the two periods and two groups case to the multiple periods
+case is to define <strong>group-time average treatment
+effects</strong>:</p>
 <p><span class="math display">\[
   ATT(g,t) = E[Y_t(g) - Y_t(0) | G=g]
 \]</span></p>
-<p>This is the average effect of participating in the treatment for units in group <span class="math inline">\(g\)</span> at time period <span class="math inline">\(t\)</span>. Notice that when there are two time periods and two groups (the canonical case), the average treatment effect on the treated is given by <span class="math inline">\(ATT = ATT(g=2,t=2)\)</span>.</p>
-<p>To give a couple more examples, suppose that a researcher has access to three time periods. Then, <span class="math inline">\(ATT(g=2,t=3)\)</span> is the average effect of participating in the treatment for the group of units that become treated in time period 2, in time period 3. Similarly, <span class="math inline">\(ATT(g=3,t=3)\)</span> is the average effect of participating in the treatment for the group of units that become treated in time period 3, in time period 3.</p>
-<p><strong>Identification of Group-Time Average Treatment Effects</strong></p>
-<p>Under either version of the parallel trends assumptions mentioned above, it is straightforward to show that group-time average treatment effects are identified. For instance, when one impose the parallel trends assumption based on “never-treated units”, we have that, for all <span class="math inline">\(t \ge g\)</span> <span class="math display">\[
+<p>This is the average effect of participating in the treatment for
+units in group <span class="math inline">\(g\)</span> at time period
+<span class="math inline">\(t\)</span>. Notice that when there are two
+time periods and two groups (the canonical case), the average treatment
+effect on the treated is given by <span class="math inline">\(ATT =
+ATT(g=2,t=2)\)</span>.</p>
+<p>To give a couple more examples, suppose that a researcher has access
+to three time periods. Then, <span class="math inline">\(ATT(g=2,t=3)\)</span> is the average effect of
+participating in the treatment for the group of units that become
+treated in time period 2, in time period 3. Similarly, <span class="math inline">\(ATT(g=3,t=3)\)</span> is the average effect of
+participating in the treatment for the group of units that become
+treated in time period 3, in time period 3.</p>
+<p><strong>Identification of Group-Time Average Treatment
+Effects</strong></p>
+<p>Under either version of the parallel trends assumptions mentioned
+above, it is straightforward to show that group-time average treatment
+effects are identified. For instance, when one impose the parallel
+trends assumption based on “never-treated units”, we have that, for all
+<span class="math inline">\(t \ge g\)</span> <span class="math display">\[
 ATT(g,t) = E[ Y_t - Y_{g-1}| G=g] - E[ Y_t - Y_{g-1}| C=1].
-\]</span> Alternatively, when one impose the parallel trends assumption based on “not-yet-treated units”, we have that, for all <span class="math inline">\(t \ge g\)</span> <span class="math display">\[
+\]</span> Alternatively, when one impose the parallel trends assumption
+based on “not-yet-treated units”, we have that, for all <span class="math inline">\(t \ge g\)</span> <span class="math display">\[
 ATT(g,t) = E[ Y_t - Y_{g-1}| G=g] - E[ Y_t - Y_{g-1}| D_t=0, G\not=g].
 \]</span></p>
-<p>These group-time average treatment effects are the building blocks of understanding the effect of participating in a treatment in DiD designs with multiple time periods.</p>
+<p>These group-time average treatment effects are the building blocks of
+understanding the effect of participating in a treatment in DiD designs
+with multiple time periods.</p>
 </div>
 <div class="section level2">
 <h2 id="parallel-trends-conditional-on-covariates">Parallel Trends Conditional on Covariates<a class="anchor" aria-label="anchor" href="#parallel-trends-conditional-on-covariates"></a>
 </h2>
-<p>In many cases, the parallel trends assumption is substantially more plausible if it holds after conditioning on observed pre-treatment covariates. In other words, if the parallel trends assumptions are modified to be</p>
-<p><strong>Conditional Parallel Trends Assumption based on never-treated units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span>, <span class="math display">\[
+<p>In many cases, the parallel trends assumption is substantially more
+plausible if it holds after conditioning on observed pre-treatment
+covariates. In other words, if the parallel trends assumptions are
+modified to be</p>
+<p><strong>Conditional Parallel Trends Assumption based on never-treated
+units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span>, <span class="math display">\[
   E[ Y_t(0) - Y_{t-1}(0) |X, G=g] = E[ Y_t(0) - Y_{t-1}(0)| X, C=1]
 \]</span></p>
-<p><strong>Parallel Trends Assumption based on not-yet treated units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(s,t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span> and <span class="math inline">\(s \ge t\)</span> <span class="math display">\[
-  E[ Y_t(0) - Y_{t-1}(0) | X, G=g] = E[ Y_t(0) - Y_{t-1}(0)|X, D_s=0, G\not=g]
+<p><strong>Parallel Trends Assumption based on not-yet treated
+units</strong> For all <span class="math inline">\(g=2,...,\mathcal{T}\)</span>, <span class="math inline">\(s,t=2,...,\mathcal{T}\)</span> with <span class="math inline">\(t \ge g\)</span> and <span class="math inline">\(s
+\ge t\)</span> <span class="math display">\[
+  E[ Y_t(0) - Y_{t-1}(0) | X, G=g] = E[ Y_t(0) - Y_{t-1}(0)|X, D_s=0,
+G\not=g]
 \]</span></p>
-<p>These parallel trends assumptions are the conditional analogues of previous ones. Importantly, they allow for covariate-specific trends in outcomes across groups, which can be particularly important in setups where the distribution of covariates varies across groups.</p>
-<p>An example of a case where this assumption is attractive is one where a researcher is interested in estimating the effect of participating in job training on earnings. In that case, if the path of earnings (in the absence of participating in job training) depends on things like education, previous occupation, or years of experience (which it almost certainly does), then it would be important to condition on these types of variables in order to make parallel trends more credible.</p>
-<p>In this case, the parameter of interest is still often the <span class="math inline">\(ATT(g,t)'s\)</span> (or their aggregation). It is still straightforward to identify and estimate the <span class="math inline">\(ATT\)</span> in this case. Basically, one needs to estimate the change in outcomes for units in the untreated group conditional on <span class="math inline">\(X\)</span>, but average out <span class="math inline">\(X\)</span> over the distribution of covariates for individuals in group <span class="math inline">\(g\)</span> to obtain <span class="math inline">\(ATT(g,t)\)</span> (see <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2021)</a> and references therein for many more details). In practice, you can use different approaches to recover these parameters. More precisely, you can estimate the <span class="math inline">\(ATT(g,t)'s\)</span> using outcome-regressions, inverse probability weighting, or doubly-robust methods. But the <strong>did</strong> package automates all of this for the user.</p>
+<p>These parallel trends assumptions are the conditional analogues of
+previous ones. Importantly, they allow for covariate-specific trends in
+outcomes across groups, which can be particularly important in setups
+where the distribution of covariates varies across groups.</p>
+<p>An example of a case where this assumption is attractive is one where
+a researcher is interested in estimating the effect of participating in
+job training on earnings. In that case, if the path of earnings (in the
+absence of participating in job training) depends on things like
+education, previous occupation, or years of experience (which it almost
+certainly does), then it would be important to condition on these types
+of variables in order to make parallel trends more credible.</p>
+<p>In this case, the parameter of interest is still often the <span class="math inline">\(ATT(g,t)'s\)</span> (or their aggregation). It
+is still straightforward to identify and estimate the <span class="math inline">\(ATT\)</span> in this case. Basically, one needs to
+estimate the change in outcomes for units in the untreated group
+conditional on <span class="math inline">\(X\)</span>, but average out
+<span class="math inline">\(X\)</span> over the distribution of
+covariates for individuals in group <span class="math inline">\(g\)</span> to obtain <span class="math inline">\(ATT(g,t)\)</span> (see <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and
+Sant’Anna (2021)</a> and references therein for many more details). In
+practice, you can use different approaches to recover these parameters.
+More precisely, you can estimate the <span class="math inline">\(ATT(g,t)'s\)</span> using outcome-regressions,
+inverse probability weighting, or doubly-robust methods. But the
+<strong>did</strong> package automates all of this for the user.</p>
 </div>
 <div class="section level2">
 <h2 id="aggregating-group-time-average-treatment-effects">Aggregating Group-Time Average Treatment Effects<a class="anchor" aria-label="anchor" href="#aggregating-group-time-average-treatment-effects"></a>
 </h2>
-<p>Group-time average treatment effects are natural parameters to identify in the context of DiD with multiple periods and multiple groups. But in many applications, there may be a lot of them. There are some benefits and costs here. The main benefit is that it is relatively straightforward to think about heterogeneous effects across groups and time using group-time average treatment effects. On the other hand, it can be hard to summarize them (e.g., they are not just a single number).</p>
-<p>In our paper, <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2021), “Difference-in-Differences with Multiple Time Periods”</a>, we propose a number of ways to aggregate group-time average treatment effects. Here, we will just consider a few important ones that we think applied researchers are most often interested in. First, consider the average effect of participating in the treatment, separately for each group. This is given by</p>
+<p>Group-time average treatment effects are natural parameters to
+identify in the context of DiD with multiple periods and multiple
+groups. But in many applications, there may be a lot of them. There are
+some benefits and costs here. The main benefit is that it is relatively
+straightforward to think about heterogeneous effects across groups and
+time using group-time average treatment effects. On the other hand, it
+can be hard to summarize them (e.g., they are not just a single
+number).</p>
+<p>In our paper, <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and
+Sant’Anna (2021), “Difference-in-Differences with Multiple Time
+Periods”</a>, we propose a number of ways to aggregate group-time
+average treatment effects. Here, we will just consider a few important
+ones that we think applied researchers are most often interested in.
+First, consider the average effect of participating in the treatment,
+separately for each group. This is given by</p>
 <p><span class="math display">\[
-  \theta_S(g) = \frac{1}{\mathcal{T} - g + 1} \sum_{t=2}^{\mathcal{T}} \mathbf{1}\{g \leq t\} ATT(g,t).
+  \theta_S(g) = \frac{1}{\mathcal{T} - g + 1} \sum_{t=2}^{\mathcal{T}}
+\mathbf{1}\{g \leq t\} ATT(g,t).
 \]</span></p>
-<p>This parameter may be of interest in its own right, since it allows one to highlight treatment effect heterogeneity with respect to treatment adoption period. Furthermore, it is fairly straightforward to further aggregate <span class="math inline">\(\theta_S(g)\)</span> to get an easy-to-interpret overall effect parameter,</p>
+<p>This parameter may be of interest in its own right, since it allows
+one to highlight treatment effect heterogeneity with respect to
+treatment adoption period. Furthermore, it is fairly straightforward to
+further aggregate <span class="math inline">\(\theta_S(g)\)</span> to
+get an easy-to-interpret overall effect parameter,</p>
 <p><span class="math display">\[
   \theta^O_S := \sum_{g=2}^{\mathcal{T}} \theta_S(g) P(G=g).
 \]</span></p>
-<p><span class="math inline">\(\theta^O_S\)</span> is the overall effect of participating in the treatment across all groups that have ever participated in the treatment. In our view, this is close to being a multi-period analogue of the <span class="math inline">\(ATT\)</span> in the two period case. Thus, if a researcher is constrained to report a single treatment effect summary parameter, we recommend reporting <span class="math inline">\(\theta^O_S\)</span>.</p>
-<p>In DiD setups with multiple periods, it is natural to ask “How does treatment effects vary with elapsed treatment time?” Here, note that researchers are interested in understanding treatment effect dynamics. This is at the heart of event-study-type of analysis that is widespread in applied work.</p>
-<p>In this case, a natural way to aggregate the group-time average treatment effect to highlight treatment effect dynamics is given by</p>
+<p><span class="math inline">\(\theta^O_S\)</span> is the overall effect
+of participating in the treatment across all groups that have ever
+participated in the treatment. In our view, this is close to being a
+multi-period analogue of the <span class="math inline">\(ATT\)</span> in
+the two period case. Thus, if a researcher is constrained to report a
+single treatment effect summary parameter, we recommend reporting <span class="math inline">\(\theta^O_S\)</span>.</p>
+<p>In DiD setups with multiple periods, it is natural to ask “How does
+treatment effects vary with elapsed treatment time?” Here, note that
+researchers are interested in understanding treatment effect dynamics.
+This is at the heart of event-study-type of analysis that is widespread
+in applied work.</p>
+<p>In this case, a natural way to aggregate the group-time average
+treatment effect to highlight treatment effect dynamics is given by</p>
 <p><span class="math display">\[
-  \theta_D(e) := \sum_{g=2}^{\mathcal{T}} \mathbf{1} \{ g + e \leq \mathcal{T} \} ATT(g,g+e) P(G=g | G+e \leq \mathcal{T}).
+  \theta_D(e) := \sum_{g=2}^{\mathcal{T}} \mathbf{1} \{ g + e \leq
+\mathcal{T} \} ATT(g,g+e) P(G=g | G+e \leq \mathcal{T}).
 \]</span></p>
-<p>This is the average effect of participating in the treatment for the group of units that have been exposed to the treatment for exactly <span class="math inline">\(e\)</span> time periods.</p>
-<p>All of these aggregations are available in the <strong>did</strong> package and examples with real data are available in our <a href="did-basics.html">Getting Started with the <strong>did</strong> Package</a> vignette. In <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2021)</a>, we also discuss additional aggregation schemes. We encourage you to take a look!</p>
+<p>This is the average effect of participating in the treatment for the
+group of units that have been exposed to the treatment for exactly <span class="math inline">\(e\)</span> time periods.</p>
+<p>All of these aggregations are available in the <strong>did</strong>
+package and examples with real data are available in our <a href="did-basics.html">Getting Started with the <strong>did</strong>
+Package</a> vignette. In <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and
+Sant’Anna (2021)</a>, we also discuss additional aggregation schemes. We
+encourage you to take a look!</p>
 </div>
 <div class="section level2">
 <h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
 </h2>
-<p>This vignette has covered basic background issues on DiD with multiple periods. <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and Sant’Anna (2021)</a> discusses many extensions and these are all provided in the <strong>did</strong> package as well. <a href="index.html">See our User Guides for more details.</a></p>
+<p>This vignette has covered basic background issues on DiD with
+multiple periods. <a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway and
+Sant’Anna (2021)</a> discusses many extensions and these are all
+provided in the <strong>did</strong> package as well. <a href="index.html">See our User Guides for more details.</a></p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li><p><a href="https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf" class="external-link">Borusyak, Kirill, and Xavier Jaravel. “Revisiting Event Study Designs”. Available at SSRN 2826228 (2018)</a></p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021</a>.</p></li>
-<li><p><a href="https://doi.org/10.1257/aer.20181169" class="external-link">de Chaisemartin, Clement, and Xavier d’Haultfoeuille. “Two-way fixed effects estimators with heterogeneous treatment effects.” American Economic Review 110.9 (2020): 2964-96.</a></p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2021.03.014" class="external-link">Goodman-Bacon, Andrew. Difference-in-differences with variation in treatment timing." Journal of Econometrics, Vol. 225, No. 2, pp. 254-277, 2021</a></p></li>
-<li><p><a href="https://www.journals.uchicago.edu/doi/10.1086/711509" class="external-link">Marcus, Michelle, and Pedro H. C. Sant’Anna. “The Role of Parallel Trends in Event Study Settings: An Application to Environmental Economics”. Journal of the Association of Environmental and Resource Economists, Vol. 8, No. 2, pp. 235-275, 2021</a></p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006" class="external-link">Sun, Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in event studies with heterogeneous treatment effects.” Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
+<li><p><a href="https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf" class="external-link">Borusyak,
+Kirill, and Xavier Jaravel. “Revisiting Event Study Designs”. Available
+at SSRN 2826228 (2018)</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway,
+Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with
+multiple time periods.” Journal of Econometrics, Vol. 225, No. 2,
+pp. 200-230, 2021</a>.</p></li>
+<li><p><a href="https://doi.org/10.1257/aer.20181169" class="external-link">de Chaisemartin,
+Clement, and Xavier d’Haultfoeuille. “Two-way fixed effects estimators
+with heterogeneous treatment effects.” American Economic Review 110.9
+(2020): 2964-96.</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2021.03.014" class="external-link">Goodman-Bacon,
+Andrew. Difference-in-differences with variation in treatment timing.”
+Journal of Econometrics, Vol. 225, No. 2, pp. 254-277, 2021</a></p></li>
+<li><p><a href="https://www.journals.uchicago.edu/doi/10.1086/711509" class="external-link">Marcus,
+Michelle, and Pedro H. C. Sant’Anna. “The Role of Parallel Trends in
+Event Study Settings: An Application to Environmental Economics”.
+Journal of the Association of Environmental and Resource Economists,
+Vol. 8, No. 2, pp. 235-275, 2021</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006" class="external-link">Sun,
+Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in
+event studies with heterogeneous treatment effects.” Journal of
+Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
 </ul>
 </div>
   </div>
@@ -272,7 +569,7 @@ ATT(g,t) = E[ Y_t - Y_{g-1}| G=g] - E[ Y_t - Y_{g-1}| D_t=0, G\not=g].
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
       </footer>

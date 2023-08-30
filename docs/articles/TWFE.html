@@ -76,10 +76,12 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Problems with two-way fixed-effects event-study regressions</h1>
-                        <h4 data-toc-skip class="author">Brantly Callaway and Pedro H. C. Sant’Anna</h4>
+      <h1 data-toc-skip>Problems with two-way fixed-effects event-study
+regressions</h1>
+                        <h4 data-toc-skip class="author">Brantly
+Callaway and Pedro H. C. Sant’Anna</h4>
             
-            <h4 data-toc-skip class="date">2022-07-19</h4>
+            <h4 data-toc-skip class="date">2023-08-29</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/TWFE.Rmd" class="external-link"><code>vignettes/TWFE.Rmd</code></a></small>
       <div class="hidden name"><code>TWFE.Rmd</code></div>
@@ -91,19 +93,61 @@
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>In this vignette, we want to illustrate the dangers of relying on traditional two-way fixed-effects (TWFE) regression models with leads and lags to conduct causal inference about treatment effect dynamics. In fact, we will show that <em>even</em> when treatment effect dynamics are homogeneous across different treatment groups/cohorts, some of these TWFE regression models can be severely biased.</p>
-<p>In order to effectively communicate these dangers, we consider a stylized simulation example where covariates do not play any major role. This example draws from several discussions we have had with Andrew Baker. We consider three setups. In the first one all units are eventually treated, and treatment effect dynamics are homogeneous across treatment groups. In the second, we have a group of units that remain untreated at the end of our sample, and treatment effect dynamics are homogeneous across treatment groups. The third one is like the second, but with heterogeneous treatment effect dynamics across treatment groups.</p>
+<p>In this vignette, we want to illustrate the dangers of relying on
+traditional two-way fixed-effects (TWFE) regression models with leads
+and lags to conduct causal inference about treatment effect dynamics. In
+fact, we will show that <em>even</em> when treatment effect dynamics are
+homogeneous across different treatment groups/cohorts, some of these
+TWFE regression models can be severely biased.</p>
+<p>In order to effectively communicate these dangers, we consider a
+stylized simulation example where covariates do not play any major role.
+This example draws from several discussions we have had with Andrew
+Baker. We consider three setups. In the first one all units are
+eventually treated, and treatment effect dynamics are homogeneous across
+treatment groups. In the second, we have a group of units that remain
+untreated at the end of our sample, and treatment effect dynamics are
+homogeneous across treatment groups. The third one is like the second,
+but with heterogeneous treatment effect dynamics across treatment
+groups.</p>
 </div>
 <div class="section level2">
-<h2 id="setup-with-all-units-being-eventually-treated-and-homogeneous-treatment-effect-dynamics">Setup with all units being eventually treated and homogeneous treatment effect dynamics<a class="anchor" aria-label="anchor" href="#setup-with-all-units-being-eventually-treated-and-homogeneous-treatment-effect-dynamics"></a>
+<h2 id="setup-with-all-units-being-eventually-treated-and-homogeneous-treatment-effect-dynamics">Setup with all units being eventually treated and homogeneous
+treatment effect dynamics<a class="anchor" aria-label="anchor" href="#setup-with-all-units-being-eventually-treated-and-homogeneous-treatment-effect-dynamics"></a>
 </h2>
-<p>Consider a staggered treatment adoption setup where 40 ‘states’ (<span class="math inline">\(state = \{1,2,\dots,40\}\)</span>) are randomly assigned into 4 treatment groups depending on the treatment starting year (1986, 1992, 1998, and 2004). We denote the treatment starting period as <span class="math inline">\(g\)</span> with (<span class="math inline">\(g \in \{ 1986, 1992, 1998, 2004\}\)</span>). The 1000 units (e.g., ‘counties’ or ‘firms’) <span class="math inline">\(i\)</span> in the sample are randomly assigned to one of the 40 states. Let <span class="math inline">\(G_i\)</span> indicates the group/cohort unit <span class="math inline">\(i\)</span> belongs to, i.e., <span class="math inline">\(G \subseteq \{ 1986, 1992, 1998, 2004\}\)</span>.</p>
-<p>The data generating process (DGP) for the outcome <span class="math inline">\(Y\)</span> we consider is <span class="math display">\[Y_{i,t} = (2010-g) + \alpha_i + \alpha_t + \tau_{i,t} + \epsilon_{i,t}\]</span> where <span class="math inline">\(\alpha_i\)</span> are unit fixed effects drawn from <span class="math inline">\(\sim N(\mu_{state}, 1)\)</span> with state-specific mean <span class="math inline">\(\mu_{state} = state/5\)</span>, <span class="math inline">\(\alpha_t\)</span> are time fixed effects (cohort specific parallel time-trends) generated as <span class="math display">\[\alpha_t = 0.1 * (t - g) + \epsilon^{time FE}_t, \]</span> with <span class="math inline">\(\epsilon^{time FE}_t \sim N(0, 1)\)</span>, <span class="math inline">\(\epsilon_{i,t} \sim N\left(0, \left(\frac{1}{2}\right)^2\right)\)</span> is an idiosyncratic error term, and <span class="math inline">\(\tau_{i,t}\)</span> are the unit-specific treatment effects at time <span class="math inline">\(t\)</span> generated as <span class="math display">\[ \tau_{i,t} = \mu \times (t - g + 1)\times 1\{t \ge g \},\]</span> where <span class="math inline">\(\mu\)</span> is the the instantaneous treatment effect; we set <span class="math inline">\(\mu=1\)</span>.</p>
-<p>From the above DGP, it is evident that the ATT at the time a unit is treated is equal to 1 for all groups, it is equal to 2 one period after treatment started for all groups, etc. Thus, the evolution of the treatment effects is homogeneous across treatment groups. This is an <em>a priori</em> strong restriction that should make things “easier” to estimate (but is by no means required!).</p>
+<p>Consider a staggered treatment adoption setup where 40 ‘states’
+(<span class="math inline">\(state = \{1,2,\dots,40\}\)</span>) are
+randomly assigned into 4 treatment groups depending on the treatment
+starting year (1986, 1992, 1998, and 2004). We denote the treatment
+starting period as <span class="math inline">\(g\)</span> with (<span class="math inline">\(g \in \{ 1986, 1992, 1998, 2004\}\)</span>). The
+1000 units (e.g., ‘counties’ or ‘firms’) <span class="math inline">\(i\)</span> in the sample are randomly assigned to
+one of the 40 states. Let <span class="math inline">\(G_i\)</span>
+indicates the group/cohort unit <span class="math inline">\(i\)</span>
+belongs to, i.e., <span class="math inline">\(G \subseteq \{ 1986, 1992,
+1998, 2004\}\)</span>.</p>
+<p>The data generating process (DGP) for the outcome <span class="math inline">\(Y\)</span> we consider is <span class="math display">\[Y_{i,t} = (2010-g) + \alpha_i + \alpha_t +
+\tau_{i,t} + \epsilon_{i,t}\]</span> where <span class="math inline">\(\alpha_i\)</span> are unit fixed effects drawn
+from <span class="math inline">\(\sim N(\mu_{state}, 1)\)</span> with
+state-specific mean <span class="math inline">\(\mu_{state} =
+state/5\)</span>, <span class="math inline">\(\alpha_t\)</span> are time
+fixed effects (cohort specific parallel time-trends) generated as <span class="math display">\[\alpha_t = 0.1 * (t - g) + \epsilon^{time FE}_t,
+\]</span> with <span class="math inline">\(\epsilon^{time FE}_t \sim
+N(0, 1)\)</span>, <span class="math inline">\(\epsilon_{i,t} \sim
+N\left(0, \left(\frac{1}{2}\right)^2\right)\)</span> is an idiosyncratic
+error term, and <span class="math inline">\(\tau_{i,t}\)</span> are the
+unit-specific treatment effects at time <span class="math inline">\(t\)</span> generated as <span class="math display">\[ \tau_{i,t} = \mu \times (t - g + 1)\times 1\{t
+\ge g \},\]</span> where <span class="math inline">\(\mu\)</span> is the
+the instantaneous treatment effect; we set <span class="math inline">\(\mu=1\)</span>.</p>
+<p>From the above DGP, it is evident that the ATT at the time a unit is
+treated is equal to 1 for all groups, it is equal to 2 one period after
+treatment started for all groups, etc. Thus, the evolution of the
+treatment effects is homogeneous across treatment groups. This is an
+<em>a priori</em> strong restriction that should make things “easier” to
+estimate (but is by no means required!).</p>
 <div class="section level3">
 <h3 id="visualizing-the-dgp">Visualizing the DGP<a class="anchor" aria-label="anchor" href="#visualizing-the-dgp"></a>
 </h3>
-<p>Let’s start the discussion by first visualizing how the DGP looks like.</p>
+<p>Let’s start the discussion by first visualizing how the DGP looks
+like.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load libraries and set baseline parameters</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
@@ -111,7 +155,7 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jacobkap/fastDummies" class="external-link">fastDummies</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/jrnold/ggthemes" class="external-link">ggthemes</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://bcallaway11.github.io/did/" class="external-link">did</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">theme_set</a></span><span class="op">(</span><span class="fu">theme_clean</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.background <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">theme_set</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/ggthemes/man/theme_clean.html" class="external-link">theme_clean</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.background <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#----------------------------------------------------------------------------</span></span>
 <span><span class="va">iseed</span>  <span class="op">=</span> <span class="fl">20201221</span></span>
 <span><span class="va">nrep</span> <span class="op">&lt;-</span> <span class="fl">100</span>  </span>
@@ -194,20 +238,49 @@
 <span>        axis.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">14</span><span class="op">)</span>,</span>
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span>  <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"One draw of the DGP with homogeneous effects across cohorts \n and with all groups being eventually treated"</span><span class="op">)</span><span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">plot1</span></span>
 <span></span>
 <span><span class="co">#ggsave("plot_dgp1.png", plot1, width = 10, height = 5, dpi = 100)</span></span></code></pre></div>
 <p><img src="plot_dgp1.png" style="width:100.0%"></p>
-<p>The above plot shows the 1,000 individual values of <span class="math inline">\(Y_{i,t}\)</span>, as well as the average by treatment-group (the thicker colorful lines), and the vertical lines show the period when treatment begins for each group. Because treatment effects here grows linearly with time elapsed since treatment started, we can see that the earliest treated units end up with the highest value of Y, and that the difference grows by the gap between treatment years.</p>
+<p>The above plot shows the 1,000 individual values of <span class="math inline">\(Y_{i,t}\)</span>, as well as the average by
+treatment-group (the thicker colorful lines), and the vertical lines
+show the period when treatment begins for each group. Because treatment
+effects here grows linearly with time elapsed since treatment started,
+we can see that the earliest treated units end up with the highest value
+of Y, and that the difference grows by the gap between treatment
+years.</p>
 </div>
 <div class="section level3">
-<h3 id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions">Estimating dynamic treatment effects via TWFE event-study regressions<a class="anchor" aria-label="anchor" href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions"></a>
+<h3 id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions">Estimating dynamic treatment effects via TWFE event-study
+regressions<a class="anchor" aria-label="anchor" href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions"></a>
 </h3>
-<p>Given that we are interested in treatment effect dynamics, we then proceed to consider a classical two-way fixed-effects (TWFE) event study specification <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> where <span class="math inline">\(D_{i,t}^{k}=1\{t-G_i=k\}\)</span> is an “event-study” dummy variable that takes value one if a unit <span class="math inline">\(i\)</span> is <span class="math inline">\(k\)</span> periods away from initial treatment at time <span class="math inline">\(t\)</span> and zero otherwise, <span class="math inline">\(D_{i,t}^{&lt;-K}=1\{t-G_i&lt;-K\}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}=1\{t-G_i&gt;L\}\)</span> are defined analogously. For instance, <span class="math inline">\(D_{i,t}^{0}\)</span> is equal to one if the unit <span class="math inline">\(i\)</span> is first treated at time <span class="math inline">\(t\)</span>, <span class="math inline">\(D_{i,t}^{1}\)</span> is equal to one if a one period has passed since treatment started (treatment lags), etc. Alternatively we have that <span class="math inline">\(D_{i,t}^{-2}\)</span> is equal to one if a unit <span class="math inline">\(i\)</span> will be treated in two periods from <span class="math inline">\(t\)</span> (treatment leads). In this exercise we set <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> to be equal to 5.</p>
-<p>Up to today, it is customary to interpret estimates of <span class="math inline">\(\gamma_k^{lags}\)</span> as ``good’’ measures of the average treatment effect for being exposed to treatment for <span class="math inline">\(k\)</span> periods, and estimates of <span class="math inline">\(\gamma_k^{leads}\)</span> as measures of pre-trends. Our first exercise here is to assess if this is OK-ish.</p>
-<p>Towards this end, we will a perform Monte Carlo exercise where we generate data according to the DGP described above and estimate all the parameters of the TWFE event-study regression above. We repeat this 100 times (same holds true if we do 1,000) and plot the Monte Carlo mean and 1.96 times the Monte-Carlo standard-deviation of the relative time indicator dummies, as well as the true treatment effect below.</p>
+<p>Given that we are interested in treatment effect dynamics, we then
+proceed to consider a classical two-way fixed-effects (TWFE) event study
+specification <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t
++ \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead}
+D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+}
+D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> where <span class="math inline">\(D_{i,t}^{k}=1\{t-G_i=k\}\)</span> is an
+“event-study” dummy variable that takes value one if a unit <span class="math inline">\(i\)</span> is <span class="math inline">\(k\)</span> periods away from initial treatment at
+time <span class="math inline">\(t\)</span> and zero otherwise, <span class="math inline">\(D_{i,t}^{&lt;-K}=1\{t-G_i&lt;-K\}\)</span> and
+<span class="math inline">\(D_{i,t}^{&gt;L}=1\{t-G_i&gt;L\}\)</span> are
+defined analogously. For instance, <span class="math inline">\(D_{i,t}^{0}\)</span> is equal to one if the unit
+<span class="math inline">\(i\)</span> is first treated at time <span class="math inline">\(t\)</span>, <span class="math inline">\(D_{i,t}^{1}\)</span> is equal to one if a one
+period has passed since treatment started (treatment lags), etc.
+Alternatively we have that <span class="math inline">\(D_{i,t}^{-2}\)</span> is equal to one if a unit
+<span class="math inline">\(i\)</span> will be treated in two periods
+from <span class="math inline">\(t\)</span> (treatment leads). In this
+exercise we set <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> to be equal to 5.</p>
+<p>Up to today, it is customary to interpret estimates of <span class="math inline">\(\gamma_k^{lags}\)</span> as ``good’’ measures of
+the average treatment effect for being exposed to treatment for <span class="math inline">\(k\)</span> periods, and estimates of <span class="math inline">\(\gamma_k^{leads}\)</span> as measures of
+pre-trends. Our first exercise here is to assess if this is OK-ish.</p>
+<p>Towards this end, we will a perform Monte Carlo exercise where we
+generate data according to the DGP described above and estimate all the
+parameters of the TWFE event-study regression above. We repeat this 100
+times (same holds true if we do 1,000) and plot the Monte Carlo mean and
+1.96 times the Monte-Carlo standard-deviation of the relative time
+indicator dummies, as well as the true treatment effect below.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="co"># variables we will use</span></span>
@@ -223,13 +296,13 @@
 <span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="co"># make dummies</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">year</span> <span class="op">-</span> <span class="va">cohort_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html" class="external-link">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="co"># generate pre and post dummies</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>Pre <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">5</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
 <span>           Post <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&gt;</span> <span class="fl">5</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># estimate the model</span></span>
-<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu">felm</span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> </span>
+<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html" class="external-link">felm</a></span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> </span>
 <span>                <span class="va">`rel_year_0`</span> <span class="op">+</span> <span class="va">`rel_year_1`</span> <span class="op">+</span> <span class="va">`rel_year_2`</span> <span class="op">+</span> <span class="va">`rel_year_3`</span> <span class="op">+</span> <span class="va">`rel_year_4`</span> <span class="op">+</span> </span>
 <span>                <span class="va">`rel_year_5`</span> <span class="op">+</span> <span class="va">Post</span> <span class="op">|</span> <span class="va">unit</span> <span class="op">+</span> <span class="va">year</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">state</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
@@ -247,7 +320,7 @@
 <span> <span class="va">es</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_classical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD</span><span class="op">)</span></span>
+<span><span class="va">data_classical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">colors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"True Effect"</span> <span class="op">=</span> <span class="st">"red"</span>, <span class="st">"Estimated Effect"</span> <span class="op">=</span> <span class="st">"blue"</span><span class="op">)</span></span>
 <span></span>
@@ -257,7 +330,7 @@
 <span>            sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span>,</span>
 <span>            lower.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">-</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span>,</span>
 <span>            upper.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">+</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>true_tau <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="fl">0</span>, <span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span> <span class="va">true_mu</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">avg</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="co">#geom_linerange(aes(ymin = lower.ci, ymax = upper.ci), color = 'darkgrey', size = 2) + </span></span>
@@ -272,7 +345,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"TWFE event-study regression with binned end-points"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -280,9 +353,25 @@
 <span></span>
 <span><span class="co">#ggsave("es_plot_classical.png", ES_plot_classical, width = 10, height = 5, dpi = 150)</span></span></code></pre></div>
 <p><img src="es_plot_classical.png" style="width:100.0%"></p>
-<p>The results above show that these TWFE event-study type estimates are <em>severely biased</em> for the true treatment effects. Furthermore, using the estimates of coefficient of treatment leads as a way to find evidence of “pre-trends” is very problematic, as illustrated above; see Sun and Abraham (2021) for formal results! Putting it simply, the results above highlight that such TWFE linear regression should not be used to highlight treatment effect dynamics!</p>
-<p>Now, you may wonder: What happens if I include all possible leads and lags in the TWFE event study specification, i.e., to set K and L to the maximum allowable in the data, making inclusion of <span class="math inline">\(D_{i,t}^{&lt;-K}\)</span> and of <span class="math inline">\(D_{i,t}^{&gt;L}\)</span> unnecessary. In what follows, we do exactly that, though we need to omit one extra period apart from -1 to avoid problems of multicollinearity identified by Borusyak and Jaravel (2018). We drop the most negative time period, which is perhaps the most natural thing to do. In order words, we set <span class="math inline">\(K=23\)</span> and <span class="math inline">\(L=24\)</span>, and drop the <span class="math inline">\(D_{i,t}^{&lt;-K}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}\)</span> from the TWFE specification.</p>
-<p>The result of this exercise is displayed below. And, as you can see, this still leads to <em>very biased</em> estimates for the causal effects of interest!</p>
+<p>The results above show that these TWFE event-study type estimates are
+<em>severely biased</em> for the true treatment effects. Furthermore,
+using the estimates of coefficient of treatment leads as a way to find
+evidence of “pre-trends” is very problematic, as illustrated above; see
+Sun and Abraham (2021) for formal results! Putting it simply, the
+results above highlight that such TWFE linear regression should not be
+used to highlight treatment effect dynamics!</p>
+<p>Now, you may wonder: What happens if I include all possible leads and
+lags in the TWFE event study specification, i.e., to set K and L to the
+maximum allowable in the data, making inclusion of <span class="math inline">\(D_{i,t}^{&lt;-K}\)</span> and of <span class="math inline">\(D_{i,t}^{&gt;L}\)</span> unnecessary. In what
+follows, we do exactly that, though we need to omit one extra period
+apart from -1 to avoid problems of multicollinearity identified by
+Borusyak and Jaravel (2018). We drop the most negative time period,
+which is perhaps the most natural thing to do. In order words, we set
+<span class="math inline">\(K=23\)</span> and <span class="math inline">\(L=24\)</span>, and drop the <span class="math inline">\(D_{i,t}^{&lt;-K}\)</span> and <span class="math inline">\(D_{i,t}^{&gt;L}\)</span> from the TWFE
+specification.</p>
+<p>The result of this exercise is displayed below. And, as you can see,
+this still leads to <em>very biased</em> estimates for the causal
+effects of interest!</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="va">run_ES_DiD_sat</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -301,7 +390,7 @@
 <span>  <span class="co"># reindex the relative years</span></span>
 <span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">rel_year</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html" class="external-link">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># make regression formula </span></span>
 <span>  <span class="va">indics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"rel_year"</span>, <span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">data</span><span class="op">$</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="op">-</span><span class="fl">1</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span><span class="op">]</span>, sep <span class="op">=</span> <span class="st">"_"</span>, collapse <span class="op">=</span> <span class="st">" + "</span><span class="op">)</span></span>
@@ -309,7 +398,7 @@
 <span>  <span class="va">formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"dep_var ~"</span>, <span class="va">indics</span>, <span class="st">"| unit + year | 0 | state"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># run mod</span></span>
-<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">felm</span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html" class="external-link">felm</a></span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># grab the obs we need</span></span>
 <span>  <span class="va">mod2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
@@ -325,7 +414,7 @@
 <span> <span class="va">es</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_sat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat</span><span class="op">)</span></span>
+<span><span class="va">data_sat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_sat</span> <span class="op">&lt;-</span> <span class="va">data_sat</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -333,7 +422,7 @@
 <span>            sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span>,</span>
 <span>            lower.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">-</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span>,</span>
 <span>            upper.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">+</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>true_tau <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="fl">0</span>, <span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span> <span class="va">true_mu</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">avg</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="co">#geom_linerange(aes(ymin = lower.ci, ymax = upper.ci), color = 'darkgrey', size = 2) + </span></span>
@@ -348,7 +437,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"TWFE event-study regression with 'all' leads and lags"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span>        </span>
@@ -361,9 +450,17 @@
 <div class="section level3">
 <h3 id="using-the-callaway-and-santanna-2021-framework">Using the Callaway and Sant’Anna (2021) framework<a class="anchor" aria-label="anchor" href="#using-the-callaway-and-santanna-2021-framework"></a>
 </h3>
-<p>Instead of using variants of the TWFE specification above, we advocate you to use the procedure put forward by Callaway and Sant’Anna (2021) and implemented in our package <strong>did</strong>.</p>
-<p>In this specific DGP, as there is no “never-treated” units, we can use the “not-yet-treated” units as a valid comparison group for each cohort. Furthermore, since covariates are not available (and do not play any major role into the analysis), we do not need to worry about the underlying “est_method”.</p>
-<p>Below we show the results associated with using the Callaway and Sant’Anna (2021) procedure. As you can see, you get reliable and precise estimates for treatment effect dynamics. This is good news!</p>
+<p>Instead of using variants of the TWFE specification above, we
+advocate you to use the procedure put forward by Callaway and Sant’Anna
+(2021) and implemented in our package <strong>did</strong>.</p>
+<p>In this specific DGP, as there is no “never-treated” units, we can
+use the “not-yet-treated” units as a valid comparison group for each
+cohort. Furthermore, since covariates are not available (and do not play
+any major role into the analysis), we do not need to worry about the
+underlying “est_method”.</p>
+<p>Below we show the results associated with using the Callaway and
+Sant’Anna (2021) procedure. As you can see, you get reliable and precise
+estimates for treatment effect dynamics. This is good news!</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="va">run_CS</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -375,7 +472,7 @@
 <span>                     tname <span class="op">=</span> <span class="st">"year"</span>,</span>
 <span>                     idname <span class="op">=</span> <span class="st">"unit"</span>,</span>
 <span>                     gname <span class="op">=</span> <span class="st">"cohort_year"</span>,</span>
-<span>                     control_group<span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
+<span>                     control_group <span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
 <span>                     bstrap <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                     data <span class="op">=</span> <span class="va">data</span>,</span>
 <span>                     print_details <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -391,7 +488,7 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_CS</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS</span><span class="op">)</span></span>
+<span><span class="va">data_CS</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_CS</span> <span class="op">&lt;-</span> <span class="va">data_CS</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -413,7 +510,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated"</span><span class="op">)</span><span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -424,19 +521,34 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="setup-with-a-group-that-remains-untreated-at-the-end-of-the-sample">Setup with a group that remains untreated at the end of the sample<a class="anchor" aria-label="anchor" href="#setup-with-a-group-that-remains-untreated-at-the-end-of-the-sample"></a>
+<h2 id="setup-with-a-group-that-remains-untreated-at-the-end-of-the-sample">Setup with a group that remains untreated at the end of the
+sample<a class="anchor" aria-label="anchor" href="#setup-with-a-group-that-remains-untreated-at-the-end-of-the-sample"></a>
 </h2>
-<p>One of the features of the above DGP is that all units eventually get treated. In some applications, we have that a group of units remain untreated at the end of the sample. We call this group of units the “never-treated” group. To assess if the problems associated with TWFE specification highlighted above persist if such a group of units is available, we modify a little bit the DGP and repeat the same exercise as above.</p>
+<p>One of the features of the above DGP is that all units eventually get
+treated. In some applications, we have that a group of units remain
+untreated at the end of the sample. We call this group of units the
+“never-treated” group. To assess if the problems associated with TWFE
+specification highlighted above persist if such a group of units is
+available, we modify a little bit the DGP and repeat the same exercise
+as above.</p>
 <div class="section level3">
-<h3 id="dgp-with-a-never-treated-group-and-homogeneous-treatment-effect-dynamics">DGP with a “never-treated” group and homogeneous treatment effect dynamics<a class="anchor" aria-label="anchor" href="#dgp-with-a-never-treated-group-and-homogeneous-treatment-effect-dynamics"></a>
+<h3 id="dgp-with-a-never-treated-group-and-homogeneous-treatment-effect-dynamics">DGP with a “never-treated” group and homogeneous treatment effect
+dynamics<a class="anchor" aria-label="anchor" href="#dgp-with-a-never-treated-group-and-homogeneous-treatment-effect-dynamics"></a>
 </h3>
-<p>The DGP we consider is very similar to the one we have already considered. The only difference is that now we suppress treatment for the last cohort. Put it simply, the cohort with <span class="math inline">\(g=2004\)</span> is now “never-treated”, implying that, in this DGP the unit-specific treatment effects at time <span class="math inline">\(t\)</span> <span class="math inline">\(\tau_{i,t}\)</span> are generated as <span class="math display">\[ \tau_{i,t} = \mu \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},\]</span> where <span class="math inline">\(\mu\)</span> is the the instantaneous treatment effect; we set <span class="math inline">\(\mu=1\)</span>.</p>
-<p>Like before, the ATT at the time a unit is treated is 1, it is equal to 2 one period after treatment started, etc.</p>
+<p>The DGP we consider is very similar to the one we have already
+considered. The only difference is that now we suppress treatment for
+the last cohort. Put it simply, the cohort with <span class="math inline">\(g=2004\)</span> is now “never-treated”, implying
+that, in this DGP the unit-specific treatment effects at time <span class="math inline">\(t\)</span> <span class="math inline">\(\tau_{i,t}\)</span> are generated as <span class="math display">\[ \tau_{i,t} = \mu \times (t - g + 1)\times 1\{t
+\ge g \}1\{g\not=2004 \},\]</span> where <span class="math inline">\(\mu\)</span> is the the instantaneous treatment
+effect; we set <span class="math inline">\(\mu=1\)</span>.</p>
+<p>Like before, the ATT at the time a unit is treated is 1, it is equal
+to 2 one period after treatment started, etc.</p>
 </div>
 <div class="section level3">
 <h3 id="visualizing-the-dgp-1">Visualizing the DGP<a class="anchor" aria-label="anchor" href="#visualizing-the-dgp-1"></a>
 </h3>
-<p>Let’s start the discussion by first visualizing how the DGP looks like.</p>
+<p>Let’s start the discussion by first visualizing how the DGP looks
+like.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co">## Generate data - treated cohorts consist of 250 obs each, with the treatment effect still = true_mu on average</span></span>
@@ -518,7 +630,7 @@
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1986"</span>, <span class="st">"1992"</span>, <span class="st">"1998"</span>, <span class="st">"Never-treated"</span><span class="op">)</span>,</span>
 <span>                     values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#E41A1C"</span>, <span class="st">"#377EB8"</span>, <span class="st">"#4DAF4A"</span>, <span class="st">"#984EA3"</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"One draw of the DGP with homogeneous effects across cohorts \n and with a never-treated group"</span><span class="op">)</span><span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">plot2</span> </span>
 <span></span>
@@ -526,10 +638,18 @@
 <p><img src="plot_dgp_never_treated.png" style="width:100.0%"></p>
 </div>
 <div class="section level3">
-<h3 id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1">Estimating dynamic treatment effects via TWFE event-study regressions<a class="anchor" aria-label="anchor" href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1"></a>
+<h3 id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1">Estimating dynamic treatment effects via TWFE event-study
+regressions<a class="anchor" aria-label="anchor" href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-1"></a>
 </h3>
-<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
-<p>As you can see from the results below, the bias are still substantial. Thus, the problems with TWFE specifications persists even if you have a “never-treated” group.</p>
+<p>Like before, we start by estimating a TWFE event-study regression
+<span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t +
+\gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead}
+D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+}
+D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end
+points.</p>
+<p>As you can see from the results below, the bias are still
+substantial. Thus, the problems with TWFE specifications persists even
+if you have a “never-treated” group.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="co"># variables we will use</span></span>
@@ -545,7 +665,7 @@
 <span>    <span class="co"># make dummies</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">year</span> <span class="op">-</span> <span class="va">cohort_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">==</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">NA</span>, <span class="va">rel_year</span><span class="op">)</span><span class="op">)</span><span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html" class="external-link">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">starts_with</a></span><span class="op">(</span><span class="st">"rel_year_"</span><span class="op">)</span>, <span class="op">~</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/replace_na.html" class="external-link">replace_na</a></span><span class="op">(</span><span class="va">.</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="co"># generate pre and post dummies</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>Pre <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">5</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
@@ -554,7 +674,7 @@
 <span>           Post <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">Post</span><span class="op">)</span>, <span class="fl">0</span>, <span class="va">Post</span><span class="op">)</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># estimate the model</span></span>
-<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu">felm</span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> </span>
+<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html" class="external-link">felm</a></span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> </span>
 <span>                <span class="va">`rel_year_0`</span> <span class="op">+</span> <span class="va">`rel_year_1`</span> <span class="op">+</span> <span class="va">`rel_year_2`</span> <span class="op">+</span> <span class="va">`rel_year_3`</span> <span class="op">+</span> <span class="va">`rel_year_4`</span> <span class="op">+</span> </span>
 <span>                <span class="va">`rel_year_5`</span> <span class="op">+</span> <span class="va">Post</span> <span class="op">|</span> <span class="va">unit</span> <span class="op">+</span> <span class="va">year</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">state</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
@@ -572,7 +692,7 @@
 <span> <span class="va">es</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_classical_never</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_never</span><span class="op">)</span></span>
+<span><span class="va">data_classical_never</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_never</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_classical_never</span> <span class="op">&lt;-</span> <span class="va">data_classical_never</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -580,7 +700,7 @@
 <span>            sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span>,</span>
 <span>            lower.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">-</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span>,</span>
 <span>            upper.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">+</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>true_tau <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="fl">0</span>, <span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span> <span class="va">true_mu</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">avg</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="co">#geom_linerange(aes(ymin = lower.ci, ymax = upper.ci), color = 'darkgrey', size = 2) + </span></span>
@@ -595,7 +715,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"TWFE event-study regression with binned end-points"</span><span class="op">)</span><span class="op">+</span></span>
 <span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -603,7 +723,8 @@
 <span></span>
 <span><span class="co">#ggsave("es_plot_classical_never.png", ES_plot_classical_never, width = 10, height = 5, dpi = 150)</span></span></code></pre></div>
 <p><img src="es_plot_classical_never.png" style="width:100.0%"></p>
-<p>Next, we consider the case where we one include almost all leads and lags (<span class="math inline">\(K=17\)</span> and <span class="math inline">\(L=24\)</span>) but omit the furthest lead <span class="math inline">\(K=18\)</span>.</p>
+<p>Next, we consider the case where we one include almost all leads and
+lags (<span class="math inline">\(K=17\)</span> and <span class="math inline">\(L=24\)</span>) but omit the furthest lead <span class="math inline">\(K=18\)</span>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="va">run_ES_DiD_sat_never</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -623,7 +744,7 @@
 <span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year2 <span class="op">=</span> <span class="va">rel_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">rel_year</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html" class="external-link">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="st">"rel_year_-Inf"</span><span class="op">)</span><span class="op">)</span></span>
 <span>    </span>
 <span>  </span>
@@ -633,7 +754,7 @@
 <span>  <span class="va">formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"dep_var ~"</span>, <span class="va">indics</span>, <span class="st">"| unit + year | 0 | state"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># run mod</span></span>
-<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">felm</span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html" class="external-link">felm</a></span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># grab the obs we need</span></span>
 <span> <span class="co"># grab the obs we need</span></span>
@@ -650,7 +771,7 @@
 <span> <span class="va">es</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_sat_never</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat_never</span><span class="op">)</span></span>
+<span><span class="va">data_sat_never</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat_never</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_sat_never</span> <span class="op">&lt;-</span> <span class="va">data_sat_never</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -658,7 +779,7 @@
 <span>            sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span>,</span>
 <span>            lower.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">-</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span>,</span>
 <span>            upper.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">+</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>true_tau <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="fl">0</span>, <span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span> <span class="va">true_mu</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">avg</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="co">#geom_linerange(aes(ymin = lower.ci, ymax = upper.ci), color = 'darkgrey', size = 2) + </span></span>
@@ -673,7 +794,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"TWFE event-study regression with 'all' leads and lags"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -681,14 +802,24 @@
 <span></span>
 <span><span class="co">#ggsave("es_plot_sat_never.png", ES_plot_sat_never, width = 10, height = 5, dpi = 150)</span></span></code></pre></div>
 <p><img src="es_plot_sat_never.png" style="width:100.0%"></p>
-<p>As the result above shows, when you have a never-treated group, treatment effects are homogeneous across cohorts, and you do not bin event-times, TWFE event-study regressions do recover the true underlying dynamic treatment effects.</p>
+<p>As the result above shows, when you have a never-treated group,
+treatment effects are homogeneous across cohorts, and you do not bin
+event-times, TWFE event-study regressions do recover the true underlying
+dynamic treatment effects.</p>
 </div>
 <div class="section level3">
-<h3 id="using-the-callaway-and-santanna-202-framework">Using the Callaway and Sant’Anna (202) framework<a class="anchor" aria-label="anchor" href="#using-the-callaway-and-santanna-202-framework"></a>
+<h3 id="using-the-callaway-and-santanna-2021-framework-1">Using the Callaway and Sant’Anna (2021) framework<a class="anchor" aria-label="anchor" href="#using-the-callaway-and-santanna-2021-framework-1"></a>
 </h3>
-<p>Next, we show that the procedure put forward by Callaway and Sant’Anna (2021) and implemented in our <strong>did</strong> can also be used in this setup.</p>
-<p>In this specific DGP, as there is a “never-treated” group, we can use use different comparison groups: 1) the “never-treated” group, and 2) the “not-yet-treated” group. In this particular DGP, using any of these two different comparison groups should recover the true underlying dynamic treatment effect. Let’s see if this is indeed the case.</p>
-<p>First, let’s estimate it using the “never-treated” units as the comparison group.</p>
+<p>Next, we show that the procedure put forward by Callaway and
+Sant’Anna (2021) and implemented in our <strong>did</strong> can also be
+used in this setup.</p>
+<p>In this specific DGP, as there is a “never-treated” group, we can use
+use different comparison groups: 1) the “never-treated” group, and 2)
+the “not-yet-treated” group. In this particular DGP, using any of these
+two different comparison groups should recover the true underlying
+dynamic treatment effect. Let’s see if this is indeed the case.</p>
+<p>First, let’s estimate it using the “never-treated” units as the
+comparison group.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="va">run_CS_never</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -701,7 +832,7 @@
 <span>                     tname <span class="op">=</span> <span class="st">"year"</span>,</span>
 <span>                     idname <span class="op">=</span> <span class="st">"unit"</span>,</span>
 <span>                     gname <span class="op">=</span> <span class="st">"cohort_year"</span>,</span>
-<span>                     control_group<span class="op">=</span> <span class="st">"never_treated"</span>,</span>
+<span>                     control_group <span class="op">=</span> <span class="st">"never_treated"</span>,</span>
 <span>                     bstrap <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                     data <span class="op">=</span> <span class="va">data</span>,</span>
 <span>                     print_details <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -717,7 +848,7 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_CS_never</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_never</span><span class="op">)</span></span>
+<span><span class="va">data_CS_never</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_never</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_CS_never</span> <span class="op">&lt;-</span> <span class="va">data_CS_never</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -739,7 +870,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Never-treated units"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -748,7 +879,8 @@
 <span><span class="co">#ggsave("es_plot_CS_never.png", ES_plot_CS_never, width = 10, height = 5, dpi = 150)</span></span></code></pre></div>
 <p><img src="es_plot_CS_never.png" style="width:100.0%"></p>
 <p>As expected, the results look good!</p>
-<p>Now, let’s consider the “not-yet-treated” units as comparison group.</p>
+<p>Now, let’s consider the “not-yet-treated” units as comparison
+group.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co"># function to run ES DID</span></span>
@@ -762,7 +894,7 @@
 <span>                     tname <span class="op">=</span> <span class="st">"year"</span>,</span>
 <span>                     idname <span class="op">=</span> <span class="st">"unit"</span>,</span>
 <span>                     gname <span class="op">=</span> <span class="st">"cohort_year"</span>,</span>
-<span>                     control_group<span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
+<span>                     control_group <span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
 <span>                     bstrap <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                     data <span class="op">=</span> <span class="va">data</span>,</span>
 <span>                     print_details <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -778,7 +910,7 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_CS_ny</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_ny</span><span class="op">)</span></span>
+<span><span class="va">data_CS_ny</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_ny</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_CS_ny</span> <span class="op">&lt;-</span> <span class="va">data_CS_ny</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -800,7 +932,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated units"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -814,12 +946,29 @@
 <div class="section level2">
 <h2 id="setup-with-heterogeneous-treatment-effects">Setup with Heterogeneous Treatment Effects<a class="anchor" aria-label="anchor" href="#setup-with-heterogeneous-treatment-effects"></a>
 </h2>
-<p>Now, we want to consider a setup with heterogeneous treatment effect dynamics and with a “never-treated” group. This DGP is a modification of the one we have considered above, where now the “unit-specific” treatment effect at time <span class="math inline">\(t\)</span> is given by <span class="math display">\[ \tau_{i,t} = \mu_g \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},\]</span> where we set <span class="math inline">\(\mu_{1986} = 3\)</span>, <span class="math inline">\(\mu_{1992} = 2\)</span> and <span class="math inline">\(\mu_{1998} = 1\)</span>. This implies that for the group who started treatment in 1986, its average treatment effects evolves with elapsed time as <span class="math inline">\(3,6, 9,\dots\)</span>. For the group that started treatment in 1992 (1998), its average treatment effect evolves with elapsed time as <span class="math inline">\(2,4, 6,\dots\)</span> (<span class="math inline">\(1,2, 3,\dots\)</span>). Of course, treatment effect is zero for the “never-treated” cohort (<span class="math inline">\(g=2004\)</span>, which later we will relabel to <span class="math inline">\(g=\infty\)</span>). This is a DGP where “early-treated” units benefit more from the treatment than “later-treated” units.</p>
-<p>Given that each group has same size (on average), the true average treatment effect dynamic across treated groups is <span class="math inline">\((3+2+1)/3 = 2\)</span> at the time a unit is treated, <span class="math inline">\(2 \times (3+2+1)/3 = 4\)</span> in the first period after treatment started, etc.</p>
+<p>Now, we want to consider a setup with heterogeneous treatment effect
+dynamics and with a “never-treated” group. This DGP is a modification of
+the one we have considered above, where now the “unit-specific”
+treatment effect at time <span class="math inline">\(t\)</span> is given
+by <span class="math display">\[ \tau_{i,t} = \mu_g \times (t - g +
+1)\times 1\{t \ge g \}1\{g\not=2004 \},\]</span> where we set <span class="math inline">\(\mu_{1986} = 3\)</span>, <span class="math inline">\(\mu_{1992} = 2\)</span> and <span class="math inline">\(\mu_{1998} = 1\)</span>. This implies that for the
+group who started treatment in 1986, its average treatment effects
+evolves with elapsed time as <span class="math inline">\(3,6,
+9,\dots\)</span>. For the group that started treatment in 1992 (1998),
+its average treatment effect evolves with elapsed time as <span class="math inline">\(2,4, 6,\dots\)</span> (<span class="math inline">\(1,2, 3,\dots\)</span>). Of course, treatment
+effect is zero for the “never-treated” cohort (<span class="math inline">\(g=2004\)</span>, which later we will relabel to
+<span class="math inline">\(g=\infty\)</span>). This is a DGP where
+“early-treated” units benefit more from the treatment than
+“later-treated” units.</p>
+<p>Given that each group has same size (on average), the true average
+treatment effect dynamic across treated groups is <span class="math inline">\((3+2+1)/3 = 2\)</span> at the time a unit is
+treated, <span class="math inline">\(2 \times (3+2+1)/3 = 4\)</span> in
+the first period after treatment started, etc.</p>
 <div class="section level3">
 <h3 id="visualizing-the-dgp-2">Visualizing the DGP<a class="anchor" aria-label="anchor" href="#visualizing-the-dgp-2"></a>
 </h3>
-<p>Like before, let’s start the discussion by visualizing how this DGP looks like.</p>
+<p>Like before, let’s start the discussion by visualizing how this DGP
+looks like.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co">## Generate data - treated cohorts consist of 250 obs each, with the treatment effect still = true_mu on average</span></span>
@@ -902,7 +1051,7 @@
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1986"</span>, <span class="st">"1992"</span>, <span class="st">"1998"</span>, <span class="st">"Never-treated"</span><span class="op">)</span>,</span>
 <span>                     values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#E41A1C"</span>, <span class="st">"#377EB8"</span>, <span class="st">"#4DAF4A"</span>, <span class="st">"#984EA3"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"One draw of the DGP with heterogeneous treatment effect dynamics across cohorts \n and with a never-treated group"</span><span class="op">)</span><span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">plot3</span> </span>
 <span></span>
@@ -910,10 +1059,18 @@
 <p><img src="plot_dgp_never_treated_het.png" style="width:100.0%"></p>
 </div>
 <div class="section level3">
-<h3 id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2">Estimating dynamic treatment effects via TWFE event-study regressions<a class="anchor" aria-label="anchor" href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2"></a>
+<h3 id="estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2">Estimating dynamic treatment effects via TWFE event-study
+regressions<a class="anchor" aria-label="anchor" href="#estimating-dynamic-treatment-effects-via-twfe-event-study-regressions-2"></a>
 </h3>
-<p>Like before, we start by estimating a TWFE event-study regression <span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end points.</p>
-<p>As you can see from the results below, the bias are still substantial. Given the results we have shown before, this should be not a surprise.</p>
+<p>Like before, we start by estimating a TWFE event-study regression
+<span class="math display">\[Y_{i,t} = \alpha_i + \alpha_t +
+\gamma_k^{-K}~ D_{i,t}^{&lt;-K} + \sum_{k=-K}^{-2} \gamma_k^{lead}
+D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+}
+D_{i,t}^{&gt;L} + \varepsilon_{i,t}\]</span> with <span class="math inline">\(K\)</span> and <span class="math inline">\(L\)</span> set to 5. That is, binning the end
+points.</p>
+<p>As you can see from the results below, the bias are still
+substantial. Given the results we have shown before, this should be not
+a surprise.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="co"># variables we will use</span></span>
@@ -929,7 +1086,7 @@
 <span>    <span class="co"># make dummies</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">year</span> <span class="op">-</span> <span class="va">cohort_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">rel_year</span> <span class="op">==</span> <span class="op">-</span><span class="cn">Inf</span>, <span class="cn">NA</span>, <span class="va">rel_year</span><span class="op">)</span><span class="op">)</span><span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html" class="external-link">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">starts_with</a></span><span class="op">(</span><span class="st">"rel_year_"</span><span class="op">)</span>, <span class="op">~</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/replace_na.html" class="external-link">replace_na</a></span><span class="op">(</span><span class="va">.</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="co"># generate pre and post dummies</span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>Pre <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="op">(</span><span class="va">rel_year</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">5</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">rel_year</span><span class="op">)</span><span class="op">)</span>, <span class="fl">1</span>, <span class="fl">0</span><span class="op">)</span>,</span>
@@ -938,7 +1095,7 @@
 <span>           Post <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">Post</span><span class="op">)</span>, <span class="fl">0</span>, <span class="va">Post</span><span class="op">)</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># estimate the model</span></span>
-<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu">felm</span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> </span>
+<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">lfe</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html" class="external-link">felm</a></span><span class="op">(</span><span class="va">dep_var</span> <span class="op">~</span> <span class="va">Pre</span> <span class="op">+</span> <span class="va">`rel_year_-5`</span> <span class="op">+</span> <span class="va">`rel_year_-4`</span> <span class="op">+</span> <span class="va">`rel_year_-3`</span> <span class="op">+</span> <span class="va">`rel_year_-2`</span> <span class="op">+</span> </span>
 <span>                <span class="va">`rel_year_0`</span> <span class="op">+</span> <span class="va">`rel_year_1`</span> <span class="op">+</span> <span class="va">`rel_year_2`</span> <span class="op">+</span> <span class="va">`rel_year_3`</span> <span class="op">+</span> <span class="va">`rel_year_4`</span> <span class="op">+</span> </span>
 <span>                <span class="va">`rel_year_5`</span> <span class="op">+</span> <span class="va">Post</span> <span class="op">|</span> <span class="va">unit</span> <span class="op">+</span> <span class="va">year</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">state</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
@@ -957,7 +1114,7 @@
 <span> <span class="va">es</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_classical_never_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_never_het</span><span class="op">)</span></span>
+<span><span class="va">data_classical_never_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_never_het</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_classical_never_het</span> <span class="op">&lt;-</span> <span class="va">data_classical_never_het</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -965,7 +1122,7 @@
 <span>            sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span>,</span>
 <span>            lower.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">-</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span>,</span>
 <span>            upper.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">+</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>true_tau <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="fl">0</span>, <span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span> <span class="fl">2</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">avg</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="co">#geom_linerange(aes(ymin = lower.ci, ymax = upper.ci), color = 'darkgrey', size = 2) + </span></span>
@@ -980,7 +1137,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"TWFE event-study regression with binned end-points"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -988,7 +1145,8 @@
 <span></span>
 <span><span class="co">#ggsave("es_plot_classical_never_het.png", ES_plot_classical_never_het, width = 10, height = 5, dpi = 150)</span></span></code></pre></div>
 <p><img src="es_plot_classical_never_het.png" style="width:100.0%"></p>
-<p>Next, we consider the case where one include almost all leads and lags (<span class="math inline">\(K=17\)</span> and <span class="math inline">\(L=24\)</span>) but omit the furthest lead <span class="math inline">\(K=18\)</span>.</p>
+<p>Next, we consider the case where one include almost all leads and
+lags (<span class="math inline">\(K=17\)</span> and <span class="math inline">\(L=24\)</span>) but omit the furthest lead <span class="math inline">\(K=18\)</span>.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="va">run_ES_DiD_sat_never_het</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1008,7 +1166,7 @@
 <span>  <span class="va">data</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year2 <span class="op">=</span> <span class="va">rel_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>rel_year <span class="op">=</span> <span class="va">rel_year</span> <span class="op">-</span> <span class="va">min_year</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>    <span class="fu">dummy_cols</span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>    <span class="fu"><a href="https://jacobkap.github.io/fastDummies/reference/dummy_cols.html" class="external-link">dummy_cols</a></span><span class="op">(</span>select_columns <span class="op">=</span> <span class="st">"rel_year"</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="op">(</span><span class="st">"rel_year_-Inf"</span><span class="op">)</span><span class="op">)</span></span>
 <span>    </span>
 <span>  </span>
@@ -1018,7 +1176,7 @@
 <span>  <span class="va">formula</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"dep_var ~"</span>, <span class="va">indics</span>, <span class="st">"| unit + year | 0 | state"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># run mod</span></span>
-<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu">felm</span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lfe/man/felm.html" class="external-link">felm</a></span><span class="op">(</span><span class="va">formula</span>, data <span class="op">=</span> <span class="va">data</span>, exactDOF <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># grab the obs we need</span></span>
 <span><span class="co"># grab the obs we need</span></span>
@@ -1035,7 +1193,7 @@
 <span> <span class="va">es</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_sat_never_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat_never_het</span><span class="op">)</span></span>
+<span><span class="va">data_sat_never_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_ES_DiD_sat_never_het</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_sat_never_het</span> <span class="op">&lt;-</span> <span class="va">data_sat_never_het</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -1043,7 +1201,7 @@
 <span>            sd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">estimate</span><span class="op">)</span>,</span>
 <span>            lower.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">-</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span>,</span>
 <span>            upper.ci <span class="op">=</span> <span class="va">avg</span> <span class="op">+</span> <span class="fl">1.96</span><span class="op">*</span><span class="va">sd</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>t <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, avg <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0</span>, lower.ci <span class="op">=</span> <span class="fl">0</span>, upper.ci <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>true_tau <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">t</span> <span class="op">&gt;=</span> <span class="fl">0</span>, <span class="op">(</span><span class="va">t</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">*</span> <span class="fl">2</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">t</span>, y <span class="op">=</span> <span class="va">avg</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="co">#geom_linerange(aes(ymin = lower.ci, ymax = upper.ci), color = 'darkgrey', size = 2) + </span></span>
@@ -1058,7 +1216,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"TWFE event-study regression with 'all' leads and lags"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -1066,13 +1224,22 @@
 <span></span>
 <span><span class="co">#ggsave("es_plot_sat_never_het.png", ES_plot_sat_never_het, width = 10, height = 5, dpi = 150)</span></span></code></pre></div>
 <p><img src="es_plot_sat_never_het.png" style="width:100.0%"></p>
-<p>As the result above shows, when treatment effects dynamics are heterogeneous across groups, TWFE event-study regressions do not recover the true underlying dynamic treatment effects, even if a “never-treated” group is available and one does not bin extreme event-times. Again, this is a red flag for the usage of TWFE-type regressions in DiD setups.</p>
+<p>As the result above shows, when treatment effects dynamics are
+heterogeneous across groups, TWFE event-study regressions do not recover
+the true underlying dynamic treatment effects, even if a “never-treated”
+group is available and one does not bin extreme event-times. Again, this
+is a red flag for the usage of TWFE-type regressions in DiD setups.</p>
 </div>
 <div class="section level3">
-<h3 id="using-the-callaway-and-santanna-2021-framework-1">Using the Callaway and Sant’Anna (2021) framework<a class="anchor" aria-label="anchor" href="#using-the-callaway-and-santanna-2021-framework-1"></a>
+<h3 id="using-the-callaway-and-santanna-2021-framework-2">Using the Callaway and Sant’Anna (2021) framework<a class="anchor" aria-label="anchor" href="#using-the-callaway-and-santanna-2021-framework-2"></a>
 </h3>
-<p>Next, we show that the procedure put forward by Callaway and Sant’Anna (2021) and implemented in our <strong>did</strong> can also be used in this setup. In other words, Callaway and Sant’Anna (2021) proposal <em>does not rely on restricting treatment effect heterogeneity</em>.</p>
-<p>First, let’s estimate the treatment effect dynamics using the “never-treated” units as the comparison group.</p>
+<p>Next, we show that the procedure put forward by Callaway and
+Sant’Anna (2021) and implemented in our <strong>did</strong> can also be
+used in this setup. In other words, Callaway and Sant’Anna (2021)
+proposal <em>does not rely on restricting treatment effect
+heterogeneity</em>.</p>
+<p>First, let’s estimate the treatment effect dynamics using the
+“never-treated” units as the comparison group.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># function to run ES DID</span></span>
 <span><span class="va">run_CS_never_het</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -1085,7 +1252,7 @@
 <span>                     tname <span class="op">=</span> <span class="st">"year"</span>,</span>
 <span>                     idname <span class="op">=</span> <span class="st">"unit"</span>,</span>
 <span>                     gname <span class="op">=</span> <span class="st">"cohort_year"</span>,</span>
-<span>                     control_group<span class="op">=</span> <span class="st">"never_treated"</span>,</span>
+<span>                     control_group <span class="op">=</span> <span class="st">"never_treated"</span>,</span>
 <span>                     bstrap <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                     data <span class="op">=</span> <span class="va">data</span>,</span>
 <span>                     print_details <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -1101,7 +1268,7 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_CS_never_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_never_het</span><span class="op">)</span></span>
+<span><span class="va">data_CS_never_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_never_het</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_CS_never_het</span> <span class="op">&lt;-</span> <span class="va">data_CS_never_het</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -1123,7 +1290,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Never-treated units"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -1132,7 +1299,8 @@
 <span><span class="co">#ggsave("es_plot_CS_never_het.png", ES_plot_CS_never_het, width = 10, height = 5)</span></span></code></pre></div>
 <p><img src="es_plot_CS_never_het.png" style="width:100.0%"></p>
 <p>As expected, the results look good!</p>
-<p>Now, let’s consider the “not-yet-treated” units as comparison group.</p>
+<p>Now, let’s consider the “not-yet-treated” units as comparison
+group.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span></span>
 <span><span class="co"># function to run ES DID</span></span>
@@ -1146,7 +1314,7 @@
 <span>                     tname <span class="op">=</span> <span class="st">"year"</span>,</span>
 <span>                     idname <span class="op">=</span> <span class="st">"unit"</span>,</span>
 <span>                     gname <span class="op">=</span> <span class="st">"cohort_year"</span>,</span>
-<span>                     control_group<span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
+<span>                     control_group <span class="op">=</span> <span class="st">"notyettreated"</span>,</span>
 <span>                     bstrap <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>                     data <span class="op">=</span> <span class="va">data</span>,</span>
 <span>                     print_details <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -1162,7 +1330,7 @@
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">t</span>, <span class="va">estimate</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">data_CS_ny_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_ny_het</span><span class="op">)</span></span>
+<span><span class="va">data_CS_ny_het</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://purrr.tidyverse.org/reference/map_dfr.html" class="external-link">map_dfr</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">nrep</span>, <span class="va">run_CS_ny_het</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ES_plot_CS_ny_het</span> <span class="op">&lt;-</span> <span class="va">data_CS_ny_het</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> </span>
@@ -1184,7 +1352,7 @@
 <span>        axis.text <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Event-study-parameters estimated using Callaway and Sant'Anna (2021)\nComparison group: Not-yet-treated units"</span><span class="op">)</span><span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_color_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">colors</span><span class="op">)</span> <span class="op">+</span> </span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size<span class="op">=</span><span class="fl">12</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>plot.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>hjust <span class="op">=</span> <span class="fl">0.5</span>, size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span>,</span>
 <span>        legend.position <span class="op">=</span> <span class="st">"bottom"</span>, </span>
 <span>        legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -1198,15 +1366,27 @@
 <div class="section level2">
 <h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
 </h2>
-<p>In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant’Anna (2021) and implement in our <strong>did</strong> package does not suffer from these drawbacks.</p>
+<p>In this vignette, we have shown that relying on TWFE event-study
+regressions can lead to very misleading conclusions about treatment
+effect dynamics. On the other hand, the approach put forward by Callaway
+and Sant’Anna (2021) and implement in our <strong>did</strong> package
+does not suffer from these drawbacks.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li><p><a href="https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf" class="external-link">Borusyak, Kirill, and Xavier Jaravel. “Revisiting Event Study Designs”. Available at SSRN 2826228 (2018)</a></p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021</a>.</p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006" class="external-link">Sun, Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in event studies with heterogeneous treatment effects.” Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
+<li><p><a href="https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf" class="external-link">Borusyak,
+Kirill, and Xavier Jaravel. “Revisiting Event Study Designs”. Available
+at SSRN 2826228 (2018)</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway,
+Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with
+multiple time periods.” Journal of Econometrics, Vol. 225, No. 2,
+pp. 200-230, 2021</a>.</p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006" class="external-link">Sun,
+Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in
+event studies with heterogeneous treatment effects.” Journal of
+Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
 </ul>
 </div>
   </div>
@@ -1228,7 +1408,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
       </footer>
