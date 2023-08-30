@@ -92,10 +92,10 @@ tidy.AGGTEobj<- function(x, ...) {
       type      = x$type,
       estimate  = x$overall.att,
       std.error = x$overall.se,
-      conf.low  = x$overall.se - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
-      conf.high = x$overall.se + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
-      point.conf.low  = x$overall.se - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
-      point.conf.high = x$overall.se + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se)
+      conf.low  = x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
+      conf.high = x$overall.att + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
+      point.conf.low  = x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
+      point.conf.high = x$overall.att + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se)
   }
   
   out
