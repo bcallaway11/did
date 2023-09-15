@@ -88,6 +88,7 @@ set.seed(1814)
 
 # generate dataset with 4 time periods
 time.periods <- 4
+sp <- reset.sim(time.periods=time.periods)
 
 # add dynamic effects
 sp$te.e <- 1:time.periods
