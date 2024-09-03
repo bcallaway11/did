@@ -11,7 +11,7 @@
 #'  likely violators of the support condition.
 #'
 #' @return list of ids of observations that likely violate support conditions
-#' 
+#'
 #' @export
 trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notyettreated", threshold=.999) {
 
@@ -37,5 +37,40 @@ trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notye
     print(this.data[dropper,idname])
     return(this.data[dropper,idname])
   }
+}
+
+#' @title get_wide_data
+#' @description A utility function to convert long data to wide data, i.e., takes a 2 period dataset and turns it into a cross sectional dataset.
+#'
+#' @param data data.table used in function
+#' @param yname name of outcome variable that can change over time
+#' @param idname unique id
+#' @param tname time period name
+#'
+#' @return data from first period with .y0 (outcome in first period), .y1 (outcome in second period),
+#' and .dy (change in outcomes over time) appended to it
+#'
+#' @export
+get_wide_data <- function(data, yname, idname, tname) {
+  # check if data is data.table
+  if (!is.data.table(data)) {
+    stop("data must be a data.table")
+  }
+
+  # check that only 2 periods of data are available
+  if (length(unique(data[[tname]])) != 2) {
+    stop("data must have exactly 2 periods")
+  }
+
+  # making computations
+  data$.y1 <- data.table::shift(data[[yname]], -1)
+  data$.y0 <- data[[yname]]
+  data$.dy <- data$.y1 - data$.y0
+
+  # Subset to first row
+  first.period <- min(data[[tname]])
+  data <- data[data[[tname]] == first.period, ]
+
+  return(data)
 }
 
