@@ -1,13 +1,12 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/master/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+# Updated R-CMD-check workflow for GitHub Actions
+name: R-CMD-check
+
 on:
   push:
-    branches: [main, master]
+    branches: [main, master]  # Triggers on push to main or master
   pull_request:
-    branches: [main, master]
-  workflow_dispatch:
-
-name: R-CMD-check
+    branches: [main, master]  # Triggers on pull requests to main or master
+  workflow_dispatch:          # Allows manual triggering
 
 jobs:
   R-CMD-check:
@@ -30,18 +29,23 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3  # Updated to the latest version
 
-      - uses: r-lib/actions/setup-pandoc@v1
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2  # Updated to the latest version
 
-      - uses: r-lib/actions/setup-r@v1
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2  # Updated to the latest version
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v1
+      - name: Install R package dependencies
+        uses: r-lib/actions/setup-r-dependencies@v2  # Updated to the latest version
         with:
           extra-packages: rcmdcheck
 
-      - uses: r-lib/actions/check-r-package@v1
+      - name: Check R package
+        uses: r-lib/actions/check-r-package@v2  # Updated to the latest version
