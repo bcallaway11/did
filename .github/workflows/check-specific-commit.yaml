@@ -1,4 +1,4 @@
-name: Temporary R-CMD-check
+name: R-CMD-check for Specific Commit
 
 on:
   workflow_dispatch:
