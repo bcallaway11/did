@@ -41,7 +41,7 @@ jobs:
         http-user-agent: ${{ matrix.config.http-user-agent }}
         use-public-rspm: true
 
-    - name: Install system dependencies
+    - name: Install system dependencies (Linux)
       if: runner.os == 'Linux'
       run: sudo apt-get install -y libharfbuzz-dev libfribidi-dev libfreetype6-dev libcurl4-openssl-dev
 
@@ -54,13 +54,14 @@ jobs:
           ${{ runner.os }}-r-${{ matrix.config.r }}-
           ${{ runner.os }}-r-
 
-    - name: Install R package dependencies
+    - name: Install R package dependencies (Windows)
+      if: runner.os == 'Windows'
       run: |
-        if [ "${{ runner.os }}" == "Windows" ]; then
-          cmd.exe /c "R -e \"install.packages('devtools'); devtools::install_deps(dependencies = TRUE)\""
-        else
-          R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
-        fi
+        R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
+
+    - name: Install R package dependencies (Unix)
+      if: runner.os != 'Windows'
+      run: R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
 
     - name: Run R CMD check
       uses: r-lib/actions/check-r-package@v2
