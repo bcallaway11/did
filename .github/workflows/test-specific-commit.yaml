@@ -1,0 +1,38 @@
+name: Temporary R-Package-Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA to run the workflow for'
+        required: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ github.event.inputs.commit_sha }}
+
+    - name: Set up R
+      uses: r-lib/actions/setup-r@v2
+
+    - name: Install system dependencies
+      run: sudo apt-get install -y libharfbuzz-dev libfribidi-dev libfreetype6-dev libcurl4-openssl-dev
+
+    - name: Cache R packages
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.R_LIBS_USER }}
+        key: ${{ runner.os }}-r-${{ hashFiles('**/DESCRIPTION') }}
+        restore-keys: |
+          ${{ runner.os }}-r-
+      
+    - name: Install R package dependencies
+      run: R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
+
+    - name: Run tests
+      run: R -e "devtools::test()"
