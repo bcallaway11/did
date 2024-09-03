@@ -2,10 +2,10 @@ name: R-CMD-check
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master]  # Triggers on push to main or master
   pull_request:
-    branches: [main, master]
-  workflow_dispatch:
+    branches: [main, master]  # Triggers on pull requests to main or master
+  workflow_dispatch:          # Allows manual triggering
 
 jobs:
   R-CMD-check:
@@ -43,7 +43,7 @@ jobs:
 
     - name: Install system dependencies
       if: runner.os == 'Linux'
-      run: sudo apt-get install -y libharfbuzz-dev libfribidi-dev libfreetype6-dev
+      run: sudo apt-get install -y libharfbuzz-dev libfribidi-dev libfreetype6-dev libcurl4-openssl-dev
 
     - name: Cache R packages
       uses: actions/cache@v3
