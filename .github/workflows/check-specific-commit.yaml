@@ -3,6 +3,9 @@ name: R-CMD-check for Specific Commit
 on:
   workflow_dispatch:
     inputs:
+      repo_name:
+        description: 'Repository name (e.g., person/repo) to run the workflow for'
+        required: true
       commit_sha:
         description: 'Commit SHA to run the workflow for'
         required: true
@@ -11,24 +14,23 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {os: macOS-latest,   r: 'release'}
+          - {os: macOS-latest, r: 'release'}
           - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'oldrel-1'}
+          - {os: ubuntu-latest, r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'oldrel-1'}
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0 # Fetch all history for all branches and tags
-        ref: ${{ github.event.inputs.commit_sha }}
+        repository: ${{ github.event.inputs.repo_name }}  # Use the input for repository name
+        ref: ${{ github.event.inputs.commit_sha }}  # Use the input for commit SHA
+        fetch-depth: 0  # Fetch all history to ensure the commit is found
 
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2

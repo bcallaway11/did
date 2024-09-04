@@ -3,6 +3,9 @@ name: R-Package-Test for Specific Commit
 on:
   workflow_dispatch:
     inputs:
+      repo_name:
+        description: 'Repository name (e.g., person/repo) to run the workflow for'
+        required: true
       commit_sha:
         description: 'Commit SHA to run the workflow for'
         required: true
@@ -15,8 +18,9 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0 # Fetch all history for all branches and tags
-        ref: ${{ github.event.inputs.commit_sha }}
+        repository: ${{ github.event.inputs.repo_name }}  # Use the input for repository name
+        ref: ${{ github.event.inputs.commit_sha }}  # Use the input for commit SHA
+        fetch-depth: 0  # Fetch all history to ensure the commit is found
 
     - name: Set up R
       uses: r-lib/actions/setup-r@v2
