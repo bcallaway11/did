@@ -1,3 +1,7 @@
+# did 2.2.0
+
+  * Code improvements that made the package much faster and memory efficient
+
 # did 2.1.2
 
   * Added wrapper function for HonestDiD package
