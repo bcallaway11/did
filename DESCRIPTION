@@ -15,7 +15,7 @@ Imports:
     pbapply,
     ggplot2,
     ggpubr,
-    DRDID,
+    DRDID (>= 1.1.0),
     generics,
     methods,
     tidyr,
