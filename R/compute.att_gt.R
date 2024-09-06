@@ -198,7 +198,14 @@ compute.att_gt <- function(dp) {
           # checks for pscore based methods
           if (est_method %in% c("dr", "ipw")) {
             #preliminary_logit <- glm(G ~ -1 + covariates, family=binomial(link=logit))
-            preliminary_logit <- parglm::parglm(G ~ -1 + covariates, family = "binomial")
+            preliminary_logit <- suppressWarnings(parglm::parglm.fit(x = covariates,
+                                                                     y = G,
+                                                                     family =  stats::binomial(),
+                                                                     weights = w,
+                                                                     control = parglm.control(nthreads = getDTthreads()),
+                                                                     intercept = FALSE
+            ))
+            class(preliminary_logit) <- "glm" #this allow us to use predict
             preliminary_pscores <- predict(preliminary_logit, type="response")
             if (max(preliminary_pscores) >= 0.999) {
               pscore_problems_likely <- TRUE
