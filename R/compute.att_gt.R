@@ -202,7 +202,7 @@ compute.att_gt <- function(dp) {
                                                                      y = G,
                                                                      family =  stats::binomial(),
                                                                      weights = w,
-                                                                     control = parglm.control(nthreads = getDTthreads()),
+                                                                     control = parglm::parglm.control(nthreads = getDTthreads()),
                                                                      intercept = FALSE
             ))
             class(preliminary_logit) <- "glm" #this allow us to use predict
