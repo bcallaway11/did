@@ -1,6 +1,6 @@
-# did 2.1.3
+# did 2.2.0
 
-  * Big speed improvements.  Thanks @marcelortizv
+  * Code improvements that made the package much faster and memory efficient
 
 # did 2.1.2
 

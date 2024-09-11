@@ -20,7 +20,7 @@ compute.att_gt <- function(dp) {
   #-----------------------------------------------------------------------------
   # unpack DIDparams
   #-----------------------------------------------------------------------------
-  data <- as.data.frame(dp$data)
+  data <- data.table::as.data.table(dp$data)
   yname <- dp$yname
   tname <- dp$tname
   idname <- dp$idname
@@ -51,32 +51,30 @@ compute.att_gt <- function(dp) {
   counter <- 1
 
   # number of time periods
-  tlist.length <- length(tlist)
-  tfac <- 0
-
-  if (base_period != "universal") {
-    tlist.length <- tlist.length - 1
-    tfac <- 1
-  }
+  tlist.length <- ifelse(base_period != "universal", length(tlist) - 1, length(tlist))
+  tfac <- ifelse(base_period != "universal", 1, 0)
 
   # influence function
-  inffunc <- Matrix::Matrix(data=0,nrow=n, ncol=nG*(nT-tfac), sparse=TRUE)
+  inffunc <- Matrix::Matrix(data = 0, nrow = n, ncol = nG*(nT-tfac), sparse = TRUE)
+
+  # list of collect sparse matrix updates
+  inffunc_updates <- list()
+  # counter for keeping track of updates
+  update_counter <- 1
 
   # never treated option
   nevertreated <- (control_group[1] == "nevertreated")
 
   if(nevertreated) {
-    data$.C <- 1*(data[,gname] == 0)
+    data[, .C := as.integer(get(gname) == 0)]
   }
-
-  # rename yname to .y
-  data$.y <- data[,yname]
+  data[, .y := get(yname), .SDcols = yname]
 
   # loop over groups
   for (g in 1:nG) {
 
     # Set up .G once
-    data$.G <- 1*(data[,gname] == glist[g])
+    data[, .G := as.integer(get(gname) == glist[g]), .SDcols = gname]
 
     # loop over time periods
     for (t in 1:tlist.length) {
@@ -97,9 +95,9 @@ compute.att_gt <- function(dp) {
       # that is, never treated + units that are eventually treated,
       # but not treated by the current period (+ anticipation)
       if(!nevertreated) {
-        data$.C <- 1 * ((data[,gname] == 0) |
-                            ((data[,gname] > (tlist[max(t,pret)+tfac]+anticipation)) &
-                               (data[,gname] != glist[g])))
+        data[, .C := as.integer((get(gname) == 0) |
+                                  ((get(gname) > (tlist[max(t, pret) + tfac] + anticipation)) &
+                                     (get(gname) != glist[g])))]
       }
 
 
@@ -148,13 +146,15 @@ compute.att_gt <- function(dp) {
       post.treat <- 1*(glist[g] <= tlist[t+tfac])
 
       # total number of units (not just included in G or C)
-      disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
+      # disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
+      target_times <- c(tlist[t+tfac], tlist[pret])
+      disdat <- data[get(tname) %in% target_times]
 
 
       if (panel) {
         # transform  disdat it into "cross-sectional" data where one of the columns
         # contains the change in the outcome over time.
-        disdat <- panel2cs2(disdat, yname, idname, tname, balance_panel=FALSE)
+        disdat <- get_wide_data(disdat, yname, idname, tname)
 
         # still total number of units (not just included in G or C)
         n <- nrow(disdat)
@@ -163,7 +163,7 @@ compute.att_gt <- function(dp) {
         disidx <- disdat$.G==1 | disdat$.C==1
 
         # pick up the data that will be used to compute ATT(g,t)
-        disdat <- disdat[disidx,]
+        disdat <- disdat[disidx]
 
         n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
 
@@ -197,7 +197,15 @@ compute.att_gt <- function(dp) {
 
           # checks for pscore based methods
           if (est_method %in% c("dr", "ipw")) {
-            preliminary_logit <- glm(G ~ -1 + covariates, family=binomial(link=logit))
+            #preliminary_logit <- glm(G ~ -1 + covariates, family=binomial(link=logit))
+            preliminary_logit <- suppressWarnings(parglm::parglm.fit(x = covariates,
+                                                                     y = G,
+                                                                     family =  stats::binomial(),
+                                                                     weights = w,
+                                                                     control = parglm::parglm.control(nthreads = data.table::getDTthreads()),
+                                                                     intercept = FALSE
+            ))
+            class(preliminary_logit) <- "glm" #this allow us to use predict
             preliminary_pscores <- predict(preliminary_logit, type="response")
             if (max(preliminary_pscores) >= 0.999) {
               pscore_problems_likely <- TRUE
@@ -270,7 +278,7 @@ compute.att_gt <- function(dp) {
         # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
         # with true repeated cross sections, but should pick up the right time periods
         # only with unbalanced panel
-        disidx <- (data$.rowid %in% rightids) & ( (data[,tname] == tlist[t+tfac]) | (data[,tname]==tlist[pret]))
+        disidx <- (data$.rowid %in% rightids) & ( (data[[tname]] == tlist[t+tfac]) | (data[[tname]]==tlist[pret]))
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- data[disidx,]
@@ -281,8 +289,8 @@ compute.att_gt <- function(dp) {
         # give short names for data in this iteration
         G <- disdat$.G
         C <- disdat$.C
-        Y <- disdat[,yname]
-        post <- 1*(disdat[,tname] == tlist[t+tfac])
+        Y <- disdat[[yname]]
+        post <- 1*(disdat[[tname]] == tlist[t+tfac])
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G+C)
         w <- disdat$.w
@@ -381,23 +389,43 @@ compute.att_gt <- function(dp) {
 
       # populate the influence function in the right places
       if(panel) {
-        inf.func[disidx] <- attgt$att.inf.func
+        # inf.func[disidx] <- attgt$att.inf.func
+        # Collect the indices and corresponding values for the update
+        inffunc_updates[[update_counter]] <- list(
+          indices = disidx,
+          values = attgt$att.inf.func
+        )
       } else {
         # aggregate inf functions by id (order by id)
         aggte_inffunc = suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
         disidx <- (unique(data$.rowid) %in% aggte_inffunc[,1])
-        inf.func[disidx] <- aggte_inffunc[,2]
+        #inf.func[disidx] <- aggte_inffunc[,2]
+        inffunc_updates[[update_counter]] <- list(
+          indices = disidx,
+          values = aggte_inffunc[,2]
+        )
       }
 
 
       # save it in influence function matrix
       # inffunc[g,t,] <- inf.func
-      inffunc[,counter] <- inf.func
+      #inffunc[,counter] <- inf.func
+      update_counter <- update_counter + 1
 
       # update counter
       counter <- counter+1
     } # end looping over t
   } # end looping over g
+
+  # Apply the updates to the influence function matrix
+  update_inffunc <- rbindlist(lapply(seq_along(inffunc_updates), function(i) {
+    update <- inffunc_updates[[i]]
+    data.table(row = which(update$indices), col = i, value = update$values)
+  }))
+
+  # Apply updates to the sparse matrix
+  inffunc[cbind(update_inffunc$row, update_inffunc$col)] <- update_inffunc$value
+
 
   return(list(attgt.list=attgt.list, inffunc=inffunc))
 }
