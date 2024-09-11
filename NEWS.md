@@ -2,6 +2,8 @@
 
   * Code improvements that made the package much faster and memory efficient
 
+  * Improved automated testing and regression testing
+
 # did 2.1.2
 
   * Added wrapper function for HonestDiD package
