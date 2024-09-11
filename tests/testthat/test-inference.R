@@ -7,9 +7,7 @@
 # did/tests/att_gt_inference_tests.Rmd.
 #
 # IMPORTANT: For these tests to run, version 2.0.0 of the did package should
-# be available.  The path of to the old version should be set in the
-# following variable.
-old_did_path <- "~/R/old_packages/did"
+# be available.
 #
 # The following code will install version 2.0.0 of the did package into
 # the directory above:
@@ -22,37 +20,75 @@ library(BMisc)
 library(ggplot2)
 library(ggpubr)
 
+temp_lib <- tempfile()
+dir.create(temp_lib)
+remotes::install_version("did", version = "2.0.0", lib = temp_lib)
 
 test_that("inference with balanced panel data and aggregations", {
   sp <- reset.sim()
   data <- build_sim_dataset(sp)
 
-  tryCatch(detach("package:did"), error=function(e) "")
+  # tryCatch(detach("package:did"), error=function(e) "")
 
-  library(did, lib.loc="~/R/old_packages/")
+  # library(did, lib.loc="~/R/old_packages/")
 
   # first: make sure that we are using right version of package for these estimates
-  expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
+  # expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
   
   set.seed(1234)
   # dr
-  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  dr_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   # reg
-  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  reg_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="reg")
-  # reg
-  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+
+  # ipw
+  ipw_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="ipw")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
   # aggregations
-  dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
-  group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="calendar")
-  detach("package:did")
-
+  dyn_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(ipw_2.0, type="dynamic")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  group_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(reg_2.0, type="group")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  cal_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(dr_2.0, type="calendar")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   
-  devtools::load_all("~/Dropbox/did")
+  
   expect_true(packageVersion("did") != "2.0.0", "wrong version of package")
   set.seed(1234)
   #dr 
@@ -69,7 +105,6 @@ test_that("inference with balanced panel data and aggregations", {
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
   cal_new <- aggte(dr_new, type="calendar")
-  detach("package:did")
 
   # checks for ATT(g,t)'s
   # check that the influence function is the same
@@ -102,32 +137,60 @@ test_that("inference with clustering", {
   sp <- reset.sim()
   data <- build_sim_dataset(sp)
 
-  tryCatch(detach("package:did"), error=function(e) "")
-
-  library(did, lib.loc="~/R/old_packages/")
-
-  # first: make sure that we are using right version of package for these estimates
-  expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
-  
   set.seed(1234)
   # dr
-  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  dr_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr", clustervars="cluster")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   # reg
-  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  reg_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="reg", clustervars="cluster")
-  # reg
-  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+
+  # ipw
+  ipw_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="ipw", clustervars="cluster")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
   # aggregations
-  dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
-  group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="calendar")
-  detach("package:did")
-
+  dyn_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(ipw_2.0, type="dynamic")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  group_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(reg_2.0, type="group")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  cal_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(dr_2.0, type="calendar")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   
-  devtools::load_all("~/Dropbox/did")
+
   expect_true(packageVersion("did") != "2.0.0", "wrong version of package")
   set.seed(1234)
   #dr 
@@ -144,7 +207,6 @@ test_that("inference with clustering", {
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
   cal_new <- aggte(dr_new, type="calendar")
-  detach("package:did")
 
   # checks for ATT(g,t)'s
   # check that the influence function is the same
@@ -202,32 +264,62 @@ test_that("inference with repeated cross sections", {
   sp <- reset.sim()
   data <- build_sim_dataset(sp, panel=FALSE)
 
-  tryCatch(detach("package:did"), error=function(e) "")
-
-  library(did, lib.loc="~/R/old_packages/")
-
-  # first: make sure that we are using right version of package for these estimates
-  expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
+  
   
   set.seed(1234)
   # dr
-  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  dr_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr", panel=FALSE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   # reg
-  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  reg_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="reg", panel=FALSE)
-  # reg
-  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+
+  # ipw
+  ipw_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="ipw", panel=FALSE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
   # aggregations
-  dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
-  group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="calendar")
-  detach("package:did")
+  dyn_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(ipw_2.0, type="dynamic")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  group_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(reg_2.0, type="group")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  cal_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(dr_2.0, type="calendar")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
-  
-  devtools::load_all("~/Dropbox/did")
+
   expect_true(packageVersion("did") != "2.0.0", "wrong version of package")
   set.seed(1234)
   #dr 
@@ -244,7 +336,6 @@ test_that("inference with repeated cross sections", {
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
   cal_new <- aggte(dr_new, type="calendar")
-  detach("package:did")
 
   # checks for ATT(g,t)'s
   # check that the influence function is the same
@@ -277,33 +368,60 @@ test_that("inference with repeated cross sections and clustering", {
   sp <- reset.sim()
   data <- build_sim_dataset(sp, panel=FALSE)
 
-  tryCatch(detach("package:did"), error=function(e) "")
-
-  library(did, lib.loc="~/R/old_packages/")
-
-  # first: make sure that we are using right version of package for these estimates
-  expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
-  
   set.seed(1234)
   # dr
-  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  dr_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr", clustervars="cluster", panel=FALSE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   # reg
-  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  reg_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="reg", clustervars="cluster", panel=FALSE)
-  # reg
-  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+
+  # ipw
+  ipw_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="ipw", clustervars="cluster", panel=FALSE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
   # aggregations
-  dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
-  group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="calendar")
-  detach("package:did")
+  dyn_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(ipw_2.0, type="dynamic")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  group_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(reg_2.0, type="group")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  cal_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(dr_2.0, type="calendar")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
-  
-  devtools::load_all("~/Dropbox/did")
-  expect_true(packageVersion("did") != "2.0.0", "wrong version of package")
+
   set.seed(1234)
   #dr 
   dr_new <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -319,7 +437,6 @@ test_that("inference with repeated cross sections and clustering", {
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
   cal_new <- aggte(dr_new, type="calendar")
-  detach("package:did")
 
   # checks for ATT(g,t)'s
   # check that the influence function is the same
@@ -354,32 +471,62 @@ test_that("inference with unbalanced panel", {
   data <- build_sim_dataset(sp)
   data <- data[-3,]
 
-  tryCatch(detach("package:did"), error=function(e) "")
-
-  library(did, lib.loc="~/R/old_packages/")
-
-  # first: make sure that we are using right version of package for these estimates
-  expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
   
   set.seed(1234)
   # dr
-  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  dr_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr", panel=TRUE, allow_unbalanced_panel=TRUE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   # reg
-  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  reg_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="reg", panel=TRUE, allow_unbalanced_panel=TRUE)
-  # reg
-  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+
+  # ipw
+  ipw_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="ipw", panel=TRUE, allow_unbalanced_panel=TRUE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
   # aggregations
-  dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
-  group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="calendar")
-  detach("package:did")
+  dyn_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(ipw_2.0, type="dynamic")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  group_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(reg_2.0, type="group")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  cal_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(dr_2.0, type="calendar")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
-  
-  devtools::load_all("~/Dropbox/did")
+
+
   expect_true(packageVersion("did") != "2.0.0", "wrong version of package")
   set.seed(1234)
   #dr 
@@ -396,7 +543,6 @@ test_that("inference with unbalanced panel", {
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
   cal_new <- aggte(dr_new, type="calendar")
-  detach("package:did")
 
   # checks for ATT(g,t)'s
   # check that the influence function is the same
@@ -429,32 +575,61 @@ test_that("inference with unbalanced panel and clustering", {
   data <- build_sim_dataset(sp)
   data <- data[-3,]
 
-  tryCatch(detach("package:did"), error=function(e) "")
-
-  library(did, lib.loc="~/R/old_packages/")
-
-  # first: make sure that we are using right version of package for these estimates
-  expect_true(packageVersion("did") == "2.0.0", "wrong version of package")
   
   set.seed(1234)
   # dr
-  dr_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  dr_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                    gname="G", est_method="dr", clustervars="cluster", allow_unbalanced_panel=TRUE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
   # reg
-  reg_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+  reg_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="reg", clustervars="cluster", allow_unbalanced_panel=TRUE)
-  # reg
-  ipw_2.0 <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+
+  # ipw
+  ipw_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
                     gname="G", est_method="ipw", clustervars="cluster", allow_unbalanced_panel=TRUE)
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
   # aggregations
-  dyn_2.0 <- aggte(ipw_2.0, type="dynamic")
-  group_2.0 <- aggte(reg_2.0, type="group")
-  cal_2.0 <- aggte(dr_2.0, type="calendar")
-  detach("package:did")
+  dyn_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(ipw_2.0, type="dynamic")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  group_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(reg_2.0, type="group")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
+  cal_2.0 <- callr::r(
+    function(data, temp_lib) {
+      library(did, lib.loc=temp_lib)
+      aggte(dr_2.0, type="calendar")
+    },
+    args=list(data=data, temp_lib=temp_lib)
+  )
 
-  
-  devtools::load_all("~/Dropbox/did")
+
   expect_true(packageVersion("did") != "2.0.0", "wrong version of package")
   set.seed(1234)
   #dr 
@@ -471,7 +646,6 @@ test_that("inference with unbalanced panel and clustering", {
   dyn_new <- aggte(ipw_new, type="dynamic")
   group_new <- aggte(reg_new, type="group")
   cal_new <- aggte(dr_new, type="calendar")
-  detach("package:did")
 
   # checks for ATT(g,t)'s
   # check that the influence function is the same
@@ -498,3 +672,5 @@ test_that("inference with unbalanced panel and clustering", {
   expect_equal(cal_2.0$se[1], cal_new$se[1], tol=.01)
   
 })  
+
+unlink(temp_lib)

@@ -34,9 +34,15 @@ jobs:
       run: |
         if [ "${{ runner.os }}" == "Windows" ]; then
           cmd.exe /c "R -e \"install.packages('devtools'); devtools::install_deps(dependencies = TRUE)\""
+          cmd.exe /c "R -e \"install.packages('remotes')\""
+          cmd.exe /c "R -e \"install.packages('callr')\""
         else
           R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
+          R -e "install.packages('remotes')"
+          R -e "install.packages('callr')"
         fi
 
     - name: Run tests
-      run: R -e "devtools::test()"
+      run: | 
+        R -e "devtools::test()"
+        R -e "testthat::test_dir('tests/testthat', reporter = 'check')"

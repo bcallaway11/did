@@ -6,9 +6,9 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue)](https://cran.r-project.org/package=did)
 [![](http://cranlogs.r-pkg.org/badges/last-month/did?color=blue)](https://cran.r-project.org/package=did)
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
-[![](https://img.shields.io/badge/devel%20version-2.1.1-blue.svg)](https://github.com/bcallaway11/did)
+[![](https://img.shields.io/badge/devel%20version-2.1.2-blue.svg)](https://github.com/bcallaway11/did)
 [![CRAN
-checks](https://cranchecks.info/badges/summary/did)](https://cran.r-project.org/web/checks/check_results_did.html)
+checks](https://badges.cranchecks.info/summary/did.svg)](https://cran.r-project.org/web/checks/check_results_did.html)
 [![](https://img.shields.io/github/last-commit/bcallaway11/did.svg)](https://github.com/bcallaway11/did/commits/master)
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -83,8 +83,8 @@ from [Callaway and Sant’Anna
 A subset of the data is available in the package and can be loaded by
 
 ``` r
-  library(did)
-  data(mpdta)
+library(did)
+data(mpdta)
 ```
 
 The dataset contains 500 observations of county-level teen employment
@@ -108,14 +108,15 @@ To estimate group-time average treatment effects, use the **att\_gt**
 function
 
 ``` r
-out <- att_gt(yname = "lemp",
-              gname = "first.treat",
-              idname = "countyreal",
-              tname = "year",
-              xformla = ~1,
-              data = mpdta,
-              est_method = "reg"
-              )
+out <- att_gt(
+  yname = "lemp",
+  gname = "first.treat",
+  idname = "countyreal",
+  tname = "year",
+  xformla = ~1,
+  data = mpdta,
+  est_method = "reg"
+)
 ```
 
 **att\_gt** returns a class **MP** object. This has a lot of
@@ -134,18 +135,18 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0235       -0.0747      0.0537  
-#>   2004 2005  -0.0704     0.0328       -0.1600      0.0192  
-#>   2004 2006  -0.1373     0.0378       -0.2403     -0.0342 *
-#>   2004 2007  -0.1008     0.0331       -0.1912     -0.0104 *
-#>   2006 2004   0.0065     0.0236       -0.0578      0.0708  
-#>   2006 2005  -0.0028     0.0205       -0.0587      0.0532  
-#>   2006 2006  -0.0046     0.0192       -0.0570      0.0478  
-#>   2006 2007  -0.0412     0.0200       -0.0959      0.0134  
-#>   2007 2004   0.0305     0.0162       -0.0138      0.0748  
-#>   2007 2005  -0.0027     0.0174       -0.0501      0.0446  
-#>   2007 2006  -0.0311     0.0194       -0.0840      0.0219  
-#>   2007 2007  -0.0261     0.0178       -0.0746      0.0225  
+#>   2004 2004  -0.0105     0.0240       -0.0757      0.0547  
+#>   2004 2005  -0.0704     0.0337       -0.1621      0.0212  
+#>   2004 2006  -0.1373     0.0395       -0.2446     -0.0299 *
+#>   2004 2007  -0.1008     0.0365       -0.1999     -0.0018 *
+#>   2006 2004   0.0065     0.0225       -0.0546      0.0676  
+#>   2006 2005  -0.0028     0.0194       -0.0554      0.0499  
+#>   2006 2006  -0.0046     0.0176       -0.0524      0.0432  
+#>   2006 2007  -0.0412     0.0202       -0.0962      0.0137  
+#>   2007 2004   0.0305     0.0152       -0.0108      0.0718  
+#>   2007 2005  -0.0027     0.0162       -0.0466      0.0411  
+#>   2007 2006  -0.0311     0.0168       -0.0766      0.0145  
+#>   2007 2007  -0.0261     0.0165       -0.0708      0.0187  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -167,7 +168,7 @@ It is often also convenient to plot the group-time average treatment
 effects. This can be done using the **ggdid** command:
 
 ``` r
-ggdid(out, ylim = c(-.25,.1))
+ggdid(out, ylim = c(-.25, .1))
 ```
 
 <img src="man/figures/README-unnamed-chunk-9-1.png" width="90%" style="display: block; margin: auto;" />
@@ -210,18 +211,18 @@ summary(es)
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.0772        0.0216    -0.1196     -0.0348 *
+#>  -0.0772        0.0214    -0.1191     -0.0354 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0153       -0.0101      0.0712  
-#>          -2  -0.0006     0.0134       -0.0361      0.0350  
-#>          -1  -0.0245     0.0155       -0.0656      0.0166  
-#>           0  -0.0199     0.0126       -0.0533      0.0135  
-#>           1  -0.0510     0.0163       -0.0941     -0.0078 *
-#>           2  -0.1373     0.0387       -0.2398     -0.0347 *
-#>           3  -0.1008     0.0376       -0.2006     -0.0011 *
+#>          -3   0.0305     0.0155       -0.0099      0.0709  
+#>          -2  -0.0006     0.0128       -0.0341      0.0330  
+#>          -1  -0.0245     0.0141       -0.0611      0.0122  
+#>           0  -0.0199     0.0114       -0.0496      0.0097  
+#>           1  -0.0510     0.0171       -0.0957     -0.0062 *
+#>           2  -0.1373     0.0402       -0.2422     -0.0323 *
+#>           3  -0.1008     0.0351       -0.1923     -0.0093 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -275,14 +276,14 @@ summary(group_effects)
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.031        0.0125    -0.0554     -0.0066 *
+#>  -0.031        0.0119    -0.0544     -0.0077 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0283       -0.1427     -0.0168 *
-#>   2006  -0.0229     0.0168       -0.0603      0.0145  
-#>   2007  -0.0261     0.0176       -0.0651      0.0130  
+#>   2004  -0.0797     0.0313       -0.1531     -0.0064 *
+#>   2006  -0.0229     0.0159       -0.0602      0.0144  
+#>   2007  -0.0261     0.0179       -0.0681      0.0160  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

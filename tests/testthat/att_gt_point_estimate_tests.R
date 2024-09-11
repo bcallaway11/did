@@ -6,10 +6,10 @@ knitr::opts_chunk$set(
 
 
 ## ---- echo=FALSE, results="hide", warning=FALSE, message=FALSE----------------
-source("setup_sims.R")
-fldr <- "~/Dropbox/did/R/"
+# source("setup_sims.R")
+# fldr <- "~/Dropbox/did/R/"
 #fldr <- "/Users/santanph/Dropbox/Co-authored Projects/did/R/"
-sapply(paste0(fldr,list.files(fldr)), source)
+# sapply(paste0(fldr,list.files(fldr)), source)
 library(DRDID)
 library(BMisc)
 library(ggplot2)

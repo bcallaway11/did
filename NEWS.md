@@ -1,3 +1,7 @@
+# did 2.1.3
+
+  * Big speed improvements.  Thanks @marcelortizv
+
 # did 2.1.2
 
   * Added wrapper function for HonestDiD package

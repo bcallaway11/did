@@ -21,14 +21,14 @@ library(BMisc)
 ```
 # Difference-in-Differences <img src="man/figures/logo.png" align="right" alt="" width="155" />
 
-```{r echo=FALSE, results='asis', message=FALSE}
+```{r echo=FALSE, results='asis', message=FALSE, warning=FALSE}
 cat(
   badger::badge_cran_download("did", "grand-total", "blue"),
   badger::badge_cran_download("did", "last-month", "blue"),
   badger::badge_cran_release("did", "blue"),
   badger::badge_devel("bcallaway11/did", "blue"),
   badger::badge_cran_checks("did"),
-  #badger::badge_codecov("bcallaway11/did"),
+  # badger::badge_codecov("bcallaway11/did"),
   badger::badge_last_commit("bcallaway11/did")
 )
 ```
@@ -85,8 +85,8 @@ The following is a simplified example of the effect of states increasing their m
 
 A subset of the data is available in the package and can be loaded by
 ```{r eval=FALSE}
-  library(did)
-  data(mpdta)
+library(did)
+data(mpdta)
 ```
 
 The dataset contains 500 observations of county-level teen employment rates from 2003-2007.  Some states are first treated in 2004, some in 2006, and some in 2007 (see the paper for more details).  The important variables in the dataset are
@@ -102,14 +102,15 @@ The dataset contains 500 observations of county-level teen employment rates from
 To estimate group-time average treatment effects, use the **att_gt** function
 
 ```{r}
-out <- att_gt(yname = "lemp",
-              gname = "first.treat",
-              idname = "countyreal",
-              tname = "year",
-              xformla = ~1,
-              data = mpdta,
-              est_method = "reg"
-              )
+out <- att_gt(
+  yname = "lemp",
+  gname = "first.treat",
+  idname = "countyreal",
+  tname = "year",
+  xformla = ~1,
+  data = mpdta,
+  est_method = "reg"
+)
 ```
 
 **att_gt** returns a class **MP** object.  This has a lot of information, but most importantly is has estimates of the group-time average treatment effects and their standard errors.  To see these, we can call the **summary** function
@@ -128,7 +129,7 @@ library(ggplot2)
 ```
 
 ```{r, fig.width=8, fig.height=10, fig.align='center', out.width="90%", dpi = 200}
-ggdid(out, ylim = c(-.25,.1))
+ggdid(out, ylim = c(-.25, .1))
 ```
 
 The red dots in the plot are pre-treatment group-time average treatment effects .  Here they are provided with 95\% simultaneous confidence intervals. These are the estimates that can be interpreted as a pre-test of the parallel trends assumption. The blue dots are post-treatment group-time average treatment effects.  Under the parallel trends assumption, these can be interpreted as policy effects -- here the effect of the minimum wage on county-level teen employment due to increasing the minimum wage.
