@@ -73,4 +73,3 @@ get_wide_data <- function(data, yname, idname, tname) {
 
   return(data)
 }
-
