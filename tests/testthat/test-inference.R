@@ -25,8 +25,8 @@ dir.create(temp_lib)
 remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org")
 
 test_that("inference with balanced panel data and aggregations", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
 
   # tryCatch(detach("package:did"), error=function(e) "")
 
@@ -155,8 +155,8 @@ test_that("inference with balanced panel data and aggregations", {
 
 
 test_that("inference with clustering", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
 
   set.seed(1234)
   # dr
@@ -279,8 +279,8 @@ test_that("inference with clustering", {
 })
 
 test_that("same inference with unbalanced panel and panel data", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
 
   res_factor <- att_gt(
     yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -309,8 +309,8 @@ test_that("same inference with unbalanced panel and panel data", {
 
 
 test_that("inference with repeated cross sections", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp, panel = FALSE)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp, panel = FALSE)
 
   set.seed(1234)
   # dr
@@ -435,8 +435,8 @@ test_that("inference with repeated cross sections", {
 
 
 test_that("inference with repeated cross sections and clustering", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp, panel = FALSE)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp, panel = FALSE)
 
   set.seed(1234)
   # dr
@@ -561,8 +561,8 @@ test_that("inference with repeated cross sections and clustering", {
 
 
 test_that("inference with unbalanced panel", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
   data <- data[-3, ]
 
   set.seed(1234)
@@ -686,8 +686,8 @@ test_that("inference with unbalanced panel", {
 })
 
 test_that("inference with unbalanced panel and clustering", {
-  sp <- reset.sim()
-  data <- build_sim_dataset(sp)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
   data <- data[-3, ]
 
 

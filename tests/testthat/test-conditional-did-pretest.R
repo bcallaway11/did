@@ -13,8 +13,8 @@ library(BMisc)
 
 test_that("conditional did pre-test", {
   # this code is time-consuming, and we are just going to test that the code runs.
-  sp <- reset.sim(time.periods=3, n=1000)
-  data <- build_sim_dataset(sp)
+  sp <- did::reset.sim(time.periods=3, n=1000)
+  data <- did::build_sim_dataset(sp)
 
   cdp <- conditional_did_pretest(yname="Y",
                                  tname="period",

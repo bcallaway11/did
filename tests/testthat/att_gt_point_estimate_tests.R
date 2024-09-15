@@ -24,8 +24,8 @@ library(BMisc)
 #-----------------------------------------------------------------------------
 set.seed(09142024)
 time.periods <- 4
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -46,8 +46,8 @@ res
 # Expected results: treatment effects = 1, p-value for pre-test
 # uniformly distributed, reg model is incorectly specified here
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_ipw_dataset()
+did::reset.sim()
+data <- did::build_ipw_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -71,8 +71,8 @@ res
 # Expected results: warning about no pre-treatment periods to test
 #-----------------------------------------------------------------------------
 time.periods <- 2
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               gname="G", est_method="ipw")
@@ -91,9 +91,9 @@ summary(aggte(res, type="calendar"))
 #  identical results for different estimation methods
 #-----------------------------------------------------------------------------
 time.periods <- 4
-reset.sim()
+did::reset.sim()
 bett <- betu <- rep(0,time.periods)
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~1, data=data, tname="period", idname="id",
               gname="G", est_method="dr")
@@ -109,8 +109,8 @@ res
 # test repeated cross sections, regression sims
 # Expected result: te=1, p-value for pre-test uniformly distributed
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_sim_dataset(panel=FALSE)
+did::reset.sim()
+data <- did::build_sim_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -130,8 +130,8 @@ res
 # test repeated cross sections, ipw sims
 # Expected result: te=1, p-value for pre-test uniformly distributed
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_ipw_dataset(panel=FALSE)
+did::reset.sim()
+data <- did::build_ipw_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -151,9 +151,9 @@ res
 # test repeated cross sections, test aggregations
 # Expected result: te=length of exposure, p-value for pre-test uniformly distributed
 #-----------------------------------------------------------------------------
-reset.sim()
+did::reset.sim()
 te.e <- 1:time.periods
-data <- build_sim_dataset(panel=FALSE)
+data <- did::build_sim_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -176,8 +176,8 @@ summary(aggte(res, type="calendar"))
 # Expected results: treatment effects = 1, p-value for pre-test uniform[0,1]
 #-----------------------------------------------------------------------------
 time.periods <- 4
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -190,8 +190,8 @@ res
 # Expected results: treatment effects = 1, p-value for pre-test
 # uniformly distributed, reg model is incorectly specified here
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_ipw_dataset()
+did::reset.sim()
+data <- did::build_ipw_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               gname="G", est_method="ipw", allow_unbalanced_panel=TRUE)
@@ -202,8 +202,8 @@ res
 # Expected results: treatment effects = 1, p-value for pre-test
 # uniformly distributed, reg model is incorectly specified here
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_ipw_dataset()
+did::reset.sim()
+data <- did::build_ipw_dataset()
 data <- data[sample(1:nrow(data),  size=floor(.9*nrow(data))),]
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -214,8 +214,8 @@ res
 # version that should error
 # have to have an idname if you use an unbalanced panel
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 data <- data[sample(1:nrow(data),  size=floor(.9*nrow(data))),]
 
 tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname=NULL,
@@ -234,8 +234,8 @@ tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname=
 # test not yet treated as control
 # Expected result: te=1, p-value for pre-test U[0,1]
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_ipw_dataset(panel=FALSE)
+did::reset.sim()
+data <- did::build_ipw_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
@@ -249,8 +249,8 @@ res
 # test not yet treated as control in case w/o never treated group
 # Expected result: te=1, p-value for pre-test U[0,1]
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 data <- subset(data, G > 0) # drop nevertreated
 
 # dr
@@ -266,8 +266,8 @@ res
 # Expected result: te=1, p-value for pre-test U[0,1], error on no never treated
 #  units
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 data <- subset(data, G > 0) # drop nevertreated
 
 # dr
@@ -288,10 +288,10 @@ tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
 # *test dynamic effects*
 # expected result: te=length of exposure
 #-----------------------------------------------------------------------------
-reset.sim()
+did::reset.sim()
 te <- 0
 te.e <- 1:time.periods
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="nevertreated",
@@ -304,10 +304,10 @@ summary(aggte(res, type="dynamic"))
 # test group treatment timing
 # Expected result: te constant within group / varies across groups
 #-----------------------------------------------------------------------------
-reset.sim()
+did::reset.sim()
 te <- 0
 te.bet.ind <- 1:time.periods
-data <- build_ipw_dataset(panel=FALSE)
+data <- did::build_ipw_dataset(panel=FALSE)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="nevertreated",
@@ -320,10 +320,10 @@ summary(aggte(res, type="group"))
 # test calendar time effects
 # expected result: te=time
 #-----------------------------------------------------------------------------
-reset.sim()
+did::reset.sim()
 te <- 0
 te.t <- thet + 1:time.periods
-data <- build_sim_dataset(panel=FALSE)
+data <- did::build_sim_dataset(panel=FALSE)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="nevertreated",
@@ -335,11 +335,11 @@ summary(aggte(res, type="calendar"))
 # test balancing with respect to length of exposure
 # expected result: balancing fixes treatment effect dynamics
 #-----------------------------------------------------------------------------
-reset.sim()
+did::reset.sim()
 te <- 0
 te.e <- 1:time.periods
 te.bet.ind <- 1:time.periods
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="nevertreated",
@@ -355,10 +355,10 @@ summary(aggte(res, type="dynamic", balance_e=1))
 # expected result: te=length of exposure
 #-----------------------------------------------------------------------------
 time.periods <- 8
-reset.sim()
+did::reset.sim()
 te <- 0
 te.e <- 1:time.periods
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 keep.periods <- c(1,2,5,7)
 data <- subset(data, G %in% c(0, keep.periods))
 data <- subset(data, period %in% keep.periods)
@@ -378,10 +378,10 @@ summary(aggte(res, type="calendar"))
 # expected result: te=length of exposure
 #-----------------------------------------------------------------------------
 time.periods <- 5
-reset.sim()
+did::reset.sim()
 te <- 0
 te.e <- 1:time.periods
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 keep.groups <- c(3,5)
 data <- subset(data, G %in% c(0, keep.groups))
 
@@ -401,9 +401,9 @@ summary(aggte(res, type="calendar"))
 #  dropped units
 #-----------------------------------------------------------------------------
 time.periods <- 4
-reset.sim()
+did::reset.sim()
 te <- 1
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 data <- subset(data, period >= 2)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
@@ -417,10 +417,10 @@ res
 # *test dynamic effects*
 # expected result: te=length of exposure
 #-----------------------------------------------------------------------------
-reset.sim()
+did::reset.sim()
 te <- 0
 te.e <- 1:time.periods
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
               control_group="nevertreated",
@@ -435,10 +435,10 @@ summary(aggte(res, type="dynamic", min_e=-1, max_e=1))
 # expected result: te=length of exposure - 1 (w/ one period -1 anticipation)
 #-----------------------------------------------------------------------------
 time.periods <- 5
-reset.sim()
+did::reset.sim()
 te <- 0
 te.e <- -1:(time.periods-2)
-data <- build_sim_dataset()
+data <- did::build_sim_dataset()
 data$G <- data$G + 1 # add anticipation
 
 #-----------------------------------------------------------------------------
@@ -487,8 +487,8 @@ summary(aggte(res, type="dynamic"))
 
 ## -----------------------------------------------------------------------------
 time.periods <- 4
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -498,8 +498,8 @@ res
 
 ## -----------------------------------------------------------------------------
 time.periods <- 4
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
@@ -511,8 +511,8 @@ res
 ## some groups later than last treated period
 ## plus missing groups
 time.periods <- 7
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 data <- subset(data, period <= 4)
 missingG_ids <- sample(unique(data$id), size=10)
 data[data$id %in% missingG_ids,"G"] <- NA
@@ -528,8 +528,8 @@ res
 # incorrectly specified id
 #-----------------------------------------------------------------------------
 time.periods <- 4
-reset.sim()
-data <- build_sim_dataset()
+did::reset.sim()
+data <- did::build_sim_dataset()
 
 # dr
 tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="brant",
@@ -553,8 +553,8 @@ tryCatch(res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname=
 # custom estimation method
 # Expected results: te=1, pre-test p-value uniformly distributed, code runs
 #-----------------------------------------------------------------------------
-reset.sim()
-data <- build_sim_dataset(panel=TRUE)
+did::reset.sim()
+data <- did::build_sim_dataset(panel=TRUE)
 
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
               gname="G", est_method=DRDID::drdid_imp_panel, panel=TRUE)
