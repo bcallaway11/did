@@ -1,7 +1,7 @@
 library(DRDID)
 library(BMisc)
-library(ggplot2)
-library(ggpubr)
+# library(ggplot2)
+# library(ggpubr)
 
 
 #-----------------------------------------------------------------------------
@@ -33,7 +33,7 @@ test_that("having column named t1 causes code to crash", {
                 est_method = "reg",
                 control_group="notyettreated"
                 )
-  expect_false(is.null(out), "code crashed due to stange variable names")
+  expect_false(is.null(out), "code crashed due to strange variable names")
 })
 
 test_that("missing covariates", {

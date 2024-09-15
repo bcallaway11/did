@@ -106,7 +106,7 @@ pre_process_did <- function(yname,
 
       # don't comput ATT(g,t) for groups that are only treated at end
       # and only play a role as a comparison group
-      glist <- glist[ glist < max(glist)] 
+      glist <- glist[ glist < max(glist)]
     }
   }
 
@@ -171,18 +171,35 @@ pre_process_did <- function(yname,
   #-----------------------------------------------------------------------------
   # setup data in panel case
   #-----------------------------------------------------------------------------
+  # Check if data is a balanced panel if panel = TRUE and allow_unbalanced_panel = TRUE
+  bal_panel_test <- panel*allow_unbalanced_panel
+  if (bal_panel_test) {
+    # First, focus on complete cases
+    keepers <- complete.cases(data)
+    data_comp <- data[keepers,]
+    # make it a balanced data set
+    n_all <- length(unique(data_comp[,idname]))
+    data_bal <- BMisc::makeBalancedPanel(data_comp, idname, tname)
+    n_bal <- length(unique(data_bal[,idname]))
+    if (n_bal < n_all) {
+      message(paste0("You have an unbalanced panel. Proceeding as such."))
+      allow_unbalanced_panel <- TRUE
+    } else {
+      message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
+      allow_unbalanced_panel <- FALSE
+    }
+  }
+
+
+
   if (panel) {
 
     # check for unbalanced panel
     if (allow_unbalanced_panel) {
 
-      # code will run through repeated cross sections, so set panel to be FALSE
+      # Flag for true repeated cross sections
       panel <- FALSE
       true_repeated_cross_sections <- FALSE
-
-      if (!is.numeric(data[,idname])) {
-        stop("Must provide a numeric id")
-      }
 
     } else {
 

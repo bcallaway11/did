@@ -12,8 +12,8 @@ knitr::opts_chunk$set(
 # sapply(paste0(fldr,list.files(fldr)), source)
 library(DRDID)
 library(BMisc)
-library(ggplot2)
-library(ggpubr)
+# library(ggplot2)
+# library(ggpubr)
 
 
 ## -----------------------------------------------------------------------------
@@ -22,6 +22,7 @@ library(ggpubr)
 # Expected results: treatment effects = 1, p-value for pre-test
 # uniformly distributed, ipw model is incorectly specified here
 #-----------------------------------------------------------------------------
+set.seed(09142024)
 time.periods <- 4
 reset.sim()
 data <- build_sim_dataset()
@@ -169,7 +170,7 @@ summary(aggte(res, type="calendar"))
 #-----------------------------------------------------------------------------
 # these are same test cases as for panel data
 # but estimate using allow_unbalanced_panel = TRUE
-# but setting an id which gives a way to incorporate 
+# but setting an id which gives a way to incorporate
 # unbalanced panel
 # test each estimation method with panel data
 # Expected results: treatment effects = 1, p-value for pre-test uniform[0,1]
@@ -238,7 +239,7 @@ data <- build_ipw_dataset(panel=FALSE)
 
 # dr
 res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-              control_group="notyettreated", 
+              control_group="notyettreated",
               gname="G", est_method="dr", panel=FALSE)
 res
 

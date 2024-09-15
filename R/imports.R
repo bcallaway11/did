@@ -15,3 +15,4 @@
 #' @importFrom tidyr gather
 #' @importFrom methods is
 NULL
+utils::globalVariables(c('.','.G','.y'))

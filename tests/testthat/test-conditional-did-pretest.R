@@ -7,8 +7,8 @@
 
 library(DRDID)
 library(BMisc)
-library(ggplot2)
-library(ggpubr)
+#library(ggplot2)
+#library(ggpubr)
 
 
 test_that("conditional did pre-test", {
@@ -23,9 +23,9 @@ test_that("conditional did pre-test", {
                                  xformla=~X,
                                  data=data)
 
-  
+
   # check that test statistic and critical value take reasonable values
   expect_true((cdp$CvM > 0) & (cdp$CvM < 20))
-  expect_true((cdp$CvMcval > 0) & (cdp$CvMcval < 100))  
-})  
+  expect_true((cdp$CvMcval > 0) & (cdp$CvMcval < 100))
+})
 
