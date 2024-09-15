@@ -41,7 +41,10 @@ jobs:
           R -e "install.packages('remotes')"
           R -e "install.packages('callr')"
         fi
-
+        
+    - name: Install did package
+      run: R CMD INSTALL .
+    
     - name: Run tests
       run: | 
         R -e "devtools::test()"
