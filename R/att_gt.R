@@ -105,7 +105,7 @@
 #'  reports average changes in outcomes from period t to
 #'  (g-anticipation-1) for a particular group relative to its comparison
 #'  group.  This is analogous to what is often reported in event
-#'  study regressions.  
+#'  study regressions.
 #'
 #'  Using a varying base period results in an estimate of
 #'  ATT(g,t) being reported in the period immediately before
@@ -113,7 +113,7 @@
 #'  estimate in the period right before treatment (or earlier when
 #'  the user allows for anticipation) to be equal to 0, but one
 #'  extra estimate in an earlier period.
-#'  
+#'
 #' @references Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. \doi{10.1016/j.jeconom.2020.12.001}, <https://arxiv.org/abs/1803.09015>
 #'
 #' @return an [`MP`] object containing all the results for group-time average
@@ -125,7 +125,7 @@
 #' ```{r, comment = "#>", collapse = TRUE}
 #' # Example data
 #' data(mpdta)
-#'
+#' set.seed(09152024)
 #' out1 <- att_gt(yname="lemp",
 #'                tname="year",
 #'                idname="countyreal",
@@ -251,14 +251,14 @@ att_gt <- function(yname,
   }
 
   # Identify entries of main diagonal V that are zero or NA
-  zero_na_sd_entry <- unique(which(is.na(se))) 
+  zero_na_sd_entry <- unique(which(is.na(se)))
 
   # bootstrap variance matrix
   if (bstrap) {
 
     bout <- mboot(inffunc, DIDparams=dp, pl=pl, cores=cores)
     bres <- bout$bres
-    
+
     if(length(zero_na_sd_entry)>0) {
       se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
     } else {

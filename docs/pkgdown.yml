@@ -1,11 +1,10 @@
-pandoc: 3.1.1
-pkgdown: 2.0.7
+pandoc: 2.9.2.1
+pkgdown: 2.1.0
 pkgdown_sha: ~
 articles:
-  TWFE: TWFE.html
   did-basics: did-basics.html
   extensions: extensions.html
   multi-period-did: multi-period-did.html
   pre-testing: pre-testing.html
-last_built: 2023-08-30T01:37Z
-
+  TWFE: TWFE.html
+last_built: 2024-09-11T02:45Z

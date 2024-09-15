@@ -61,6 +61,7 @@
 #'
 #' ```{r, comment = "#>", collapse = TRUE}
 #' data(mpdta)
+#' set.seed(09152024)
 #' out <- att_gt(yname="lemp",
 #'                tname="year",
 #'                idname="countyreal",

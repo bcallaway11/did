@@ -42,7 +42,12 @@ jobs:
           ${{ runner.os }}-r-
       
     - name: Install R package dependencies
-      run: R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
+      run: |
+        R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
+        R -e "install.packages('remotes')"
+        R -e "install.packages('callr')"
 
     - name: Run tests
-      run: R -e "devtools::test()"
+      run: | 
+        R -e "devtools::test()"
+        R -e "testthat::test_dir('tests/testthat', reporter = 'check')"
