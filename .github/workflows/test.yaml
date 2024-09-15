@@ -45,4 +45,4 @@ jobs:
     - name: Run tests
       run: | 
         R -e "devtools::test()"
-        R -e "testthat::test_dir('tests/testthat', reporter = 'check')"
+        R -e "testthat::test_dir('tests/testthat', reporter = 'check', package = 'did')"
