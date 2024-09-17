@@ -229,14 +229,138 @@ did_standarization <- function(data, args){
   #-----------------------------------------------------------------------------
   # setup data in panel case
   #-----------------------------------------------------------------------------
+  # Check if data is a balanced panel if panel = TRUE and allow_unbalanced_panel = TRUE
+  bal_panel_test <- (args$panel)*(args$allow_unbalanced_panel)
 
+  if (bal_panel_test) {
+    # First, focus on complete cases and make a balanced dataset
+    data_comp <- data[complete.cases(data)]
+
+    # uniqueN for faster unique counts
+    n_all <- uniqueN(data_comp[[args$idname]])
+
+    # Make balanced panel
+    data_bal <- BMisc::makeBalancedPanel(data_comp, args$idname, args$tname)
+    n_bal <- uniqueN(data_bal[[args$idname]])
+
+    # Determine if the panel is unbalanced
+    args$allow_unbalanced_panel <- n_bal < n_all
+    message(if (args$allow_unbalanced_panel)
+      "You have an unbalanced panel. Proceeding as such."
+      else
+        "You have a balanced panel. Setting allow_unbalanced_panel = FALSE.")
+  }
+
+  if (args$panel) {
+    # Check for unbalanced panel
+    if (args$allow_unbalanced_panel) {
+      # Flag for true repeated cross sections
+      args$panel <- FALSE
+      args$true_repeated_cross_sections <- FALSE
+    } else {
+      # Coerce balanced panel
+
+      # Focus on complete cases
+      keepers <- complete.cases(data)
+      n <- uniqueN(data[[args$idname]])
+      n_keep <- uniqueN(data[keepers, ][[args$idname]])
+      if (n_keep < n) {
+        warning(paste0("Dropped ", (n - n_keep), " observations that had missing data."))
+        data <- data[keepers, ]
+      }
+
+
+      # Make balanced panel
+      n_old <- uniqueN(data[[args$idname]])
+      data <- as.data.table(BMisc::makeBalancedPanel(data, args$idname, args$tname)) # coerce to data.table again. This is ugly, find a better way to do it.
+      n <- uniqueN(data[[args$idname]])
+
+      if (n < n_old) {
+        warning(paste0("Dropped ", n_old - n, " observations while converting to balanced panel."))
+      }
+
+      # If all data is dropped, stop execution
+      if (nrow(data) == 0) {
+        stop("All observations dropped while converting data to balanced panel. Consider setting `panel = FALSE` and/or revisiting 'idname'.")
+      }
+
+      n <- data[get(args$tname) == tlist[1], .N]
+
+      # Ensure The value of gname must be the same across all periods for each particular individual.
+      checkTreatmentUniqueness(data, args$idname, args$gname)
+    }
+  }
 
   #-----------------------------------------------------------------------------
   # setup data in repeated cross section
   #-----------------------------------------------------------------------------
 
+  if (!args$panel) {
+    # Focus on complete cases
+    data <- data[complete.cases(data)]
 
-  return(list(dt, args))
+    if (nrow(data) == 0) {
+      stop("All observations dropped due to missing data problems.")
+    }
+
+    # n-row data.frame to hold the influence function
+    if (args$true_repeated_cross_sections) {
+      data[, .rowid := .I] # Create row index
+      args$idname <- ".rowid"
+    } else {
+      # Set rowid to idname for repeated cross section/unbalanced
+      data[, .rowid := get(args$idname)]
+    }
+
+    # Count unique number of cross section observations
+    n <- uniqueN(data[[args$idname]])
+  }
+
+  # Check if groups is empty (usually a problem with the way people defined groups)
+  if(length(glist)==0){
+    stop("No valid groups. The variable in 'gname' should be expressed as the time a unit is first treated (0 if never-treated).")
+  }
+
+  # if there are only two time periods, then uniform confidence
+  # bands are the same as pointwise confidence intervals
+  if (length(tlist)==2) {
+    args$cband <- FALSE
+  }
+
+  #-----------------------------------------------------------------------------
+  # more error handling after we have balanced the panel
+
+  # Check against very small groups
+  # Calculate group sizes, dividing the count of each group by the length of tlist
+  gsize <- data[, .N / length(tlist), by = get(args$gname)]
+
+  # How many in each group before giving a warning
+  reqsize <- length(BMisc::rhs.vars(xformla)) + 5
+
+  # Filter groups smaller than reqsize
+  gsize <- gsize[V1 < reqsize]
+
+  # Warn if some groups are small
+  if (nrow(gsize) > 0) {
+    gpaste <- paste(gsize[[args$gname]], collapse = ",")
+    warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
+
+    # Check if the never treated group is too small
+    if (Inf %in% gsize[[gname]] & control_group == "nevertreated") {
+      stop("Never treated group is too small, try setting control_group=\"notyettreated\"")
+    }
+  }
+  #-----------------------------------------------------------------------------
+  # Sort the data for easy access later on
+  setorderv(data, c(args$tname, args$gname, args$idname), c(1,1,1))
+
+  # Assign new args regarding number of time periods and groups
+  # How many time periods
+  args$time_periods_count <- length(tlist)
+  # How many treated groups
+  args$treated_groups_count <- length(glist)
+
+  return(list(data = data, args = args))
 }
 
 get_did_partitions <- function(data, args){
@@ -303,7 +427,7 @@ pre_process_did <- function(yname,
   # Put the data in a standard format after some validation
   cleaned_did <- did_standarization(data, args)
 
-  # Partition staggered did into a 2by2 did for faster implementation
+  # Partition staggered did into a 2x2 DiD for faster implementation
   did_partitions <- get_did_partitions(cleaned_did$data, cleaned_did$args)
 
   # get the augmented arguments useful to perform estimation
