@@ -357,18 +357,85 @@ did_standarization <- function(data, args){
   # Assign new args regarding number of time periods and groups
   # How many time periods
   args$time_periods_count <- length(tlist)
+  # time periods
+  args$time_periods <- tlist
   # How many treated groups
   args$treated_groups_count <- length(glist)
+  # treated groups
+  args$treated_groups <- glist
+  # id size
+  args$id_count <- n
 
   return(list(data = data, args = args))
 }
 
-get_did_partitions <- function(data, args){
-  return(did_partitions)
-}
+get_did_tensors <- function(data, args){
+  # TODO; HERE I NEED TO GENERATE THE FOLLOWING ARGUMENTS
+  # 1. vector of weights -> DONE
+  # 2. matrix of covariates -> DONE
+  # 3. Cohort counts -> DONE
+  # 5. data.table with time-invariant variables: tname, gname, idname, xformla -> DONE
+  # 6. List of outcomes overtime. Each vector has to be dimension "n" -> DONE
+  # 7. Vector of cluster variable if any -> DONE
 
-augment_args <- function(did_partitions, args){
-  return(args)
+  # Getting the outcomes tensor: a vector a outcome variables per time period of dimension id_count x 1 x time_periods_count
+  outcomes_tensor <- list()
+  if(!args$allow_unbalanced_panel){
+    for(time in args$time_periods){
+      # creating buckets of outcomes of size from 1 to id_size, id_size+1 to 2*id_size, etc.
+      start <- (time - 1) * args$id_count + 1
+      end <- time * args$id_count
+      outcomes_tensor[[time]] <- data[seq(start,end), get(args$yname)]
+    }
+  } else {
+    for(t in args$time_periods){
+      outcome_vector_time <- rep(NA, args$id_count) # fill vector with NAs
+      data_time <- data[(get(args$tname) == t), get(args$idname)] # data observed in time t
+      outcome_vector_time[data_time] <- data[get(args$tname) == t, get(args$yname)]
+      outcomes_tensor[[t]] <- outcome_vector_time
+    }
+  }
+
+  # Getting the time invariant data
+  time_invariant_cols <-  c(args$idname, args$gname, "weights", args$clustervars)
+  if(!args$allow_unbalanced_panel){
+    # We can do this filtering because the data is already sorted appropriately
+    invariant_data <- data[1:args$id_count]
+  } else {
+    # get the first observation for each unit
+    invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
+    # order by idname
+    setorderv(invariant_data, c(args$idname), c(1))
+  }
+
+  # Get cohort counts
+  cohorts <- c(args$treated_groups, Inf)
+  cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
+
+  # Get covariates if any
+  if(args$xformla == ~1){
+    covariates <- NA
+  } else {
+    covariates <- as.data.table(model.frame(args$xformla, data = invariant_data, na.action = na.pass))
+  }
+
+  # Get the cluster variable only
+  if(!is.null(args$clustervars)){
+    cluster <- invariant_data[, .SD, .SDcols = args$clustervars] |> unlist()
+  } else {
+    cluster <- NA
+  }
+
+  # Get the weights only
+  weights <- invariant_data[, .SD, .SDcols = "weights"] |> unlist()
+
+  # Gather all the arguments to return
+  return(list(outcomes_tensor = outcomes_tensor,
+              time_invariant_data = invariant_data,
+              cohort_counts = cohort_counts,
+              covariates = covariates,
+              cluster = cluster,
+              weights = weights))
 }
 
 #' @title Process `did` Function Arguments
@@ -383,7 +450,7 @@ augment_args <- function(did_partitions, args){
 #' @return a [`DIDparams`] object
 #'
 #' @export
-pre_process_did <- function(yname,
+pre_process_did2 <- function(yname,
                             tname,
                             idname,
                             gname,
@@ -413,8 +480,8 @@ pre_process_did <- function(yname,
   }
 
   # gathering all the arguments except data
-  args_names <- setdiff(names(formlas()), "data")
-  args <- mget(arg_names, sys.frame(sys.nframe()))
+  args_names <- setdiff(names(formals()), "data")
+  args <- mget(args_names, sys.frame(sys.nframe()))
 
   # run error checking on arguments
   validate_args(args, data)
@@ -428,41 +495,10 @@ pre_process_did <- function(yname,
   cleaned_did <- did_standarization(data, args)
 
   # Partition staggered did into a 2x2 DiD for faster implementation
-  did_partitions <- get_did_partitions(cleaned_did$data, cleaned_did$args)
-
-  # get the augmented arguments useful to perform estimation
-  args <- augment_args(did_partitions, cleaned_did$args)
+  did_tensors <- get_did_tensors(cleaned_did$data, cleaned_did$args)
 
   # store parameters for passing around later
+  dp <- DIDparams2(did_tensors, cleaned_did$args, call=call) # TODO; we need to change the arguments and returns of DIDparams()
 
-  dp <- DIDparams(did_partitions, args)
-  dp <- DIDparams(yname=yname,
-                  tname=tname,
-                  idname=idname,
-                  gname=gname,
-                  xformla=xformla,
-                  data=as.data.frame(data),
-                  control_group=control_group,
-                  anticipation=anticipation,
-                  weightsname=weightsname,
-                  alp=alp,
-                  bstrap=bstrap,
-                  biters=biters,
-                  clustervars=clustervars,
-                  cband=cband,
-                  print_details=print_details,
-                  pl=pl,
-                  cores=cores,
-                  est_method=est_method,
-                  base_period=base_period,
-                  panel=panel,
-                  true_repeated_cross_sections=true_repeated_cross_sections,
-                  n=n,
-                  nG=nG,
-                  nT=nT,
-                  tlist=tlist,
-                  glist=glist,
-                  call=call)
-
-
+  return(dp)
 }
