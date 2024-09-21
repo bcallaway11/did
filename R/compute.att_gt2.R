@@ -18,20 +18,93 @@ get_did_cohort_index <- function(group, time, pret, dp){
 
   # select the DiD cohort
   did_cohort_index <- rep(NA, dp$id_count)
+  # getting the index to get units who will participate in the estimation for the (g,t) cell.
   start_control <- dp$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
   end_control <- dp$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
   index <- which(dp$cohort_counts[, cohort] == group)
   start_treat <- ifelse(index == 1, 1, dp$cohort_counts[1:(index-1), sum(cohort_size)]+1)
   end_treat <- dp$cohort_counts[1:index, sum(cohort_size)]
+  # set the cohort index; .C = 0 and .G = 1
   did_cohort_index[start_control:end_control] <- 0
   did_cohort_index[start_treat:end_treat] <- 1
 
-  return(did_cohort)
+  return(did_cohort_index)
 }
 
 # Wrapper to run DRDID package
-run_DRDID <- function(){
-  return(NULL)
+run_DRDID <- function(cohort_data, covariates, dp){
+
+  if(dp$panel){
+    # --------------------------------------
+    # Panel Data
+    # --------------------------------------
+
+    # still total number of units (not just included in G or C)
+    n <- cohort_data[, .N]
+
+    # pick up the indices for units that will be used to compute ATT(g,t)
+    valid_obs <- which(cohort_data[, !is.na(D)])
+    cohort_data <- cohort_data[valid_obs]
+    covariates <- covariates[valid_obs,]
+    # add the intercept
+    # Check if the ".intercept" name is already in the covariates matrix
+    #if(".intercept" %in% names(covariates)){stop("did is trying to impute a new column .intercept, but this already exists. Please check your dataset")}
+    #covariates[, .intercept := -1L]
+    # coerce to a matrix
+    covariates <- as.matrix(covariates)
+
+    # num obs. for computing ATT(g,t)
+    n1 <- cohort_data[, .N]
+
+    #-----------------------------------------------------------------------------
+    # code for actually computing ATT(g,t)
+    #-----------------------------------------------------------------------------
+
+    # preparing vectors
+    Ypost <- cohort_data[, y1]
+    Ypre <- cohort_data[, y0]
+    w <- cohort_data[, i.weights]
+    G <- cohort_data[, D]
+
+    if (inherits(dp$est_method, "function")) {
+      # user-specified function
+      attgt <- est_method(y1=Ypost, y0=Ypre,
+                          D=G,
+                          covariates=covariates,
+                          i.weights=w,
+                          inffunc=TRUE)
+    } else if (dp$est_method == "ipw") {
+      # inverse-probability weights
+      attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
+                                        covariates=covariates,
+                                        i.weights=w,
+                                        boot=FALSE, inffunc=TRUE)
+    } else if (dp$est_method == "reg") {
+      # regression
+      attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
+                                    covariates=covariates,
+                                    i.weights=w,
+                                    boot=FALSE, inffunc=TRUE)
+    } else {
+      # doubly robust, this is default
+      attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
+                                  covariates=covariates,
+                                  i.weights=w,
+                                  boot=FALSE, inffunc=TRUE)
+    }
+
+    # adjust influence function to account for only using
+    # subgroup to estimate att(g,t)
+    attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
+
+  } else {
+    # --------------------------------------
+    # Repeated Cross-Section
+    # --------------------------------------
+
+  }
+
+  return(attgt = attgt)
 
 }
 
@@ -76,8 +149,6 @@ run_att_gt_estimation <- function(gt, dp){
 
 }
 
-
-
 #' @title Compute Group-Time Average Treatment Effects
 #'
 #' @description `compute.att_gt` does the (g,t) cell and send it to estimation,
@@ -102,8 +173,10 @@ compute.att_gt <- function(dp) {
   time_periods <- dp$time_periods
   # Get (g,t) cells to perform computations. This replace the nested for-loop.
   gt_cells <- expand.grid(g = treated_groups, t = time_periods, stringsAsFactors = FALSE) |> transpose() |> as.list()
-  # Running estimation
+  # Running estimation using run_att_gt_estimation() function
   gt_results <- lapply(gt_cells, run_att_gt_estimation, dp)
+
+  # Post processing creating attgt.list and inffunc
 
   return(list(attgt.list=attgt.list, inffunc=inffunc))
 }
