@@ -71,7 +71,7 @@ run_att_gt_estimation <- function(gt, dp){
   covariates <- dp$covariates
   cohort_data <- data.table(did_cohort_index, dp$outcomes_tensor[[t]], dp$outcomes_tensor[[pret]], dp$weights_vector)
   names(cohort_data) <- c("D", "y1", "y0", "i.weights")
-  did_result <- run_DRDID(cohort_data, covariates)
+  did_result <- run_DRDID(cohort_data, covariates, dp)
   return(did_result)
 
 }
