@@ -411,6 +411,7 @@ get_did_tensors <- function(data, args){
   # Get cohort counts
   cohorts <- c(args$treated_groups, Inf)
   cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
+  names(cohort_counts)[1] <- "cohort" # changing the name
 
   # Get covariates if any
   if(args$xformla == ~1){
