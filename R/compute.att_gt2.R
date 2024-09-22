@@ -101,6 +101,25 @@ run_DRDID <- function(cohort_data, covariates, dp){
     # --------------------------------------
     # Repeated Cross-Section
     # --------------------------------------
+    # still total number of units (not just included in G or C)
+    n <- cohort_data[, .N]
+
+    # pick up the indices for units that will be used to compute ATT(g,t)
+    valid_obs <- which(cohort_data[, !is.na(D)])
+    cohort_data <- cohort_data[valid_obs]
+    covariates <- covariates[valid_obs,]
+    # add the intercept
+    # Check if the ".intercept" name is already in the covariates matrix
+    #if(".intercept" %in% names(covariates)){stop("did is trying to impute a new column .intercept, but this already exists. Please check your dataset")}
+    #covariates[, .intercept := -1L]
+    # coerce to a matrix
+    covariates <- as.matrix(covariates)
+
+    # num obs. for computing ATT(g,t)
+    n1 <- cohort_data[, .N]
+
+    # TODO; IMPLEMENT REPEATED CROSS-SECTION
+    attgt <- NULL
 
   }
 
