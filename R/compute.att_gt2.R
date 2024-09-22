@@ -95,7 +95,9 @@ run_DRDID <- function(cohort_data, covariates, dp){
 
     # adjust influence function to account for only using
     # subgroup to estimate att(g,t)
-    attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
+    inf_func_vector <- rep(0, n)
+    inf_func_not_na <- (n/n1)*attgt$att.inf.func
+    inf_func_vector[valid_obs] <- inf_func_not_na
 
   } else {
     # --------------------------------------
@@ -123,7 +125,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
 
   }
 
-  return(attgt = attgt)
+  return(list(att = attgt$ATT, inf_func = inf_func_vector))
 
 }
 
@@ -144,18 +146,22 @@ run_att_gt_estimation <- function(gt, dp){
   # get the current g,t values
   g <- gt[1]
   t <- gt[2]
+  cat("\n Evaluation G =", g, ";T =", t)
   pret <- get_pret(g, t, dp$base_period, dp$anticipation)
 
   # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
   # and break without computing anything
   if(t == pret | !pret %in% dp$time_periods){
+    cat("\n Skipping G", g, "T", t, "as base period is out of bounds or equal to treatment period")
     return(NULL)
   }
 
   # get treatment and control group
   did_cohort_index <- get_did_cohort_index(g, t, pret, dp)
   # In case of not treatment and control group in the cohort, return NULL
-  if(all(is.na(did_cohort_index))){
+  valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
+  if(!isTRUE(valid_did_cohort)){
+    cat("\n Skipping G =", g, "T =", t, "as no treatment group or control group found")
     return(NULL)
   }
 
@@ -163,7 +169,13 @@ run_att_gt_estimation <- function(gt, dp){
   covariates <- dp$covariates
   cohort_data <- data.table(did_cohort_index, dp$outcomes_tensor[[t]], dp$outcomes_tensor[[pret]], dp$weights_vector)
   names(cohort_data) <- c("D", "y1", "y0", "i.weights")
-  did_result <- run_DRDID(cohort_data, covariates, dp)
+
+  # run estimation
+  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp),
+                         error = function(e) {
+                           warning("\n Error in computing internal 2x2 DiD for G = ", g, ", T = ", t, ":", e$message)
+                           return(NULL)
+                         })
   return(did_result)
 
 }
@@ -188,12 +200,55 @@ run_att_gt_estimation <- function(gt, dp){
 compute.att_gt <- function(dp) {
 
   # TODO; do we need the object "data" here if we already have the tensors??
+  n <- dp$id_count  # Total number of units
   treated_groups <- dp$treated_groups
   time_periods <- dp$time_periods
   # Get (g,t) cells to perform computations. This replace the nested for-loop.
-  gt_cells <- expand.grid(g = treated_groups, t = time_periods, stringsAsFactors = FALSE) |> transpose() |> as.list()
+  gt_cells <- expand.grid(g = treated_groups, t = time_periods, stringsAsFactors = FALSE)
+  gt_cells <- gt_cells[order(gt_cells$g, gt_cells$t), ]
+  gt_cells <- split(gt_cells, seq(nrow(gt_cells)))
+  total_cols <- length(gt_cells)
+
+  # Initialize outputs
+  attgt.list <- list()
+  inffunc <- Matrix::Matrix(0, nrow = n, ncol = total_cols, sparse = TRUE)
+  counter <- 1
+
   # Running estimation using run_att_gt_estimation() function
-  gt_results <- lapply(gt_cells, run_att_gt_estimation, dp)
+  #gt_results <- lapply(gt_cells, run_att_gt_estimation, dp)
+  # Run estimation for each (g,t) cell
+  for (i in seq_along(gt_cells)) {
+    gt_cell <- gt_cells[[i]]
+    g <- gt_cell$g
+    t <- gt_cell$t
+
+    # Run estimation
+    gt_result <- run_att_gt_estimation(c(g, t), dp)
+
+    # Compute post-treatment indicator
+    post.treat <- as.integer(g <= t)
+
+    if (is.null(gt_result) || is.null(gt_result$att)) {
+      # Estimation was skipped or failed
+      attgt.list[[counter]] <- list(att=NA, group=g, year=t, post=post.treat)
+      inffunc[, counter] <- rep(0, n)  # Fill with NA
+    } else {
+      attgt <- gt_result$att
+      att_inf_func_full <- gt_result$inf_func
+
+      # Handle NaN ATT
+      if (is.nan(attgt)) {
+        attgt <- NA
+        att_inf_func_full <- rep(0, n)
+      }
+
+      # Save ATT and influence function
+      attgt.list[[counter]] <- list(att=attgt, group=g, year=t, post=post.treat)
+      inffunc[, counter] <- att_inf_func_full
+    }
+
+    counter <- counter + 1
+  }
 
   # Post processing creating attgt.list and inffunc
 
