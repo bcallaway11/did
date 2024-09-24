@@ -4,90 +4,78 @@
 #' @param args list of arguments to validate
 #'
 #' @return nothing, but throws an error if any of the arguments are not valid
-#'
+#' @import dreamerr
 #' @export
 #' @noRd
 validate_args <- function(args, data){
 
+  data_names <- names(data)
+
   # ---------------------- Error Checking ----------------------
 
   # Flag for control group types
-  if(!(args$control_group %in% c("nevertreated", "notyettreated"))){
-    stop("control_group must be either 'nevertreated' or 'notyettreated'")
-  }
+  control_group_message <- "control_group must be either 'nevertreated' or 'notyettreated'"
+  dreamerr::check_set_arg(args$control_group, "match", .choices = c("nevertreated", "notyettreated"), .message = control_group_message, .up = 1)
 
-  # Flag for yname
-  if (!is.element(args$yname, base::colnames(data))) {
-    stop("yname = ",yname,  " could not be found in the data provided.")
-  }
+  # Flag for tname, gname, yname
+  name_message <- "__ARG__ must be a character scalar and a name of a column from the dataset."
+  dreamerr::check_set_arg(args$tname, args$gname, args$yname, "match", .choices = data_names, .message = name_message, .up = 1)
 
-  # Flag for tname
-  if (!is.element(args$tname, base::colnames(data))) {
-    stop("tname = ",tname,  " could not be found in the data provided.")
-  }
+  # Flag for clustervars and weightsname
+  checkvar_message <- "__ARG__ must be NULL or a character scalar if a name of columns from the dataset."
+  dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
 
   # check if times periods are numeric
-  if (!all(sapply(data[, get(args$tname)], is.integer))) {
-    stop("tname = ",tname,  " is not integer. Please convert it")
-  }
-
-  # Flag for gname
-  if ( !is.element(gname, base::colnames(data))) {
-    stop("gname = ",gname,  " could not be found in the data provided.")
-  }
+  if(!data[, is.integer(get(args$tname))]){stop("tname = ",args$tname,  " is not integer. Please convert it")}
+  # if (!all(sapply(data[, get(args$tname)], is.integer))) {
+  #   stop("tname = ",tname,  " is not integer. Please convert it")
+  # }
 
   # Check if gname is numeric
-  if (!all(sapply(data[, get(args$gname)], is.numeric))) {
-    stop("gname = ",gname,  " is not numeric. Please convert it")
-  }
+  if(!data[, is.numeric(get(args$gname))]){stop("gname = ",args$gname,  " is not numeric. Please convert it")}
+  # if (!all(sapply(data[, get(args$gname)], is.numeric))) {
+  #   stop("gname = ",gname,  " is not numeric. Please convert it")
+  # }
 
   # Flag for idname
   if(!is.null(args$idname)){
     # Check if idname is in the data
-    if ( !is.element(args$idname, base::colnames(data))) {
-      stop("idname = ",idname,  " could not be found in the data provided.")
-    }
+    name_message <- "__ARG__ must be a character scalar and a name of a column from the dataset."
+    dreamerr::check_set_arg(args$idname, "match", .choices = data_names, .message = name_message, .up = 1)
 
     #  check if idname is integer
-    if (!all(sapply(data[, get(args$idname)], is.integer))) {
-      stop("data[, idname] must be integer Please convert it.")
-    }
+    if(!data[, is.integer(get(args$idname))]){stop("idname = ",args$idname,  " is not integer. Please convert it")}
+    # if (!all(sapply(data[, get(args$idname)], is.integer))) {
+    #   stop("data[, idname] must be integer Please convert it.")
+    # }
 
     # Check if gname is unique by idname: irreversibility of the treatment
-    checkTreatmentUniqueness(data, args$idname, args$gname)
-  }
+    #checkTreatmentUniqueness(data, args$idname, args$gname)
+    check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
+    if (!check_treatment_uniqueness) {
+      stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+    }
 
-
-  # Check if any combination of idname and tname is duplicated
-  n_id_year = anyDuplicated(data[, .(args$idname, args$tname)])
-  # If any combination is duplicated, stop execution and throw an error
-  if (n_id_year > 0) {
-    stop("The value of idname must be unique (by tname)")
-  }
-
-  # Flag for weightsname
-  if(!is.null(args$weightsname)){
-    if (!is.element(args$weightsname, base::colnames(data))) {
-      stop("weightsname = ", weightsname, " could not be found in the data provided.")
+    # Check if any combination of idname and tname is duplicated
+    n_id_year = anyDuplicated(data[, .(args$idname, args$tname)])
+    # If any combination is duplicated, stop execution and throw an error
+    if (n_id_year > 0) {
+      stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
     }
   }
 
-
   # Flag for based period: not in c("universal", "varying"), stop
-  if (!args$base_period %in% c("universal", "varying")) {
-    stop("base_period must be either 'universal' or 'varying'.")
-  }
+  base_period_message <- "base_period must be either 'universal' or 'varying'."
+  dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
+  # if (!args$base_period %in% c("universal", "varying")) {
+  #   stop("base_period must be either 'universal' or 'varying'.")
+  # }
 
   # Flags for cluster variable
   if (!is.null(args$clustervars)) {
     # dropping idname from cluster
     if (args$idname %in% args$clustervars) {
       args$clustervars <- setdiff(args$clustervars, args$idname)
-    }
-
-    # flag if cluster variable is not in dataset
-    if (!is.element(args$cluster, base::colnames(data))) {
-      stop("clustervars = ",cluster,  " could not be found in the data provided. Please check your arguments.")
     }
 
     # check if user is providing more than 2 cluster variables (different than idname)
@@ -106,7 +94,7 @@ validate_args <- function(args, data){
     }
   }
 
-  # Check if anticipation is numeric
+  # Check if anticipation is numeric using
   if (!is.numeric(args$anticipation)) {
     stop("anticipation must be numeric. Please convert it.")
   }
@@ -114,11 +102,6 @@ validate_args <- function(args, data){
   # Check if anticipation is positive
   if (args$anticipation < 0) {
     stop("anticipation must be positive. Please check your arguments.")
-  }
-
-  # Check if anticipation is integer
-  if (!is.integer(args$anticipation)) {
-    stop("anticipation must be an integer. Please check your arguments.")
   }
 
 }
@@ -197,7 +180,7 @@ did_standarization <- function(data, args){
 
   # Check for groups treated in the first period and drop them
   # identify groups treated in the first period
-  data[, treated_first_period := (get(gname) <= first_period)]
+  data[, treated_first_period := (get(args$gname) <= first_period)]
   data[is.na(treated_first_period), treated_first_period := FALSE]
 
   # count the number of units treated in the first period
@@ -287,7 +270,11 @@ did_standarization <- function(data, args){
       n <- data[get(args$tname) == tlist[1], .N]
 
       # Ensure The value of gname must be the same across all periods for each particular individual.
-      checkTreatmentUniqueness(data, args$idname, args$gname)
+      #checkTreatmentUniqueness(data, args$idname, args$gname)
+      check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
+      if (!check_treatment_uniqueness) {
+        stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+      }
     }
   }
 
@@ -335,7 +322,7 @@ did_standarization <- function(data, args){
   gsize <- data[, .N / length(tlist), by = get(args$gname)]
 
   # How many in each group before giving a warning
-  reqsize <- length(BMisc::rhs.vars(xformla)) + 5
+  reqsize <- length(BMisc::rhs.vars(args$xformla)) + 5
 
   # Filter groups smaller than reqsize
   gsize <- gsize[V1 < reqsize]
@@ -346,7 +333,7 @@ did_standarization <- function(data, args){
     warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
 
     # Check if the never treated group is too small
-    if (Inf %in% gsize[[gname]] & control_group == "nevertreated") {
+    if (Inf %in% gsize[[args$gname]] & control_group == "nevertreated") {
       stop("Never treated group is too small, try setting control_group=\"notyettreated\"")
     }
   }
@@ -483,6 +470,7 @@ pre_process_did2 <- function(yname,
   # gathering all the arguments except data
   args_names <- setdiff(names(formals()), "data")
   args <- mget(args_names, sys.frame(sys.nframe()))
+  print(args)
 
   # run error checking on arguments
   validate_args(args, data)

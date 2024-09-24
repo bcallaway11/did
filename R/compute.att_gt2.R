@@ -14,7 +14,8 @@ get_did_cohort_index <- function(group, time, pret, dp){
   treated_groups <- dp$treated_groups
   # based on control_group option
   min_control_group <- ifelse(dp$control_group == "notyettreated", max(time, pret) + dp$anticipation + 1, Inf)
-  max_control_group <- ifelse(dp$control_group == "notyettreated", max(treated_groups), Inf)
+  #max_control_group <- ifelse(dp$control_group == "notyettreated", max(treated_groups), Inf)
+  max_control_group <- Inf # always include the never treated units
 
   # select the DiD cohort
   did_cohort_index <- rep(NA, dp$id_count)
@@ -197,7 +198,7 @@ run_att_gt_estimation <- function(gt, dp){
 #' @keywords internal
 #'
 #' @export
-compute.att_gt <- function(dp) {
+compute.att_gt2 <- function(dp) {
 
   # TODO; do we need the object "data" here if we already have the tensors??
   n <- dp$id_count  # Total number of units
@@ -206,19 +207,12 @@ compute.att_gt <- function(dp) {
   # Get (g,t) cells to perform computations. This replace the nested for-loop.
   gt_cells <- expand.grid(g = treated_groups, t = time_periods, stringsAsFactors = FALSE)
   gt_cells <- gt_cells[order(gt_cells$g, gt_cells$t), ]
-  gt_cells <- split(gt_cells, seq(nrow(gt_cells)))
-  total_cols <- length(gt_cells)
+  total_cols <- nrow(gt_cells)
 
-  # Initialize outputs
-  attgt.list <- list()
-  inffunc <- Matrix::Matrix(0, nrow = n, ncol = total_cols, sparse = TRUE)
-  counter <- 1
 
   # Running estimation using run_att_gt_estimation() function
-  #gt_results <- lapply(gt_cells, run_att_gt_estimation, dp)
-  # Run estimation for each (g,t) cell
-  for (i in seq_along(gt_cells)) {
-    gt_cell <- gt_cells[[i]]
+  # Helper function for processing each (g,t) pair
+  process_gt <- function(gt_cell, idx) {
     g <- gt_cell$g
     t <- gt_cell$t
 
@@ -229,28 +223,42 @@ compute.att_gt <- function(dp) {
     post.treat <- as.integer(g <= t)
 
     if (is.null(gt_result) || is.null(gt_result$att)) {
-      # Estimation was skipped or failed
-      attgt.list[[counter]] <- list(att=NA, group=g, year=t, post=post.treat)
-      inffunc[, counter] <- rep(0, n)  # Fill with NA
+      # Estimation failed or was skipped
+      inffunc_updates <- rep(0, n)
+      gt_result <- list(att = 0, group = g, year = t, post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
+
     } else {
-      attgt <- gt_result$att
-      att_inf_func_full <- gt_result$inf_func
+      att <- gt_result$att
+      inf_func <- gt_result$inf_func
 
       # Handle NaN ATT
-      if (is.nan(attgt)) {
-        attgt <- NA
-        att_inf_func_full <- rep(0, n)
+      if (is.nan(att)) {
+        att <- 0
+        inf_func <- rep(0, n)
       }
 
       # Save ATT and influence function
-      attgt.list[[counter]] <- list(att=attgt, group=g, year=t, post=post.treat)
-      inffunc[, counter] <- att_inf_func_full
+      inffunc_updates <- inf_func
+      gt_result <- list(att = att, group = g, year = t, post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
     }
-
-    counter <- counter + 1
   }
 
-  # Post processing creating attgt.list and inffunc
+  # run the estimation for each (g,t) pair with process_gt
+  gt_results <- lapply(seq_len(total_cols), function(idx) {
+    process_gt(gt_cells[idx, ], idx)
+  })
 
-  return(list(attgt.list=attgt.list, inffunc=inffunc))
+  # Post processing: Apply the updates to the sparse matrix in one shot
+  n_rows <- length(gt_results[[1]]$inffunc_updates)
+  update_inffunc <- data.table(matrix(NA_real_, nrow = n_rows, ncol = length(gt_results)))
+  for (i in seq_along(gt_results)) {
+    update_inffunc[[i]] <- gt_results[[i]]$inffunc_updates
+  }
+
+  # Update the sparse matrix with the values collected
+  inffunc <- as(Matrix::Matrix(as.matrix(update_inffunc), sparse = TRUE), "CsparseMatrix")
+
+  return(list(attgt.list=gt_results, inffunc=inffunc))
 }

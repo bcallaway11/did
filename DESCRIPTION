@@ -21,9 +21,7 @@ Imports:
     tidyr,
     parglm (>= 0.1.7),
     data.table (>= 1.15.4),
-    Rcpp (>= 1.0.13)
-LinkingTo: 
-    Rcpp (>= 1.0.13)
+    dreamerr (>= 1.4.0)
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr

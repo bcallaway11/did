@@ -163,7 +163,7 @@
 #' @export
 
 
-att_gt <- function(yname,
+att_gt2 <- function(yname,
                    tname,
                    idname=NULL,
                    gname,
@@ -186,7 +186,7 @@ att_gt <- function(yname,
                    cores=1) {
 
   # this is a DIDparams object
-  dp <- pre_process_did2(yname=yname,
+  dp2 <- pre_process_did2(yname=yname,
                         tname=tname,
                         idname=idname,
                         gname=gname,
@@ -213,15 +213,15 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
   # Compute all ATT(g,t)
   #-----------------------------------------------------------------------------
-  results <- compute.att_gt(dp)
+  results2 <- compute.att_gt2(dp2)
 
 
   # extract ATT(g,t) and influence functions
-  attgt.list <- results$attgt.list
-  inffunc <- results$inffunc
+  attgt.list2 <- results2$attgt.list
+  inffunc2 <- results2$inffunc
 
   # process results
-  attgt.results <- process_attgt(attgt.list)
+  attgt.results <- process_attgt(attgt.list2)
   group <- attgt.results$group
   att <- attgt.results$att
   tt <- attgt.results$tt
@@ -236,8 +236,8 @@ att_gt <- function(yname,
   # note to self: this def. won't work with unbalanced panel,
   # same with clustered standard errors
   # but it is always ignored b/c bstrap has to be true in that case
-  n <- dp$n
-  V <- Matrix::t(inffunc)%*%inffunc/n
+  n <- dp2$id_count
+  V <- Matrix::t(inffunc2)%*%inffunc2/n
   se <- sqrt(Matrix::diag(V)/n)
 
   # Zero standard error replaced by NA
@@ -256,7 +256,7 @@ att_gt <- function(yname,
   # bootstrap variance matrix
   if (bstrap) {
 
-    bout <- mboot(inffunc, DIDparams=dp, pl=pl, cores=cores)
+    bout <- mboot(inffunc2, DIDparams=dp2, pl=pl, cores=cores)
     bres <- bout$bres
 
     if(length(zero_na_sd_entry)>0) {
@@ -339,6 +339,6 @@ att_gt <- function(yname,
 
 
   # Return this list
-  return(MP(group=group, t=tt, att=att, V_analytical=V, se=se, c=cval, inffunc=inffunc, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
+  return(MP(group=group, t=tt, att=att, V_analytical=V, se=se, c=cval, inffunc=inffunc2, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp2))
 
 }
