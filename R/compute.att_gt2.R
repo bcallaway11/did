@@ -47,11 +47,6 @@ run_DRDID <- function(cohort_data, covariates, dp){
     valid_obs <- which(cohort_data[, !is.na(D)])
     cohort_data <- cohort_data[valid_obs]
     covariates <- covariates[valid_obs,]
-    # add the intercept
-    # Check if the ".intercept" name is already in the covariates matrix
-    #if(".intercept" %in% names(covariates)){stop("did is trying to impute a new column .intercept, but this already exists. Please check your dataset")}
-    #covariates[, .intercept := -1L]
-    # coerce to a matrix
     covariates <- as.matrix(covariates)
 
     # num obs. for computing ATT(g,t)
@@ -62,35 +57,42 @@ run_DRDID <- function(cohort_data, covariates, dp){
     #-----------------------------------------------------------------------------
 
     # preparing vectors
-    Ypost <- cohort_data[, y1]
-    Ypre <- cohort_data[, y0]
-    w <- cohort_data[, i.weights]
-    G <- cohort_data[, D]
+    # Ypost <- cohort_data[, y1]
+    # Ypre <- cohort_data[, y0]
+    # w <- cohort_data[, i.weights]
+    # G <- cohort_data[, D]
 
     if (inherits(dp$est_method, "function")) {
       # user-specified function
-      attgt <- est_method(y1=Ypost, y0=Ypre,
-                          D=G,
+      attgt <- est_method(y1=cohort_data[, y1],
+                          y0=cohort_data[, y0],
+                          D=cohort_data[, D],
                           covariates=covariates,
-                          i.weights=w,
+                          i.weights=cohort_data[, i.weights],
                           inffunc=TRUE)
     } else if (dp$est_method == "ipw") {
       # inverse-probability weights
-      attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
+      attgt <- DRDID::std_ipw_did_panel(y1=cohort_data[, y1],
+                                        y0=cohort_data[, y0],
+                                        D=cohort_data[, D],
                                         covariates=covariates,
-                                        i.weights=w,
+                                        i.weights=cohort_data[, i.weights],
                                         boot=FALSE, inffunc=TRUE)
     } else if (dp$est_method == "reg") {
       # regression
-      attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
+      attgt <- DRDID::reg_did_panel(y1=cohort_data[, y1],
+                                    y0=cohort_data[, y0],
+                                    D=cohort_data[, D],
                                     covariates=covariates,
-                                    i.weights=w,
+                                    i.weights=cohort_data[, i.weights],
                                     boot=FALSE, inffunc=TRUE)
     } else {
       # doubly robust, this is default
-      attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
+      attgt <- drdid_panel(y1=cohort_data[, y1],
+                                  y0=cohort_data[, y0],
+                                  D=cohort_data[, D],
                                   covariates=covariates,
-                                  i.weights=w,
+                                  i.weights=cohort_data[, i.weights],
                                   boot=FALSE, inffunc=TRUE)
     }
 

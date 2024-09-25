@@ -219,16 +219,11 @@ did_standarization <- function(data, args){
     # First, focus on complete cases and make a balanced dataset
     data_comp <- data[complete.cases(data)]
 
-    # uniqueN for faster unique counts
-    n_all <- uniqueN(data_comp[[args$idname]])
+    # Check if the panel is balanced
+    is_balanced <- check_balanced_panel(data_comp, id_col = args$idname, time_col = args$tname)
 
-    # Make balanced panel
-    data_bal <- BMisc::makeBalancedPanel(data_comp, args$idname, args$tname)
-    n_bal <- uniqueN(data_bal[[args$idname]])
-
-    # Determine if the panel is unbalanced
-    args$allow_unbalanced_panel <- n_bal < n_all
-    message(if (args$allow_unbalanced_panel)
+    args$allow_unbalanced_panel <- !is_balanced
+    message(if (!is_balanced)
       "You have an unbalanced panel. Proceeding as such."
       else
         "You have a balanced panel. Setting allow_unbalanced_panel = FALSE.")
@@ -254,12 +249,19 @@ did_standarization <- function(data, args){
 
 
       # Make balanced panel
-      n_old <- uniqueN(data[[args$idname]])
-      data <- as.data.table(BMisc::makeBalancedPanel(data, args$idname, args$tname)) # coerce to data.table again. This is ugly, find a better way to do it.
-      n <- uniqueN(data[[args$idname]])
-
-      if (n < n_old) {
-        warning(paste0("Dropped ", n_old - n, " observations while converting to balanced panel."))
+      # n_old <- uniqueN(data[[args$idname]])
+      # data <- BMisc::makeBalancedPanel(data, args$idname, args$tname, return_data.table = TRUE) # coerce to data.table again. This is ugly, find a better way to do it.
+      # n <- uniqueN(data[[args$idname]])
+      #
+      # if (n < n_old) {
+      #   warning(paste0("Dropped ", n_old - n, " observations while converting to balanced panel."))
+      # }
+      raw_time_size <- uniqueN(data[[args$tname]])
+      unit_count <- data[, .(count = .N), by = get(args$idname)]
+      if(any(unit_count[, count < raw_time_size])){
+        mis_unit <- unit_count[count < raw_time_size]
+        warning(nrow(mis_unit), " units are missing in some periods. Converting to balanced panel by dropping them.")
+        data <- data[!get(args$idname) %in% mis_unit[, get(args$idname)]]
       }
 
       # If all data is dropped, stop execution
@@ -269,12 +271,12 @@ did_standarization <- function(data, args){
 
       n <- data[get(args$tname) == tlist[1], .N]
 
+      # Check if the treatment is irreversible
       # Ensure The value of gname must be the same across all periods for each particular individual.
-      #checkTreatmentUniqueness(data, args$idname, args$gname)
-      check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
-      if (!check_treatment_uniqueness) {
-        stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
-      }
+      # check_treatment_uniqueness <- data[, .(constant = uniqueN(get(args$gname)) == 1), by = get(args$idname)][, all(constant)]
+      # if (!check_treatment_uniqueness) {
+      #   stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+      # }
     }
   }
 
@@ -337,6 +339,7 @@ did_standarization <- function(data, args){
       stop("Never treated group is too small, try setting control_group=\"notyettreated\"")
     }
   }
+
   #-----------------------------------------------------------------------------
   # Sort the data for easy access later on
   setorderv(data, c(args$tname, args$gname, args$idname), c(1,1,1))
@@ -357,7 +360,6 @@ did_standarization <- function(data, args){
 }
 
 get_did_tensors <- function(data, args){
-  # TODO; HERE I NEED TO GENERATE THE FOLLOWING ARGUMENTS
   # 1. vector of weights -> DONE
   # 2. matrix of covariates -> DONE
   # 3. Cohort counts -> DONE

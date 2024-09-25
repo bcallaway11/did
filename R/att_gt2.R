@@ -118,7 +118,7 @@
 #'
 #' @return an [`MP`] object containing all the results for group-time average
 #'  treatment effects
-#'
+#' @importFrom DRDID drdid_panel
 #' @details # Examples:
 #'
 #' **Basic [att_gt()] call:**
