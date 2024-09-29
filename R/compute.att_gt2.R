@@ -39,7 +39,9 @@ get_did_cohort_index <- function(group, time, pret, dp2){
   time_periods <- dp2$time_periods
   # based on control_group option
   min_control_group_index <- ifelse(dp2$control_group == "notyettreated", max(time, pret) + dp2$anticipation + 1, Inf)
-  min_control_group <- ifelse(min_control_group_index == Inf, Inf, time_periods[min_control_group_index])
+  min_control_group <- ifelse(min_control_group_index == Inf | min_control_group_index > dp2$time_periods_count,
+                              Inf,
+                              time_periods[min_control_group_index])
   max_control_group <- Inf # always include the never treated units
 
 
