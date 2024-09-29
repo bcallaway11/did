@@ -194,7 +194,7 @@ run_att_gt_estimation <- function(gt, dp2){
   # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
   # and break without computing anything
   if(t == pret | !pret %in% seq_along(dp2$time_periods)){
-    if(dp2$print_details){cat("\n Skipping (g,t) = (",g,t,") as base period is out of bounds or equal to treatment period")}
+    if(dp2$print_details){cat("\n Skipping (g,t) = (",g,t,") as base period is out of bounds or for varying base period.")}
     return(NULL)
   }
 
@@ -272,9 +272,13 @@ compute.att_gt2 <- function(dp2) {
 
     if (is.null(gt_result) || is.null(gt_result$att)) {
       # Estimation failed or was skipped
-      inffunc_updates <- rep(0, n)
-      gt_result <- list(att = 0, group = reverse_mapping[g], year = reverse_mapping[t], post = post.treat, inffunc_updates = inffunc_updates)
-      return(gt_result)
+      if(dp2$base_period == "universal"){
+        inffunc_updates <- rep(0, n)
+        gt_result <- list(att = 0, group = reverse_mapping[g], year = reverse_mapping[t], post = post.treat, inffunc_updates = inffunc_updates)
+        return(gt_result)
+      } else {
+        return(NULL)
+      }
 
     } else {
       att <- gt_result$att
@@ -297,6 +301,9 @@ compute.att_gt2 <- function(dp2) {
   gt_results <- lapply(seq_len(total_gt_iterations), function(idx) {
     process_gt(gt_cells[idx, ], idx)
   })
+
+  # Filter out NULL results
+  gt_results <- Filter(Negate(is.null), gt_results)
 
   # Post processing: Apply the updates to the sparse matrix in one shot
   n_rows <- length(gt_results[[1]]$inffunc_updates)
