@@ -159,10 +159,9 @@
 #'                data=mpdta)
 #' summary(out3)
 #' ```
-#'
+#' @importFrom dreamerr check_set_arg
+#' @importFrom DRDID drdid_panel reg_did_panel std_ipw_did_panel
 #' @export
-
-
 att_gt2 <- function(yname,
                    tname,
                    idname=NULL,

@@ -4,7 +4,6 @@
 #' @param args list of arguments to validate
 #'
 #' @return nothing, but throws an error if any of the arguments are not valid
-#' @import dreamerr
 #' @export
 #' @noRd
 validate_args <- function(args, data){
@@ -27,15 +26,9 @@ validate_args <- function(args, data){
 
   # check if times periods are numeric
   if(!data[, is.integer(get(args$tname))]){stop("tname = ",args$tname,  " is not integer. Please convert it")}
-  # if (!all(sapply(data[, get(args$tname)], is.integer))) {
-  #   stop("tname = ",tname,  " is not integer. Please convert it")
-  # }
 
   # Check if gname is numeric
   if(!data[, is.numeric(get(args$gname))]){stop("gname = ",args$gname,  " is not numeric. Please convert it")}
-  # if (!all(sapply(data[, get(args$gname)], is.numeric))) {
-  #   stop("gname = ",gname,  " is not numeric. Please convert it")
-  # }
 
   # Flag for idname
   if(!is.null(args$idname)){
@@ -45,12 +38,8 @@ validate_args <- function(args, data){
 
     #  check if idname is integer
     if(!data[, is.integer(get(args$idname))]){stop("idname = ",args$idname,  " is not integer. Please convert it")}
-    # if (!all(sapply(data[, get(args$idname)], is.integer))) {
-    #   stop("data[, idname] must be integer Please convert it.")
-    # }
 
     # Check if gname is unique by idname: irreversibility of the treatment
-    #checkTreatmentUniqueness(data, args$idname, args$gname)
     check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
@@ -67,9 +56,6 @@ validate_args <- function(args, data){
   # Flag for based period: not in c("universal", "varying"), stop
   base_period_message <- "base_period must be either 'universal' or 'varying'."
   dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
-  # if (!args$base_period %in% c("universal", "varying")) {
-  #   stop("base_period must be either 'universal' or 'varying'.")
-  # }
 
   # Flags for cluster variable
   if (!is.null(args$clustervars)) {
@@ -106,6 +92,14 @@ validate_args <- function(args, data){
 
 }
 
+#' @title DiD standarization
+#' @description A utility function to coerce the data in standard format
+#' @param data data.table used in function
+#' @param args list of arguments to validate
+#'
+#' @return A List, containing order data and arguments
+#' @export
+#' @noRd
 did_standarization <- function(data, args){
   # keep relevant columns in data
   cols_to_keep <-  c(args$idname, args$tname, args$gname, args$yname, args$weightsname, args$clustervars)
@@ -273,10 +267,10 @@ did_standarization <- function(data, args){
 
       # Check if the treatment is irreversible
       # Ensure The value of gname must be the same across all periods for each particular individual.
-      # check_treatment_uniqueness <- data[, .(constant = uniqueN(get(args$gname)) == 1), by = get(args$idname)][, all(constant)]
-      # if (!check_treatment_uniqueness) {
-      #   stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
-      # }
+      check_treatment_uniqueness <- data[, .(constant = uniqueN(get(args$gname)) == 1), by = get(args$idname)][, all(constant)]
+      if (!check_treatment_uniqueness) {
+        stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+      }
     }
   }
 
@@ -359,13 +353,16 @@ did_standarization <- function(data, args){
   return(list(data = data, args = args))
 }
 
+#' @title DiD tensors
+#' @description A utility function that split the data in a list of outcomes tensors and a list of arguments.
+#' Tensor are objects of dimension id_count x 1 x time_periods_count and are used for faster filtering in the computation of the DiD estimator.
+#' @param data data.table used in function
+#' @param args list of arguments to validate
+#'
+#' @return A List, containing outcomes tensor, time invariant data, cohort counts, covariates matrix, cluster vector and weights vector.
+#' @export
+#' @noRd
 get_did_tensors <- function(data, args){
-  # 1. vector of weights -> DONE
-  # 2. matrix of covariates -> DONE
-  # 3. Cohort counts -> DONE
-  # 5. data.table with time-invariant variables: tname, gname, idname, xformla -> DONE
-  # 6. List of outcomes overtime. Each vector has to be dimension "n" -> DONE
-  # 7. Vector of cluster variable if any -> DONE
 
   # Getting the outcomes tensor: a vector a outcome variables per time period of dimension id_count x 1 x time_periods_count
   outcomes_tensor <- list()
@@ -472,7 +469,6 @@ pre_process_did2 <- function(yname,
   # gathering all the arguments except data
   args_names <- setdiff(names(formals()), "data")
   args <- mget(args_names, sys.frame(sys.nframe()))
-  print(args)
 
   # run error checking on arguments
   validate_args(args, data)
@@ -489,7 +485,7 @@ pre_process_did2 <- function(yname,
   did_tensors <- get_did_tensors(cleaned_did$data, cleaned_did$args)
 
   # store parameters for passing around later
-  dp <- DIDparams2(did_tensors, cleaned_did$args, call=call) # TODO; we need to change the arguments and returns of DIDparams()
+  dp <- DIDparams2(did_tensors, cleaned_did$args, call=call)
 
   return(dp)
 }

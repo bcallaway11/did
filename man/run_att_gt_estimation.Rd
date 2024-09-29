@@ -2,7 +2,7 @@
 % Please edit documentation in R/compute.att_gt2.R
 \name{run_att_gt_estimation}
 \alias{run_att_gt_estimation}
-\title{Compute Group-Time Average Treatment Effects}
+\title{Run ATT estimation for a given group-time pair}
 \usage{
 run_att_gt_estimation(gt, dp)
 }

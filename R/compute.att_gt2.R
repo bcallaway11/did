@@ -1,14 +1,38 @@
-get_pret <- function(g,t, base_period, anticipation){
+#' @title Get pre treatment period
+#' @description A utility function to get the pre treatment period for a given g,t pair.
+#'
+#' @param group Group.
+#' @param time Time period.
+#' @param base_period Whether to use a "varying" base period or a
+#'  "universal" base period.
+#' @param anticipation  The number of time periods before participating
+#'  in the treatment where units can anticipate participating in the
+#'  treatment and therefore it can affect their untreated potential outcomes
+#'
+#' @return Time period indicating the pre treatment period.
+#' @noRd
+#' @export
+get_pret <- function(group, time, base_period, anticipation){
   if(base_period == "universal"){
-    pret <- g - 1 - anticipation
+    pret <- group - 1 - anticipation
   } else {
-    pret <- ifelse(t >= g, g - 1 - anticipation, t - 1)
+    pret <- ifelse(time >= group, group - 1 - anticipation, time - 1)
   }
 
   return(pret)
 }
 
-# get the cohort for the current g,t values
+#' @title Get the cohort for the current g,t values
+#' @description A utility function to get vector with index of units that will be included in the DiD estimation for the current g,t pair.
+#'
+#' @param group Group.
+#' @param time Time period.
+#' @param pret Pre treatment period.
+#' @param dp DiD parameters.
+#'
+#' @return Time period indicating the pre treatment period.
+#' @noRd
+#' @export
 get_did_cohort_index <- function(group, time, pret, dp){
   # return a vector of dimension id_size with 1, 0 or NA values
   treated_groups <- dp$treated_groups
@@ -32,7 +56,16 @@ get_did_cohort_index <- function(group, time, pret, dp){
   return(did_cohort_index)
 }
 
-# Wrapper to run DRDID package
+#' @title Wrapper to run DRDID package
+#' @description A utility function to run the DRDID package for the current g,t pair.
+#'
+#' @param cohort_data Data table with the cohort data for the current g,t pair
+#' @param covariates Matrix of covariates to be used in the estimation
+#' @param dp DiD parameters.
+#'
+#' @return Time period indicating the pre treatment period.
+#' @noRd
+#' @export
 run_DRDID <- function(cohort_data, covariates, dp){
 
   if(dp$panel){
@@ -72,7 +105,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
                           inffunc=TRUE)
     } else if (dp$est_method == "ipw") {
       # inverse-probability weights
-      attgt <- DRDID::std_ipw_did_panel(y1=cohort_data[, y1],
+      attgt <- std_ipw_did_panel(y1=cohort_data[, y1],
                                         y0=cohort_data[, y0],
                                         D=cohort_data[, D],
                                         covariates=covariates,
@@ -80,7 +113,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
                                         boot=FALSE, inffunc=TRUE)
     } else if (dp$est_method == "reg") {
       # regression
-      attgt <- DRDID::reg_did_panel(y1=cohort_data[, y1],
+      attgt <- reg_did_panel(y1=cohort_data[, y1],
                                     y0=cohort_data[, y0],
                                     D=cohort_data[, D],
                                     covariates=covariates,
@@ -133,7 +166,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
 }
 
 
-#' @title Compute Group-Time Average Treatment Effects
+#' @title Run ATT estimation for a given group-time pair
 #'
 #' @description `run_att_gt_estimation` does the main work for computing
 #'  multiperiod group-time average treatment effects
@@ -149,13 +182,13 @@ run_att_gt_estimation <- function(gt, dp){
   # get the current g,t values
   g <- gt[1]
   t <- gt[2]
-  cat("\n Evaluation G =", g, ";T =", t)
+  if(dp$print_details){cat("\n Evaluating (g,t) = (",g,t,")")}
   pret <- get_pret(g, t, dp$base_period, dp$anticipation)
 
   # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
   # and break without computing anything
   if(t == pret | !pret %in% dp$time_periods){
-    cat("\n Skipping G", g, "T", t, "as base period is out of bounds or equal to treatment period")
+    if(dp$print_details){cat("\n Skipping (g,t) = (",g,t,") as base period is out of bounds or equal to treatment period")}
     return(NULL)
   }
 
@@ -164,7 +197,7 @@ run_att_gt_estimation <- function(gt, dp){
   # In case of not treatment and control group in the cohort, return NULL
   valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
   if(!isTRUE(valid_did_cohort)){
-    cat("\n Skipping G =", g, "T =", t, "as no treatment group or control group found")
+    if(dp$print_details){cat("\n Skipping (g,t) = (",g,t,") as no treatment group or control group found")}
     return(NULL)
   }
 
@@ -176,7 +209,7 @@ run_att_gt_estimation <- function(gt, dp){
   # run estimation
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp),
                          error = function(e) {
-                           warning("\n Error in computing internal 2x2 DiD for G = ", g, ", T = ", t, ":", e$message)
+                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,t,"):", e$message)
                            return(NULL)
                          })
   return(did_result)
@@ -202,7 +235,6 @@ run_att_gt_estimation <- function(gt, dp){
 #' @export
 compute.att_gt2 <- function(dp) {
 
-  # TODO; do we need the object "data" here if we already have the tensors??
   n <- dp$id_count  # Total number of units
   treated_groups <- dp$treated_groups
   time_periods <- dp$time_periods

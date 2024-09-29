@@ -1,20 +1,12 @@
 #' @title DIDparams
 #'
-#' @description Object to hold did parameters that are passed across functions
+#' @description Object to hold DiD parameters that are passed across functions
 #'
-#' @inheritParams att_gt
-#' @inheritParams pre_process_did
-#' @param n The number of observations.  This is equal to the
-#'  number of units (which may be different from the number
-#'  of rows in a panel dataset).
-#' @param nG The number of groups
-#' @param nT The number of time periods
-#' @param tlist a vector containing each time period
-#' @param glist a vector containing each group
-#' @param true_repeated_cross_sections Whether or not the data really
-#'  is repeated cross sections.  (We include this because unbalanced
-#'  panel code runs through the repeated cross sections code)
-#'
+#' @inheritParams att_gt2
+#' @inheritParams pre_process_did2
+#' @param did_tensor list of outcome tensors that are used in the estimation
+#' @param args list of arguments that are used in the estimation
+#' @noRd
 #' @export
 DIDparams2 <- function(did_tensors, args, call=NULL) {
   # get the arguments from args
