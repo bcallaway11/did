@@ -4,10 +4,10 @@
 \alias{compute.att_gt2}
 \title{Compute Group-Time Average Treatment Effects}
 \usage{
-compute.att_gt2(dp)
+compute.att_gt2(dp2)
 }
 \arguments{
-\item{dp}{A DIDparams object}
+\item{dp2}{A DIDparams object v2.0}
 }
 \value{
 a list with length equal to the number of groups times the

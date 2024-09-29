@@ -13,7 +13,7 @@ att_gt2(
   data,
   panel = TRUE,
   allow_unbalanced_panel = FALSE,
-  control_group = c("nevertreated", "notyettreated"),
+  control_group = "nevertreated",
   anticipation = 0,
   weightsname = NULL,
   alp = 0.05,

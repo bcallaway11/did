@@ -13,7 +13,7 @@ pre_process_did2(
   data,
   panel = TRUE,
   allow_unbalanced_panel,
-  control_group = c("nevertreated", "notyettreated"),
+  control_group = "nevertreated",
   anticipation = 0,
   weightsname = NULL,
   alp = 0.05,

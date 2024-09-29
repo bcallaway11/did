@@ -28,27 +28,29 @@ get_pret <- function(group, time, base_period, anticipation){
 #' @param group Group.
 #' @param time Time period.
 #' @param pret Pre treatment period.
-#' @param dp DiD parameters.
+#' @param dp2 DiD parameters v2.0.
 #'
 #' @return Time period indicating the pre treatment period.
 #' @noRd
 #' @export
-get_did_cohort_index <- function(group, time, pret, dp){
+get_did_cohort_index <- function(group, time, pret, dp2){
   # return a vector of dimension id_size with 1, 0 or NA values
-  treated_groups <- dp$treated_groups
+  treated_groups <- dp2$treated_groups
+  time_periods <- dp2$time_periods
   # based on control_group option
-  min_control_group <- ifelse(dp$control_group == "notyettreated", max(time, pret) + dp$anticipation + 1, Inf)
-  #max_control_group <- ifelse(dp$control_group == "notyettreated", max(treated_groups), Inf)
+  min_control_group_index <- ifelse(dp2$control_group == "notyettreated", max(time, pret) + dp2$anticipation + 1, Inf)
+  min_control_group <- ifelse(min_control_group_index == Inf, Inf, time_periods[min_control_group_index])
   max_control_group <- Inf # always include the never treated units
 
+
   # select the DiD cohort
-  did_cohort_index <- rep(NA, dp$id_count)
+  did_cohort_index <- rep(NA, dp2$id_count)
   # getting the index to get units who will participate in the estimation for the (g,t) cell.
-  start_control <- dp$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
-  end_control <- dp$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
-  index <- which(dp$cohort_counts[, cohort] == group)
-  start_treat <- ifelse(index == 1, 1, dp$cohort_counts[1:(index-1), sum(cohort_size)]+1)
-  end_treat <- dp$cohort_counts[1:index, sum(cohort_size)]
+  start_control <- dp2$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
+  end_control <- dp2$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
+  index <- which(dp2$cohort_counts[, cohort] == time_periods[group])
+  start_treat <- ifelse(index == 1, 1, dp2$cohort_counts[1:(index-1), sum(cohort_size)]+1)
+  end_treat <- dp2$cohort_counts[1:index, sum(cohort_size)]
   # set the cohort index; .C = 0 and .G = 1
   did_cohort_index[start_control:end_control] <- 0
   did_cohort_index[start_treat:end_treat] <- 1
@@ -61,14 +63,14 @@ get_did_cohort_index <- function(group, time, pret, dp){
 #'
 #' @param cohort_data Data table with the cohort data for the current g,t pair
 #' @param covariates Matrix of covariates to be used in the estimation
-#' @param dp DiD parameters.
+#' @param dp2 DiD parameters v2.0.
 #'
 #' @return Time period indicating the pre treatment period.
 #' @noRd
 #' @export
-run_DRDID <- function(cohort_data, covariates, dp){
+run_DRDID <- function(cohort_data, covariates, dp2){
 
-  if(dp$panel){
+  if(dp2$panel){
     # --------------------------------------
     # Panel Data
     # --------------------------------------
@@ -79,7 +81,11 @@ run_DRDID <- function(cohort_data, covariates, dp){
     # pick up the indices for units that will be used to compute ATT(g,t)
     valid_obs <- which(cohort_data[, !is.na(D)])
     cohort_data <- cohort_data[valid_obs]
-    covariates <- covariates[valid_obs,]
+    if(dp2$xformla != ~1){
+      covariates <- covariates[valid_obs,]
+    } else {
+      covariates <- rep(1, length(valid_obs))
+    }
     covariates <- as.matrix(covariates)
 
     # num obs. for computing ATT(g,t)
@@ -95,7 +101,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
     # w <- cohort_data[, i.weights]
     # G <- cohort_data[, D]
 
-    if (inherits(dp$est_method, "function")) {
+    if (inherits(dp2$est_method, "function")) {
       # user-specified function
       attgt <- est_method(y1=cohort_data[, y1],
                           y0=cohort_data[, y0],
@@ -103,7 +109,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
                           covariates=covariates,
                           i.weights=cohort_data[, i.weights],
                           inffunc=TRUE)
-    } else if (dp$est_method == "ipw") {
+    } else if (dp2$est_method == "ipw") {
       # inverse-probability weights
       attgt <- std_ipw_did_panel(y1=cohort_data[, y1],
                                         y0=cohort_data[, y0],
@@ -111,7 +117,7 @@ run_DRDID <- function(cohort_data, covariates, dp){
                                         covariates=covariates,
                                         i.weights=cohort_data[, i.weights],
                                         boot=FALSE, inffunc=TRUE)
-    } else if (dp$est_method == "reg") {
+    } else if (dp2$est_method == "reg") {
       # regression
       attgt <- reg_did_panel(y1=cohort_data[, y1],
                                     y0=cohort_data[, y0],
@@ -171,43 +177,43 @@ run_DRDID <- function(cohort_data, covariates, dp){
 #' @description `run_att_gt_estimation` does the main work for computing
 #'  multiperiod group-time average treatment effects
 #' @param gt A numeric vector of the group and time period coming from a list of (g,t) cells
-#' @param dp A DIDparams object
+#' @param dp2 A DIDparams object v2.0
 #'
 #' @return a list with the gt cell and the results after performing estimation
 #'
 #' @keywords internal
 #'
 #' @export
-run_att_gt_estimation <- function(gt, dp){
+run_att_gt_estimation <- function(gt, dp2){
   # get the current g,t values
-  g <- gt[1]
-  t <- gt[2]
-  if(dp$print_details){cat("\n Evaluating (g,t) = (",g,t,")")}
-  pret <- get_pret(g, t, dp$base_period, dp$anticipation)
+  g <- gt[[1]]
+  t <- gt[[2]]
+  if(dp2$print_details){cat("\n Evaluating (g,t) = (",g,t,")")}
+  pret <- get_pret(g, t, dp2$base_period, dp2$anticipation)
 
   # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
   # and break without computing anything
-  if(t == pret | !pret %in% dp$time_periods){
-    if(dp$print_details){cat("\n Skipping (g,t) = (",g,t,") as base period is out of bounds or equal to treatment period")}
+  if(t == pret | !pret %in% seq_along(dp2$time_periods)){
+    if(dp2$print_details){cat("\n Skipping (g,t) = (",g,t,") as base period is out of bounds or equal to treatment period")}
     return(NULL)
   }
 
-  # get treatment and control group
-  did_cohort_index <- get_did_cohort_index(g, t, pret, dp)
+  # get units in treatment and control group
+  did_cohort_index <- get_did_cohort_index(g, t, pret, dp2)
   # In case of not treatment and control group in the cohort, return NULL
   valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
   if(!isTRUE(valid_did_cohort)){
-    if(dp$print_details){cat("\n Skipping (g,t) = (",g,t,") as no treatment group or control group found")}
+    if(dp2$print_details){cat("\n Skipping (g,t) = (",g,t,") as no treatment group or control group found")}
     return(NULL)
   }
 
   # Get the matrix of covariates
-  covariates <- dp$covariates
-  cohort_data <- data.table(did_cohort_index, dp$outcomes_tensor[[t]], dp$outcomes_tensor[[pret]], dp$weights_vector)
+  covariates <- dp2$covariates
+  cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
   names(cohort_data) <- c("D", "y1", "y0", "i.weights")
 
   # run estimation
-  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp),
+  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
                          error = function(e) {
                            warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,t,"):", e$message)
                            return(NULL)
@@ -221,7 +227,7 @@ run_att_gt_estimation <- function(gt, dp){
 #' @description `compute.att_gt` does the (g,t) cell and send it to estimation,
 #' then do all the post process after estimation
 #'
-#' @param dp A DIDparams object
+#' @param dp2 A DIDparams object v2.0
 #'
 #' @return a list with length equal to the number of groups times the
 #'  number of time periods; each element of the list contains an
@@ -233,15 +239,23 @@ run_att_gt_estimation <- function(gt, dp){
 #' @keywords internal
 #'
 #' @export
-compute.att_gt2 <- function(dp) {
+compute.att_gt2 <- function(dp2) {
 
-  n <- dp$id_count  # Total number of units
-  treated_groups <- dp$treated_groups
-  time_periods <- dp$time_periods
+  n <- dp2$id_count  # Total number of units
+  treated_groups <- dp2$treated_groups
+  time_periods <- dp2$time_periods
+  # standardize the times to indexes
+  # Create a mapping for time_periods to standardized form
+  time_mapping <- setNames(seq_along(time_periods), time_periods)
+  # Create a reverse mapping from standardized values back to the original
+  reverse_mapping <- setNames(as.numeric(names(time_mapping)), time_mapping)
+  # Convert both time_periods and treated_group using the mapping
+  time_periods <- time_mapping[as.character(time_periods)]
+  treated_groups <- time_mapping[as.character(treated_groups)]
   # Get (g,t) cells to perform computations. This replace the nested for-loop.
   gt_cells <- expand.grid(g = treated_groups, t = time_periods, stringsAsFactors = FALSE)
   gt_cells <- gt_cells[order(gt_cells$g, gt_cells$t), ]
-  total_cols <- nrow(gt_cells)
+  total_gt_iterations <- nrow(gt_cells)
 
 
   # Running estimation using run_att_gt_estimation() function
@@ -251,7 +265,7 @@ compute.att_gt2 <- function(dp) {
     t <- gt_cell$t
 
     # Run estimation
-    gt_result <- run_att_gt_estimation(c(g, t), dp)
+    gt_result <- run_att_gt_estimation(c(g, t), dp2)
 
     # Compute post-treatment indicator
     post.treat <- as.integer(g <= t)
@@ -259,7 +273,7 @@ compute.att_gt2 <- function(dp) {
     if (is.null(gt_result) || is.null(gt_result$att)) {
       # Estimation failed or was skipped
       inffunc_updates <- rep(0, n)
-      gt_result <- list(att = 0, group = g, year = t, post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = 0, group = reverse_mapping[g], year = reverse_mapping[t], post = post.treat, inffunc_updates = inffunc_updates)
       return(gt_result)
 
     } else {
@@ -274,13 +288,13 @@ compute.att_gt2 <- function(dp) {
 
       # Save ATT and influence function
       inffunc_updates <- inf_func
-      gt_result <- list(att = att, group = g, year = t, post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = att, group = reverse_mapping[g], year = reverse_mapping[t], post = post.treat, inffunc_updates = inffunc_updates)
       return(gt_result)
     }
   }
 
   # run the estimation for each (g,t) pair with process_gt
-  gt_results <- lapply(seq_len(total_cols), function(idx) {
+  gt_results <- lapply(seq_len(total_gt_iterations), function(idx) {
     process_gt(gt_cells[idx, ], idx)
   })
 

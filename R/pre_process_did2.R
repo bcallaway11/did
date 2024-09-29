@@ -36,8 +36,8 @@ validate_args <- function(args, data){
     name_message <- "__ARG__ must be a character scalar and a name of a column from the dataset."
     dreamerr::check_set_arg(args$idname, "match", .choices = data_names, .message = name_message, .up = 1)
 
-    #  check if idname is integer
-    if(!data[, is.integer(get(args$idname))]){stop("idname = ",args$idname,  " is not integer. Please convert it")}
+    #  check if idname is numeric
+    if(!data[, is.numeric(get(args$idname))]){stop("idname = ", args$idname,  " is not numeric. Please convert it")}
 
     # Check if gname is unique by idname: irreversibility of the treatment
     check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
@@ -367,18 +367,20 @@ get_did_tensors <- function(data, args){
   # Getting the outcomes tensor: a vector a outcome variables per time period of dimension id_count x 1 x time_periods_count
   outcomes_tensor <- list()
   if(!args$allow_unbalanced_panel){
-    for(time in args$time_periods){
+    for(time in seq_along(args$time_periods)){
+      # iterating over index
       # creating buckets of outcomes of size from 1 to id_size, id_size+1 to 2*id_size, etc.
       start <- (time - 1) * args$id_count + 1
       end <- time * args$id_count
       outcomes_tensor[[time]] <- data[seq(start,end), get(args$yname)]
     }
   } else {
-    for(t in args$time_periods){
+    # TODO; EDIT THIS FOR UNBALANCED PANEL OR RCS
+    for(time in seq_along(args$time_periods)){
       outcome_vector_time <- rep(NA, args$id_count) # fill vector with NAs
-      data_time <- data[(get(args$tname) == t), get(args$idname)] # data observed in time t
-      outcome_vector_time[data_time] <- data[get(args$tname) == t, get(args$yname)]
-      outcomes_tensor[[t]] <- outcome_vector_time
+      data_time <- data[(get(args$tname) == time), get(args$idname)] # data observed in time t
+      outcome_vector_time[data_time] <- data[get(args$tname) == time, get(args$yname)]
+      outcomes_tensor[[time]] <- outcome_vector_time
     }
   }
 
@@ -401,7 +403,7 @@ get_did_tensors <- function(data, args){
 
   # Get covariates if any
   if(args$xformla == ~1){
-    covariates <- NA
+    covariates <- rep(1, args$id_count)
   } else {
     covariates <- as.data.table(model.frame(args$xformla, data = invariant_data, na.action = na.pass))
   }
@@ -445,7 +447,7 @@ pre_process_did2 <- function(yname,
                             data,
                             panel = TRUE,
                             allow_unbalanced_panel,
-                            control_group = c("nevertreated","notyettreated"),
+                            control_group = "nevertreated",
                             anticipation = 0,
                             weightsname = NULL,
                             alp = 0.05,
