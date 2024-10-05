@@ -178,7 +178,7 @@ did_standarization <- function(data, args){
   data[is.na(treated_first_period), treated_first_period := FALSE]
 
   # count the number of units treated in the first period
-  nfirstperiod <- uniqueN(data[treated_first_period == TRUE, get(args$idname)])
+  nfirstperiod <- ifelse(args$panel, uniqueN(data[treated_first_period == TRUE, get(args$idname)]), nrow(data[data$treated_firstperiod == TRUE]))
 
   # handle units treated in the first period
   if (nfirstperiod > 0) {
@@ -336,7 +336,11 @@ did_standarization <- function(data, args){
 
   #-----------------------------------------------------------------------------
   # Sort the data for easy access later on
-  setorderv(data, c(args$tname, args$gname, args$idname), c(1,1,1))
+  if (args$panel){
+    setorderv(data, c(args$tname, args$gname, args$idname), c(1,1,1))
+  } else {
+    setorderv(data, c(args$tname, args$gname), c(1,1))
+  }
 
   # Assign new args regarding number of time periods and groups
   # How many time periods
@@ -366,7 +370,8 @@ get_did_tensors <- function(data, args){
 
   # Getting the outcomes tensor: a vector a outcome variables per time period of dimension id_count x 1 x time_periods_count
   outcomes_tensor <- list()
-  if(!args$allow_unbalanced_panel){
+  #if(!args$allow_unbalanced_panel){
+  if(args$panel){
     for(time in seq_along(args$time_periods)){
       # iterating over index
       # creating buckets of outcomes of size from 1 to id_size, id_size+1 to 2*id_size, etc.
@@ -375,31 +380,46 @@ get_did_tensors <- function(data, args){
       outcomes_tensor[[time]] <- data[seq(start,end), get(args$yname)]
     }
   } else {
-    # TODO; EDIT THIS FOR UNBALANCED PANEL OR RCS
-    for(time in seq_along(args$time_periods)){
-      outcome_vector_time <- rep(NA, args$id_count) # fill vector with NAs
-      data_time <- data[(get(args$tname) == time), get(args$idname)] # data observed in time t
-      outcome_vector_time[data_time] <- data[get(args$tname) == time, get(args$yname)]
-      outcomes_tensor[[time]] <- outcome_vector_time
-    }
+    # for(time in args$time_periods){
+    #   outcome_vector_time <- rep(NA, args$id_count)  # Initialize vector with NAs
+    #   # Create a new column with Y values if tname == current_time, otherwise NA
+    #   data[, outcome_vector_time := fifelse(get(args$tname) == time, get(args$yname), NA_real_)]
+    #   # Store the vector in the outcomes_tensor
+    #   outcomes_tensor[[time]] <- data$outcome_vector_time
+    #   # drop the column created
+    #   data[, outcome_vector_time := NULL]
+    # }
+    outcomes_tensor <- NULL
   }
 
   # Getting the time invariant data
   time_invariant_cols <-  c(args$idname, args$gname, "weights", args$clustervars)
-  if(!args$allow_unbalanced_panel){
+  #if(!args$allow_unbalanced_panel){
+  if(args$panel){
     # We can do this filtering because the data is already sorted appropriately
     invariant_data <- data[1:args$id_count]
   } else {
     # get the first observation for each unit
     invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
-    # order by idname
-    setorderv(invariant_data, c(args$idname), c(1))
+    # # order by idname
+    # setorderv(invariant_data, c(args$idname), c(1))
   }
 
   # Get cohort counts
   cohorts <- c(args$treated_groups, Inf)
   cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
   names(cohort_counts)[1] <- "cohort" # changing the name
+
+  # Get period counts
+  period_counts <- invariant_data[, .(period_size = .N), by = get(args$tname)]
+  names(period_counts)[1] <- "period" # changing the name
+
+  # Get crosstable counts
+  crosstable_counts <- invariant_data[, .N, by = .(get(args$tname), get(args$gname))]   # Directly count occurrences by tname and gname
+  names(crosstable_counts)[1] <- "period" # changing the name
+  names(crosstable_counts)[2] <- "cohort" # changing the name
+  crosstable_counts <- dcast(crosstable_counts, period ~ cohort, value.var = "N", fill = 0)  # Reshape
+
 
   # Get covariates if any
   if(args$xformla == ~1){
@@ -422,6 +442,8 @@ get_did_tensors <- function(data, args){
   return(list(outcomes_tensor = outcomes_tensor,
               time_invariant_data = invariant_data,
               cohort_counts = cohort_counts,
+              period_counts = period_counts,
+              crosstable_counts = crosstable_counts,
               covariates = covariates,
               cluster = cluster,
               weights = weights))
@@ -483,7 +505,7 @@ pre_process_did2 <- function(yname,
   # Put the data in a standard format after some validation
   cleaned_did <- did_standarization(data, args)
 
-  # Partition staggered did into a 2x2 DiD for faster implementation
+  # Partition staggered DiD into a 2x2 DiD for faster implementation
   did_tensors <- get_did_tensors(cleaned_did$data, cleaned_did$args)
 
   # store parameters for passing around later

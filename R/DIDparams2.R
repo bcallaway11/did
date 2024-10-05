@@ -41,6 +41,8 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
   outcomes_tensor <- did_tensors$outcomes_tensor
   time_invariant_data <- did_tensors$time_invariant_data
   cohort_counts <- did_tensors$cohort_counts
+  period_counts <- did_tensors$period_counts
+  crosstable_counts <- did_tensors$crosstable_counts
   covariates <- did_tensors$covariates # matrix of covariates
   cluster_vector <- did_tensors$cluster
   weights_vector <- did_tensors$weights
@@ -75,6 +77,8 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
               outcomes_tensor=outcomes_tensor,
               time_invariant_data=time_invariant_data,
               cohort_counts=cohort_counts,
+              period_counts=period_counts,
+              crosstable_counts=crosstable_counts,
               covariates=covariates,
               cluster_vector=cluster_vector,
               weights_vector=weights_vector,

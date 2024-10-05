@@ -47,15 +47,46 @@ get_did_cohort_index <- function(group, time, pret, dp2){
 
   # select the DiD cohort
   did_cohort_index <- rep(NA, dp2$id_count)
-  # getting the index to get units who will participate in the estimation for the (g,t) cell.
-  start_control <- dp2$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
-  end_control <- dp2$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
-  index <- which(dp2$cohort_counts[, cohort] == time_periods[group])
-  start_treat <- ifelse(index == 1, 1, dp2$cohort_counts[1:(index-1), sum(cohort_size)]+1)
-  end_treat <- dp2$cohort_counts[1:index, sum(cohort_size)]
-  # set the cohort index; .C = 0 and .G = 1
-  did_cohort_index[start_control:end_control] <- 0
-  did_cohort_index[start_treat:end_treat] <- 1
+
+  if(dp2$panel){
+
+    # getting the index to get units who will participate in the estimation for the (g,t) cell.
+    start_control <- dp2$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
+    end_control <- dp2$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
+    index <- which(dp2$cohort_counts[, cohort] == time_periods[group])
+    start_treat <- ifelse(index == 1, 1, dp2$cohort_counts[1:(index-1), sum(cohort_size)]+1)
+    end_treat <- dp2$cohort_counts[1:index, sum(cohort_size)]
+    # set the cohort index; .C = 0 and .G = 1
+    did_cohort_index[start_control:end_control] <- 0
+    did_cohort_index[start_treat:end_treat] <- 1
+  } else {
+    # getting the index to get units who will participate in the estimation for the (g,t) cell.
+    for(i in c(pret, time)){
+      # FOR TREATED UNITS!
+      index_treat <- which(dp2$period_counts[, period] == i)
+      start_treat <- ifelse(index_treat == 1, 1, dp2$period_counts[1:(index_treat-1), sum(period_size)]+1)
+      relevant_g_counts <- dp2$crosstable_counts[i, ]
+      col_names <- names(relevant_g_counts)[-1] # Exclude 'T' column
+      index_cohort <- which(dp2$cohort_counts[, cohort] == group)
+      correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_counts[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
+      start_treat <- start_treat + correction_index
+      g_size <- relevant_g_counts[, get(as.character(group))]
+      end_treat <- start_treat + g_size -1
+      did_cohort_index[start_treat:end_treat] <- 1
+
+      # FOR CONTROL UNITS!
+      min_idx <- match(as.character(min_control_group), col_names)
+      max_idx <- match(as.character(max_control_group), col_names)
+      index_control <- ifelse(start_treat == 1, 0, start_treat - correction_index - 1)
+      min_idx <- ifelse((min_control_group == time) | (min_control_group == group), min_idx, min_idx - 1)
+      # start_control <- index_control + sum(relevant_g_counts[, col_names[1:(min_idx - 1)], with = FALSE], na.rm = TRUE) + 1
+      start_control <- index_control + sum(relevant_g_counts[, col_names[1:min_idx], with = FALSE], na.rm = TRUE) + 1
+      end_control <- index_control + sum(relevant_g_counts[, col_names[1:max_idx], with = FALSE], na.rm = TRUE)
+
+      did_cohort_index[start_control:end_control] <- 0
+
+    }
+  }
 
   return(did_cohort_index)
 }
@@ -83,6 +114,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # pick up the indices for units that will be used to compute ATT(g,t)
     valid_obs <- which(cohort_data[, !is.na(D)])
     cohort_data <- cohort_data[valid_obs]
+    # TODO; THIS HAS TO BE BETTER WRITTEN
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
     } else {
@@ -97,15 +129,10 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # code for actually computing ATT(g,t)
     #-----------------------------------------------------------------------------
 
-    # preparing vectors
-    # Ypost <- cohort_data[, y1]
-    # Ypre <- cohort_data[, y0]
-    # w <- cohort_data[, i.weights]
-    # G <- cohort_data[, D]
 
     if (inherits(dp2$est_method, "function")) {
       # user-specified function
-      attgt <- est_method(y1=cohort_data[, y1],
+      attgt <- dp2$est_method(y1=cohort_data[, y1],
                           y0=cohort_data[, y0],
                           D=cohort_data[, D],
                           covariates=covariates,
@@ -150,22 +177,94 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # still total number of units (not just included in G or C)
     n <- cohort_data[, .N]
 
+    # # coerce a y1 and y0 in one single column
+    # cohort_data[, y := fcoalesce(y1, y0)]
+    # cohort_data[, post := as.integer(!is.na(y1))]
+    # cohort_data[, inpre := as.numeric(!is.na(y0))]
+    # cohort_data[, inpost := as.numeric(!is.na(y1))]
+
+    # TODO; DELETE THIS, IT IS MANUALLY IMPUTED
+    # cohort_data <- dp2$time_invariant_data[ (G == 3 | G == Inf) & (period == t | period == pret),]
+    # cohort_data[, post := fifelse(period == t, 1, 0)]
+    # cohort_data[, D := fifelse(G == 3, 1, 0)]
+    # names(cohort_data)[3] <- "y"
+    # names(cohort_data)[4] <- "i.weights"
+
+
     # pick up the indices for units that will be used to compute ATT(g,t)
     valid_obs <- which(cohort_data[, !is.na(D)])
     cohort_data <- cohort_data[valid_obs]
-    covariates <- covariates[valid_obs,]
-    # add the intercept
-    # Check if the ".intercept" name is already in the covariates matrix
-    #if(".intercept" %in% names(covariates)){stop("did is trying to impute a new column .intercept, but this already exists. Please check your dataset")}
-    #covariates[, .intercept := -1L]
-    # coerce to a matrix
-    covariates <- as.matrix(covariates)
 
     # num obs. for computing ATT(g,t)
     n1 <- cohort_data[, .N]
 
+    # TODO; THIS HAS TO BE BETTER WRITTEN
+    if(dp2$xformla != ~1){
+      covariates <- covariates[valid_obs,]
+    } else {
+      covariates <- covariates[valid_obs]
+    }
+
+    covariates <- as.matrix(covariates)
+
+
+    # give short names for data in this iteration
+    # G <- disdat$.G
+    # C <- disdat$.C
+    # Y <- disdat[[yname]]
+    # post <- 1*(disdat[[tname]] == tlist[t+tfac])
+    # # num obs. for computing ATT(g,t), have to be careful here
+    # n1 <- sum(G+C)
+    # w <- disdat$.w
+    # sample_dt[, NEW_Y := fcoalesce(Y1, Y2)]
+
+    #-----------------------------------------------------------------------------
+    # code for actually computing ATT(g,t)
+    #-----------------------------------------------------------------------------
+
     # TODO; IMPLEMENT REPEATED CROSS-SECTION
-    attgt <- NULL
+    if (inherits(dp2$est_method, "function")) {
+      # user-specified function
+      attgt <- dp2$est_method(y=Y,
+                          post=post,
+                          D=G,
+                          covariates=covariates,
+                          i.weights=w,
+                          inffunc=TRUE)
+    } else if (dp2$est_method == "ipw") {
+      # inverse-probability weights
+      attgt <- DRDID::std_ipw_did_rc(y=Y,
+                                     post=post,
+                                     D=G,
+                                     covariates=covariates,
+                                     i.weights=w,
+                                     boot=FALSE, inffunc=TRUE)
+    } else if (dp2$est_method == "reg") {
+      # regression
+      attgt <- DRDID::reg_did_rc(y=Y,
+                                 post=post,
+                                 D=G,
+                                 covariates=covariates,
+                                 i.weights=w,
+                                 boot=FALSE, inffunc=TRUE)
+    } else {
+      # doubly robust, this is default
+      attgt <- DRDID::drdid_rc(y=cohort_data[, y],
+                               post=cohort_data[, post],
+                               D=cohort_data[, D],
+                               covariates=covariates,
+                               i.weights=cohort_data[, i.weights],
+                               boot=FALSE, inffunc=TRUE)
+    }
+
+    # n/n1 adjusts for estimating the
+    # att_gt only using observations from groups
+    # G and C
+    # adjust influence function to account for only using
+    # subgroup to estimate att(g,t)
+    inf_func_vector <- rep(0, n)
+    inf_func_not_na <- (n/n1)*attgt$att.inf.func
+    inf_func_vector[valid_obs] <- inf_func_not_na
 
   }
 
@@ -211,8 +310,15 @@ run_att_gt_estimation <- function(gt, dp2){
 
   # Get the matrix of covariates
   covariates <- dp2$covariates
-  cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
-  names(cohort_data) <- c("D", "y1", "y0", "i.weights")
+  if(dp2$panel){
+    cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
+    names(cohort_data) <- c("D", "y1", "y0", "i.weights")
+  } else {
+    dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == t, 1, 0)]
+    cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights)
+    names(cohort_data) <- c("D", "y", "post", "i.weights")
+  }
+
 
   # run estimation
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
