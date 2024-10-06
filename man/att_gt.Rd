@@ -23,6 +23,7 @@ att_gt(
   clustervars = NULL,
   est_method = "dr",
   base_period = "varying",
+  faster_mode = FALSE,
   print_details = FALSE,
   pl = FALSE,
   cores = 1
@@ -149,6 +150,11 @@ treatment.  Using a universal base period normalizes the
 estimate in the period right before treatment (or earlier when
 the user allows for anticipation) to be equal to 0, but one
 extra estimate in an earlier period.}
+
+\item{faster_mode}{This option enables a faster version of \code{did}, optimizing
+computation time for large datasets by improving data management within the package.
+The default is set to \code{FALSE}. While the difference is minimal for small datasets,
+it is recommended for use with large datasets.}
 
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}

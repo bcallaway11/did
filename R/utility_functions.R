@@ -50,7 +50,6 @@ trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notye
 #' @return data from first period with .y0 (outcome in first period), .y1 (outcome in second period),
 #' and .dy (change in outcomes over time) appended to it
 #' @noRd
-#' @export
 get_wide_data <- function(data, yname, idname, tname) {
   # check if data is data.table
   if (!is.data.table(data)) {
@@ -74,7 +73,7 @@ get_wide_data <- function(data, yname, idname, tname) {
   return(data)
 }
 
-#' @title Check balanced panal data
+#' @title Check balanced panel data
 #' @description A utility function to check if your dataset is a balanced panel dataset.
 #'
 #' @param data data.table used in function
@@ -83,7 +82,6 @@ get_wide_data <- function(data, yname, idname, tname) {
 #'
 #' @return Boolean indicating if the dataset is balanced or not.
 #' @noRd
-#' @export
 check_balance <- function(data, id_col, time_col) {
 
   # Count the number of observations per unit (idname)

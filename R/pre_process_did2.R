@@ -4,7 +4,6 @@
 #' @param args list of arguments to validate
 #'
 #' @return nothing, but throws an error if any of the arguments are not valid
-#' @export
 #' @noRd
 validate_args <- function(args, data){
 
@@ -98,7 +97,6 @@ validate_args <- function(args, data){
 #' @param args list of arguments to validate
 #'
 #' @return A List, containing order data and arguments
-#' @export
 #' @noRd
 did_standarization <- function(data, args){
   # keep relevant columns in data
@@ -214,7 +212,7 @@ did_standarization <- function(data, args){
     data_comp <- data[complete.cases(data)]
 
     # Check if the panel is balanced
-    is_balanced <- check_balanced_panel(data_comp, id_col = args$idname, time_col = args$tname)
+    is_balanced <- check_balance(data_comp, id_col = args$idname, time_col = args$tname)
 
     args$allow_unbalanced_panel <- !is_balanced
     message(if (!is_balanced)
@@ -364,7 +362,6 @@ did_standarization <- function(data, args){
 #' @param args list of arguments to validate
 #'
 #' @return A List, containing outcomes tensor, time invariant data, cohort counts, covariates matrix, cluster vector and weights vector.
-#' @export
 #' @noRd
 get_did_tensors <- function(data, args){
 

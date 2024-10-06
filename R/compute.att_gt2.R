@@ -11,7 +11,6 @@
 #'
 #' @return Time period indicating the pre treatment period.
 #' @noRd
-#' @export
 get_pret <- function(group, time, base_period, anticipation){
   if(base_period == "universal"){
     pret <- group - 1 - anticipation
@@ -32,7 +31,6 @@ get_pret <- function(group, time, base_period, anticipation){
 #'
 #' @return Time period indicating the pre treatment period.
 #' @noRd
-#' @export
 get_did_cohort_index <- function(group, time, pret, dp2){
   # return a vector of dimension id_size with 1, 0 or NA values
   treated_groups <- dp2$treated_groups
@@ -42,7 +40,7 @@ get_did_cohort_index <- function(group, time, pret, dp2){
   min_control_group <- ifelse(min_control_group_index == Inf | min_control_group_index > dp2$time_periods_count,
                               Inf,
                               time_periods[min_control_group_index])
-  max_control_group <- Inf # always include the never treated units
+  max_control_group <- Inf # always include the never treated units as the maximum.
 
 
   # select the DiD cohort
@@ -111,47 +109,6 @@ get_did_cohort_index <- function(group, time, pret, dp2){
       did_cohort_index[start_treat:end_treat] <- 1
     }
 
-    # for(i in c(pret, time)){
-    #
-    #   # set up
-    #   # Identify the index_time for i in (pret, t) based on the table period_counts. This is going to be the starting point in the cohort
-    #   index_time <- which(dp2$period_counts[, period] == i)
-    #   start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time-1), sum(period_size)]+1)
-    #   relevant_g_counts <- dp2$crosstable_counts[i, ]
-    #   col_names <- names(relevant_g_counts)[-1]  # Exclude 'T' column
-    #
-    #   # ------------------------------------------------
-    #   # FOR CONTROL UNITS FIRST!
-    #   # ------------------------------------------------
-    #   # Calculate indexes for control group
-    #   min_idx <- match(as.character(min_control_group), col_names)
-    #   max_idx <- match(as.character(max_control_group), col_names)
-    #   # Identify the correction term that's going to be added to the start_time point and it is based on the min_control_group and will form the start_control.
-    #   start_control <- start_time + sum(relevant_g_counts[, col_names[1:min_idx-1], with = FALSE], na.rm = TRUE)
-    #   # Identify where the end point is in the cohort t or pret based on the table relevant_g_counts and by the max_control_group.
-    #   csize <- sum(relevant_g_counts[, col_names[min_idx:max_idx], with = FALSE], na.rm = TRUE)
-    #   # Sum the csize to start_control to get the end point for the untreated units: end_control
-    #   end_control <- start_control + csize - 1
-    #   # Impute control units with 0
-    #   did_cohort_index[start_control:end_control] <- 0
-    #
-    #   # ------------------------------------------------
-    #   # FOR TREATED UNITS!
-    #   # ------------------------------------------------
-    #   # Identify the correction terms that's going to be added to start_time points and it is based on the current g evaluated and will form the start_treat
-    #   index_cohort <- which(dp2$cohort_counts[, cohort] == group)
-    #   correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_counts[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
-    #   start_treat <- start_time + correction_index
-    #   # Identify  where is the end point in the cohort t or pret based on the table relevant_g_counts for the current g. This is the size of the treated group
-    #   g_size <- relevant_g_counts[, get(as.character(group))]
-    #   # Sum the gsize to start_treat to get the end point of th treated: end_treat
-    #   end_treat <- start_treat + g_size - 1
-    #   # Impute treated units with 1
-    #   did_cohort_index[start_treat:end_treat] <- 1
-    #
-    # }
-
-
   }
 
   return(did_cohort_index)
@@ -166,7 +123,6 @@ get_did_cohort_index <- function(group, time, pret, dp2){
 #'
 #' @return Time period indicating the pre treatment period.
 #' @noRd
-#' @export
 run_DRDID <- function(cohort_data, covariates, dp2){
 
   if(dp2$panel){
@@ -243,20 +199,6 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # still total number of units (not just included in G or C)
     n <- cohort_data[, .N]
 
-    # # coerce a y1 and y0 in one single column
-    # cohort_data[, y := fcoalesce(y1, y0)]
-    # cohort_data[, post := as.integer(!is.na(y1))]
-    # cohort_data[, inpre := as.numeric(!is.na(y0))]
-    # cohort_data[, inpost := as.numeric(!is.na(y1))]
-
-    # TODO; DELETE THIS, IT IS MANUALLY IMPUTED
-    # cohort_data <- dp2$time_invariant_data[ (G == 3 | G == Inf) & (period == t | period == pret),]
-    # cohort_data[, post := fifelse(period == t, 1, 0)]
-    # cohort_data[, D := fifelse(G == 3, 1, 0)]
-    # names(cohort_data)[3] <- "y"
-    # names(cohort_data)[4] <- "i.weights"
-
-
     # pick up the indices for units that will be used to compute ATT(g,t)
     valid_obs <- which(cohort_data[, !is.na(D)])
     cohort_data <- cohort_data[valid_obs]
@@ -273,54 +215,42 @@ run_DRDID <- function(cohort_data, covariates, dp2){
 
     covariates <- as.matrix(covariates)
 
-
-    # give short names for data in this iteration
-    # G <- disdat$.G
-    # C <- disdat$.C
-    # Y <- disdat[[yname]]
-    # post <- 1*(disdat[[tname]] == tlist[t+tfac])
-    # # num obs. for computing ATT(g,t), have to be careful here
-    # n1 <- sum(G+C)
-    # w <- disdat$.w
-    # sample_dt[, NEW_Y := fcoalesce(Y1, Y2)]
-
     #-----------------------------------------------------------------------------
     # code for actually computing ATT(g,t)
     #-----------------------------------------------------------------------------
 
-    # TODO; IMPLEMENT REPEATED CROSS-SECTION
     if (inherits(dp2$est_method, "function")) {
       # user-specified function
-      attgt <- dp2$est_method(y=Y,
-                          post=post,
-                          D=G,
+      attgt <- dp2$est_method(y=cohort_data[, y],
+                          post=cohort_data[, post],
+                          D=cohort_data[, D],
                           covariates=covariates,
-                          i.weights=w,
+                          i.weights=cohort_data[, i.weights],
                           inffunc=TRUE)
     } else if (dp2$est_method == "ipw") {
       # inverse-probability weights
-      attgt <- DRDID::std_ipw_did_rc(y=Y,
-                                     post=post,
-                                     D=G,
-                                     covariates=covariates,
-                                     i.weights=w,
-                                     boot=FALSE, inffunc=TRUE)
+      attgt <- std_ipw_did_rc(y=cohort_data[, y],
+                             post=cohort_data[, post],
+                             D=cohort_data[, D],
+                             covariates=covariates,
+                             i.weights=cohort_data[, i.weights],
+                             boot=FALSE, inffunc=TRUE)
     } else if (dp2$est_method == "reg") {
       # regression
-      attgt <- DRDID::reg_did_rc(y=Y,
-                                 post=post,
-                                 D=G,
-                                 covariates=covariates,
-                                 i.weights=w,
-                                 boot=FALSE, inffunc=TRUE)
+      attgt <- reg_did_rc(y=cohort_data[, y],
+                         post=cohort_data[, post],
+                         D=cohort_data[, D],
+                         covariates=covariates,
+                         i.weights=cohort_data[, i.weights],
+                         boot=FALSE, inffunc=TRUE)
     } else {
       # doubly robust, this is default
-      attgt <- DRDID::drdid_rc(y=cohort_data[, y],
-                               post=cohort_data[, post],
-                               D=cohort_data[, D],
-                               covariates=covariates,
-                               i.weights=cohort_data[, i.weights],
-                               boot=FALSE, inffunc=TRUE)
+      attgt <- drdid_rc(y=cohort_data[, y],
+                       post=cohort_data[, post],
+                       D=cohort_data[, D],
+                       covariates=covariates,
+                       i.weights=cohort_data[, i.weights],
+                       boot=FALSE, inffunc=TRUE)
     }
 
     # n/n1 adjusts for estimating the
@@ -349,8 +279,6 @@ run_DRDID <- function(cohort_data, covariates, dp2){
 #' @return a list with the gt cell and the results after performing estimation
 #'
 #' @keywords internal
-#'
-#' @export
 run_att_gt_estimation <- function(gt, dp2){
   # get the current g,t values
   g <- gt[[1]]
@@ -411,7 +339,6 @@ run_att_gt_estimation <- function(gt, dp2){
 #'  standard errors.
 #'
 #' @keywords internal
-#'
 #' @export
 compute.att_gt2 <- function(dp2) {
 

@@ -7,7 +7,6 @@
 #' @param did_tensor list of outcome tensors that are used in the estimation
 #' @param args list of arguments that are used in the estimation
 #' @noRd
-#' @export
 DIDparams2 <- function(did_tensors, args, call=NULL) {
   # get the arguments from args
   yname <- args$yname
