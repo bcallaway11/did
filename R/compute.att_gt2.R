@@ -61,31 +61,97 @@ get_did_cohort_index <- function(group, time, pret, dp2){
     did_cohort_index[start_treat:end_treat] <- 1
   } else {
     # getting the index to get units who will participate in the estimation for the (g,t) cell.
-    for(i in c(pret, time)){
-      # FOR TREATED UNITS!
-      index_treat <- which(dp2$period_counts[, period] == i)
-      start_treat <- ifelse(index_treat == 1, 1, dp2$period_counts[1:(index_treat-1), sum(period_size)]+1)
-      relevant_g_counts <- dp2$crosstable_counts[i, ]
-      col_names <- names(relevant_g_counts)[-1] # Exclude 'T' column
-      index_cohort <- which(dp2$cohort_counts[, cohort] == group)
-      correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_counts[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
-      start_treat <- start_treat + correction_index
-      g_size <- relevant_g_counts[, get(as.character(group))]
-      end_treat <- start_treat + g_size -1
-      did_cohort_index[start_treat:end_treat] <- 1
+    # Note: This works because the data is already ordered in a specific way. Changing that order will break this.
 
-      # FOR CONTROL UNITS!
-      min_idx <- match(as.character(min_control_group), col_names)
-      max_idx <- match(as.character(max_control_group), col_names)
-      index_control <- ifelse(start_treat == 1, 0, start_treat - correction_index - 1)
-      min_idx <- ifelse((min_control_group == time) | (min_control_group == group), min_idx, min_idx - 1)
-      # start_control <- index_control + sum(relevant_g_counts[, col_names[1:(min_idx - 1)], with = FALSE], na.rm = TRUE) + 1
-      start_control <- index_control + sum(relevant_g_counts[, col_names[1:min_idx], with = FALSE], na.rm = TRUE) + 1
-      end_control <- index_control + sum(relevant_g_counts[, col_names[1:max_idx], with = FALSE], na.rm = TRUE)
+    # Pre-extract column names for use within the loop
+    col_names <- names(dp2$crosstable_counts)[-1]  # Exclude 'T' column
+    min_idx <- match(as.character(min_control_group), col_names)
+    max_idx <- match(as.character(max_control_group), col_names)
 
+    # Start the loop
+    for (i in c(pret, time)) {
+
+      # ------------------------------------------------
+      # SET UP: Identify index_time, start_time, and precompute relevant counts
+      # ------------------------------------------------
+
+      # Identify the index_time for 'i' based on period_counts and compute the starting point
+      index_time <- which(dp2$period_counts[, period] == i)
+      start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time - 1), sum(period_size)] + 1)
+
+      # Extract the relevant row for current time period 'i' only once
+      relevant_g_row <- dp2$crosstable_counts[i, ]
+
+      # ------------------------------------------------
+      # FOR CONTROL UNITS FIRST
+      # ------------------------------------------------
+
+      # Calculate the starting and ending index for control units (min_control_group to max_control_group)
+      start_control <- start_time + sum(relevant_g_row[, col_names[1:min_idx - 1], with = FALSE], na.rm = TRUE)
+      csize <- sum(relevant_g_row[, col_names[min_idx:max_idx], with = FALSE], na.rm = TRUE)
+      end_control <- start_control + csize - 1
+
+      # Impute control units with 0
       did_cohort_index[start_control:end_control] <- 0
 
+      # ------------------------------------------------
+      # FOR TREATED UNITS
+      # ------------------------------------------------
+
+      # Calculate correction_index based on the current g and the relevant row for the current time period
+      index_cohort <- which(dp2$cohort_counts[, cohort] == group)
+      correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_row[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
+
+      # Compute start and end points for treated units
+      start_treat <- start_time + correction_index
+      g_size <- relevant_g_row[, get(as.character(group))]
+      end_treat <- start_treat + g_size - 1
+
+      # Impute treated units with 1
+      did_cohort_index[start_treat:end_treat] <- 1
     }
+
+    # for(i in c(pret, time)){
+    #
+    #   # set up
+    #   # Identify the index_time for i in (pret, t) based on the table period_counts. This is going to be the starting point in the cohort
+    #   index_time <- which(dp2$period_counts[, period] == i)
+    #   start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time-1), sum(period_size)]+1)
+    #   relevant_g_counts <- dp2$crosstable_counts[i, ]
+    #   col_names <- names(relevant_g_counts)[-1]  # Exclude 'T' column
+    #
+    #   # ------------------------------------------------
+    #   # FOR CONTROL UNITS FIRST!
+    #   # ------------------------------------------------
+    #   # Calculate indexes for control group
+    #   min_idx <- match(as.character(min_control_group), col_names)
+    #   max_idx <- match(as.character(max_control_group), col_names)
+    #   # Identify the correction term that's going to be added to the start_time point and it is based on the min_control_group and will form the start_control.
+    #   start_control <- start_time + sum(relevant_g_counts[, col_names[1:min_idx-1], with = FALSE], na.rm = TRUE)
+    #   # Identify where the end point is in the cohort t or pret based on the table relevant_g_counts and by the max_control_group.
+    #   csize <- sum(relevant_g_counts[, col_names[min_idx:max_idx], with = FALSE], na.rm = TRUE)
+    #   # Sum the csize to start_control to get the end point for the untreated units: end_control
+    #   end_control <- start_control + csize - 1
+    #   # Impute control units with 0
+    #   did_cohort_index[start_control:end_control] <- 0
+    #
+    #   # ------------------------------------------------
+    #   # FOR TREATED UNITS!
+    #   # ------------------------------------------------
+    #   # Identify the correction terms that's going to be added to start_time points and it is based on the current g evaluated and will form the start_treat
+    #   index_cohort <- which(dp2$cohort_counts[, cohort] == group)
+    #   correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_counts[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
+    #   start_treat <- start_time + correction_index
+    #   # Identify  where is the end point in the cohort t or pret based on the table relevant_g_counts for the current g. This is the size of the treated group
+    #   g_size <- relevant_g_counts[, get(as.character(group))]
+    #   # Sum the gsize to start_treat to get the end point of th treated: end_treat
+    #   end_treat <- start_treat + g_size - 1
+    #   # Impute treated units with 1
+    #   did_cohort_index[start_treat:end_treat] <- 1
+    #
+    # }
+
+
   }
 
   return(did_cohort_index)
@@ -289,13 +355,13 @@ run_att_gt_estimation <- function(gt, dp2){
   # get the current g,t values
   g <- gt[[1]]
   t <- gt[[2]]
-  if(dp2$print_details){cat("\n Evaluating (g,t) = (",g,t,")")}
+  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",g,",",t,")"))}
   pret <- get_pret(g, t, dp2$base_period, dp2$anticipation)
 
   # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
   # and break without computing anything
   if(t == pret | !pret %in% seq_along(dp2$time_periods)){
-    if(dp2$print_details){cat("\n Skipping (g,t) = (",g,t,") as base period is out of bounds or for varying base period.")}
+    if(dp2$print_details){cat("\n Skipping (g,t) as base period is out of bounds or for varying base period.")}
     return(NULL)
   }
 
@@ -304,7 +370,7 @@ run_att_gt_estimation <- function(gt, dp2){
   # In case of not treatment and control group in the cohort, return NULL
   valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
   if(!isTRUE(valid_did_cohort)){
-    if(dp2$print_details){cat("\n Skipping (g,t) = (",g,t,") as no treatment group or control group found")}
+    if(dp2$print_details){cat("\n Skipping (g,t) as no treatment group or control group found")}
     return(NULL)
   }
 
