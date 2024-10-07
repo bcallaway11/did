@@ -289,7 +289,7 @@ run_att_gt_estimation <- function(gt, dp2){
   # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
   # and break without computing anything
   if(t == pret | !pret %in% seq_along(dp2$time_periods)){
-    if(dp2$print_details){cat("\n Skipping (g,t) as base period is out of bounds or for varying base period.")}
+    # if(dp2$print_details){cat("\n Skipping (g,t) as base period is out of bounds or for varying base period.")}
     return(NULL)
   }
 
