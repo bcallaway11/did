@@ -663,10 +663,10 @@ test_that("clustered standard errors", {
 test_that("faster mode enabled for panel data", {
   data <- did::mpdta
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
                 control_group = "nevertreated", est_method = "dr")
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
                 control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
@@ -674,10 +674,10 @@ test_that("faster mode enabled for panel data", {
   expect_equal(out$se, as.numeric(out2$se))
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
                 control_group = "nevertreated", est_method = "dr")
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                 xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
                  control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
@@ -686,10 +686,10 @@ test_that("faster mode enabled for panel data", {
 
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
                 control_group = "notyettreated", est_method = "dr")
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                 xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
                  control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
@@ -698,10 +698,10 @@ test_that("faster mode enabled for panel data", {
 
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
                 control_group = "notyettreated", est_method = "dr")
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
-                 xformla = ~1, data = mpdta, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
                  control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
