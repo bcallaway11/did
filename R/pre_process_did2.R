@@ -10,7 +10,7 @@ validate_args <- function(args, data){
   data_names <- names(data)
 
   # ---------------------- Error Checking ----------------------
-
+  args$control_group <- args$control_group[1]
   # Flag for control group types
   control_group_message <- "control_group must be either 'nevertreated' or 'notyettreated'"
   dreamerr::check_set_arg(args$control_group, "match", .choices = c("nevertreated", "notyettreated"), .message = control_group_message, .up = 1)
@@ -24,7 +24,7 @@ validate_args <- function(args, data){
   dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
 
   # check if times periods are numeric
-  if(!data[, is.integer(get(args$tname))]){stop("tname = ",args$tname,  " is not integer. Please convert it")}
+  if(!data[, is.numeric(get(args$tname))]){stop("tname = ",args$tname,  " is not numeric. Please convert it")}
 
   # Check if gname is numeric
   if(!data[, is.numeric(get(args$gname))]){stop("gname = ",args$gname,  " is not numeric. Please convert it")}
@@ -53,6 +53,7 @@ validate_args <- function(args, data){
   }
 
   # Flag for based period: not in c("universal", "varying"), stop
+  args$base_period <- args$base_period[1]
   base_period_message <- "base_period must be either 'universal' or 'varying'."
   dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
 
