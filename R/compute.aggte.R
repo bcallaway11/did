@@ -38,9 +38,9 @@ compute.aggte <- function(MP,
 
 
   gname <- dp$gname
-  data <- as.data.frame(dp$data)
   tname <- dp$tname
   idname <- dp$idname
+  panel <- dp$panel
   if(is.null(clustervars)){
     clustervars <- dp$clustervars
   }
@@ -56,10 +56,17 @@ compute.aggte <- function(MP,
   if(is.null(cband)){
     cband <- dp$cband
   }
+  if(dp$faster_mode){
+    data <- as.data.frame(dp$data)
+    tlist <- dp$time_periods
+    glist <- dp$treated_groups
+  } else {
+    data <- as.data.frame(dp$data)
+    tlist <- dp$tlist
+    glist <- dp$glist
+  }
 
-  tlist <- dp$tlist
-  glist <- dp$glist
-  panel <- dp$panel
+
 
   # overwrite MP objects (so we can actually compute bootstrap)
   MP$DIDparams$clustervars <- clustervars
@@ -114,7 +121,8 @@ compute.aggte <- function(MP,
   #       )
   if(panel){
     # data from first period
-    dta <- data[ data[,tname]==tlist[1], ]
+    # TODO; THIS HAS TO BE OPTIMIZED WITH faster_mode enabled.
+    dta <- data[data[,tname]==tlist[1], ]
   }else {
     #aggregate data
     dta <- base::suppressWarnings(stats::aggregate(data, list((data[,idname])), mean)[,-1])

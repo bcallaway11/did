@@ -438,6 +438,7 @@ get_did_tensors <- function(data, args){
 
   # Gather all the arguments to return
   return(list(outcomes_tensor = outcomes_tensor,
+              data = data,
               time_invariant_data = invariant_data,
               cohort_counts = cohort_counts,
               period_counts = period_counts,
@@ -467,7 +468,7 @@ pre_process_did2 <- function(yname,
                             data,
                             panel = TRUE,
                             allow_unbalanced_panel,
-                            control_group = "nevertreated",
+                            control_group = c("nevertreated","notyettreated"),
                             anticipation = 0,
                             weightsname = NULL,
                             alp = 0.05,
@@ -478,6 +479,7 @@ pre_process_did2 <- function(yname,
                             est_method = "dr",
                             base_period = "varying",
                             print_details = TRUE,
+                            faster_mode=FALSE,
                             pl = FALSE,
                             cores = 1,
                             call = NULL) {
@@ -491,6 +493,9 @@ pre_process_did2 <- function(yname,
   # gathering all the arguments except data
   args_names <- setdiff(names(formals()), "data")
   args <- mget(args_names, sys.frame(sys.nframe()))
+
+  # pick a control_group by default
+  args$control_group <- control_group[1]
 
   # run error checking on arguments
   validate_args(args, data)
