@@ -22,33 +22,19 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
   # setup needed variables according to faster_mode; This returns different type of objects
   # depending on whether we are in faster_mode or not that has to be handled in the code below
-  if (DIDparams$faster_mode) {
-    data <- DIDparams$time_invariant_data
-    dta <- data
-    idname <- DIDparams$idname
-    clustervars <- DIDparams$clustervars
-    biters <- DIDparams$biters
-    tname <- DIDparams$tname
-    tlist <- DIDparams$time_periods
-    alp <- DIDparams$alp
-    panel <- DIDparams$panel
-    true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
-  } else {
-    data <- as.data.frame(DIDparams$data)
-    idname <- DIDparams$idname
-    clustervars <- DIDparams$clustervars
-    biters <- DIDparams$biters
-    tname <- DIDparams$tname
-    tlist <- unique(data[,tname])[order(unique(data[,tname]))]
-    alp <- DIDparams$alp
-    panel <- DIDparams$panel
-    true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
-
-    # just get n observations (for clustering below...)
-    ifelse(panel,
-           dta <- data[ data[,tname]==tlist[1], ],
-           dta <- data)
-  }
+  idname <- DIDparams$idname
+  clustervars <- DIDparams$clustervars
+  biters <- DIDparams$biters
+  tname <- DIDparams$tname
+  alp <- DIDparams$alp
+  panel <- DIDparams$panel
+  true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
+  data <- as.data.frame(DIDparams$data)
+  tlist <- ifelse(DIDparams$faster_mode, DIDparams$time_periods, unique(data[,tname])[order(unique(data[,tname]))])
+  # just get n observations (for clustering below...)
+  ifelse(panel,
+         dta <- data[ data[,tname]==tlist[1], ],
+         dta <- data)
 
   # Make sure inf.func is matrix because we need this for computing n below
   inf.func <- as.matrix(inf.func)
