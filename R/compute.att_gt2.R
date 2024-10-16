@@ -77,7 +77,7 @@ get_did_cohort_index <- function(group, time, pret, dp2){
       # ------------------------------------------------
 
       # Identify the index_time for 'i' based on period_counts and compute the starting point
-      index_time <- which(dp2$period_counts[, period] == i)
+      index_time <- which(dp2$period_counts[, period] == dp2$reverse_mapping[i])
       start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time - 1), sum(period_size)] + 1)
 
       # Extract the relevant row for current time period 'i' only once
@@ -100,12 +100,12 @@ get_did_cohort_index <- function(group, time, pret, dp2){
       # ------------------------------------------------
 
       # Calculate correction_index based on the current g and the relevant row for the current time period
-      index_cohort <- which(dp2$cohort_counts[, cohort] == group)
+      index_cohort <- which(dp2$cohort_counts[, cohort] == dp2$reverse_mapping[group])
       correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_row[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
 
       # Compute start and end points for treated units
       start_treat <- start_time + correction_index
-      g_size <- relevant_g_row[, get(as.character(group))]
+      g_size <- relevant_g_row[, get(as.character(dp2$reverse_mapping[group]))]
       end_treat <- start_treat + g_size - 1
 
       # Impute treated units with 1
@@ -311,7 +311,7 @@ run_att_gt_estimation <- function(gt, dp2){
     cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
     names(cohort_data) <- c("D", "y1", "y0", "i.weights")
   } else {
-    dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == t, 1, 0)]
+    dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == dp2$reverse_mapping[t], 1, 0)]
     cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights)
     names(cohort_data) <- c("D", "y", "post", "i.weights")
   }
@@ -320,7 +320,7 @@ run_att_gt_estimation <- function(gt, dp2){
   # run estimation
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
                          error = function(e) {
-                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,t,"):", e$message)
+                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,",",t,"):", e$message)
                            return(NULL)
                          })
   return(did_result)
@@ -353,6 +353,7 @@ compute.att_gt2 <- function(dp2) {
   time_mapping <- setNames(seq_along(time_periods), time_periods)
   # Create a reverse mapping from standardized values back to the original
   reverse_mapping <- setNames(as.numeric(names(time_mapping)), time_mapping)
+  dp2$reverse_mapping <- reverse_mapping
   # Convert both time_periods and treated_group using the mapping
   time_periods <- time_mapping[as.character(time_periods)]
   treated_groups <- time_mapping[as.character(treated_groups)]

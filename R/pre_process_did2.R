@@ -177,7 +177,7 @@ did_standarization <- function(data, args){
   data[is.na(treated_first_period), treated_first_period := FALSE]
 
   # count the number of units treated in the first period
-  nfirstperiod <- ifelse(args$panel, uniqueN(data[treated_first_period == TRUE, get(args$idname)]), nrow(data[data$treated_firstperiod == TRUE]))
+  nfirstperiod <- ifelse(args$panel, uniqueN(data[treated_first_period == TRUE, get(args$idname)]), nrow(data[treated_first_period == TRUE]))
 
   # handle units treated in the first period
   if (nfirstperiod > 0) {
