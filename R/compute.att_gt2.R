@@ -65,6 +65,9 @@ get_did_cohort_index <- function(group, time, pret, dp2){
     col_names <- names(dp2$crosstable_counts)[-1]  # Exclude 'T' column
     min_idx <- match(as.character(min_control_group), col_names)
     max_idx <- match(as.character(max_control_group), col_names)
+    # correction in case there is not never-treated units! Pick the very last time period...
+    ifelse(is.na(min_idx), min_idx <- match(tail(col_names,1), col_names), min_idx <- min_idx)
+    ifelse(is.na(max_idx), max_idx <- match(tail(col_names,1), col_names), max_idx <- max_idx)
 
     # Start the loop
     for (i in c(pret, time)) {

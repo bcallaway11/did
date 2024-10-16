@@ -423,7 +423,7 @@ get_did_tensors <- function(data, args){
   if(args$xformla == ~1){
     covariates <- rep(1, args$id_count)
   } else {
-    covariates <- as.data.table(model.frame(args$xformla, data = invariant_data, na.action = na.pass))
+    covariates <- as.data.table(model.matrix(args$xformla, data = invariant_data, na.action = na.pass))
   }
 
   # Get the cluster variable only

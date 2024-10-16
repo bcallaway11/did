@@ -8,7 +8,7 @@ library(BMisc)
 #-----------------------------------------------------------------------------
 # test each estimation method with panel data
 # Expected results: treatment effects = 1, p-value for pre-test
-# uniformly distributed, ipw model is incorectly specified here
+# uniformly distributed, ipw model is incorrectly specified here
 #-----------------------------------------------------------------------------
 test_that("att_gt works w/o dynamics, time effects, or group effects", {
   set.seed(09142024)
@@ -206,7 +206,7 @@ test_that("not yet treated comparison group", {
   # dr
   res <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                 control_group="notyettreated",
-                gname="G", est_method="dr", panel=FALSE)
+                gname="G", est_method="dr", panel=FALSE, print_details = TRUE)
   expect_equal(res$att[1], 1, tol=.5)
 
 

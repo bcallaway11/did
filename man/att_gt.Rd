@@ -233,23 +233,23 @@ summary(out2)
 #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> Group-Time Average Treatment Effects:
-#>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band] 
-#>   2004 2004   0.0318     0.0323       -0.0560      0.1197 
-#>   2004 2005  -0.0213     0.0398       -0.1296      0.0870 
-#>   2004 2006  -0.1081     0.0441       -0.2278      0.0117 
-#>   2004 2007  -0.0699     0.0466       -0.1965      0.0566 
-#>   2006 2004   0.0409     0.0303       -0.0414      0.1233 
-#>   2006 2005  -0.0010     0.0246       -0.0678      0.0657 
-#>   2006 2006  -0.0221     0.0232       -0.0851      0.0409 
-#>   2006 2007  -0.0607     0.0266       -0.1328      0.0115 
-#>   2007 2004   0.0448     0.0184       -0.0050      0.0947 
-#>   2007 2005  -0.0027     0.0192       -0.0549      0.0494 
-#>   2007 2006  -0.0388     0.0190       -0.0906      0.0129 
-#>   2007 2007  -0.0272     0.0182       -0.0766      0.0221 
+#>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
+#>   2004 2004  -0.0145     0.0222       -0.0737      0.0446  
+#>   2004 2005  -0.0764     0.0303       -0.1570      0.0041  
+#>   2004 2006  -0.1404     0.0382       -0.2421     -0.0388 *
+#>   2004 2007  -0.1069     0.0358       -0.2021     -0.0117 *
+#>   2006 2004  -0.0005     0.0231       -0.0618      0.0609  
+#>   2006 2005  -0.0062     0.0188       -0.0561      0.0437  
+#>   2006 2006   0.0010     0.0204       -0.0534      0.0553  
+#>   2006 2007  -0.0413     0.0210       -0.0971      0.0145  
+#>   2007 2004   0.0267     0.0140       -0.0104      0.0639  
+#>   2007 2005  -0.0046     0.0170       -0.0498      0.0407  
+#>   2007 2006  -0.0284     0.0187       -0.0782      0.0213  
+#>   2007 2007  -0.0288     0.0161       -0.0715      0.0140  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
-#> P-value for pre-test of parallel trends assumption:  0.05493
+#> P-value for pre-test of parallel trends assumption:  0.23267
 #> Control Group:  Never Treated,  Anticipation Periods:  0
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}
@@ -272,23 +272,23 @@ summary(out3)
 #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 #> 
 #> Group-Time Average Treatment Effects:
-#>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band] 
-#>   2004 2004   0.0118     0.0351       -0.0867      0.1104 
-#>   2004 2005  -0.0161     0.0428       -0.1362      0.1039 
-#>   2004 2006  -0.1054     0.0475       -0.2385      0.0278 
-#>   2004 2007  -0.0699     0.0453       -0.1969      0.0570 
-#>   2006 2004   0.0262     0.0312       -0.0612      0.1136 
-#>   2006 2005   0.0115     0.0238       -0.0552      0.0782 
-#>   2006 2006  -0.0170     0.0225       -0.0802      0.0462 
-#>   2006 2007  -0.0607     0.0277       -0.1383      0.0170 
-#>   2007 2004   0.0445     0.0174       -0.0041      0.0932 
-#>   2007 2005  -0.0015     0.0175       -0.0506      0.0476 
-#>   2007 2006  -0.0388     0.0200       -0.0951      0.0174 
-#>   2007 2007  -0.0272     0.0186       -0.0795      0.0250 
+#>  Group Time ATT(g,t) Std. Error [95\% Simult.  Conf. Band]  
+#>   2004 2004  -0.0212     0.0217       -0.0788      0.0365  
+#>   2004 2005  -0.0816     0.0324       -0.1676      0.0044  
+#>   2004 2006  -0.1382     0.0368       -0.2361     -0.0403 *
+#>   2004 2007  -0.1069     0.0344       -0.1984     -0.0154 *
+#>   2006 2004  -0.0075     0.0233       -0.0693      0.0544  
+#>   2006 2005  -0.0046     0.0184       -0.0533      0.0442  
+#>   2006 2006   0.0087     0.0182       -0.0397      0.0570  
+#>   2006 2007  -0.0413     0.0205       -0.0956      0.0130  
+#>   2007 2004   0.0269     0.0136       -0.0091      0.0630  
+#>   2007 2005  -0.0042     0.0153       -0.0448      0.0364  
+#>   2007 2006  -0.0284     0.0191       -0.0792      0.0223  
+#>   2007 2007  -0.0288     0.0167       -0.0732      0.0157  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
-#> P-value for pre-test of parallel trends assumption:  0.02999
+#> P-value for pre-test of parallel trends assumption:  0.23326
 #> Control Group:  Not Yet Treated,  Anticipation Periods:  0
 #> Estimation Method:  Doubly Robust
 }\if{html}{\out{</div>}}

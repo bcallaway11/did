@@ -185,7 +185,7 @@ att_gt <- function(yname,
                    clustervars=NULL,
                    est_method="dr",
                    base_period="varying",
-                   faster_mode=FALSE,
+                   faster_mode=TRUE,
                    print_details=FALSE,
                    pl=FALSE,
                    cores=1) {
