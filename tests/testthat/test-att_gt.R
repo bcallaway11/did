@@ -534,17 +534,31 @@ test_that("small comparison group", {
               gname="G", est_method="ipw"), "small groups"), "never treated group is too small")
 
   #-----------------------------------------------------------------------------
+  # not-yet-treated comparison group with faster_mode = TRUE
+  #-----------------------------------------------------------------------------
+
+  # dr
+  expect_error(expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                               gname="G", est_method="dr", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
+  # reg
+  expect_error(expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                                gname="G", est_method="reg", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
+  # ipw
+  expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                   gname="G", est_method="ipw", faster_mode = TRUE), "small groups")
+
+  #-----------------------------------------------------------------------------
   # not-yet-treated comparison group
   #-----------------------------------------------------------------------------
   # dr
   expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="dr"), "small group")
+              gname="G", est_method="dr", faster_mode = FALSE), "small group")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="reg"), "Not enough control units")
+              gname="G", est_method="reg", faster_mode = FALSE), "Not enough control units")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="ipw"), "overlap condition violated")
+              gname="G", est_method="ipw", faster_mode = FALSE), "overlap condition violated")
 
   # code should still work for some (g,t)'s
   expect_equal(res_dr$att[1], 1, tol=.5)

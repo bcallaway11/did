@@ -324,12 +324,12 @@ did_standarization <- function(data, args){
 
   # Warn if some groups are small
   if (nrow(gsize) > 0) {
-    gpaste <- paste(gsize[[args$gname]], collapse = ",")
+    gpaste <- paste(gsize[,1], collapse = ",")
     warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
 
     # Check if the never treated group is too small
-    if (Inf %in% gsize[[args$gname]] & control_group == "nevertreated") {
-      stop("Never treated group is too small, try setting control_group=\"notyettreated\"")
+    if ((Inf %in% gsize[,1]) & (args$control_group == "nevertreated")) {
+      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
     }
   }
 

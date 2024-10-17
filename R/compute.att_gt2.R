@@ -320,7 +320,7 @@ run_att_gt_estimation <- function(gt, dp2){
   # run estimation
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
                          error = function(e) {
-                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,",",t,"):", e$message)
+                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,",",t,"): ", e$message)
                            return(NULL)
                          })
   return(did_result)
