@@ -74,7 +74,7 @@ compute.att_gt <- function(dp) {
   for (g in 1:nG) {
 
     # Set up .G once
-    data[, .G := as.integer(get(gname) == glist[g]), .SDcols = gname]
+    data[, .G := as.numeric(get(gname) == glist[[..g]]), .SDcols = gname]
 
     # loop over time periods
     for (t in 1:tlist.length) {
@@ -97,7 +97,7 @@ compute.att_gt <- function(dp) {
       if(!nevertreated) {
         data[, .C := as.integer((get(gname) == 0) |
                                   ((get(gname) > (tlist[max(t, pret) + tfac] + anticipation)) &
-                                     (get(gname) != glist[g])))]
+                                     (get(gname) != glist[[..g]])))]
       }
 
 
