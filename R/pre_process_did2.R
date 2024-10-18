@@ -39,7 +39,7 @@ validate_args <- function(args, data){
     if(!data[, is.numeric(get(args$idname))]){stop("idname = ", args$idname,  " is not numeric. Please convert it")}
 
     # Check if gname is unique by idname: irreversibility of the treatment
-    check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
+    check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant, na.rm = TRUE)]
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
     }
