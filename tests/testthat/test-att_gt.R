@@ -651,8 +651,14 @@ test_that("clustered standard errors", {
               data=data,
               panel=TRUE,
               allow_unbalanced_panel=TRUE,
+              faster_mode = FALSE,
               clustervars="cluster")
   expect_equal(res_ub$att[1], 1, tol=.5)
+
+  # expect an error with faster_mode=TRUE because it not currently available
+  expect_error(att_gt(yname="Y",tname="period",idname="id",gname="G",
+              xformla=~X,data=data,panel=TRUE, allow_unbalanced_panel=TRUE,
+              faster_mode = TRUE, clustervars="cluster"), "faster_mode=TRUE is currently not available")
 
   #-----------------------------------------------------------------------------
   # also, check that we error when clustering variable varies within unit

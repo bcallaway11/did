@@ -29,6 +29,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   alp <- DIDparams$alp
   panel <- DIDparams$panel
   true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
+  unbalanced_panel <- DIDparams$allow_unbalanced_panel
   data <- as.data.frame(DIDparams$data)
   tlist <- ifelse(DIDparams$faster_mode, DIDparams$time_periods, unique(data[,tname])[order(unique(data[,tname]))])
   # just get n observations (for clustering below...)
@@ -84,7 +85,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   if (length(clustervars)==0) {
     bres <- sqrt(n) * run_multiplier_bootstrap(inf.func, biters, pl, cores)
   } else {
-    n_clusters <- length(unique(data[,clustervars]))
+    n_clusters <- length(unique(dta[,clustervars]))
     cluster <- unique(dta[,c(idname,clustervars)])[,2]
     cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n

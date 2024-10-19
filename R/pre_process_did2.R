@@ -59,6 +59,11 @@ validate_args <- function(args, data){
 
   # Flags for cluster variable
   if (!is.null(args$clustervars)) {
+    # Check if it is a unbalanced panel with faster_model enable + clustervars
+    if (args$faster_mode & args$allow_unbalanced_panel) {
+      stop("Computing clustered standard errors with unbalanced panel using faster_mode=TRUE is currently not available. Please set faster_mode=FALSE.")
+    }
+
     # dropping idname from cluster
     if (args$idname %in% args$clustervars) {
       args$clustervars <- setdiff(args$clustervars, args$idname)
@@ -70,7 +75,7 @@ validate_args <- function(args, data){
     }
 
     # Check that cluster variables do not vary over time within each unit
-    if (length(cluster) > 0) {
+    if (length(args$cluster) > 0) {
       # Efficiently check for time-varying cluster variables
       clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = id, .SDcols = args$cluster]
       # If any cluster variable varies over time within any unit, stop execution
