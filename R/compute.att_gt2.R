@@ -45,7 +45,9 @@ get_did_cohort_index <- function(group, time, pret, dp2){
 
 
   # select the DiD cohort
-  did_cohort_index <- rep(NA, dp2$id_count)
+  ifelse(dp2$allow_unbalanced_panel, did_cohort_index <- rep(NA, dp2$time_invariant_data[, .N]), did_cohort_index <- rep(NA, dp2$id_count))
+  #did_cohort_index <- rep(NA, dp2$id_count)
+
 
   if(dp2$panel){
 
@@ -268,7 +270,10 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # adjust influence function to account for only using
     # subgroup to estimate att(g,t)
     inf_func_vector <- rep(0, n)
-    inf_func_not_na <- (n/n1)*attgt$att.inf.func
+    #inf_func_not_na <- (n/n1)*attgt$att.inf.func
+    ifelse(dp2$allow_unbalanced_panel,
+           inf_func_not_na <- (dp2$id_count/n1)*attgt$att.inf.func,
+           inf_func_not_na <- (n/n1)*attgt$att.inf.func)
     inf_func_vector[valid_obs] <- inf_func_not_na
 
   }
@@ -318,8 +323,8 @@ run_att_gt_estimation <- function(gt, dp2){
     names(cohort_data) <- c("D", "y1", "y0", "i.weights")
   } else {
     dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == dp2$reverse_mapping[t], 1, 0)]
-    cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights)
-    names(cohort_data) <- c("D", "y", "post", "i.weights")
+    cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
+    names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
   }
 
 

@@ -254,7 +254,7 @@ did_standarization <- function(data, args){
       if(any(unit_count[, count < raw_time_size])){
         mis_unit <- unit_count[count < raw_time_size]
         warning(nrow(mis_unit), " units are missing in some periods. Converting to balanced panel by dropping them.")
-        data <- data[!get(args$idname) %in% mis_unit[, get(args$idname)]]
+        data <- data[!get(args$idname) %in% mis_unit$get]
       }
 
       # If all data is dropped, stop execution
@@ -397,10 +397,14 @@ get_did_tensors <- function(data, args){
     # We can do this filtering because the data is already sorted appropriately
     invariant_data <- data[1:args$id_count]
   } else {
-    # get the first observation for each unit
-    invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
-    # # order by idname
-    # setorderv(invariant_data, c(args$idname), c(1))
+    if (!args$allow_unbalanced_panel) {
+      # get the first observation for each unit
+      invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
+      # # order by idname
+      # setorderv(invariant_data, c(args$idname), c(1))
+    } else {
+      invariant_data <- copy(data)
+    }
   }
 
   # Get cohort counts
