@@ -207,6 +207,10 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # --------------------------------------
     # Repeated Cross-Section
     # --------------------------------------
+    # if we are running unbalanced panel data, we get a temporary copy of cohort data to compute influence function
+    if(dp2$allow_unbalanced_panel){
+      cohort_data_init <- copy(cohort_data[, .(D, .rowid)])
+    }
     # still total number of units (not just included in G or C)
     n <- cohort_data[, .N]
 
@@ -269,12 +273,19 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # G and C
     # adjust influence function to account for only using
     # subgroup to estimate att(g,t)
-    inf_func_vector <- rep(0, n)
-    #inf_func_not_na <- (n/n1)*attgt$att.inf.func
-    ifelse(dp2$allow_unbalanced_panel,
-           inf_func_not_na <- (dp2$id_count/n1)*attgt$att.inf.func,
-           inf_func_not_na <- (n/n1)*attgt$att.inf.func)
-    inf_func_vector[valid_obs] <- inf_func_not_na
+    if(dp2$allow_unbalanced_panel){
+      # since this is technically a panel data but ran as RCS, we need to adjust the influence function
+      # by aggregating influence value by .rowid (since several obs of one unit could be used to estimate ATT in each 2x2)
+      cohort_data_init[, inf_func_long := 0]
+      # Assign values from vec to the valid rows identified by valid_obs
+      cohort_data_init[valid_obs, inf_func_long := (dp2$id_count/n1)*attgt$att.inf.func]
+      inf_func_vector <- cohort_data_init[, .(inf_func = sum(inf_func_long, na.rm = TRUE)), by = .rowid][ , inf_func]
+
+    } else {
+      inf_func_vector <- rep(0, n)
+      inf_func_not_na <- (n/n1)*attgt$att.inf.func
+      inf_func_vector[valid_obs] <- inf_func_not_na
+    }
 
   }
 
