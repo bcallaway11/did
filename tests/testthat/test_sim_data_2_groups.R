@@ -1,6 +1,6 @@
 library(DRDID)
 library(BMisc)
-library(tidyr)
+#library(tidyr)
 ## -----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 # test it works without covariates and only two gropups
@@ -45,24 +45,24 @@ test_that("att_gt works with 2 groups", {
   y3 <- (g==3) * Yt3_g3 + (g==0) * Yt3_ginf
   y4 <- (g==3) * Yt4_g3 + (g==0) * Yt4_ginf
 
-  data = data.frame(y1,y2,y3,y4,g)
+  data <- data.frame(y1,y2,y3,y4,g)
   data$id <- 1:dim(data)[1]
   # Have data in long format
   data <- data |>
-    pivot_longer(
+    tidyr::pivot_longer(
       cols = starts_with("y"),
-      names_to = "time",
+      names_to = "t",
       names_prefix = "y",
       values_to = "y",
     )
-  data$time <- as.numeric(data$time)
+  data$t <- as.numeric(data$t)
   data$g <- as.numeric(data$g)
 
   # Run regression with never-treated and varying base period
   csdid_nt_varying <- did::att_gt(yname = "y",
                           idname = "id",
                           gname = "g",
-                          tname = "time",
+                          tname = "t",
                           data = data,
                           control_group = "nevertreated",
                           panel = TRUE,
@@ -77,7 +77,7 @@ test_that("att_gt works with 2 groups", {
   csdid_nt_universal <- did::att_gt(yname = "y",
                                   idname = "id",
                                   gname = "g",
-                                  tname = "time",
+                                  tname = "t",
                                   data = data,
                                   control_group = "nevertreated",
                                   panel = TRUE,
@@ -91,7 +91,7 @@ test_that("att_gt works with 2 groups", {
   csdid_nyt_varying <- did::att_gt(yname = "y",
                                   idname = "id",
                                   gname = "g",
-                                  tname = "time",
+                                  tname = "t",
                                   data = data,
                                   control_group = "notyettreated",
                                   panel = TRUE,
@@ -106,7 +106,7 @@ test_that("att_gt works with 2 groups", {
   csdid_nyt_universal <- did::att_gt(yname = "y",
                                     idname = "id",
                                     gname = "g",
-                                    tname = "time",
+                                    tname = "t",
                                     data = data,
                                     control_group = "notyettreated",
                                     panel = TRUE,
