@@ -182,10 +182,10 @@ pre_process_did <- function(yname,
     data_bal <- BMisc::makeBalancedPanel(data_comp, idname, tname)
     n_bal <- length(unique(data_bal[,idname]))
     if (n_bal < n_all) {
-      message(paste0("You have an unbalanced panel. Proceeding as such."))
+      # message(paste0("You have an unbalanced panel. Proceeding as such."))
       allow_unbalanced_panel <- TRUE
     } else {
-      message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
+      # message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
       allow_unbalanced_panel <- FALSE
     }
   }
