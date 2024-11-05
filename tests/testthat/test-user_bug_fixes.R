@@ -146,3 +146,15 @@ test_that("0 pre-treatment estimates when outcomes are 0", {
   res_idx <- which(res$group==9 & res$t==7)
   expect_equal(res$att[res_idx],0)
 })
+
+test_that("variables not in live in dataset", {
+  sp <- did::reset.sim(time.periods=3)
+  data <- build_sim_dataset(sp)
+
+  X2  <- factor(data$cluster)
+
+  expect_error(att_gt(yname="Y", xformla=~X2, data=data, tname="period", idname="id", control_group="notyettreated",
+                      gname="G", est_method="dr", clustervars="cluster"), " variables are not in data")
+
+})
+

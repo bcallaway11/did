@@ -52,9 +52,20 @@ pre_process_did <- function(yname,
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
 
-  # put in blank xformla if no covariates
+  # put in blank xformla if no covariates or check whether all variables are in data
   if (is.null(xformla)) {
     xformla <- ~1
+  } else {
+    # extract variable names from the formula
+    formula_vars <- all.vars(xformla)
+
+    # identify variables in xformla not in data
+    missing_vars <- setdiff(formula_vars, names(data))
+
+    # error checking for missing variables in data
+    if (length(missing_vars) > 0) {
+      stop(paste("The following variables are not in data:", paste(missing_vars, collapse = ", ")), call. = FALSE)
+    }
   }
 
   # drop irrelevant columns from data
