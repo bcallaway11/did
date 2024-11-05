@@ -6,6 +6,8 @@
   
   * Check if data is balanced if `panel = TRUE` and `allow_unbalanced_panel = TRUE`. If it is, disable `allow_unbalanced_panel` and proceed with panel data setup. This is different from the previous behavior, which would always proceed as if `panel = FALSE`.
 
+  * Significantly reduced the number of recursive package dependencies, enabling faster installation times and a smaller build footprint. 
+
 # did 2.1.2
 
   * Added wrapper function for HonestDiD package
