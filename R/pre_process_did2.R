@@ -60,7 +60,7 @@ validate_args <- function(args, data){
   # Flags for cluster variable
   if (!is.null(args$clustervars)) {
     # dropping idname from cluster
-    if (args$idname %in% args$clustervars) {
+    if ((!is.null(args$idname)) && (args$idname %in% args$clustervars)){
       args$clustervars <- setdiff(args$clustervars, args$idname)
     }
 
@@ -507,6 +507,17 @@ pre_process_did2 <- function(yname,
   # put in blank xformla if no covariates
   if (is.null(args$xformla)) {
     args$xformla <- ~1
+  } else {
+    # extract variable names from the formula
+    formula_vars <- all.vars(args$xformla)
+
+    # identify variables in xformla not in data
+    missing_vars <- setdiff(formula_vars, names(data))
+
+    # error checking for missing variables in data
+    if (length(missing_vars) > 0) {
+      stop(paste("The following variables are not in data:", paste(missing_vars, collapse = ", ")), call. = FALSE)
+    }
   }
 
   # Put the data in a standard format after some validation
