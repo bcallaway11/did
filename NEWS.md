@@ -1,4 +1,4 @@
-# did 2.2.0
+# did 2.2.0 (development version)
 
   * Code improvements that made the package much faster and memory efficient
 
