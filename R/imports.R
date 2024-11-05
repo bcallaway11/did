@@ -9,7 +9,6 @@
 #' @import stats
 #' @import utils
 #' @import ggplot2
-#' @import ggpubr
 #' @import BMisc
 #' @import data.table
 #' @importFrom tidyr gather
