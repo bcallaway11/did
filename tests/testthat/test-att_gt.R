@@ -691,8 +691,8 @@ test_that("faster mode enabled for panel data", {
                 control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
-  expect_equal(out$att[1], out2$att[1])
-  expect_equal(out$se, out2$se)
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
@@ -702,8 +702,8 @@ test_that("faster mode enabled for panel data", {
                  control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
-  expect_equal(out$att[1], out2$att[1])
-  expect_equal(out$se, out2$se)
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
 
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
@@ -714,8 +714,8 @@ test_that("faster mode enabled for panel data", {
                  control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
-  expect_equal(out$att[1], out2$att[1])
-  expect_equal(out$se, out2$se)
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
 
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
@@ -726,8 +726,8 @@ test_that("faster mode enabled for panel data", {
                  control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
 
   # check if results are equal.
-  expect_equal(out$att[1], out2$att[1])
-  expect_equal(out$se, out2$se)
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
 
 })
 
@@ -746,8 +746,8 @@ test_that("faster model enabled for repeated cross sectional data", {
                       est_method = "dr", faster_mode = TRUE )
 
   # check if results are equal.
-  expect_equal(out_rcs$att[1], out_rcs2$att[1])
-  expect_equal(out_rcs$se, out_rcs2$se)
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
@@ -758,8 +758,8 @@ test_that("faster model enabled for repeated cross sectional data", {
                       est_method = "dr", faster_mode = TRUE )
 
   # check if results are equal.
-  expect_equal(out_rcs$att[1], out_rcs2$att[1])
-  expect_equal(out_rcs$se, out_rcs2$se)
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
@@ -770,8 +770,8 @@ test_that("faster model enabled for repeated cross sectional data", {
                       est_method = "dr", faster_mode = TRUE )
 
   # check if results are equal.
-  expect_equal(out_rcs$att[1], out_rcs2$att[1])
-  expect_equal(out_rcs$se, out_rcs2$se)
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
@@ -782,7 +782,7 @@ test_that("faster model enabled for repeated cross sectional data", {
                       est_method = "dr", faster_mode = TRUE )
 
   # check if results are equal.
-  expect_equal(out_rcs$att[1], out_rcs2$att[1])
-  expect_equal(out_rcs$se, out_rcs2$se)
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
 
 })
