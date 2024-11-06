@@ -65,14 +65,14 @@ validate_args <- function(args, data){
     }
 
     # check if user is providing more than 2 cluster variables (different than idname)
-    if (length(args$cluster) > 1) {
+    if (length(args$clustervars) > 1) {
       stop("You can only provide 1 cluster variable additionally to the one provided in idname. Please check your arguments.")
     }
 
     # Check that cluster variables do not vary over time within each unit
-    if (length(args$cluster) > 0) {
+    if (length(args$clustervars) > 0) {
       # Efficiently check for time-varying cluster variables
-      clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = id, .SDcols = args$cluster]
+      clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = get(args$idname), .SDcols = args$clustervars]
       # If any cluster variable varies over time within any unit, stop execution
       if (!all(unlist(clust_tv[, -1, with = FALSE]))) {
         stop("did cannot handle time-varying cluster variables at the moment. Please check your cluster variable.")
