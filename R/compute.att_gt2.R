@@ -279,7 +279,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
       cohort_data_init[, inf_func_long := 0]
       # Assign values from vec to the valid rows identified by valid_obs
       cohort_data_init[valid_obs, inf_func_long := (dp2$id_count/n1)*attgt$att.inf.func]
-      inf_func_vector <- cohort_data_init[, .(inf_func = sum(inf_func_long, na.rm = TRUE)), by = .rowid][ , inf_func]
+      inf_func_vector <- cohort_data_init[, .(inf_func_agg = sum(inf_func_long, na.rm = TRUE)), by = .rowid][ , inf_func_agg]
 
     } else {
       inf_func_vector <- rep(0, n)
