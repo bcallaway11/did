@@ -4,10 +4,12 @@
 \alias{run_att_gt_estimation}
 \title{Run ATT estimation for a given group-time pair}
 \usage{
-run_att_gt_estimation(gt, dp2)
+run_att_gt_estimation(g, t, dp2)
 }
 \arguments{
-\item{gt}{A numeric vector of the group and time period coming from a list of (g,t) cells}
+\item{g}{group of interest (treated group at time t)}
+
+\item{t}{time period}
 
 \item{dp2}{A DIDparams object v2.0}
 }

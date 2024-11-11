@@ -192,7 +192,7 @@ att_gt <- function(yname,
 
   # Check if user wants to run faster mode:
   if (faster_mode) {
-    # this is a DIDparams object
+    # this is a DIDparams2 object
     dp <- pre_process_did2(yname=yname,
                             tname=tname,
                             idname=idname,

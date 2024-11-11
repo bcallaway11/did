@@ -36,31 +36,26 @@ get_did_cohort_index <- function(group, time, pret, dp2){
   treated_groups <- dp2$treated_groups
   time_periods <- dp2$time_periods
   # based on control_group option
-  # min_control_group_index <- ifelse(dp2$control_group == "notyettreated", max(time, pret) + dp2$anticipation + 1, Inf)
-  # min_control_group <- ifelse(min_control_group_index == Inf | min_control_group_index > dp2$time_periods_count,
-  #                             Inf,
-  #                             time_periods[min_control_group_index])
-  min_control_group <-  ifelse((dp2$control_group == "notyettreated") & ((max(time, pret) + 1 + dp2$anticipation) <= length(dp2$reverse_mapping)),
-                               dp2$reverse_mapping[max(time, pret) +1] + dp2$anticipation,
+
+  min_control_group <-  ifelse((dp2$control_group == "notyettreated"),
+                               dp2$cohort_counts$cohort[which(dp2$cohort_counts$cohort > dp2$reverse_mapping[max(time, pret)] + dp2$anticipation)][1],
                                Inf)
-  max_control_group <- Inf # always include the never treated units as the maximum.
+  max_control_group <- Inf # always include the never treated units as the maximum. We add a correction in case is needed afterwards.
 
 
   # select the DiD cohort
   ifelse(dp2$allow_unbalanced_panel, did_cohort_index <- rep(NA, dp2$time_invariant_data[, .N]), did_cohort_index <- rep(NA, dp2$id_count))
-  #did_cohort_index <- rep(NA, dp2$id_count)
-
 
   if(dp2$panel){
 
     # adding some correction in control group to avoid weird behavior when the control group is not yet treated
-    #ifelse(!min_control_group %in% dp2$cohort_counts$cohort, min_control_group <- dp2$cohort_count[cohort == min_control_group_index, cohort], min_control_group <- min_control_group)
-    ifelse(!max_control_group %in% dp2$cohort_counts$cohort, max_control_group <- tail(dp2$cohort_count$cohort,1), max_control_group <- max_control_group)
+    if(!max_control_group %in% dp2$cohort_counts$cohort){
+      max_control_group <- tail(dp2$cohort_count$cohort,1)
+    }
 
     # getting the index to get units who will participate in the estimation for the (g,t) cell.
     start_control <- dp2$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
     end_control <- dp2$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
-    #index <- which(dp2$cohort_counts[, cohort] == time_periods[group])
     index <- which(dp2$cohort_counts[, cohort] == dp2$reverse_mapping[group])
     start_treat <- ifelse(index == 1, 1, dp2$cohort_counts[1:(index-1), sum(cohort_size)]+1)
     end_treat <- dp2$cohort_counts[1:index, sum(cohort_size)]
@@ -223,7 +218,6 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # num obs. for computing ATT(g,t)
     n1 <- cohort_data[, .N]
 
-    # TODO; THIS HAS TO BE BETTER WRITTEN
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
     } else {
@@ -300,16 +294,15 @@ run_DRDID <- function(cohort_data, covariates, dp2){
 #'
 #' @description `run_att_gt_estimation` does the main work for computing
 #'  multiperiod group-time average treatment effects
-#' @param gt A numeric vector of the group and time period coming from a list of (g,t) cells
+#' @param g group of interest (treated group at time t)
+#' @param t time period
 #' @param dp2 A DIDparams object v2.0
 #'
 #' @return a list with the gt cell and the results after performing estimation
 #'
 #' @keywords internal
-run_att_gt_estimation <- function(gt, dp2){
-  # get the current g,t values
-  g <- gt[[1]]
-  t <- gt[[2]]
+run_att_gt_estimation <- function(g, t, dp2){
+
   if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",g,",",t,")"))}
   pret <- get_pret(g, t, dp2$base_period, dp2$anticipation)
 
@@ -397,7 +390,7 @@ compute.att_gt2 <- function(dp2) {
     t <- gt_cell$t
 
     # Run estimation
-    gt_result <- run_att_gt_estimation(c(g, t), dp2)
+    gt_result <- run_att_gt_estimation(g, t, dp2)
 
     # Compute post-treatment indicator
     post.treat <- as.integer(g <= t)

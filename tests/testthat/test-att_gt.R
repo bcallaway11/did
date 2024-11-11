@@ -685,7 +685,7 @@ test_that("faster mode enabled for panel data", {
   data <- did::mpdta
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
-                control_group = "nevertreated", est_method = "dr")
+                control_group = "nevertreated", est_method = "dr", faster_mode = FALSE)
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
                 control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
@@ -696,7 +696,7 @@ test_that("faster mode enabled for panel data", {
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
-                control_group = "nevertreated", est_method = "dr")
+                control_group = "nevertreated", est_method = "dr", faster_mode = FALSE)
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                  xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
                  control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
@@ -708,7 +708,7 @@ test_that("faster mode enabled for panel data", {
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
-                control_group = "notyettreated", est_method = "dr")
+                control_group = "notyettreated", est_method = "dr", faster_mode = FALSE)
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                  xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
                  control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
@@ -720,7 +720,7 @@ test_that("faster mode enabled for panel data", {
   # --------------------------------------------------------------------------------------------------------
   out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
-                control_group = "notyettreated", est_method = "dr")
+                control_group = "notyettreated", est_method = "dr", faster_mode = FALSE)
   out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
                  xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
                  control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
@@ -739,7 +739,8 @@ test_that("faster model enabled for repeated cross sectional data", {
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
-                    bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "nevertreated", est_method = "dr")
+                    bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "nevertreated",
+                    est_method = "dr", faster_mode = FALSE)
 
   out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
                       bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "nevertreated",
@@ -751,7 +752,8 @@ test_that("faster model enabled for repeated cross sectional data", {
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
-                    bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "nevertreated", est_method = "dr")
+                    bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "nevertreated",
+                    est_method = "dr", faster_mode = FALSE)
 
   out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
                       bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "nevertreated",
@@ -763,7 +765,8 @@ test_that("faster model enabled for repeated cross sectional data", {
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
-                    bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "notyettreated", est_method = "dr")
+                    bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "notyettreated",
+                    est_method = "dr", faster_mode = FALSE)
 
   out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
                       bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "notyettreated",
@@ -775,7 +778,8 @@ test_that("faster model enabled for repeated cross sectional data", {
 
   # ----------------------------------------------------------------------------------------------------------------------------------
   out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
-                    bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "notyettreated", est_method = "dr")
+                    bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "notyettreated",
+                    est_method = "dr", faster_mode = FALSE)
 
   out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
                       bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "notyettreated",
