@@ -1,6 +1,6 @@
 library(DRDID)
 library(BMisc)
-#library(tidyr)
+library(tidyr)
 ## -----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 # test it works without covariates and only two gropups
