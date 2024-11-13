@@ -38,9 +38,9 @@ compute.aggte <- function(MP,
 
 
   gname <- dp$gname
-  data <- as.data.frame(dp$data)
   tname <- dp$tname
   idname <- dp$idname
+  panel <- dp$panel
   if(is.null(clustervars)){
     clustervars <- dp$clustervars
   }
@@ -56,10 +56,18 @@ compute.aggte <- function(MP,
   if(is.null(cband)){
     cband <- dp$cband
   }
-
-  tlist <- dp$tlist
-  glist <- dp$glist
-  panel <- dp$panel
+  if(dp$faster_mode){
+    dt <- dp$data
+    dt[get(gname) == Inf, (gname) := 0] # going back to the old way
+    data <- as.data.frame(dt)
+    rm(dt)
+    tlist <- dp$time_periods
+    glist <- dp$treated_groups
+  } else {
+    data <- as.data.frame(dp$data)
+    tlist <- dp$tlist
+    glist <- dp$glist
+  }
 
   # overwrite MP objects (so we can actually compute bootstrap)
   MP$DIDparams$clustervars <- clustervars
@@ -113,8 +121,9 @@ compute.aggte <- function(MP,
   #       dta <- data
   #       )
   if(panel){
+    # TODO; THIS HAS TO BE OPTIMIZED WITH faster_mode enabled.
     # data from first period
-    dta <- data[ data[,tname]==tlist[1], ]
+    dta <- data[data[,tname]==tlist[1], ]
   }else {
     #aggregate data
     dta <- base::suppressWarnings(stats::aggregate(data, list((data[,idname])), mean)[,-1])
@@ -151,7 +160,7 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  weights.ind  <-  dta$.w
+  ifelse(dp$faster_mode, weights.ind <- as.numeric(dp$weights_vector), weights.ind <- dta$.w)
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator

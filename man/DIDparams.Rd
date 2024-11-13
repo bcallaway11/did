@@ -20,6 +20,7 @@ DIDparams(
   clustervars = NULL,
   cband = TRUE,
   print_details = TRUE,
+  faster_mode = FALSE,
   pl = FALSE,
   cores = 1,
   est_method = "dr",
@@ -99,6 +100,11 @@ bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
+
+\item{faster_mode}{This option enables a faster version of \code{did}, optimizing
+computation time for large datasets by improving data management within the package.
+The default is set to \code{FALSE}. While the difference is minimal for small datasets,
+it is recommended for use with large datasets.}
 
 \item{pl}{Whether or not to use parallel processing}
 

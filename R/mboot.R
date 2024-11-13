@@ -20,21 +20,23 @@
 #' @export
 mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
-  # setup needed variables
-  data <- as.data.frame(DIDparams$data)
+  # setup needed variables according to faster_mode; This returns different type of objects
+  # depending on whether we are in faster_mode or not that has to be handled in the code below
   idname <- DIDparams$idname
   clustervars <- DIDparams$clustervars
   biters <- DIDparams$biters
   tname <- DIDparams$tname
-  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
   true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
-
-  # just get n obsevations (for clustering below...)
+  unbalanced_panel <- DIDparams$allow_unbalanced_panel
+  data <- as.data.frame(DIDparams$data)
+  tlist <- ifelse(DIDparams$faster_mode, DIDparams$time_periods, unique(data[,tname])[order(unique(data[,tname]))])
+  # just get n observations (for clustering below...)
   ifelse(panel,
          dta <- data[ data[,tname]==tlist[1], ],
          dta <- data)
+
   # Make sure inf.func is matrix because we need this for computing n below
   inf.func <- as.matrix(inf.func)
 
@@ -59,22 +61,23 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   }
 
   if (length(clustervars) > 0) {
-    # check that cluster variable does not vary over time within unit
-    clust_tv <- aggregate(data[,clustervars], by=list(data[,idname]), function(rr) length(unique(rr))==1)
-    if (!all(clust_tv[,2])) {
-      stop("can't handle time-varying cluster variables")
+    if(!DIDparams$faster_mode){
+      # check that cluster variable does not vary over time within unit
+      clust_tv <- aggregate(data[,clustervars], by=list(data[,idname]), function(rr) length(unique(rr))==1)
+      if (!all(clust_tv[,2])) {
+        stop("can't handle time-varying cluster variables")
+      }
+      ## # CHECK iF CLUSTERVAR is TIME-VARYING
+      ## clust_tv = base::suppressWarnings(stats::aggregate(data[,clustervars], list((data[,idname])), sd))
+      ## clust_tv$x[is.na(clust_tv$x)] <- 0
+      ## if(any(clust_tv[,2]>.Machine$double.eps)){
+      ##   stop("can't handle time-varying cluster variables")
+      ## } else if (!panel){
+      ##   # IF NOT, SUBSET DTA TO ONE VALUE PER ID
+      ##   # Here we do not care about tname and yname as we do not use these
+      ##   dta <- base::suppressWarnings(stats::aggregate(dta, list((data[,idname])), mean)[,-1])
+      ## }
     }
-    ## # CHECK iF CLUSTERVAR is TIME-VARYING
-    ## clust_tv = base::suppressWarnings(stats::aggregate(data[,clustervars], list((data[,idname])), sd))
-    ## clust_tv$x[is.na(clust_tv$x)] <- 0
-    ## if(any(clust_tv[,2]>.Machine$double.eps)){
-    ##   stop("can't handle time-varying cluster variables")
-    ## } else if (!panel){
-    ##   # IF NOT, SUBSET DTA TO ONE VALUE PER ID
-    ##   # Here we do not care about tname and yname as we do not use these
-    ##   dta <- base::suppressWarnings(stats::aggregate(dta, list((data[,idname])), mean)[,-1])
-    ## }
-
   }
 
   # multiplier bootstrap
@@ -82,7 +85,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   if (length(clustervars)==0) {
     bres <- sqrt(n) * run_multiplier_bootstrap(inf.func, biters, pl, cores)
   } else {
-    n_clusters <- length(unique(data[,clustervars]))
+    n_clusters <- length(unique(dta[,clustervars]))
     cluster <- unique(dta[,c(idname,clustervars)])[,2]
     cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
     cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n

@@ -1,6 +1,6 @@
 # did 2.2.0 (development version)
 
-  * Code improvements that made the package much faster and memory efficient
+  * Code improvements that made the package faster and more memory efficient
 
   * Improved automated testing and regression testing
   

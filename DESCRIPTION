@@ -1,6 +1,6 @@
 Package: did
 Title: Treatment Effects with Multiple Periods and Groups
-Version: 2.2.0.907
+Version: 2.2.1.909
 Authors@R: c(person("Brantly", "Callaway", email = "brantly.callaway@uga.edu", role = c("aut", "cre")), person("Pedro H. C.", "Sant'Anna", email="pedro.h.santanna@vanderbilt.edu", role = c("aut")))
 URL: https://bcallaway11.github.io/did/, https://github.com/bcallaway11/did/
 Description: The standard Difference-in-Differences (DID) setup involves two periods and two groups -- a treated group and untreated group.  Many applications of DID methods involve more than two periods and have individuals that are treated at different points in time.  This package contains tools for computing average treatment effect parameters in Difference in Differences setups with more than two periods and with variation in treatment timing using the methods developed in Callaway and Sant'Anna (2021) <doi:10.1016/j.jeconom.2020.12.001>.  The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a a particular time.  These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these.  There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.
@@ -18,7 +18,9 @@ Imports:
     generics,
     methods,
     tidyr,
-    data.table (>= 1.15.4)
+    parglm (>= 0.1.7),
+    data.table (>= 1.15.4),
+    dreamerr (>= 1.4.0)
 Suggests:
     backports
 Roxygen: list(markdown = TRUE)

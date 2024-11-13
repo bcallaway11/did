@@ -8,7 +8,7 @@ library(BMisc)
 #-----------------------------------------------------------------------------
 # test each estimation method with panel data
 # Expected results: treatment effects = 1, p-value for pre-test
-# uniformly distributed, ipw model is incorectly specified here
+# uniformly distributed, ipw model is incorrectly specified here
 #-----------------------------------------------------------------------------
 test_that("att_gt works w/o dynamics, time effects, or group effects", {
   set.seed(09142024)
@@ -534,17 +534,31 @@ test_that("small comparison group", {
               gname="G", est_method="ipw"), "small groups"), "never treated group is too small")
 
   #-----------------------------------------------------------------------------
+  # not-yet-treated comparison group with faster_mode = TRUE
+  #-----------------------------------------------------------------------------
+
+  # dr
+  expect_error(expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                               gname="G", est_method="dr", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
+  # reg
+  expect_error(expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                                gname="G", est_method="reg", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
+  # ipw
+  expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                   gname="G", est_method="ipw", faster_mode = TRUE), "small groups")
+
+  #-----------------------------------------------------------------------------
   # not-yet-treated comparison group
   #-----------------------------------------------------------------------------
   # dr
   expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="dr"), "small group")
+              gname="G", est_method="dr", faster_mode = FALSE), "small group")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="reg"), "Not enough control units")
+              gname="G", est_method="reg", faster_mode = FALSE), "Not enough control units")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="ipw"), "overlap condition violated")
+              gname="G", est_method="ipw", faster_mode = FALSE), "overlap condition violated")
 
   # code should still work for some (g,t)'s
   expect_equal(res_dr$att[1], 1, tol=.5)
@@ -637,8 +651,15 @@ test_that("clustered standard errors", {
               data=data,
               panel=TRUE,
               allow_unbalanced_panel=TRUE,
+              faster_mode = FALSE,
               clustervars="cluster")
   expect_equal(res_ub$att[1], 1, tol=.5)
+
+  # clustered standard errors with unbalanced panel with faster mode
+  res_ub_faster <- att_gt(yname="Y",tname="period",idname="id",gname="G",
+              xformla=~X,data=data,panel=TRUE, allow_unbalanced_panel=TRUE,
+              faster_mode = TRUE, clustervars="cluster")
+  expect_equal(res_ub_faster$att[1], 1, tol=.5)
 
   #-----------------------------------------------------------------------------
   # also, check that we error when clustering variable varies within unit
@@ -658,4 +679,114 @@ test_that("clustered standard errors", {
   res_rc <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
                    gname="G", est_method="dr", clustervars="cluster", panel=FALSE)
   expect_equal(res_rc$att[1], 1, tol=.5)
+})
+
+test_that("faster mode enabled for panel data", {
+  data <- did::mpdta
+  out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                control_group = "nevertreated", est_method = "dr", faster_mode = FALSE)
+  out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
+
+  # check if results are equal.
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
+  # --------------------------------------------------------------------------------------------------------
+  out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                control_group = "nevertreated", est_method = "dr", faster_mode = FALSE)
+  out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                 control_group = "nevertreated", est_method = "dr", faster_mode = TRUE)
+
+  # check if results are equal.
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
+
+  # --------------------------------------------------------------------------------------------------------
+  out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                control_group = "notyettreated", est_method = "dr", faster_mode = FALSE)
+  out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "varying",
+                 control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
+
+  # check if results are equal.
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
+
+  # --------------------------------------------------------------------------------------------------------
+  out <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                control_group = "notyettreated", est_method = "dr", faster_mode = FALSE)
+  out2 <- att_gt(yname = "lemp", gname = "first.treat", idname = "countyreal", tname = "year",
+                 xformla = ~1, data = data, bstrap = FALSE, cband = FALSE, base_period = "universal",
+                 control_group = "notyettreated", est_method = "dr", faster_mode = TRUE)
+
+  # check if results are equal.
+  expect_equal(out$att, out2$att)
+  expect_equal(out$se, as.numeric(out2$se))
+
+})
+
+test_that("faster model enabled for repeated cross sectional data", {
+
+  data_rcs <- as.data.table(did::build_sim_dataset(reset.sim(time.periods=4, n=1000), panel=FALSE))
+  data_rcs$period <- as.integer(data_rcs$period)
+  data_rcs[G == 0, G := Inf]
+
+  # ----------------------------------------------------------------------------------------------------------------------------------
+  out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                    bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "nevertreated",
+                    est_method = "dr", faster_mode = FALSE)
+
+  out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                      bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "nevertreated",
+                      est_method = "dr", faster_mode = TRUE )
+
+  # check if results are equal.
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
+
+  # ----------------------------------------------------------------------------------------------------------------------------------
+  out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                    bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "nevertreated",
+                    est_method = "dr", faster_mode = FALSE)
+
+  out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                      bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "nevertreated",
+                      est_method = "dr", faster_mode = TRUE )
+
+  # check if results are equal.
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
+
+  # ----------------------------------------------------------------------------------------------------------------------------------
+  out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                    bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "notyettreated",
+                    est_method = "dr", faster_mode = FALSE)
+
+  out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                      bstrap = FALSE, cband = FALSE, base_period = "varying", control_group = "notyettreated",
+                      est_method = "dr", faster_mode = TRUE )
+
+  # check if results are equal.
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
+
+  # ----------------------------------------------------------------------------------------------------------------------------------
+  out_rcs <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                    bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "notyettreated",
+                    est_method = "dr", faster_mode = FALSE)
+
+  out_rcs2 <- att_gt(yname = "Y", gname = "G", tname = "period", xformla = ~1, data = data_rcs, panel = FALSE,
+                      bstrap = FALSE, cband = FALSE, base_period = "universal", control_group = "notyettreated",
+                      est_method = "dr", faster_mode = TRUE )
+
+  # check if results are equal.
+  expect_equal(out_rcs$att, out_rcs2$att)
+  expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
+
 })
