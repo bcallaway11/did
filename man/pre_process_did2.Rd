@@ -13,7 +13,7 @@ pre_process_did2(
   data,
   panel = TRUE,
   allow_unbalanced_panel,
-  control_group = "nevertreated",
+  control_group = c("nevertreated", "notyettreated"),
   anticipation = 0,
   weightsname = NULL,
   alp = 0.05,
@@ -24,6 +24,7 @@ pre_process_did2(
   est_method = "dr",
   base_period = "varying",
   print_details = TRUE,
+  faster_mode = FALSE,
   pl = FALSE,
   cores = 1,
   call = NULL
@@ -153,6 +154,11 @@ extra estimate in an earlier period.}
 
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
+
+\item{faster_mode}{This option enables a faster version of \code{did}, optimizing
+computation time for large datasets by improving data management within the package.
+The default is set to \code{FALSE}. While the difference is minimal for small datasets,
+it is recommended for use with large datasets.}
 
 \item{pl}{Whether or not to use parallel processing}
 

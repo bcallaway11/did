@@ -19,4 +19,4 @@
 NULL
 utils::globalVariables(c('.','.G','.y', 'asif_never_treated', 'treated_first_period', 'count', 'constant', '.rowid',
                          'V1', 'control_group', 'cohort', 'cohort_size', 'period', 'period_size', 'y1', 'y0',
-                         'i.weights', 'y', 'cluster', 'id', '..cols_to_keep'))
+                         'i.weights', 'y', 'cluster', 'id', '..cols_to_keep', '..g', 'inf_func_long', 'inf_func_agg'))

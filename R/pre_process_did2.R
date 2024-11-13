@@ -39,7 +39,7 @@ validate_args <- function(args, data){
     if(!data[, is.numeric(get(args$idname))]){stop("idname = ", args$idname,  " is not numeric. Please convert it")}
 
     # Check if gname is unique by idname: irreversibility of the treatment
-    check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant)]
+    check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant, na.rm = TRUE)]
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
     }
@@ -60,19 +60,19 @@ validate_args <- function(args, data){
   # Flags for cluster variable
   if (!is.null(args$clustervars)) {
     # dropping idname from cluster
-    if (args$idname %in% args$clustervars) {
+    if ((!is.null(args$idname)) && (args$idname %in% args$clustervars)){
       args$clustervars <- setdiff(args$clustervars, args$idname)
     }
 
     # check if user is providing more than 2 cluster variables (different than idname)
-    if (length(args$cluster) > 1) {
+    if (length(args$clustervars) > 1) {
       stop("You can only provide 1 cluster variable additionally to the one provided in idname. Please check your arguments.")
     }
 
     # Check that cluster variables do not vary over time within each unit
-    if (length(cluster) > 0) {
+    if (length(args$clustervars) > 0) {
       # Efficiently check for time-varying cluster variables
-      clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = id, .SDcols = args$cluster]
+      clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = get(args$idname), .SDcols = args$clustervars]
       # If any cluster variable varies over time within any unit, stop execution
       if (!all(unlist(clust_tv[, -1, with = FALSE]))) {
         stop("did cannot handle time-varying cluster variables at the moment. Please check your cluster variable.")
@@ -177,7 +177,7 @@ did_standarization <- function(data, args){
   data[is.na(treated_first_period), treated_first_period := FALSE]
 
   # count the number of units treated in the first period
-  nfirstperiod <- ifelse(args$panel, uniqueN(data[treated_first_period == TRUE, get(args$idname)]), nrow(data[data$treated_firstperiod == TRUE]))
+  nfirstperiod <- ifelse(args$panel, uniqueN(data[treated_first_period == TRUE, get(args$idname)]), nrow(data[treated_first_period == TRUE]))
 
   # handle units treated in the first period
   if (nfirstperiod > 0) {
@@ -254,7 +254,7 @@ did_standarization <- function(data, args){
       if(any(unit_count[, count < raw_time_size])){
         mis_unit <- unit_count[count < raw_time_size]
         warning(nrow(mis_unit), " units are missing in some periods. Converting to balanced panel by dropping them.")
-        data <- data[!get(args$idname) %in% mis_unit[, get(args$idname)]]
+        data <- data[!get(args$idname) %in% mis_unit$get]
       }
 
       # If all data is dropped, stop execution
@@ -324,12 +324,12 @@ did_standarization <- function(data, args){
 
   # Warn if some groups are small
   if (nrow(gsize) > 0) {
-    gpaste <- paste(gsize[[args$gname]], collapse = ",")
+    gpaste <- paste(gsize[,1], collapse = ",")
     warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
 
     # Check if the never treated group is too small
-    if (Inf %in% gsize[[args$gname]] & control_group == "nevertreated") {
-      stop("Never treated group is too small, try setting control_group=\"notyettreated\"")
+    if ((Inf %in% gsize[,1]) & (args$control_group == "nevertreated")) {
+      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
     }
   }
 
@@ -397,10 +397,14 @@ get_did_tensors <- function(data, args){
     # We can do this filtering because the data is already sorted appropriately
     invariant_data <- data[1:args$id_count]
   } else {
-    # get the first observation for each unit
-    invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
-    # # order by idname
-    # setorderv(invariant_data, c(args$idname), c(1))
+    if (!args$allow_unbalanced_panel) {
+      # get the first observation for each unit
+      invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
+      # # order by idname
+      # setorderv(invariant_data, c(args$idname), c(1))
+    } else {
+      invariant_data <- copy(data)
+    }
   }
 
   # Get cohort counts
@@ -423,7 +427,7 @@ get_did_tensors <- function(data, args){
   if(args$xformla == ~1){
     covariates <- rep(1, args$id_count)
   } else {
-    covariates <- as.data.table(model.frame(args$xformla, data = invariant_data, na.action = na.pass))
+    covariates <- as.data.table(model.matrix(args$xformla, data = invariant_data, na.action = na.pass))
   }
 
   # Get the cluster variable only
@@ -438,6 +442,7 @@ get_did_tensors <- function(data, args){
 
   # Gather all the arguments to return
   return(list(outcomes_tensor = outcomes_tensor,
+              data = data,
               time_invariant_data = invariant_data,
               cohort_counts = cohort_counts,
               period_counts = period_counts,
@@ -467,7 +472,7 @@ pre_process_did2 <- function(yname,
                             data,
                             panel = TRUE,
                             allow_unbalanced_panel,
-                            control_group = "nevertreated",
+                            control_group = c("nevertreated","notyettreated"),
                             anticipation = 0,
                             weightsname = NULL,
                             alp = 0.05,
@@ -478,6 +483,7 @@ pre_process_did2 <- function(yname,
                             est_method = "dr",
                             base_period = "varying",
                             print_details = TRUE,
+                            faster_mode=FALSE,
                             pl = FALSE,
                             cores = 1,
                             call = NULL) {
@@ -492,12 +498,26 @@ pre_process_did2 <- function(yname,
   args_names <- setdiff(names(formals()), "data")
   args <- mget(args_names, sys.frame(sys.nframe()))
 
+  # pick a control_group by default
+  args$control_group <- control_group[1]
+
   # run error checking on arguments
   validate_args(args, data)
 
   # put in blank xformla if no covariates
   if (is.null(args$xformla)) {
     args$xformla <- ~1
+  } else {
+    # extract variable names from the formula
+    formula_vars <- all.vars(args$xformla)
+
+    # identify variables in xformla not in data
+    missing_vars <- setdiff(formula_vars, names(data))
+
+    # error checking for missing variables in data
+    if (length(missing_vars) > 0) {
+      stop(paste("The following variables are not in data:", paste(missing_vars, collapse = ", ")), call. = FALSE)
+    }
   }
 
   # Put the data in a standard format after some validation

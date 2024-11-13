@@ -28,6 +28,7 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
   cores <- args$cores
   pl <- args$pl
   print_details <- args$print_details
+  faster_mode <- args$faster_mode
   alp <- args$alp
   true_repeated_cross_sections <- args$true_repeated_cross_sections
   time_periods_count <- args$time_periods_count
@@ -38,6 +39,7 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
 
   # get the arguments from did_tensors
   outcomes_tensor <- did_tensors$outcomes_tensor
+  data <- did_tensors$data
   time_invariant_data <- did_tensors$time_invariant_data
   cohort_counts <- did_tensors$cohort_counts
   period_counts <- did_tensors$period_counts
@@ -66,6 +68,7 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
               cores=cores,
               pl = pl,
               print_details=print_details,
+              faster_mode=faster_mode,
               alp=alp,
               true_repeated_cross_sections=true_repeated_cross_sections,
               time_periods_count=time_periods_count,
@@ -74,6 +77,7 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
               treated_groups=treated_groups,
               id_count=id_count,
               outcomes_tensor=outcomes_tensor,
+              data=data,
               time_invariant_data=time_invariant_data,
               cohort_counts=cohort_counts,
               period_counts=period_counts,

@@ -192,7 +192,7 @@ att_gt <- function(yname,
 
   # Check if user wants to run faster mode:
   if (faster_mode) {
-    # this is a DIDparams object
+    # this is a DIDparams2 object
     dp <- pre_process_did2(yname=yname,
                             tname=tname,
                             idname=idname,
@@ -212,6 +212,7 @@ att_gt <- function(yname,
                             est_method=est_method,
                             base_period=base_period,
                             print_details=print_details,
+                            faster_mode=faster_mode,
                             pl=pl,
                             cores=cores,
                             call=match.call()
@@ -259,7 +260,23 @@ att_gt <- function(yname,
   inffunc <- results$inffunc
 
   # process results
-  attgt.results <- process_attgt(attgt.list)
+  # attgt.results <- process_attgt(attgt.list)
+  tryCatch(
+    {
+      # Attempt to run this line for process results
+      attgt.results <- process_attgt(attgt.list)
+    },
+    error = function(e) {
+      # Handle the error
+      if (faster_mode) {
+        # If faster_mode is TRUE, send this stop message
+        stop("An unexpected error occurred, normally associated with a singular matrix due to not enough control units. Try changing faster_mode=FALSE.")
+      } else {
+        # If faster_mode is FALSE, send this stop message
+        stop("An unexpected error occurred, normally associated with a singular matrix due to not enough control units.")
+      }
+    }
+  )
   group <- attgt.results$group
   att <- attgt.results$att
   tt <- attgt.results$tt

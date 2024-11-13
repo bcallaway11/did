@@ -29,6 +29,7 @@ pre_process_did <- function(yname,
                             est_method = "dr",
                             base_period = "varying",
                             print_details = TRUE,
+                            faster_mode = FALSE,
                             pl = FALSE,
                             cores = 1,
                             call = NULL) {
@@ -52,9 +53,20 @@ pre_process_did <- function(yname,
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
 
-  # put in blank xformla if no covariates
+  # put in blank xformla if no covariates or check whether all variables are in data
   if (is.null(xformla)) {
     xformla <- ~1
+  } else {
+    # extract variable names from the formula
+    formula_vars <- all.vars(xformla)
+
+    # identify variables in xformla not in data
+    missing_vars <- setdiff(formula_vars, names(data))
+
+    # error checking for missing variables in data
+    if (length(missing_vars) > 0) {
+      stop(paste("The following variables are not in data:", paste(missing_vars, collapse = ", ")), call. = FALSE)
+    }
   }
 
   # drop irrelevant columns from data
@@ -182,10 +194,10 @@ pre_process_did <- function(yname,
     data_bal <- BMisc::makeBalancedPanel(data_comp, idname, tname)
     n_bal <- length(unique(data_bal[,idname]))
     if (n_bal < n_all) {
-      message(paste0("You have an unbalanced panel. Proceeding as such."))
+      # message(paste0("You have an unbalanced panel. Proceeding as such."))
       allow_unbalanced_panel <- TRUE
     } else {
-      message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
+      # message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
       allow_unbalanced_panel <- FALSE
     }
   }
@@ -344,6 +356,7 @@ pre_process_did <- function(yname,
                   clustervars=clustervars,
                   cband=cband,
                   print_details=print_details,
+                  faster_mode=faster_mode,
                   pl=pl,
                   cores=cores,
                   est_method=est_method,
