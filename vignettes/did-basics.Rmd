@@ -76,17 +76,13 @@ library(did)
 #source(here::here("vignettes/setup_sims.R"))
 ```
 
-```{r, echo=FALSE}
-time.periods <- 4
-sp <- reset.sim()
-sp$te <- 0
-```
-
 ```{r, message = FALSE, warning = FALSE}
 # set seed so everything is reproducible
 set.seed(1814)
 
 # generate dataset with 4 time periods
+sp <- reset.sim()
+sp$te <- 0
 time.periods <- 4
 
 # add dynamic effects
