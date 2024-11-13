@@ -14,7 +14,6 @@ Imports:
     Matrix,
     pbapply,
     ggplot2,
-    ggpubr,
     DRDID (>= 1.1.0),
     generics,
     methods,
@@ -30,4 +29,5 @@ Suggests:
     plm,
     here,
     knitr,
-    covr
+    covr,
+    backports

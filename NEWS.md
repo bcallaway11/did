@@ -1,10 +1,12 @@
-# did 2.2.0
+# did 2.2.0 (development version)
 
   * Code improvements that made the package faster and more memory efficient
 
   * Improved automated testing and regression testing
   
   * Check if data is balanced if `panel = TRUE` and `allow_unbalanced_panel = TRUE`. If it is, disable `allow_unbalanced_panel` and proceed with panel data setup. This is different from the previous behavior, which would always proceed as if `panel = FALSE`.
+
+  * Significantly reduced the number of recursive package dependencies, enabling faster installation times and a smaller build footprint. 
 
 # did 2.1.2
 

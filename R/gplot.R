@@ -34,7 +34,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
     p <- p + geom_hline(aes(yintercept = ref_line), linetype = 'dashed')
   }
   if (theming) {
-    p <- p + ggpubr::theme_pubr() +
+    p <- p + theme_classic() +
       theme(plot.title = element_text(color="darkgray", face="bold", size=12),
             axis.title = element_text(color="darkgray", face="bold", size=12),
             strip.background = element_rect(fill = 'white', color = 'white'),
@@ -42,7 +42,7 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
             legend.position = 'bottom')
   }
   if (!legend) {
-    p  <- p + ggpubr::rremove("legend")
+    p  <- p + theme(legend.position = "none")
   }
 
   p
@@ -94,14 +94,14 @@ splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group",
     p <- p + geom_vline(aes(xintercept = ref_line), linetype = 'dashed')
   }
   if (theming) {
-    p <- p + ggpubr::theme_pubr() +
+    p <- p + theme_classic() +
       theme(plot.title = element_text(color="darkgray", face="bold", size=12),
             axis.title = element_text(color="darkgray", face="bold", size=12),
             legend.position = 'none')
   }
 
   if (!legend) {
-    p  <- p + ggpubr::rremove("legend")
+    p  <- p + theme(legend.position = "none")
   }
 
   p
