@@ -89,6 +89,10 @@
 #' @param anticipation The number of time periods before participating
 #'  in the treatment where units can anticipate participating in the
 #'  treatment and therefore it can affect their untreated potential outcomes
+#' @param faster_mode This option enables a faster version of `did`, optimizing
+#' computation time for large datasets by improving data management within the package.
+#' The default is set to `FALSE`. While the difference is minimal for small datasets,
+#' it is recommended for use with large datasets.
 #' @param base_period Whether to use a "varying" base period or a
 #'  "universal" base period.  Either choice results in the same
 #'  post-treatment estimates of ATT(g,t)'s.  In pre-treatment
@@ -181,47 +185,98 @@ att_gt <- function(yname,
                    clustervars=NULL,
                    est_method="dr",
                    base_period="varying",
+                   faster_mode=FALSE,
                    print_details=FALSE,
                    pl=FALSE,
                    cores=1) {
 
-  # this is a DIDparams object
-  dp <- pre_process_did(yname=yname,
-                        tname=tname,
-                        idname=idname,
-                        gname=gname,
-                        xformla=xformla,
-                        data=data,
-                        panel=panel,
-                        allow_unbalanced_panel=allow_unbalanced_panel,
-                        control_group=control_group,
-                        anticipation=anticipation,
-                        weightsname=weightsname,
-                        alp=alp,
-                        bstrap=bstrap,
-                        cband=cband,
-                        biters=biters,
-                        clustervars=clustervars,
-                        est_method=est_method,
-                        base_period=base_period,
-                        print_details=print_details,
-                        pl=pl,
-                        cores=cores,
-                        call=match.call()
-  )
+  # Check if user wants to run faster mode:
+  if (faster_mode) {
+    # this is a DIDparams2 object
+    dp <- pre_process_did2(yname=yname,
+                            tname=tname,
+                            idname=idname,
+                            gname=gname,
+                            xformla=xformla,
+                            data=data,
+                            panel=panel,
+                            allow_unbalanced_panel=allow_unbalanced_panel,
+                            control_group=control_group,
+                            anticipation=anticipation,
+                            weightsname=weightsname,
+                            alp=alp,
+                            bstrap=bstrap,
+                            cband=cband,
+                            biters=biters,
+                            clustervars=clustervars,
+                            est_method=est_method,
+                            base_period=base_period,
+                            print_details=print_details,
+                            faster_mode=faster_mode,
+                            pl=pl,
+                            cores=cores,
+                            call=match.call()
+    )
 
-  #-----------------------------------------------------------------------------
-  # Compute all ATT(g,t)
-  #-----------------------------------------------------------------------------
-  results <- compute.att_gt(dp)
+    #-----------------------------------------------------------------------------
+    # Compute all ATT(g,t)
+    #-----------------------------------------------------------------------------
+    results <- compute.att_gt2(dp)
 
+  } else {
+    # this is a DIDparams object
+    dp <- pre_process_did(yname=yname,
+                          tname=tname,
+                          idname=idname,
+                          gname=gname,
+                          xformla=xformla,
+                          data=data,
+                          panel=panel,
+                          allow_unbalanced_panel=allow_unbalanced_panel,
+                          control_group=control_group,
+                          anticipation=anticipation,
+                          weightsname=weightsname,
+                          alp=alp,
+                          bstrap=bstrap,
+                          cband=cband,
+                          biters=biters,
+                          clustervars=clustervars,
+                          est_method=est_method,
+                          base_period=base_period,
+                          print_details=print_details,
+                          pl=pl,
+                          cores=cores,
+                          call=match.call()
+    )
+
+    #-----------------------------------------------------------------------------
+    # Compute all ATT(g,t)
+    #-----------------------------------------------------------------------------
+    results <- compute.att_gt(dp)
+  }
 
   # extract ATT(g,t) and influence functions
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc
 
   # process results
-  attgt.results <- process_attgt(attgt.list)
+  # attgt.results <- process_attgt(attgt.list)
+  tryCatch(
+    {
+      # Attempt to run this line for process results
+      attgt.results <- process_attgt(attgt.list)
+    },
+    error = function(e) {
+      # Handle the error
+      if (faster_mode) {
+        # If faster_mode is TRUE, send this stop message
+        stop("An unexpected error occurred, normally associated with a singular matrix due to not enough control units. Try changing faster_mode=FALSE.")
+      } else {
+        # If faster_mode is FALSE, send this stop message
+        stop("An unexpected error occurred, normally associated with a singular matrix due to not enough control units.")
+      }
+    }
+  )
   group <- attgt.results$group
   att <- attgt.results$att
   tt <- attgt.results$tt
@@ -236,7 +291,7 @@ att_gt <- function(yname,
   # note to self: this def. won't work with unbalanced panel,
   # same with clustered standard errors
   # but it is always ignored b/c bstrap has to be true in that case
-  n <- dp$n
+  n <- ifelse(faster_mode, dp$id_count, dp$n)
   V <- Matrix::t(inffunc)%*%inffunc/n
   se <- sqrt(Matrix::diag(V)/n)
 
