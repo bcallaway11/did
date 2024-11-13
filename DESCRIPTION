@@ -21,8 +21,6 @@ Imports:
     parglm (>= 0.1.7),
     data.table (>= 1.15.4),
     dreamerr (>= 1.4.0)
-Suggests:
-    backports
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 VignetteBuilder: knitr
@@ -31,4 +29,5 @@ Suggests:
     plm,
     here,
     knitr,
-    covr
+    covr,
+    backports
