@@ -6,7 +6,7 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue)](https://cran.r-project.org/package=did)
 [![](http://cranlogs.r-pkg.org/badges/last-month/did?color=blue)](https://cran.r-project.org/package=did)
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
-[![](https://img.shields.io/badge/devel%20version-2.1.2-blue.svg)](https://github.com/bcallaway11/did)
+[![r-universe status badge](https://bcallaway11.r-universe.dev/badges/did)](https://bcallaway11.r-universe.dev/did)
 [![CRAN
 checks](https://badges.cranchecks.info/summary/did.svg)](https://cran.r-project.org/web/checks/check_results_did.html)
 [![](https://img.shields.io/github/last-commit/bcallaway11/did.svg)](https://github.com/bcallaway11/did/commits/master)
@@ -57,17 +57,16 @@ There has been some recent work on DiD with multiple time periods. The
 
 ## Installation
 
-You can install **did** from CRAN with:
+Or, you can grab the latest development version from R-universe.
 
 ``` r
 install.packages("did")
 ```
 
-or get the latest version from github with:
+Or, you can grab the latest development version from R-universe.
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("bcallaway11/did")
+install.packages('did', repos = "https://bcallaway11.r-universe.dev")
 ```
 
 ## A short example
