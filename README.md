@@ -66,7 +66,7 @@ install.packages("did")
 Or, you can grab the latest development version from R-universe.
 
 ``` r
-install.packages('did', repos = "https://bcallaway11.r-universe.dev")
+install.packages("did", repos = "https://bcallaway11.r-universe.dev")
 ```
 
 ## A short example
