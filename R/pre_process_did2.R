@@ -149,7 +149,12 @@ did_standarization <- function(data, args){
   # Check  if there is a never treated group in the data
   if (!(Inf %in% glist)) {
     if (args$control_group == "nevertreated") {
-      stop("There is no available never-treated group")
+      warning("No never-treated group is available. The last treated cohort is being coerced as never-treated units.")
+      max_g <- max(glist[is.finite(glist)], na.rm = TRUE)
+      # Convert the column to numeric so Inf can be stored
+      data[, (args$gname) := as.numeric(get(args$gname))]
+      data[get(args$gname) == max_g, (args$gname) := Inf]
+      glist <- sort(unique(data[[args$gname]]))
     } else {
       # Drop all time periods with time periods >= latest treated
       max_treated_time <- max(glist[is.finite(glist)], na.rm = TRUE)
