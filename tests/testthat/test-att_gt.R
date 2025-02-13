@@ -210,8 +210,8 @@ test_that("not yet treated comparison group", {
   expect_equal(res$att[1], 1, tol=.5)
 
 
-  # try to use never treated group as comparison group, should error
-  expect_error(att_gt(yname="Y", xformla=~X, data=data, tname="period",
+  # try to use never treated group as comparison group, should warning
+  expect_warning(att_gt(yname="Y", xformla=~X, data=data, tname="period",
                       control_group="nevertreated",
                       gname="G", est_method="dr", panel=FALSE))
 

@@ -434,7 +434,7 @@ compute.att_gt <- function(dp) {
   update_inffunc <- rbindlist(lapply(seq_along(inffunc_updates), function(i) {
     update <- inffunc_updates[[i]]
     data.table(row = which(update$indices), col = i, value = update$values)
-  }))
+  }), fill = TRUE)
   # Apply updates to the sparse matrix
   inffunc[cbind(update_inffunc$row, update_inffunc$col)] <- update_inffunc$value
 
