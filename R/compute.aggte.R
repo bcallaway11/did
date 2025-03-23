@@ -289,7 +289,7 @@ compute.aggte <- function(MP,
                          pg=pgg,
                          weights.ind=weights.ind,
                          G=G,
-                         group=group)
+                         group=glist)
 
     # get overall influence function
     selective.inf.func <- get_agg_inf_func(att=selective.att.g,
