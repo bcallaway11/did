@@ -164,7 +164,7 @@ You can aggregate the ATT(g,t) in many ways.
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95\%  Conf. Int.]  
-#>  -0.031        0.0126    -0.0558     -0.0062 *
+#>  -0.031        0.0127     -0.056     -0.0061 *
 #> 
 #> 
 #> Group Effects:

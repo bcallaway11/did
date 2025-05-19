@@ -322,15 +322,26 @@ run_att_gt_estimation <- function(g, t, dp2){
     return(NULL)
   }
 
-  # Get the matrix of covariates
-  covariates <- dp2$covariates
+  # # Get the matrix of covariates
+  # covariates <- dp2$covariates
+  # if(dp2$panel){
+  #   cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
+  #   names(cohort_data) <- c("D", "y1", "y0", "i.weights")
+  # } else {
+  #   dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == dp2$reverse_mapping[t], 1, 0)]
+  #   cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
+  #   names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
+  # }
+
   if(dp2$panel){
     cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
     names(cohort_data) <- c("D", "y1", "y0", "i.weights")
+    covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
   } else {
     dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == dp2$reverse_mapping[t], 1, 0)]
     cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
     names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
+    covariates <- dp2$covariates_tensor[[t]]
   }
 
 
