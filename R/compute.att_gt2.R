@@ -66,56 +66,79 @@ get_did_cohort_index <- function(group, time, pret, dp2){
     # getting the index to get units who will participate in the estimation for the (g,t) cell.
     # Note: This works because the data is already ordered in a specific way. Changing that order will break this.
 
-    # Pre-extract column names for use within the loop
-    col_names <- names(dp2$crosstable_counts)[-1]  # Exclude 'T' column
-    min_idx <- match(as.character(min_control_group), col_names)
-    max_idx <- match(as.character(max_control_group), col_names)
-    # correction in case there is not never-treated units! Pick the very last time period...
-    ifelse(is.na(min_idx), min_idx <- match(tail(col_names,1), col_names), min_idx <- min_idx)
-    ifelse(is.na(max_idx), max_idx <- match(tail(col_names,1), col_names), max_idx <- max_idx)
+    # # Pre-extract column names for use within the loop
+    # col_names <- names(dp2$crosstable_counts)[-1]  # Exclude 'T' column
+    # min_idx <- match(as.character(min_control_group), col_names)
+    # max_idx <- match(as.character(max_control_group), col_names)
+    # # correction in case there is not never-treated units! Pick the very last time period...
+    # ifelse(is.na(min_idx), min_idx <- match(tail(col_names,1), col_names), min_idx <- min_idx)
+    # ifelse(is.na(max_idx), max_idx <- match(tail(col_names,1), col_names), max_idx <- max_idx)
+    #
+    # # Start the loop
+    # for (i in c(pret, time)) {
+    #
+    #   # ------------------------------------------------
+    #   # SET UP: Identify index_time, start_time, and precompute relevant counts
+    #   # ------------------------------------------------
+    #
+    #   # Identify the index_time for 'i' based on period_counts and compute the starting point
+    #   index_time <- which(dp2$period_counts[, period] == dp2$reverse_mapping[i])
+    #   start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time - 1), sum(period_size)] + 1)
+    #
+    #   # Extract the relevant row for current time period 'i' only once
+    #   relevant_g_row <- dp2$crosstable_counts[i, ]
+    #
+    #   # ------------------------------------------------
+    #   # FOR CONTROL UNITS FIRST
+    #   # ------------------------------------------------
+    #
+    #   # Calculate the starting and ending index for control units (min_control_group to max_control_group)
+    #   start_control <- start_time + sum(relevant_g_row[, col_names[1:min_idx - 1], with = FALSE], na.rm = TRUE)
+    #   csize <- sum(relevant_g_row[, col_names[min_idx:max_idx], with = FALSE], na.rm = TRUE)
+    #   end_control <- start_control + csize - 1
+    #
+    #   # Impute control units with 0
+    #   did_cohort_index[start_control:end_control] <- 0
+    #
+    #   # ------------------------------------------------
+    #   # FOR TREATED UNITS
+    #   # ------------------------------------------------
+    #
+    #   # Calculate correction_index based on the current g and the relevant row for the current time period
+    #   index_cohort <- which(dp2$cohort_counts[, cohort] == dp2$reverse_mapping[group])
+    #   correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_row[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
+    #
+    #   # Compute start and end points for treated units
+    #   start_treat <- start_time + correction_index
+    #   g_size <- relevant_g_row[, get(as.character(dp2$reverse_mapping[group]))]
+    #   end_treat <- start_treat + g_size - 1
+    #
+    #   # Impute treated units with 1
+    #   did_cohort_index[start_treat:end_treat] <- 1
+    # }
+    g_orig    <- dp2$reverse_mapping[group]
+    t_orig    <- dp2$reverse_mapping[time]
+    pret_orig <- dp2$reverse_mapping[pret]
 
-    # Start the loop
-    for (i in c(pret, time)) {
+    dat <- dp2$time_invariant_data          # shortcut
 
-      # ------------------------------------------------
-      # SET UP: Identify index_time, start_time, and precompute relevant counts
-      # ------------------------------------------------
+    # flags for treated and control units
+    Gflag <- dat[[dp2$gname]] == g_orig
 
-      # Identify the index_time for 'i' based on period_counts and compute the starting point
-      index_time <- which(dp2$period_counts[, period] == dp2$reverse_mapping[i])
-      start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time - 1), sum(period_size)] + 1)
-
-      # Extract the relevant row for current time period 'i' only once
-      relevant_g_row <- dp2$crosstable_counts[i, ]
-
-      # ------------------------------------------------
-      # FOR CONTROL UNITS FIRST
-      # ------------------------------------------------
-
-      # Calculate the starting and ending index for control units (min_control_group to max_control_group)
-      start_control <- start_time + sum(relevant_g_row[, col_names[1:min_idx - 1], with = FALSE], na.rm = TRUE)
-      csize <- sum(relevant_g_row[, col_names[min_idx:max_idx], with = FALSE], na.rm = TRUE)
-      end_control <- start_control + csize - 1
-
-      # Impute control units with 0
-      did_cohort_index[start_control:end_control] <- 0
-
-      # ------------------------------------------------
-      # FOR TREATED UNITS
-      # ------------------------------------------------
-
-      # Calculate correction_index based on the current g and the relevant row for the current time period
-      index_cohort <- which(dp2$cohort_counts[, cohort] == dp2$reverse_mapping[group])
-      correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_row[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
-
-      # Compute start and end points for treated units
-      start_treat <- start_time + correction_index
-      g_size <- relevant_g_row[, get(as.character(dp2$reverse_mapping[group]))]
-      end_treat <- start_treat + g_size - 1
-
-      # Impute treated units with 1
-      did_cohort_index[start_treat:end_treat] <- 1
+    if (dp2$control_group == "nevertreated") {
+      Cflag <- dat[[dp2$gname]] == Inf
+    } else {  # not-yet-treated
+      Cflag <- (dat[[dp2$gname]] == Inf) |
+        (dat[[dp2$gname]] > max(t_orig, pret_orig) + dp2$anticipation &
+           dat[[dp2$gname]] != g_orig)
     }
+
+    # keep only rows observed in pret or t
+    keep <- dat[[dp2$tname]] %in% c(pret_orig, t_orig)
+
+    did_cohort_index <- rep(NA_integer_, nrow(dat))
+    did_cohort_index[keep & Cflag] <- 0L
+    did_cohort_index[keep & Gflag] <- 1L
 
   }
 
@@ -338,10 +361,14 @@ run_att_gt_estimation <- function(g, t, dp2){
     names(cohort_data) <- c("D", "y1", "y0", "i.weights")
     covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
   } else {
-    dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == dp2$reverse_mapping[t], 1, 0)]
+    cal_t <- dp2$reverse_mapping[[t]] # scalar calendar date
+
+    log_vec <- dp2$time_invariant_data[[ dp2$tname ]] == cal_t
+    # convert TRUE/FALSE to 1/0 in place (fastest)
+    set(dp2$time_invariant_data, j = "post", value = as.integer(log_vec))
     cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
     names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
-    covariates <- dp2$covariates_tensor[[t]]
+    covariates <- dp2$covariates_matrix
   }
 
 
