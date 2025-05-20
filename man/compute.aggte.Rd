@@ -4,7 +4,7 @@
 \alias{compute.aggte}
 \title{Compute Aggregated Treatment Effect Parameters}
 \usage{
-\method{compute}{aggte}(
+compute.aggte(
   MP,
   type = "group",
   balance_e = NULL,

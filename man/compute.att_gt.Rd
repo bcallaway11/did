@@ -4,7 +4,7 @@
 \alias{compute.att_gt}
 \title{Compute Group-Time Average Treatment Effects}
 \usage{
-\method{compute}{att_gt}(dp)
+compute.att_gt(dp)
 }
 \arguments{
 \item{dp}{A DIDparams object}

@@ -446,8 +446,10 @@ get_did_tensors <- function(data, args){
   #
   # }
   if (args$xformla == ~1) {
-    covariates_tensor  <- list(rep(1, args$id_count))
-    covariates_matrix  <- matrix(1, nrow = nrow(invariant_data), ncol = 1)
+    covariates_tensor <- replicate(args$time_periods_count,
+                                   rep(1, args$id_count),
+                                   simplify = FALSE)
+    covariates_matrix <- matrix(1, nrow = nrow(invariant_data), ncol = 1)
   } else {
     if (args$panel) {
       covariates_tensor <- vector("list", args$time_periods_count)

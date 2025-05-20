@@ -160,7 +160,7 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  ifelse(dp$faster_mode, weights.ind <- as.numeric(dp$weights_vector), weights.ind <- dta$.w)
+  ifelse(dp$faster_mode, weights.ind <- dta$weights, weights.ind <- dta$.w)
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
