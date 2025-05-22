@@ -423,11 +423,48 @@ get_did_tensors <- function(data, args){
   crosstable_counts <- dcast(crosstable_counts, period ~ cohort, value.var = "N", fill = 0)  # Reshape
 
 
-  # Get covariates if any
-  if(args$xformla == ~1){
-    covariates <- rep(1, args$id_count)
+  # # Get covariates if any
+  # if(args$xformla == ~1){
+  #   covariates <- rep(1, args$id_count)
+  # } else {
+  #   covariates <- as.data.table(model.matrix(args$xformla, data = invariant_data, na.action = na.pass))
+  # }
+
+  # if (args$xformla == ~1) {
+  #   covariates_tensor <- list(rep(1, args$id_count))
+  # } else {
+  #   if (args$panel){
+  #     covariates_tensor <- vector("list", args$time_periods_count)
+  #     for (tt in seq_along(args$time_periods)) {
+  #       rng <- ((tt - 1) * args$id_count + 1):(tt * args$id_count)
+  #       covariates_tensor[[tt]] <-
+  #         model.matrix(args$xformla, data = data[rng], na.action = na.pass)
+  #     }
+  #   } else {
+  #     covariates_tensor <- as.data.table(model.matrix(args$xformla, data = invariant_data, na.action = na.pass))
+  #   }
+  #
+  # }
+  if (args$xformla == ~1) {
+    covariates_tensor <- replicate(args$time_periods_count,
+                                   rep(1, args$id_count),
+                                   simplify = FALSE)
+    covariates_matrix <- matrix(1, nrow = nrow(invariant_data), ncol = 1)
   } else {
-    covariates <- as.data.table(model.matrix(args$xformla, data = invariant_data, na.action = na.pass))
+    if (args$panel) {
+      covariates_tensor <- vector("list", args$time_periods_count)
+      for (tt in seq_along(args$time_periods)) {
+        rng <- ((tt - 1) * args$id_count + 1):(tt * args$id_count)
+        covariates_tensor[[tt]] <-
+          model.matrix(args$xformla, data = data[rng], na.action = na.pass)
+      }
+      covariates_matrix <- NULL        # not needed in balanced panel
+    } else {                             # RCS / unbalanced
+      covariates_tensor <- NULL        # slices not needed
+      covariates_matrix <- model.matrix(args$xformla,
+                                        data = invariant_data,
+                                        na.action = na.pass)
+    }
   }
 
   # Get the cluster variable only
@@ -447,7 +484,9 @@ get_did_tensors <- function(data, args){
               cohort_counts = cohort_counts,
               period_counts = period_counts,
               crosstable_counts = crosstable_counts,
-              covariates = covariates,
+              # covariates = covariates,
+              covariates_matrix  = covariates_matrix,
+              covariates_tensor = covariates_tensor,
               cluster = cluster,
               weights = weights))
 }
