@@ -103,9 +103,12 @@ pre_process_did <- function(yname,
 
 
   # Check if there is a never treated group
-  if ( length(glist[glist==0]) == 0) {
+  if (!any(glist == 0)) {
     if(control_group=="nevertreated"){
-      stop("There is no available never-treated group")
+      warning("No never-treated group is available. The last treated cohort is being coerced as never-treated units.")
+      max_g <- max(glist, na.rm = TRUE)
+      data[data[, gname] == max_g, gname] <- 0
+      glist <- sort(unique(data[, gname]))
     } else {
       # Drop all time periods with time periods >= latest treated
       data <- subset(data,(data[,tname] < (max(glist)-anticipation)))
