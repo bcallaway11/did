@@ -160,7 +160,7 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  ifelse(dp$faster_mode, weights.ind <- as.numeric(dp$weights_vector), weights.ind <- dta$.w)
+  ifelse(dp$faster_mode, weights.ind <- dta$weights, weights.ind <- dta$.w)
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
@@ -289,7 +289,7 @@ compute.aggte <- function(MP,
                          pg=pgg,
                          weights.ind=weights.ind,
                          G=G,
-                         group=group)
+                         group=glist)
 
     # get overall influence function
     selective.inf.func <- get_agg_inf_func(att=selective.att.g,

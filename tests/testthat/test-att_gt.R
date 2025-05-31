@@ -1,5 +1,7 @@
 library(DRDID)
 library(BMisc)
+library(tidyverse)
+library(data.table)
 #library(ggplot2)
 #library(ggpubr)
 
@@ -788,5 +790,156 @@ test_that("faster model enabled for repeated cross sectional data", {
   # check if results are equal.
   expect_equal(out_rcs$att, out_rcs2$att)
   expect_equal(out_rcs$se, as.numeric(out_rcs2$se))
+
+})
+
+test_that("faster model enabled for unbalanced panel data and time-varying covariates", {
+
+  set.seed(05202025)
+  # balanced panel dimensions
+  N  <- 1000        # individuals
+  TT <- 6           # time periods (t = 1, …, 6)
+  # create id–time grid
+  dt <- CJ(id = 1:N, t = 1:TT)   # CJ:=Cartesian join == balanced panel
+  # assign cohort (first time treated) or never-treated
+  # 40% treated in period 4, 30% in 5, 10% in 6, rest never treated
+  cohort_vals  <- c(0, 4, 5, 6)                     # 0 = never treated
+  cohort_probs <- c(1 - .40 - .30 - .10, .40, .30, .10)
+
+  dt[, g := sample(
+    cohort_vals,
+    size = 1,          # one draw per id → time-invariant
+    prob = cohort_probs),
+    by = id]  # group by id
+
+  # treatment indicator: D = 1 if t ≥ g and g > 0
+  dt[, D := as.integer(t >= g & g > 0)]
+
+  # four time-varying covariates
+  dt[, `:=`(
+    x1 = rnorm(.N),
+    x2 = runif(.N, 0, 10) + 0.1 * t,
+    x3 = rnorm(N)[id] + 0.2 * t + rnorm(.N),
+    x4 = sin(2 * pi * t / TT) + rnorm(.N)
+  )]
+
+  # outcome model: baseline + covariate effects + treatment effect
+  # note: just for debugging purposes, not a well-defined DGP for theoretical results!!
+  beta  <- c(1.5, -0.8,  0.4, 2.0)          # coefficients on x1–x4
+  tau   <- 3                                # true treatment effect
+  alpha_i <- rnorm(N)[dt$id]                # id fixed effect
+  gamma_t <- seq(-1, 1, length.out = TT)[dt$t]  # common time trend
+
+  dt[, y := alpha_i + gamma_t +
+       beta[1]*x1 + beta[2]*x2 + beta[3]*x3 + beta[4]*x4 +
+       tau * D + rnorm(.N, sd = 2)]
+
+  # outcome model: baseline + covariate effects + treatment effect
+  # note: just for debugging purposes, not a well-defined DGP for theoretical results!!
+  beta  <- c(1.5, -0.8,  0.4, 2.0)          # coefficients on x1–x4
+  tau   <- 3                                # true treatment effect
+  alpha_i <- rnorm(N)[dt$id]                # id fixed effect
+  gamma_t <- seq(-1, 1, length.out = TT)[dt$t]  # common time trend
+
+  dt[, y := alpha_i + gamma_t +
+       beta[1]*x1 + beta[2]*x2 + beta[3]*x3 + beta[4]*x4 +
+       tau * D + rnorm(.N, sd = 2)]
+
+  #################################################################
+  ##  Make the panel UNBALANCED
+  ##  drop 25 % of rows at random, but leave ≥1 row per id
+  #################################################################
+  drop_rate <- 0.25
+  dt_unbal <- dt[, .SD[runif(.N) > drop_rate], by = id]     # keep rows with prob 0.75
+  dt_unbal  <- dt_unbal[, if (.N > 0) .SD, by = id]         # (safety) ids with ≥1 obs
+
+  # ----------------------------------------------------------------------------------------------------------------------------------
+  # let's run did with covariates using faster_mode=FALSE
+  att_slower <- att_gt(
+    yname   = "y",
+    tname   = "t",
+    idname  = "id",
+    gname   = "g",
+    xformla = ~ x1 + x2 + x3 + x4,   # four time-varying covariates
+    data    = dt,
+    base_period = "universal", # "universal" or "varying"
+    panel   = TRUE,
+    faster_mode = FALSE,
+    bstrap = FALSE,
+  )
+
+  # now let's run did with covariates using faster_mode=TRUE
+  att_faster <- att_gt(
+    yname   = "y",
+    tname   = "t",
+    idname  = "id",
+    gname   = "g",
+    xformla = ~ x1 + x2 + x3 + x4,   # four time-varying covariates
+    data    = dt,
+    panel   = TRUE,
+    base_period = "universal", # "universal" or "varying"
+    faster_mode = TRUE,
+    bstrap = FALSE,
+  )
+
+  # check if results are equal.
+  expect_equal(att_slower$att, att_faster$att)
+  expect_equal(att_slower$se, as.numeric(att_faster$se))
+
+  # get event study estimates
+  out1 = att_slower %>%
+    aggte(type = "dynamic",  cband = FALSE, bstrap = FALSE)
+
+  out2 = att_faster %>%
+    aggte(type = "dynamic", cband = FALSE, bstrap = FALSE)
+
+  # check if results are equal.
+  expect_equal(out1$att.egt, out2$att.egt)
+  expect_equal(out1$se.egt, as.numeric(out2$se.egt))
+
+  # ----------------------------------------------------------------------------------------------------------------------------------
+  # running the same but with unbalanced panel data
+  att_slow <- att_gt(
+    yname   = "y",
+    tname   = "t",
+    idname  = "id",
+    gname   = "g",
+    xformla = ~ x1 + x2 + x3 + x4,
+    data    = dt_unbal,
+    panel   = TRUE,
+    allow_unbalanced_panel = TRUE,
+    faster  = FALSE,
+    bstrap = FALSE
+  )
+
+  expect_message(att_fast <- att_gt(
+    yname   = "y",
+    tname   = "t",
+    idname  = "id",
+    gname   = "g",
+    xformla = ~ x1 + x2 + x3 + x4,
+    data    = dt_unbal,
+    panel   = TRUE,
+    allow_unbalanced_panel = TRUE,
+    faster  = TRUE,
+    bstrap = FALSE
+  ), "unbalanced panel")
+
+  # check if results are equal.
+  expect_equal(att_slow$att, att_fast$att)
+  expect_equal(att_slow$se, as.numeric(att_fast$se))
+
+
+  # get event study estimates
+  out1 = att_slow %>%
+    aggte(type = "dynamic",  cband = FALSE, bstrap = FALSE)
+
+
+  out2 = att_fast %>%
+    aggte(type = "dynamic", cband = FALSE, bstrap = FALSE)
+
+  # check if results are equal.
+  expect_equal(out1$att.egt, out2$att.egt)
+  expect_equal(out1$se.egt, out2$se.egt, tol=.0005)
 
 })
