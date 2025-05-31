@@ -212,10 +212,18 @@ test_that("not yet treated comparison group", {
   expect_equal(res$att[1], 1, tol=.5)
 
 
-  # try to use never treated group as comparison group, should error
-  expect_error(att_gt(yname="Y", xformla=~X, data=data, tname="period",
+  # try to use never treated group as comparison group, should warn
+  expect_warning(nonev_orig <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                       control_group="nevertreated",
-                      gname="G", est_method="dr", panel=FALSE))
+                      gname="G", est_method="dr", panel=FALSE, faster_mode = FALSE))
+
+  # try to use never treated group as comparison group with faster mode, should warn
+  expect_warning(nonev_faster <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                        control_group="nevertreated",
+                        gname="G", est_method="dr", panel=FALSE, faster_mode = TRUE))
+
+  # make use both methods give same ATT(g,t) with no never treated group
+  expect_equal(nonev_orig$att, nonev_faster$att)
 
 })
 
