@@ -113,8 +113,8 @@ glance.AGGTEobj<- function(x, ...) {
     out <- data.frame(
       type          = x$type,
       nobs          = x$DIDparams$id_count,
-      ngroup        = nrow(out$DIDparams$cohort_counts),
-      ntime         = out$DIDparams$time_periods_count,
+      ngroup        = nrow(x$DIDparams$cohort_counts),
+      ntime         = x$DIDparams$time_periods_count,
       control.group = x$DIDparams$control_group,
       est.method    = x$DIDparams$est_method)  
   } else {
