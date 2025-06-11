@@ -1,44 +1,22 @@
-#' @title Get pre treatment period
-#' @description A utility function to get the pre treatment period for a given g,t pair.
-#'
-#' @param group Group.
-#' @param time Time period.
-#' @param base_period Whether to use a "varying" base period or a
-#'  "universal" base period.
-#' @param anticipation  The number of time periods before participating
-#'  in the treatment where units can anticipate participating in the
-#'  treatment and therefore it can affect their untreated potential outcomes
-#'
-#' @return Time period indicating the pre treatment period.
-#' @noRd
-get_pret <- function(group, time, base_period, anticipation){
-  if(base_period == "universal"){
-    pret <- group - 1 - anticipation
-  } else {
-    pret <- ifelse(time >= group, group - 1 - anticipation, time - 1)
-  }
-
-  return(pret)
-}
-
 #' @title Get the cohort for the current g,t values
 #' @description A utility function to get vector with index of units that will be included in the DiD estimation for the current g,t pair.
 #'
 #' @param group Group.
 #' @param time Time period.
+#' @param tfac Time factor, which is 1 for varying base period and 0 for universal base period.
 #' @param pret Pre treatment period.
 #' @param dp2 DiD parameters v2.0.
 #'
-#' @return Time period indicating the pre treatment period.
+#' @return A vector of 1s, 0s and NAs indicating the cohort for the current g,t pair.
 #' @noRd
-get_did_cohort_index <- function(group, time, pret, dp2){
+get_did_cohort_index <- function(group, time, tfac, pret, dp2){
   # return a vector of dimension id_size with 1, 0 or NA values
   treated_groups <- dp2$treated_groups
   time_periods <- dp2$time_periods
   # based on control_group option
 
   min_control_group <-  ifelse((dp2$control_group == "notyettreated"),
-                               dp2$cohort_counts$cohort[which(dp2$cohort_counts$cohort > dp2$reverse_mapping[max(time, pret)] + dp2$anticipation)][1],
+                               dp2$cohort_counts$cohort[which(dp2$cohort_counts$cohort > dp2$time_periods[max(time, pret) + tfac + dp2$anticipation])][1],
                                Inf)
   max_control_group <- Inf # always include the never treated units as the maximum. We add a correction in case is needed afterwards.
 
@@ -56,7 +34,7 @@ get_did_cohort_index <- function(group, time, pret, dp2){
     # getting the index to get units who will participate in the estimation for the (g,t) cell.
     start_control <- dp2$cohort_counts[cohort < min_control_group, sum(cohort_size)]+1
     end_control <- dp2$cohort_counts[cohort <= max_control_group, sum(cohort_size)]
-    index <- which(dp2$cohort_counts[, cohort] == dp2$reverse_mapping[group])
+    index <- which(dp2$cohort_counts[, cohort] == dp2$treated_groups[group])
     start_treat <- ifelse(index == 1, 1, dp2$cohort_counts[1:(index-1), sum(cohort_size)]+1)
     end_treat <- dp2$cohort_counts[1:index, sum(cohort_size)]
     # set the cohort index; .C = 0 and .G = 1
@@ -66,75 +44,21 @@ get_did_cohort_index <- function(group, time, pret, dp2){
     # getting the index to get units who will participate in the estimation for the (g,t) cell.
     # Note: This works because the data is already ordered in a specific way. Changing that order will break this.
 
-    # # Pre-extract column names for use within the loop
-    # col_names <- names(dp2$crosstable_counts)[-1]  # Exclude 'T' column
-    # min_idx <- match(as.character(min_control_group), col_names)
-    # max_idx <- match(as.character(max_control_group), col_names)
-    # # correction in case there is not never-treated units! Pick the very last time period...
-    # ifelse(is.na(min_idx), min_idx <- match(tail(col_names,1), col_names), min_idx <- min_idx)
-    # ifelse(is.na(max_idx), max_idx <- match(tail(col_names,1), col_names), max_idx <- max_idx)
-    #
-    # # Start the loop
-    # for (i in c(pret, time)) {
-    #
-    #   # ------------------------------------------------
-    #   # SET UP: Identify index_time, start_time, and precompute relevant counts
-    #   # ------------------------------------------------
-    #
-    #   # Identify the index_time for 'i' based on period_counts and compute the starting point
-    #   index_time <- which(dp2$period_counts[, period] == dp2$reverse_mapping[i])
-    #   start_time <- ifelse(index_time == 1, 1, dp2$period_counts[1:(index_time - 1), sum(period_size)] + 1)
-    #
-    #   # Extract the relevant row for current time period 'i' only once
-    #   relevant_g_row <- dp2$crosstable_counts[i, ]
-    #
-    #   # ------------------------------------------------
-    #   # FOR CONTROL UNITS FIRST
-    #   # ------------------------------------------------
-    #
-    #   # Calculate the starting and ending index for control units (min_control_group to max_control_group)
-    #   start_control <- start_time + sum(relevant_g_row[, col_names[1:min_idx - 1], with = FALSE], na.rm = TRUE)
-    #   csize <- sum(relevant_g_row[, col_names[min_idx:max_idx], with = FALSE], na.rm = TRUE)
-    #   end_control <- start_control + csize - 1
-    #
-    #   # Impute control units with 0
-    #   did_cohort_index[start_control:end_control] <- 0
-    #
-    #   # ------------------------------------------------
-    #   # FOR TREATED UNITS
-    #   # ------------------------------------------------
-    #
-    #   # Calculate correction_index based on the current g and the relevant row for the current time period
-    #   index_cohort <- which(dp2$cohort_counts[, cohort] == dp2$reverse_mapping[group])
-    #   correction_index <- ifelse(index_cohort == 1, 0, sum(relevant_g_row[, col_names[1:(index_cohort - 1)], with = FALSE], na.rm = TRUE))
-    #
-    #   # Compute start and end points for treated units
-    #   start_treat <- start_time + correction_index
-    #   g_size <- relevant_g_row[, get(as.character(dp2$reverse_mapping[group]))]
-    #   end_treat <- start_treat + g_size - 1
-    #
-    #   # Impute treated units with 1
-    #   did_cohort_index[start_treat:end_treat] <- 1
-    # }
-    g_orig    <- dp2$reverse_mapping[group]
-    t_orig    <- dp2$reverse_mapping[time]
-    pret_orig <- dp2$reverse_mapping[pret]
-
     dat <- dp2$time_invariant_data          # shortcut
 
     # flags for treated and control units
-    Gflag <- dat[[dp2$gname]] == g_orig
+    Gflag <- dat[[dp2$gname]] == dp2$treated_groups[group]
 
     if (dp2$control_group == "nevertreated") {
       Cflag <- dat[[dp2$gname]] == Inf
     } else {  # not-yet-treated
       Cflag <- (dat[[dp2$gname]] == Inf) |
-        (dat[[dp2$gname]] > max(t_orig, pret_orig) + dp2$anticipation &
-           dat[[dp2$gname]] != g_orig)
+        (dat[[dp2$gname]] > dp2$time_periods[max(time, pret) + tfac + dp2$anticipation] &
+           dat[[dp2$gname]] != dp2$treated_groups[group])
     }
 
     # keep only rows observed in pret or t
-    keep <- dat[[dp2$tname]] %in% c(pret_orig, t_orig)
+    keep <- dat[[dp2$tname]] %in% c(dp2$time_periods[time + tfac], dp2$time_periods[pret])
 
     did_cohort_index <- rep(NA_integer_, nrow(dat))
     did_cohort_index[keep & Cflag] <- 0L
@@ -167,7 +91,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     # pick up the indices for units that will be used to compute ATT(g,t)
     valid_obs <- which(cohort_data[, !is.na(D)])
     cohort_data <- cohort_data[valid_obs]
-    # TODO; THIS HAS TO BE BETTER WRITTEN
+
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
     } else {
@@ -326,18 +250,47 @@ run_DRDID <- function(cohort_data, covariates, dp2){
 #' @keywords internal
 run_att_gt_estimation <- function(g, t, dp2){
 
-  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",g,",",t,")"))}
-  pret <- get_pret(g, t, dp2$base_period, dp2$anticipation)
+  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",dp2$treated_groups[g],",",dp2$time_periods[t],")"))}
+  tfac <- ifelse(dp2$base_period != "universal", 1, 0)
+  # set pret
+  # varying base period
+  pret <- t
 
-  # if we are in period (g-1) or base period out of bounds, normalize results to be equal to NULL
+
+  # universal base period
+  if (dp2$base_period == "universal") {
+    # use same base period as for post-treatment periods
+    pret <- tail(which( (dp2$time_periods + dp2$anticipation) < dp2$treated_groups[g]),1)
+  }
+
+  # check if in post-treatment period
+  if ((dp2$treated_groups[g]<=dp2$time_periods[(t+tfac)])) {
+
+    # update pre-period if in post-treatment period to
+    # be  period (g-delta-1)
+    pret <- tail(which( (dp2$time_periods+dp2$anticipation) < dp2$treated_groups[g]),1)
+
+    # print a warning message if there are no pre-treatment period
+    if (length(pret) == 0) {
+      warning(paste0("There are no pre-treatment periods for the group first treated at ", dp2$treated_groups[g], "\nUnits from this group are dropped"))
+
+      # if there are not pre-treatment periods, code will
+      # jump out of this loop
+      break
+    }
+  }
+
+  #-----------------------------------------------------------------------------
+  # if we are in period (g-1), normalize results to be equal to 0
   # and break without computing anything
-  if(t == pret | !pret %in% seq_along(dp2$time_periods)){
-    # if(dp2$print_details){cat("\n Skipping (g,t) as base period is out of bounds or for varying base period.")}
-    return(NULL)
+  if (dp2$base_period == "universal") {
+    if (dp2$time_periods[pret] == dp2$time_periods[(t+tfac)]) {
+      return(NULL)
+    }
   }
 
   # get units in treatment and control group
-  did_cohort_index <- get_did_cohort_index(g, t, pret, dp2)
+  did_cohort_index <- get_did_cohort_index(group = g, time = t, tfac = tfac, pret = pret, dp2)
   # In case of not treatment and control group in the cohort, return NULL
   valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
   if(!isTRUE(valid_did_cohort)){
@@ -345,25 +298,15 @@ run_att_gt_estimation <- function(g, t, dp2){
     return(NULL)
   }
 
-  # # Get the matrix of covariates
-  # covariates <- dp2$covariates
-  # if(dp2$panel){
-  #   cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
-  #   names(cohort_data) <- c("D", "y1", "y0", "i.weights")
-  # } else {
-  #   dp2$time_invariant_data[, post := fifelse(get(dp2$tname) == dp2$reverse_mapping[t], 1, 0)]
-  #   cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
-  #   names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
-  # }
+
 
   if(dp2$panel){
-    cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
+    cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t+tfac]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
     names(cohort_data) <- c("D", "y1", "y0", "i.weights")
     covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
   } else {
-    cal_t <- dp2$reverse_mapping[[t]] # scalar calendar date
 
-    log_vec <- dp2$time_invariant_data[[ dp2$tname ]] == cal_t
+    log_vec <- dp2$time_invariant_data[[ dp2$tname ]] == dp2$time_periods[t+tfac]
     # convert TRUE/FALSE to 1/0 in place (fastest)
     set(dp2$time_invariant_data, j = "post", value = as.integer(log_vec))
     cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
@@ -371,11 +314,10 @@ run_att_gt_estimation <- function(g, t, dp2){
     covariates <- dp2$covariates_matrix
   }
 
-
   # run estimation
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
                          error = function(e) {
-                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",g,",",t,"): ", e$message)
+                           warning("\n Error in computing internal 2x2 DiD for (g,t) = (",dp2$treated_groups[g],",",dp2$time_periods[t],"): ", e$message)
                            return(NULL)
                          })
   return(did_result)
@@ -401,22 +343,14 @@ run_att_gt_estimation <- function(g, t, dp2){
 compute.att_gt2 <- function(dp2) {
 
   n <- dp2$id_count  # Total number of units
-  treated_groups <- dp2$treated_groups
-  time_periods <- dp2$time_periods
+  time_periods <- dp2$time_periods # tlist
 
-  gt_index <- sort(union(treated_groups, time_periods))
-  # standardize the times to indexes
-  # Create a mapping for time_periods to standardized form
-  #time_mapping <- setNames(seq_along(time_periods), time_periods)
-  time_mapping <- setNames(seq_along(gt_index), gt_index)
-  # Create a reverse mapping from standardized values back to the original
-  reverse_mapping <- setNames(as.numeric(names(time_mapping)), time_mapping)
-  dp2$reverse_mapping <- reverse_mapping
-  # Convert both time_periods and treated_group using the mapping
-  time_periods <- time_mapping[as.character(time_periods)]
-  treated_groups <- time_mapping[as.character(treated_groups)]
-  # Get (g,t) cells to perform computations. This replace the nested for-loop.
-  gt_cells <- expand.grid(g = treated_groups, t = time_periods, stringsAsFactors = FALSE)
+  tlist.length <- ifelse(dp2$base_period != "universal", length(time_periods) - 1, length(time_periods))
+  tfac <- ifelse(dp2$base_period != "universal", 1, 0)
+
+
+  # in terms of indexes, not calendar times
+  gt_cells <- expand.grid(g = 1:dp2$treated_groups_count, t = 1:tlist.length, stringsAsFactors = FALSE)
   gt_cells <- gt_cells[order(gt_cells$g, gt_cells$t), ]
   total_gt_iterations <- nrow(gt_cells)
 
@@ -433,11 +367,14 @@ compute.att_gt2 <- function(dp2) {
     # Compute post-treatment indicator
     post.treat <- as.integer(g <= t)
 
+    # Compute post-treatment indicator
+    post.treat <- 1*(dp2$treated_groups[g] <= dp2$time_periods[t+tfac])
+
     if (is.null(gt_result) || is.null(gt_result$att)) {
       # Estimation failed or was skipped
       if(dp2$base_period == "universal"){
         inffunc_updates <- rep(0, n)
-        gt_result <- list(att = 0, group = reverse_mapping[g], year = reverse_mapping[t], post = post.treat, inffunc_updates = inffunc_updates)
+        gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t], post = post.treat, inffunc_updates = inffunc_updates)
         return(gt_result)
       } else {
         return(NULL)
@@ -455,7 +392,7 @@ compute.att_gt2 <- function(dp2) {
 
       # Save ATT and influence function
       inffunc_updates <- inf_func
-      gt_result <- list(att = att, group = reverse_mapping[g], year = reverse_mapping[t], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t], post = post.treat, inffunc_updates = inffunc_updates)
       return(gt_result)
     }
   }
