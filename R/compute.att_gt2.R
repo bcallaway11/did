@@ -276,7 +276,7 @@ run_att_gt_estimation <- function(g, t, dp2){
 
       # if there are not pre-treatment periods, code will
       # jump out of this loop
-      break
+      return(NULL)
     }
   }
 
