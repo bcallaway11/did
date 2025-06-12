@@ -132,7 +132,7 @@ pre_process_did <- function(yname,
       # Warn the user
       warning(
         "No never-treated group is available. ",
-        "The last treated cohort is being coerced as 'never-treated' units."
+        "The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups)."
       )
 
       # Drop all periods ≥ (latest_g - anticipation)

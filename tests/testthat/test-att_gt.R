@@ -222,7 +222,7 @@ test_that("not yet treated comparison group", {
                         control_group="nevertreated",
                         gname="G", est_method="dr", panel=FALSE, faster_mode = TRUE))
 
-  # make use both methods give same ATT(g,t) with no never treated group
+  # make sure both methods give same ATT(g,t) with no never treated group
   expect_equal(nonev_orig$att, nonev_faster$att)
 
 })
