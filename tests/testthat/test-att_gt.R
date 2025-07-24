@@ -212,10 +212,18 @@ test_that("not yet treated comparison group", {
   expect_equal(res$att[1], 1, tol=.5)
 
 
-  # try to use never treated group as comparison group, should error
-  expect_error(att_gt(yname="Y", xformla=~X, data=data, tname="period",
+  # try to use never treated group as comparison group, should warn
+  expect_warning(nonev_orig <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
                       control_group="nevertreated",
-                      gname="G", est_method="dr", panel=FALSE))
+                      gname="G", est_method="dr", panel=FALSE, faster_mode = FALSE))
+
+  # try to use never treated group as comparison group with faster mode, should warn
+  expect_warning(nonev_faster <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                        control_group="nevertreated",
+                        gname="G", est_method="dr", panel=FALSE, faster_mode = TRUE))
+
+  # make sure both methods give same ATT(g,t) with no never treated group
+  expect_equal(nonev_orig$att, nonev_faster$att)
 
 })
 
@@ -942,4 +950,53 @@ test_that("faster model enabled for unbalanced panel data and time-varying covar
   expect_equal(out1$att.egt, out2$att.egt)
   expect_equal(out1$se.egt, out2$se.egt, tol=.0005)
 
+})
+
+
+test_that("faster_mode = TRUE matches baseline on filtered sim dataset when there are not subsequent cohort and time periods", {
+  # simulate full panel
+  set.seed(09142024)
+  sp <- reset.sim()
+  dt <- build_sim_dataset(sp)
+
+  # filter down to two periods
+  # here we know build_sim_dataset() has periods 1:4, so pick 2 & 4
+  # cohorts -> [3,4], periods -> [2,4]
+  dt2 <- dt[dt$period %in% c(2, 4), ]
+
+  # run att_gt with both modes (no errors)
+  expect_warning({
+    res_slow <- att_gt(
+      yname         = "Y",
+      tname         = "period",
+      idname        = "id",
+      gname         = "G",
+      data          = dt2,
+      panel         = TRUE,
+      control_group = "nevertreated",
+      xformla       = NULL,
+      est_method    = "dr",
+      base_period   = "universal",
+      faster_mode   = FALSE
+    )
+    res_fast <- att_gt(
+      yname         = "Y",
+      tname         = "period",
+      idname        = "id",
+      gname         = "G",
+      data          = dt2,
+      panel         = TRUE,
+      control_group = "nevertreated",
+      xformla       = NULL,
+      est_method    = "dr",
+      base_period   = "universal",
+      faster_mode   = TRUE
+    )
+  }, "Dropped 999 units that were already treated in the first period")
+
+
+  # they should have the same length and (within tol) the same values
+  expect_length(res_slow$att, 4)
+  expect_length(res_fast$att, 4)
+  expect_equal(res_slow$att, res_fast$att, tolerance = 1e-8)
 })

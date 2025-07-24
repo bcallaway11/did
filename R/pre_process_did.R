@@ -103,22 +103,57 @@ pre_process_did <- function(yname,
 
 
   # Check if there is a never treated group
-  if ( length(glist[glist==0]) == 0) {
-    if(control_group=="nevertreated"){
-      stop("There is no available never-treated group")
+
+  # if ( length(glist[glist==0]) == 0) {
+  #   if(control_group=="nevertreated"){
+  #     stop("There is no available never-treated group")
+  #   } else {
+  #     # Drop all time periods with time periods >= latest treated
+  #     data <- subset(data,(data[,tname] < (max(glist)-anticipation)))
+  #     # Replace last treated time with zero
+  #     # lines.gmax <- data[,gname]==max(glist, na.rm = TRUE)
+  #     # data[lines.gmax,gname] <- 0
+  #
+  #     tlist <- sort(unique(data[,tname]))
+  #     glist <- sort(unique(data[,gname]))
+  #
+  #     # don't comput ATT(g,t) for groups that are only treated at end
+  #     # and only play a role as a comparison group
+  #     glist <- glist[ glist < max(glist)]
+  #   }
+  # }
+
+  if (!any(glist == 0)) {
+    # Compute latest treated cohort once, and the cutoff time
+    latest_g <- max(glist, na.rm = TRUE)
+    cutoff_t  <- latest_g - anticipation
+
+    if (control_group == "nevertreated") {
+      # Warn the user
+      warning(
+        "No never-treated group is available. ",
+        "The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups)."
+      )
+
+      # Drop all periods ≥ (latest_g - anticipation)
+      data <- data[ data[[ tname ]] < cutoff_t, , drop = FALSE ]
+
+      # For any row where gname == latest_g, set gname := 0
+      lines.gmax <- data[, gname]==latest_g
+      data[lines.gmax, gname] <- 0
     } else {
-      # Drop all time periods with time periods >= latest treated
-      data <- subset(data,(data[,tname] < (max(glist)-anticipation)))
-      # Replace last treated time with zero
-      # lines.gmax <- data[,gname]==max(glist, na.rm = TRUE)
-      # data[lines.gmax,gname] <- 0
+      # If "notyetreated", we simply drop those periods and leave gnames alone
+      data <- data[ data[[ tname ]] < cutoff_t, , drop = FALSE ]
+    }
 
-      tlist <- sort(unique(data[,tname]))
-      glist <- sort(unique(data[,gname]))
+    # Recompute tlist and glist from the filtered/modified data
+    tlist <- sort(unique(data[,tname]))
+    glist <- sort(unique(data[,gname]))
 
-      # don't comput ATT(g,t) for groups that are only treated at end
-      # and only play a role as a comparison group
-      glist <- glist[ glist < max(glist)]
+
+    # If control_group != "nevertreated", drop the max cohort from glist
+    if (control_group != "nevertreated") {
+      glist <- glist[glist < latest_g]
     }
   }
 
