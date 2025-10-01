@@ -299,7 +299,7 @@ att_gt <- function(yname,
   se[se <= sqrt(.Machine$double.eps)*10] <- NA
 
   # if clustering along another dimension...we require using the
-  # bootstrap (in principle, could come up with analytical standard
+  # bootstrap (in principle, could come up with an analytical standard
   # errors here though)
   if ( (length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
