@@ -292,7 +292,7 @@ att_gt <- function(yname,
   # same with clustered standard errors
   # but it is always ignored b/c bstrap has to be true in that case
   n <- ifelse(faster_mode, dp$id_count, dp$n)
-  V <- Matrix::t(inffunc)%*%inffunc/(n-1)
+  V <- Matrix::t(inffunc)%*%inffunc/(n)
   se <- sqrt(Matrix::diag(V)/n)
 
   # Zero standard error replaced by NA
