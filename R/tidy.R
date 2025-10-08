@@ -90,6 +90,7 @@ tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "simple"){
     out <- data.frame(
       type      = x$type,
+      term      = 'ATT(simple average)',
       estimate  = x$overall.att,
       std.error = x$overall.se,
       conf.low  = x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
@@ -108,12 +109,23 @@ tidy.AGGTEobj<- function(x, ...) {
 #' @param ... other arguments passed to methods
 #' @export
 glance.AGGTEobj<- function(x, ...) {
-  out <- data.frame(
-    type          = x$type,
-    nobs          = x$DIDparams$n,
-    ngroup        = x$DIDparams$nG,
-    ntime         = x$DIDparams$nT,
-    control.group = x$DIDparams$control_group,
-    est.method    = x$DIDparams$est_method)
+  if(x$DIDparams$faster_mode) {
+    out <- data.frame(
+      type          = x$type,
+      nobs          = x$DIDparams$id_count,
+      ngroup        = nrow(x$DIDparams$cohort_counts),
+      ntime         = x$DIDparams$time_periods_count,
+      control.group = x$DIDparams$control_group,
+      est.method    = x$DIDparams$est_method)  
+  } else {
+    out <- data.frame(
+      type          = x$type,
+      nobs          = x$DIDparams$n,
+      ngroup        = x$DIDparams$nG,
+      ntime         = x$DIDparams$nT,
+      control.group = x$DIDparams$control_group,
+      est.method    = x$DIDparams$est_method)
+  }
+
   out
 }
