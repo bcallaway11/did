@@ -90,7 +90,7 @@ tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "simple"){
     out <- data.frame(
       type      = x$type,
-      term      = 'ATT(Average)',
+      term      = 'ATT(simple average)',
       estimate  = x$overall.att,
       std.error = x$overall.se,
       conf.low  = x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
