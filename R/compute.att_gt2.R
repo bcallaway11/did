@@ -374,7 +374,7 @@ compute.att_gt2 <- function(dp2) {
       # Estimation failed or was skipped
       if(dp2$base_period == "universal"){
         inffunc_updates <- rep(0, n)
-        gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t], post = post.treat, inffunc_updates = inffunc_updates)
+        gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
         return(gt_result)
       } else {
         return(NULL)
@@ -392,7 +392,7 @@ compute.att_gt2 <- function(dp2) {
 
       # Save ATT and influence function
       inffunc_updates <- inf_func
-      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
       return(gt_result)
     }
   }

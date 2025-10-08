@@ -1000,3 +1000,280 @@ test_that("faster_mode = TRUE matches baseline on filtered sim dataset when ther
   expect_length(res_fast$att, 4)
   expect_equal(res_slow$att, res_fast$att, tolerance = 1e-8)
 })
+
+
+#-----------------------------------------------------------------------------
+# Regression tests for time indexing bug (Issue: faster_mode returns wrong time indices)
+# These tests ensure that faster_mode=TRUE returns the same time periods (t field)
+# as faster_mode=FALSE, not just the same ATT estimates
+#-----------------------------------------------------------------------------
+
+test_that("faster_mode time indexing matches baseline with repeated cross-sections", {
+  set.seed(12345)
+
+  # Create data with non-consecutive time periods to catch indexing bugs
+  # Time periods: 2, 3, 4, 5, 6, 7, 8, 9 (starting at 2, not 1)
+  n_groups <- 50
+  n_periods <- 9
+
+  df <- data.frame(
+    g = rep(1:n_groups, each = n_periods),
+    t = rep(1:n_periods, times = n_groups),
+    gfe = rep(rnorm(n_groups, 0, 1), each = n_periods)
+  )
+
+  # Add time fixed effects
+  tfe_vec <- 0.1 * rnorm(n_periods, 0, 1)
+  df$tfe <- tfe_vec[df$t]
+
+  # Assign treatment cohorts (using time values, not indices)
+  df$cohort <- 0
+  df$cohort[df$g >= 21 & df$g <= 30] <- 4
+  df$cohort[df$g >= 11 & df$g <= 20] <- 6
+  df$cohort[df$g >= 1 & df$g <= 10] <- 8
+
+  # Generate outcomes
+  df$y0 <- 0.1 * df$g + df$gfe + 0.1 * df$t + df$tfe + rnorm(nrow(df), 0, 1)
+  df$y1 <- df$y0
+
+  # Add treatment effects for each cohort
+  treated_c4 <- df$cohort == 4 & df$t >= 4
+  df$y1[treated_c4] <- df$y1[treated_c4] + 1.5 + 1.0 * (df$t[treated_c4] - 4)
+
+  treated_c6 <- df$cohort == 6 & df$t >= 6
+  df$y1[treated_c6] <- df$y1[treated_c6] + 1.0 + 0.7 * (df$t[treated_c6] - 6)
+
+  treated_c8 <- df$cohort == 8 & df$t >= 8
+  df$y1[treated_c8] <- df$y1[treated_c8] + 0.5 + 0.4 * (df$t[treated_c8] - 8)
+
+  # Expand data (simulate varying sample sizes)
+  set.seed(123)
+  rep_by_g <- sapply(1:n_groups, function(j) floor(5 + 2 * (1.1)^j * runif(1)))
+  df$rep_g <- rep_by_g[df$g]
+  df <- df[rep(1:nrow(df), df$rep_g), ]
+
+  rep_by_t <- sapply(1:n_periods, function(j) floor(2 + 3 * (1.2)^(n_periods - j) * runif(1)))
+  df$rep_t <- rep_by_t[df$t]
+  df <- df[rep(1:nrow(df), df$rep_t), ]
+
+  df <- df[, !(names(df) %in% c("rep_g", "rep_t"))]
+
+  # Treatment indicator and observed outcome
+  df$tx <- (df$cohort > 0) & (df$t >= df$cohort)
+  df$y <- ifelse(df$tx, df$y1, df$y0)
+  df$id <- 1:nrow(df)
+
+  # Estimate with both modes
+  res_slow <- att_gt(
+    yname = "y",
+    tname = "t",
+    gname = "cohort",
+    idname = "id",
+    data = df,
+    est_method = "reg",
+    panel = FALSE,
+    bstrap = FALSE,
+    cband = FALSE,
+    faster_mode = FALSE
+  )
+
+  res_fast <- att_gt(
+    yname = "y",
+    tname = "t",
+    gname = "cohort",
+    idname = "id",
+    data = df,
+    est_method = "reg",
+    panel = FALSE,
+    bstrap = FALSE,
+    cband = FALSE,
+    faster_mode = TRUE
+  )
+
+  # Test that time indexing is identical (this was the bug)
+  expect_equal(res_slow$t, res_fast$t,
+               info = "Time periods (t field) should match between faster_mode=TRUE and FALSE")
+
+  # Also verify group indexing
+  expect_equal(res_slow$group, res_fast$group,
+               info = "Group values should match between faster_mode=TRUE and FALSE")
+
+  # Verify ATT estimates match
+  expect_equal(res_slow$att, res_fast$att,
+               info = "ATT estimates should match between faster_mode=TRUE and FALSE")
+
+  # Verify standard errors match
+  expect_equal(res_slow$se, as.numeric(res_fast$se),
+               info = "Standard errors should match between faster_mode=TRUE and FALSE")
+})
+
+
+test_that("faster_mode time indexing matches baseline with panel data and varying base period", {
+  set.seed(54321)
+
+  # Use the package's built-in data with non-standard time periods
+  data <- did::mpdta
+
+  # Test with varying base period (default, where the bug was most obvious)
+  res_slow <- att_gt(
+    yname = "lemp",
+    gname = "first.treat",
+    idname = "countyreal",
+    tname = "year",
+    xformla = ~1,
+    data = data,
+    bstrap = FALSE,
+    cband = FALSE,
+    base_period = "varying",
+    control_group = "nevertreated",
+    est_method = "dr",
+    faster_mode = FALSE
+  )
+
+  res_fast <- att_gt(
+    yname = "lemp",
+    gname = "first.treat",
+    idname = "countyreal",
+    tname = "year",
+    xformla = ~1,
+    data = data,
+    bstrap = FALSE,
+    cband = FALSE,
+    base_period = "varying",
+    control_group = "nevertreated",
+    est_method = "dr",
+    faster_mode = TRUE
+  )
+
+  # Critical test: time periods must match exactly
+  expect_identical(res_slow$t, res_fast$t,
+                   info = "Time periods must be identical between modes with varying base period")
+
+  # Verify other components
+  expect_identical(res_slow$group, res_fast$group)
+  expect_equal(res_slow$att, res_fast$att)
+  expect_equal(res_slow$se, as.numeric(res_fast$se))
+})
+
+
+test_that("faster_mode time indexing with non-consecutive time periods", {
+  set.seed(99999)
+
+  # Create data with gaps in time periods (e.g., 2000, 2002, 2005, 2007, 2010)
+  # This tests that we use actual calendar times, not sequential indices
+  time_periods <- c(2000, 2002, 2005, 2007, 2010)
+  n_units <- 100
+
+  # Create balanced panel
+  df <- expand.grid(id = 1:n_units, year = time_periods)
+  df$id <- as.integer(df$id)
+
+  # Assign cohorts
+  df$cohort <- 0
+  df$cohort[df$id <= 30] <- 2005
+  df$cohort[df$id > 30 & df$id <= 60] <- 2007
+  # Rest are never treated (cohort = 0)
+
+  # Generate outcomes
+  df$y0 <- df$id * 0.1 + rnorm(nrow(df), 0, 0.5)
+  df$y1 <- df$y0
+
+  # Add treatment effects
+  treated <- df$cohort > 0 & df$year >= df$cohort
+  df$y1[treated] <- df$y1[treated] + 2.0
+
+  # Observed outcome
+  df$y <- ifelse(treated, df$y1, df$y0)
+
+  # Estimate with both modes
+  res_slow <- att_gt(
+    yname = "y",
+    tname = "year",
+    idname = "id",
+    gname = "cohort",
+    data = df,
+    panel = TRUE,
+    bstrap = FALSE,
+    cband = FALSE,
+    est_method = "reg",
+    faster_mode = FALSE
+  )
+
+  res_fast <- att_gt(
+    yname = "y",
+    tname = "year",
+    idname = "id",
+    gname = "cohort",
+    data = df,
+    panel = TRUE,
+    bstrap = FALSE,
+    cband = FALSE,
+    est_method = "reg",
+    faster_mode = TRUE
+  )
+
+  # The critical test: years should be actual calendar years, not indices
+  expect_true(all(res_slow$t %in% time_periods),
+              info = "Time values should be actual calendar years")
+  expect_true(all(res_fast$t %in% time_periods),
+              info = "Time values should be actual calendar years in faster_mode")
+
+  # Time periods must match between modes
+  expect_equal(res_slow$t, res_fast$t,
+               info = "Time periods must match with non-consecutive calendar times")
+
+  # Verify the minimum time period is correct (should be 2002, not 1 or 2000)
+  # With varying base period, first time should be period after first period
+  expect_true(min(res_slow$t) > min(time_periods),
+              info = "With varying base period, should skip first time period")
+  expect_equal(min(res_slow$t), min(res_fast$t))
+
+  # Verify other components
+  expect_equal(res_slow$group, res_fast$group)
+  expect_equal(res_slow$att, res_fast$att)
+  expect_equal(res_slow$se, as.numeric(res_fast$se))
+})
+
+
+test_that("faster_mode time indexing with universal base period", {
+  set.seed(11111)
+
+  # Simpler test with universal base period
+  sp <- did::reset.sim(time.periods = 5)
+  data <- did::build_sim_dataset(sp)
+
+  res_slow <- att_gt(
+    yname = "Y",
+    xformla = ~X,
+    data = data,
+    tname = "period",
+    idname = "id",
+    gname = "G",
+    est_method = "dr",
+    base_period = "universal",
+    bstrap = FALSE,
+    faster_mode = FALSE
+  )
+
+  res_fast <- att_gt(
+    yname = "Y",
+    xformla = ~X,
+    data = data,
+    tname = "period",
+    idname = "id",
+    gname = "G",
+    est_method = "dr",
+    base_period = "universal",
+    bstrap = FALSE,
+    faster_mode = TRUE
+  )
+
+  # Time indexing must match
+  expect_equal(res_slow$t, res_fast$t,
+               info = "Time periods must match with universal base period")
+
+  # Verify results are consistent
+  expect_equal(res_slow$group, res_fast$group)
+  expect_equal(res_slow$att, res_fast$att)
+  expect_equal(res_slow$se, as.numeric(res_fast$se))
+})
