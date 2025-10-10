@@ -95,8 +95,11 @@ compute.att_gt <- function(dp) {
       # that is, never treated + units that are eventually treated,
       # but not treated by the current period (+ anticipation)
       if(!nevertreated) {
+        # Capture loop variable t before data.table evaluation to avoid scoping issues
+        # (data.table expressions access columns by name, so 't' would refer to tname column)
+        time_threshold <- tlist[max(t, pret) + tfac] + anticipation
         data[, .C := as.integer((get(gname) == 0) |
-                                  ((get(gname) > (tlist[max(t, pret) + tfac] + anticipation)) &
+                                  ((get(gname) > time_threshold) &
                                      (get(gname) != glist[[..g]])))]
       }
 
