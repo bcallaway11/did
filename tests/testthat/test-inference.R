@@ -20,9 +20,21 @@ library(BMisc)
 # library(ggplot2)
 # library(ggpubr)
 
+same_matrix_elem <- function(A, B) {
+  stopifnot(identical(dim(A), dim(B)))
+  colnames(A) <- NULL
+  colnames(B) <- NULL
+  dense_sort <- function(M) apply(as(M, "matrix"), 2, sort, na.last = TRUE)
+  all.equal(dense_sort(A), dense_sort(B))
+}
+
 temp_lib <- tempfile()
 dir.create(temp_lib)
-remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org")
+# remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org")
+install.packages(
+  "https://cran.r-project.org/src/contrib/did_2.1.2.tar.gz",
+  repos = NULL, type = "source", lib = temp_lib
+)
 
 test_that("inference with balanced panel data and aggregations", {
   sp <- did::reset.sim()
@@ -89,10 +101,13 @@ test_that("inference with balanced panel data and aggregations", {
   )
 
   # checks for ATT(g,t)'s
+  expect_true(all.equal(dr_2.1.2$att, dr_new$att))
+  expect_true(all.equal(reg_2.1.2$att, reg_new$att))
+  expect_true(all.equal(ipw_2.1.2$att, ipw_new$att))
   # check that the influence function is the same
-  expect_true(all(dr_new$inffunc == dr_2.1.2$inffunc))
-  expect_true(all(reg_new$inffunc == reg_2.1.2$inffunc))
-  expect_true(all(ipw_new$inffunc == ipw_2.1.2$inffunc))
+  expect_true(same_matrix_elem(dr_new$inffunc, dr_2.1.2$inffunc))
+  expect_true(same_matrix_elem(reg_new$inffunc, reg_2.1.2$inffunc))
+  expect_true(same_matrix_elem(ipw_new$inffunc, ipw_2.1.2$inffunc))
 
   # standard errors should be close
   # not totally sure, but I think slight differences are expected
@@ -214,10 +229,14 @@ test_that("inference with clustering", {
   )
 
   # checks for ATT(g,t)'s
+  expect_true(all.equal(dr_2.1.2$att, dr_new$att))
+  expect_true(all.equal(reg_2.1.2$att, reg_new$att))
+  expect_true(all.equal(ipw_2.1.2$att, ipw_new$att))
+
   # check that the influence function is the same
-  expect_true(all(dr_new$inffunc == dr_2.1.2$inffunc))
-  expect_true(all(reg_new$inffunc == reg_2.1.2$inffunc))
-  expect_true(all(ipw_new$inffunc == ipw_2.1.2$inffunc))
+  expect_true(same_matrix_elem(dr_new$inffunc, dr_2.1.2$inffunc))
+  expect_true(same_matrix_elem(reg_new$inffunc, reg_2.1.2$inffunc))
+  expect_true(same_matrix_elem(ipw_new$inffunc, ipw_2.1.2$inffunc))
 
   # standard errors should be close
   # not totally sure, but I think slight differences are expected
@@ -367,10 +386,13 @@ test_that("inference with repeated cross sections", {
   )
 
   # checks for ATT(g,t)'s
+  expect_true(all.equal(dr_2.1.2$att, dr_new$att))
+  expect_true(all.equal(reg_2.1.2$att, reg_new$att))
+  expect_true(all.equal(ipw_2.1.2$att, ipw_new$att))
   # check that the influence function is the same
-  expect_true(all(dr_new$inffunc == dr_2.1.2$inffunc))
-  expect_true(all(reg_new$inffunc == reg_2.1.2$inffunc))
-  expect_true(all(ipw_new$inffunc == ipw_2.1.2$inffunc))
+  expect_true(same_matrix_elem(dr_new$inffunc, dr_2.1.2$inffunc))
+  expect_true(same_matrix_elem(reg_new$inffunc, reg_2.1.2$inffunc))
+  expect_true(same_matrix_elem(ipw_new$inffunc, ipw_2.1.2$inffunc))
 
   # standard errors should be close
   # not totally sure, but I think slight differences are expected
@@ -492,10 +514,13 @@ test_that("inference with repeated cross sections and clustering", {
   )
 
   # checks for ATT(g,t)'s
+  expect_true(all.equal(dr_2.1.2$att, dr_new$att))
+  expect_true(all.equal(reg_2.1.2$att, reg_new$att))
+  expect_true(all.equal(ipw_2.1.2$att, ipw_new$att))
   # check that the influence function is the same
-  expect_true(all(dr_new$inffunc == dr_2.1.2$inffunc))
-  expect_true(all(reg_new$inffunc == reg_2.1.2$inffunc))
-  expect_true(all(ipw_new$inffunc == ipw_2.1.2$inffunc))
+  expect_true(same_matrix_elem(dr_new$inffunc, dr_2.1.2$inffunc))
+  expect_true(same_matrix_elem(reg_new$inffunc, reg_2.1.2$inffunc))
+  expect_true(same_matrix_elem(ipw_new$inffunc, ipw_2.1.2$inffunc))
 
   # standard errors should be close
   # not totally sure, but I think slight differences are expected
@@ -620,10 +645,13 @@ test_that("inference with unbalanced panel", {
   )
 
   # checks for ATT(g,t)'s
+  expect_true(all.equal(dr_2.1.2$att, dr_new$att))
+  expect_true(all.equal(reg_2.1.2$att, reg_new$att))
+  expect_true(all.equal(ipw_2.1.2$att, ipw_new$att))
   # check that the influence function is the same
-  expect_true(all(dr_new$inffunc == dr_2.1.2$inffunc))
-  expect_true(all(reg_new$inffunc == reg_2.1.2$inffunc))
-  expect_true(all(ipw_new$inffunc == ipw_2.1.2$inffunc))
+  expect_true(same_matrix_elem(dr_new$inffunc, dr_2.1.2$inffunc))
+  expect_true(same_matrix_elem(reg_new$inffunc, reg_2.1.2$inffunc))
+  expect_true(same_matrix_elem(ipw_new$inffunc, ipw_2.1.2$inffunc))
 
   # standard errors should be close
   # not totally sure, but I think slight differences are expected
@@ -746,10 +774,13 @@ test_that("inference with unbalanced panel and clustering", {
   )
 
   # checks for ATT(g,t)'s
+  expect_true(all.equal(dr_2.1.2$att, dr_new$att))
+  expect_true(all.equal(reg_2.1.2$att, reg_new$att))
+  expect_true(all.equal(ipw_2.1.2$att, ipw_new$att))
   # check that the influence function is the same
-  expect_true(all(dr_new$inffunc == dr_2.1.2$inffunc))
-  expect_true(all(reg_new$inffunc == reg_2.1.2$inffunc))
-  expect_true(all(ipw_new$inffunc == ipw_2.1.2$inffunc))
+  expect_true(same_matrix_elem(dr_new$inffunc,  dr_2.1.2$inffunc))
+  expect_true(same_matrix_elem(reg_new$inffunc, reg_2.1.2$inffunc))
+  expect_true(same_matrix_elem(ipw_new$inffunc,  ipw_2.1.2$inffunc))
 
   # standard errors should be close
   # not totally sure, but I think slight differences are expected

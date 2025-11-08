@@ -16,7 +16,7 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
   # based on control_group option
 
   min_control_group <-  ifelse((dp2$control_group == "notyettreated"),
-                               dp2$cohort_counts$cohort[which(dp2$cohort_counts$cohort > dp2$time_periods[max(time, pret) + tfac + dp2$anticipation])][1],
+                               dp2$cohort_counts$cohort[which(dp2$cohort_counts$cohort > dp2$time_periods[max(time, pret) + tfac ]+ dp2$anticipation)][1],
                                Inf)
   max_control_group <- Inf # always include the never treated units as the maximum. We add a correction in case is needed afterwards.
 
@@ -53,7 +53,7 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
       Cflag <- dat[[dp2$gname]] == Inf
     } else {  # not-yet-treated
       Cflag <- (dat[[dp2$gname]] == Inf) |
-        (dat[[dp2$gname]] > dp2$time_periods[max(time, pret) + tfac + dp2$anticipation] &
+        (dat[[dp2$gname]] > dp2$time_periods[max(time, pret) + tfac] + dp2$anticipation &
            dat[[dp2$gname]] != dp2$treated_groups[group])
     }
 
