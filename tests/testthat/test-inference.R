@@ -30,11 +30,11 @@ same_matrix_elem <- function(A, B) {
 
 temp_lib <- tempfile()
 dir.create(temp_lib)
-# remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org")
-install.packages(
-  "https://cran.r-project.org/src/contrib/did_2.1.2.tar.gz",
-  repos = NULL, type = "source", lib = temp_lib
-)
+remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org")
+# install.packages(
+#   "https://cran.r-project.org/src/contrib/did_2.1.2.tar.gz",
+#   repos = NULL, type = "source", lib = temp_lib
+# )
 
 test_that("inference with balanced panel data and aggregations", {
   sp <- did::reset.sim()
