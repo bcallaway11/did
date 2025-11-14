@@ -26,7 +26,7 @@ cat(
   badger::badge_cran_download("did", "grand-total", "blue"),
   badger::badge_cran_download("did", "last-month", "blue"),
   badger::badge_cran_release("did", "blue"),
-  badger::badge_devel("bcallaway11/did", "blue"),
+  badger::runiverse("did", "bcallaway11"),
   badger::badge_cran_checks("did"),
   # badger::badge_codecov("bcallaway11/did"),
   badger::badge_last_commit("bcallaway11/did")
@@ -64,17 +64,16 @@ There has been some recent work on DiD with multiple time periods.  The **did** 
 
 ## Installation
 
-You can install **did** from CRAN with:
+The stable version of **did** is available on CRAN.
 
 ```{r eval=FALSE}
 install.packages("did")
 ```
 
-or get the latest version from github with:
+Or, you can grab the latest development version from R-universe.
 
-```{r gh-installation, eval = FALSE}
-# install.packages("devtools")
-devtools::install_github("bcallaway11/did")
+```{r r-universe-installation, eval = FALSE}
+install.packages("did", repos = "https://bcallaway11.r-universe.dev")
 ```
 
 ## A short example
