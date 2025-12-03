@@ -1,4 +1,4 @@
-# did 2.2.0 (development version)
+# did 2.3.0 (development version)
 
   * Code improvements that made the package faster and more memory efficient
 
@@ -8,6 +8,10 @@
 
   * Significantly reduced the number of recursive package dependencies, enabling faster installation times and a smaller build footprint. 
 
+# did 2.2.0 
+
+  * Skipped as the number of changes was sufficiently large to warrant a minor version bump
+  
 # did 2.1.2
 
   * Added wrapper function for HonestDiD package
