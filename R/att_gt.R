@@ -169,84 +169,84 @@
 
 att_gt <- function(yname,
                    tname,
-                   idname=NULL,
+                   idname = NULL,
                    gname,
-                   xformla=NULL,
+                   xformla = NULL,
                    data,
-                   panel=TRUE,
-                   allow_unbalanced_panel=FALSE,
-                   control_group=c("nevertreated","notyettreated"),
-                   anticipation=0,
-                   weightsname=NULL,
-                   alp=0.05,
-                   bstrap=TRUE,
-                   cband=TRUE,
-                   biters=1000,
-                   clustervars=NULL,
-                   est_method="dr",
-                   base_period="varying",
-                   faster_mode=FALSE,
-                   print_details=FALSE,
-                   pl=FALSE,
-                   cores=1) {
-
+                   panel = TRUE,
+                   allow_unbalanced_panel = FALSE,
+                   control_group = c("nevertreated", "notyettreated"),
+                   anticipation = 0,
+                   weightsname = NULL,
+                   alp = 0.05,
+                   bstrap = TRUE,
+                   cband = TRUE,
+                   biters = 1000,
+                   clustervars = NULL,
+                   est_method = "dr",
+                   base_period = "varying",
+                   faster_mode = TRUE,
+                   print_details = FALSE,
+                   pl = FALSE,
+                   cores = 1) {
   # Check if user wants to run faster mode:
   if (faster_mode) {
     # this is a DIDparams2 object
-    dp <- pre_process_did2(yname=yname,
-                            tname=tname,
-                            idname=idname,
-                            gname=gname,
-                            xformla=xformla,
-                            data=data,
-                            panel=panel,
-                            allow_unbalanced_panel=allow_unbalanced_panel,
-                            control_group=control_group,
-                            anticipation=anticipation,
-                            weightsname=weightsname,
-                            alp=alp,
-                            bstrap=bstrap,
-                            cband=cband,
-                            biters=biters,
-                            clustervars=clustervars,
-                            est_method=est_method,
-                            base_period=base_period,
-                            print_details=print_details,
-                            faster_mode=faster_mode,
-                            pl=pl,
-                            cores=cores,
-                            call=match.call()
+    dp <- pre_process_did2(
+      yname = yname,
+      tname = tname,
+      idname = idname,
+      gname = gname,
+      xformla = xformla,
+      data = data,
+      panel = panel,
+      allow_unbalanced_panel = allow_unbalanced_panel,
+      control_group = control_group,
+      anticipation = anticipation,
+      weightsname = weightsname,
+      alp = alp,
+      bstrap = bstrap,
+      cband = cband,
+      biters = biters,
+      clustervars = clustervars,
+      est_method = est_method,
+      base_period = base_period,
+      print_details = print_details,
+      faster_mode = faster_mode,
+      pl = pl,
+      cores = cores,
+      call = match.call()
     )
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
     #-----------------------------------------------------------------------------
     results <- compute.att_gt2(dp)
-
   } else {
     # this is a DIDparams object
-    dp <- pre_process_did(yname=yname,
-                          tname=tname,
-                          idname=idname,
-                          gname=gname,
-                          xformla=xformla,
-                          data=data,
-                          panel=panel,
-                          allow_unbalanced_panel=allow_unbalanced_panel,
-                          control_group=control_group,
-                          anticipation=anticipation,
-                          weightsname=weightsname,
-                          alp=alp,
-                          bstrap=bstrap,
-                          cband=cband,
-                          biters=biters,
-                          clustervars=clustervars,
-                          est_method=est_method,
-                          base_period=base_period,
-                          print_details=print_details,
-                          pl=pl,
-                          cores=cores,
-                          call=match.call()
+    dp <- pre_process_did(
+      yname = yname,
+      tname = tname,
+      idname = idname,
+      gname = gname,
+      xformla = xformla,
+      data = data,
+      panel = panel,
+      allow_unbalanced_panel = allow_unbalanced_panel,
+      control_group = control_group,
+      anticipation = anticipation,
+      weightsname = weightsname,
+      alp = alp,
+      bstrap = bstrap,
+      cband = cband,
+      biters = biters,
+      clustervars = clustervars,
+      est_method = est_method,
+      base_period = base_period,
+      print_details = print_details,
+      pl = pl,
+      cores = cores,
+      call = match.call()
     )
 
     #-----------------------------------------------------------------------------
@@ -292,16 +292,16 @@ att_gt <- function(yname,
   # same with clustered standard errors
   # but it is always ignored b/c bstrap has to be true in that case
   n <- ifelse(faster_mode, dp$id_count, dp$n)
-  V <- Matrix::t(inffunc)%*%inffunc/(n)
-  se <- sqrt(Matrix::diag(V)/n)
+  V <- Matrix::t(inffunc) %*% inffunc / (n)
+  se <- sqrt(Matrix::diag(V) / n)
 
   # Zero standard error replaced by NA
-  se[se <= sqrt(.Machine$double.eps)*10] <- NA
+  se[se <= sqrt(.Machine$double.eps) * 10] <- NA
 
   # if clustering along another dimension...we require using the
   # bootstrap (in principle, could come up with an analytical standard
   # errors here though)
-  if ( (length(clustervars) > 0) & !bstrap) {
+  if ((length(clustervars) > 0) & !bstrap) {
     warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
   }
 
@@ -310,18 +310,17 @@ att_gt <- function(yname,
 
   # bootstrap variance matrix
   if (bstrap) {
-
-    bout <- mboot(inffunc, DIDparams=dp, pl=pl, cores=cores)
+    bout <- mboot(inffunc, DIDparams = dp, pl = pl, cores = cores)
     bres <- bout$bres
 
-    if(length(zero_na_sd_entry)>0) {
+    if (length(zero_na_sd_entry) > 0) {
       se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
     } else {
       se <- bout$se
     }
   }
   # Zero standard error replaced by NA
-  se[se <= sqrt(.Machine$double.eps)*10] <- NA
+  se[se <= sqrt(.Machine$double.eps) * 10] <- NA
 
 
   #-----------------------------------------------------------------------------
@@ -332,21 +331,21 @@ att_gt <- function(yname,
   pre <- which(group > tt)
 
   # Drop group-periods that have variance equal to zero (singularity problems)
-  if(length(zero_na_sd_entry)>0){
+  if (length(zero_na_sd_entry) > 0) {
     pre <- pre[!(pre %in% zero_na_sd_entry)]
   }
   # pseudo-atts in pre-treatment periods
   preatt <- as.matrix(att[pre])
 
   # covariance matrix of pre-treatment atts
-  preV <- as.matrix(V[pre,pre])
+  preV <- as.matrix(V[pre, pre])
 
   # check if there are actually any pre-treatment periods
   if (length(preV) == 0) {
     message("No pre-treatment periods to test")
-    W  <- NULL
+    W <- NULL
     Wpval <- NULL
-  } else if(sum(is.na(preV))) {
+  } else if (sum(is.na(preV))) {
     warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
     W <- NULL
     Wpval <- NULL
@@ -357,9 +356,9 @@ att_gt <- function(yname,
     Wpval <- NULL
   } else {
     # everything is working...
-    W <- n*t(preatt)%*%solve(preV)%*%preatt
+    W <- n * t(preatt) %*% solve(preV) %*% preatt
     q <- length(pre) # number of restrictions
-    Wpval <- round(1-pchisq(W,q),5)
+    Wpval <- round(1 - pchisq(W, q), 5)
   }
 
 
@@ -368,25 +367,29 @@ att_gt <- function(yname,
   #-----------------------------------------------------------------------------
 
   # critical value from N(0,1), for pointwise
-  cval <- qnorm(1-alp/2)
+  cval <- qnorm(1 - alp / 2)
 
   # in order to get uniform confidence bands
   # HAVE to use the bootstrap
-  if (bstrap){
+  if (bstrap) {
     if (cband) {
       # for uniform confidence band
       # compute new critical value
       # see paper for details
-      bSigma <- apply(bres, 2,
-                      function(b) (quantile(b, .75, type=1, na.rm = T) -
-                                     quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+      bSigma <- apply(
+        bres, 2,
+        function(b) {
+          (quantile(b, .75, type = 1, na.rm = T) -
+            quantile(b, .25, type = 1, na.rm = T)) / (qnorm(.75) - qnorm(.25))
+        }
+      )
 
-      bSigma[bSigma <= sqrt(.Machine$double.eps)*10] <- NA
+      bSigma[bSigma <= sqrt(.Machine$double.eps) * 10] <- NA
 
       # sup-t confidence band
-      bT <- apply(bres, 1, function(b) max( abs(b/bSigma), na.rm = TRUE))
-      cval <- quantile(bT, 1-alp, type=1, na.rm = T)
-      if(cval >= 7){
+      bT <- apply(bres, 1, function(b) max(abs(b / bSigma), na.rm = TRUE))
+      cval <- quantile(bT, 1 - alp, type = 1, na.rm = T)
+      if (cval >= 7) {
         warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
       }
     }
@@ -394,6 +397,5 @@ att_gt <- function(yname,
 
 
   # Return this list
-  return(MP(group=group, t=tt, att=att, V_analytical=V, se=se, c=cval, inffunc=inffunc, n=n, W=W, Wpval=Wpval, alp = alp, DIDparams=dp))
-
+  return(MP(group = group, t = tt, att = att, V_analytical = V, se = se, c = cval, inffunc = inffunc, n = n, W = W, Wpval = Wpval, alp = alp, DIDparams = dp))
 }
