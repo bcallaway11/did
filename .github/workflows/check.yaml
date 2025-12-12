@@ -2,10 +2,10 @@ name: R-CMD-check
 
 on:
   push:
-    branches: [main, master]  # Triggers on push to main or master
+    branches: [main, master]
   pull_request:
-    branches: [main, master]  # Triggers on pull requests to main or master
-  workflow_dispatch:          # Allows manual triggering
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   R-CMD-check:
@@ -28,26 +28,31 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up Pandoc
-      uses: r-lib/actions/setup-pandoc@v2
+    - uses: r-lib/actions/setup-pandoc@v2
 
-    - name: Set up R
-      uses: r-lib/actions/setup-r@v2
+    - uses: r-lib/actions/setup-r@v2
       with:
         r-version: ${{ matrix.config.r }}
         http-user-agent: ${{ matrix.config.http-user-agent }}
         use-public-rspm: true
 
-    - name: Install system dependencies
-      uses: r-lib/actions/setup-r-dependencies@v2
+    - name: Install qpdf (macOS)
+      if: runner.os == 'macOS'
+      run: brew install qpdf
+
+    - name: Install qpdf (Ubuntu)
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y qpdf
+
+    - uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: any::rcmdcheck
         needs: check
+        cache-version: 2
 
-    - name: Run R CMD check
-      uses: r-lib/actions/check-r-package@v2
+    - uses: r-lib/actions/check-r-package@v2
       with:
         upload-snapshots: true
+        build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
