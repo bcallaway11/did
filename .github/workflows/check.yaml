@@ -46,6 +46,10 @@ jobs:
       if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install -y qpdf
 
+    - name: Remove lockfile
+      run: rm -f .github/pkg.lock
+      shell: bash
+
     - uses: r-lib/actions/setup-r-dependencies@v2
       with:
         extra-packages: any::rcmdcheck

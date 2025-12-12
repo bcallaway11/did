@@ -1,8 +1,9 @@
 ## Test environments
 
-* local Ubuntu 20.04, R 4.2.1
-* win-builder (devel and release)
-* R-hub (Windows Server, Ubuntu Linux, Fedora Linux)
+* local Ubuntu 24.04, R 4.4.1
+* GitHub Actions (macOS-latest): R release
+* GitHub Actions (windows-latest): R release
+* GitHub Actions (ubuntu-latest): R devel, R release, R oldrel-1
 
 ## R CMD check results
 
@@ -17,4 +18,4 @@ We checked 1 reverse dependencies (0 from CRAN + 1 from Bioconductor), comparing
 
 ## Additional Comments
 
-Package was removed from CRAN due to being dependent on BMisc package which was archived.  BMisc is back on CRAN now, and this is the re-submission of the did package.  It also contains a few minor bug fixes.
+None.
