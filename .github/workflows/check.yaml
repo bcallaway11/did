@@ -29,7 +29,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Pandoc
       uses: r-lib/actions/setup-pandoc@v2
@@ -41,28 +41,13 @@ jobs:
         http-user-agent: ${{ matrix.config.http-user-agent }}
         use-public-rspm: true
 
-    - name: Install system dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: sudo apt-get install -y libharfbuzz-dev libfribidi-dev libfreetype6-dev libcurl4-openssl-dev
-
-    - name: Cache R packages
-      uses: actions/cache@v3
+    - name: Install system dependencies
+      uses: r-lib/actions/setup-r-dependencies@v2
       with:
-        path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-r-${{ matrix.config.r }}-${{ hashFiles('**/DESCRIPTION') }}
-        restore-keys: |
-          ${{ runner.os }}-r-${{ matrix.config.r }}-
-          ${{ runner.os }}-r-
-
-    - name: Install R package dependencies (Windows)
-      if: runner.os == 'Windows'
-      shell: cmd
-      run: |
-        R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
-
-    - name: Install R package dependencies (Unix)
-      if: runner.os != 'Windows'
-      run: R -e "install.packages('devtools'); devtools::install_deps(dependencies = TRUE)"
+        extra-packages: any::rcmdcheck
+        needs: check
 
     - name: Run R CMD check
       uses: r-lib/actions/check-r-package@v2
+      with:
+        upload-snapshots: true
