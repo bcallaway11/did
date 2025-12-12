@@ -16,17 +16,17 @@ checks](https://badges.cranchecks.info/summary/did.svg)](https://cran.r-project.
 The **did** package contains tools for computing average treatment
 effect parameters in a Difference-in-Differences setup allowing for
 
-  - More than two time periods
+- More than two time periods
 
-  - Variation in treatment timing (i.e., units can become treated at
-    different points in time)
+- Variation in treatment timing (i.e., units can become treated at
+  different points in time)
 
-  - Treatment effect heterogeneity (i.e, the effect of participating in
-    the treatment can vary across units and exhibit potentially complex
-    dynamics, selection into treatment, or time effects)
+- Treatment effect heterogeneity (i.e, the effect of participating in
+  the treatment can vary across units and exhibit potentially complex
+  dynamics, selection into treatment, or time effects)
 
-  - The parallel trends assumption holds only after conditioning on
-    covariates
+- The parallel trends assumption holds only after conditioning on
+  covariates
 
 The main parameters are **group-time average treatment effects**. These
 are the average treatment effect for a particular group (group is
@@ -44,16 +44,16 @@ treatment effects or event-study-type estimands.
 There has been some recent work on DiD with multiple time periods. The
 **did** package implements the framework put forward in
 
-  - [Callaway, Brantly and Pedro H.C. Sant’Anna.
-    "Difference-in-Differences with Multiple Time Periods." Journal of
-    Econometrics, Vol. 225, No. 2,
-    pp. 200-230, 2021.](https://doi.org/10.1016/j.jeconom.2020.12.001)
-    or [arXiv](https://arxiv.org/abs/1803.09015)
+- [Callaway, Brantly and Pedro H.C. Sant’Anna.
+  "Difference-in-Differences with Multiple Time Periods." Journal of
+  Econometrics, Vol. 225, No. 2, pp. 200-230,
+  2021.](https://doi.org/10.1016/j.jeconom.2020.12.001) or
+  [arXiv](https://arxiv.org/abs/1803.09015)
 
 **Higher level discussions of issues are available in**
 
-  - [Our approach to DiD with multiple time
-    periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
+- [Our approach to DiD with multiple time
+  periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
 
 ## Installation
 
@@ -77,8 +77,8 @@ their minimum wages on county-level teen employment rates which comes
 from [Callaway and Sant’Anna
 (2021)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
 
-  - [More detailed examples are also
-    available](https://bcallaway11.github.io/did/articles/did-basics.html)
+- [More detailed examples are also
+  available](https://bcallaway11.github.io/did/articles/did-basics.html)
 
 A subset of the data is available in the package and can be loaded by
 
@@ -92,19 +92,19 @@ rates from 2003-2007. Some states are first treated in 2004, some in
 2006, and some in 2007 (see the paper for more details). The important
 variables in the dataset are
 
-  - **lemp** This is the log of county-level teen employment. It is the
-    outcome variable
+- **lemp** This is the log of county-level teen employment. It is the
+  outcome variable
 
-  - **first.treat** This is the period when a state first increases its
-    minimum wage. It can be 2004, 2006, or 2007. It is the variable that
-    defines *group* in this application
+- **first.treat** This is the period when a state first increases its
+  minimum wage. It can be 2004, 2006, or 2007. It is the variable that
+  defines *group* in this application
 
-  - **year** This is the year and is the *time* variable
+- **year** This is the year and is the *time* variable
 
-  - **countyreal** This is an id number for each county and provides the
-    individual identifier in this panel data context
+- **countyreal** This is an id number for each county and provides the
+  individual identifier in this panel data context
 
-To estimate group-time average treatment effects, use the **att\_gt**
+To estimate group-time average treatment effects, use the **att_gt**
 function
 
 ``` r
@@ -119,10 +119,10 @@ out <- att_gt(
 )
 ```
 
-**att\_gt** returns a class **MP** object. This has a lot of
-information, but most importantly is has estimates of the group-time
-average treatment effects and their standard errors. To see these, we
-can call the **summary** function
+**att_gt** returns a class **MP** object. This has a lot of information,
+but most importantly is has estimates of the group-time average
+treatment effects and their standard errors. To see these, we can call
+the **summary** function
 
 ``` r
 summary(out)
@@ -135,18 +135,18 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0240       -0.0757      0.0547  
-#>   2004 2005  -0.0704     0.0337       -0.1621      0.0212  
-#>   2004 2006  -0.1373     0.0395       -0.2446     -0.0299 *
-#>   2004 2007  -0.1008     0.0365       -0.1999     -0.0018 *
-#>   2006 2004   0.0065     0.0225       -0.0546      0.0676  
-#>   2006 2005  -0.0028     0.0194       -0.0554      0.0499  
-#>   2006 2006  -0.0046     0.0176       -0.0524      0.0432  
-#>   2006 2007  -0.0412     0.0202       -0.0962      0.0137  
-#>   2007 2004   0.0305     0.0152       -0.0108      0.0718  
-#>   2007 2005  -0.0027     0.0162       -0.0466      0.0411  
-#>   2007 2006  -0.0311     0.0168       -0.0766      0.0145  
-#>   2007 2007  -0.0261     0.0165       -0.0708      0.0187  
+#>   2004 2004  -0.0105     0.0230       -0.0704      0.0493  
+#>   2004 2005  -0.0704     0.0336       -0.1577      0.0169  
+#>   2004 2006  -0.1373     0.0385       -0.2373     -0.0372 *
+#>   2004 2007  -0.1008     0.0336       -0.1880     -0.0136 *
+#>   2006 2004   0.0065     0.0247       -0.0577      0.0707  
+#>   2006 2005  -0.0028     0.0196       -0.0535      0.0480  
+#>   2006 2006  -0.0046     0.0178       -0.0509      0.0417  
+#>   2006 2007  -0.0412     0.0199       -0.0930      0.0106  
+#>   2007 2004   0.0305     0.0161       -0.0114      0.0724  
+#>   2007 2005  -0.0027     0.0161       -0.0446      0.0392  
+#>   2007 2006  -0.0311     0.0184       -0.0788      0.0166  
+#>   2007 2007  -0.0261     0.0170       -0.0702      0.0181  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -211,18 +211,18 @@ summary(es)
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.0772        0.0214    -0.1191     -0.0354 *
+#>  -0.0772         0.022    -0.1205      -0.034 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0155       -0.0099      0.0709  
-#>          -2  -0.0006     0.0128       -0.0341      0.0330  
-#>          -1  -0.0245     0.0141       -0.0611      0.0122  
-#>           0  -0.0199     0.0114       -0.0496      0.0097  
-#>           1  -0.0510     0.0171       -0.0957     -0.0062 *
-#>           2  -0.1373     0.0402       -0.2422     -0.0323 *
-#>           3  -0.1008     0.0351       -0.1923     -0.0093 *
+#>          -3   0.0305     0.0148       -0.0067      0.0677  
+#>          -2  -0.0006     0.0129       -0.0328      0.0317  
+#>          -1  -0.0245     0.0145       -0.0609      0.0120  
+#>           0  -0.0199     0.0111       -0.0477      0.0078  
+#>           1  -0.0510     0.0170       -0.0937     -0.0082 *
+#>           2  -0.1373     0.0403       -0.2384     -0.0361 *
+#>           3  -0.1008     0.0340       -0.1861     -0.0155 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -276,14 +276,14 @@ summary(group_effects)
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.031        0.0119    -0.0544     -0.0077 *
+#>  -0.031        0.0123    -0.0551     -0.0069 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0313       -0.1531     -0.0064 *
-#>   2006  -0.0229     0.0159       -0.0602      0.0144  
-#>   2007  -0.0261     0.0179       -0.0681      0.0160  
+#>   2004  -0.0797     0.0267       -0.1394     -0.0201 *
+#>   2006  -0.0229     0.0175       -0.0620      0.0162  
+#>   2007  -0.0261     0.0185       -0.0675      0.0154  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -300,14 +300,14 @@ estimate that increasing the minimum wage decreased teen employment by
 We have provided several more vignettes that may be helpful for using
 the **did** package
 
-  - [Getting Started with the did
-    Package](https://bcallaway11.github.io/did/articles/did-basics.html)
+- [Getting Started with the did
+  Package](https://bcallaway11.github.io/did/articles/did-basics.html)
 
-  - [Introduction to DiD with Multiple Time
-    Periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
+- [Introduction to DiD with Multiple Time
+  Periods](https://bcallaway11.github.io/did/articles/multi-period-did.html)
 
-  - [Pre-Testing in a DiD Setup using the did
-    Package](https://bcallaway11.github.io/did/articles/pre-testing.html)
+- [Pre-Testing in a DiD Setup using the did
+  Package](https://bcallaway11.github.io/did/articles/pre-testing.html)
 
-  - [Writing Extensions to the did
-    Package](https://bcallaway11.github.io/did/articles/extensions.html)
+- [Writing Extensions to the did
+  Package](https://bcallaway11.github.io/did/articles/extensions.html)
