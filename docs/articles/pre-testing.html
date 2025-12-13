@@ -4,84 +4,65 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Pre-Testing in a DiD Setup using the did Package • did</title>
-<!-- favicons --><link rel="icon" type="image/png" sizes="16x16" href="../favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="../favicon-32x32.png">
-<link rel="apple-touch-icon" type="image/png" sizes="180x180" href="../apple-touch-icon.png">
-<link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png">
-<link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png">
-<link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png">
-<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.4.0/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="../bootstrap-toc.css">
-<script src="../bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="../pkgdown.css" rel="stylesheet">
-<script src="../pkgdown.js"></script><meta property="og:title" content="Pre-Testing in a DiD Setup using the did Package">
-<!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
-<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
+<script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Pre-Testing in a DiD Setup using the did Package">
 </head>
-<body data-spy="scroll" data-target="#toc">
+<body>
+    <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <div class="container template-article">
-      <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
-  <div class="container">
-    <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-      </button>
-      <span class="navbar-brand">
-        <a class="navbar-link" href="../index.html">did</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">2.1.2</span>
-      </span>
-    </div>
+    <nav class="navbar navbar-expand-lg fixed-top bg-primary" data-bs-theme="dark" aria-label="Site navigation"><div class="container">
 
-    <div id="navbar" class="navbar-collapse collapse">
-      <ul class="nav navbar-nav">
-<li>
-  <a href="../articles/index.html">User Guides</a>
-</li>
-<li>
-  <a href="../reference/index.html">Functions</a>
-</li>
-<li>
-  <a href="../news/index.html">News</a>
-</li>
+    <a class="navbar-brand me-2" href="../index.html">did</a>
+
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.3.0</small>
+
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div id="navbar" class="collapse navbar-collapse ms-3">
+      <ul class="navbar-nav me-auto">
+<li class="active nav-item"><a class="nav-link" href="../articles/index.html">User Guides</a></li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Functions</a></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">News</a></li>
       </ul>
-<ul class="nav navbar-nav navbar-right">
-<li>
-  <a href="https://github.com/bcallaway11/did/" class="external-link">
-    <span class="fab fa-github fa-lg"></span>
-
-  </a>
-</li>
+<ul class="navbar-nav">
+<li class="nav-item"><form class="form-inline" role="search">
+ <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
+</form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/bcallaway11/did/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
-<!--/.nav-collapse -->
+
+
   </div>
-<!--/.container -->
-</div>
-<!--/.navbar -->
+</nav><div class="container template-article">
 
 
 
-      </header><script src="pre-testing_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
-  <div class="col-md-9 contents">
-    <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Pre-Testing in a DiD Setup using the did Package</h1>
-                        <h4 data-toc-skip class="author">Brantly Callaway and Pedro H.C. Sant'Anna</h4>
+
+<div class="row">
+  <main id="main" class="col-md-9"><div class="page-header">
+      <img src="../logo.png" class="logo" alt=""><h1>Pre-Testing in a DiD Setup using the did Package</h1>
+                        <h4 data-toc-skip class="author">Brantly
+Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 data-toc-skip class="date">2024-09-10</h4>
+            <h4 data-toc-skip class="date">2025-12-12</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/pre-testing.Rmd" class="external-link"><code>vignettes/pre-testing.Rmd</code></a></small>
-      <div class="hidden name"><code>pre-testing.Rmd</code></div>
-
+      <div class="d-none name"><code>pre-testing.Rmd</code></div>
     </div>
 
     
@@ -89,38 +70,91 @@
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
-<p>This vignette provides a discussion of how to conduct pre-tests in DiD setups using the <strong>did</strong> package</p>
+<p>This vignette provides a discussion of how to conduct pre-tests in
+DiD setups using the <strong>did</strong> package</p>
 <ul>
 <li>
-<p>One appealing feature of many DiD applications with multiple periods is that the researcher can pre-test the parallel trends assumptions.</p>
+<p>One appealing feature of many DiD applications with multiple
+periods is that the researcher can pre-test the parallel trends
+assumptions.</p>
 <ul>
-<li><p>The idea here is simple: although one can not always test whether parallel trends itself holds, one can check if it holds in periods before treated units actually become treated.</p></li>
-<li><p>Importantly, this is just a pre-test; it is different from an actual test. Whether or not the parallel trends assumption holds in pre-treatment periods does not actually tell you if it holds in the current period (and this is when you need it to hold!). It is certainly possible for the identifying assumptions to hold in previous periods but not hold in current periods; it is also possible for identifying assumptions to be violated in previous periods but for them to hold in current periods. That being said, we view the pre-test as a piece of evidence on the credibility of the DiD design in a particular application.</p></li>
+<li><p>The idea here is simple: although one can not always test whether
+parallel trends itself holds, one can check if it holds in periods
+before treated units actually become treated.</p></li>
+<li><p>Importantly, this is just a pre-test; it is different from an
+actual test. Whether or not the parallel trends assumption holds in
+pre-treatment periods does not actually tell you if it holds in the
+current period (and this is when you need it to hold!). It is certainly
+possible for the identifying assumptions to hold in previous periods but
+not hold in current periods; it is also possible for identifying
+assumptions to be violated in previous periods but for them to hold in
+current periods. That being said, we view the pre-test as a piece of
+evidence on the credibility of the DiD design in a particular
+application.</p></li>
 </ul>
 </li>
-<li><p>In this vignette, we demonstrate that the approach used in the <strong>did</strong> package for pre-testing may work substantially better than the more common “event study regression”.</p></li>
+<li><p>In this vignette, we demonstrate that the approach used in the
+<strong>did</strong> package for pre-testing may work substantially
+better than the more common “event study regression”.</p></li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="common-approaches-to-pre-testing-in-applications">Common Approaches to Pre-Testing in Applications<a class="anchor" aria-label="anchor" href="#common-approaches-to-pre-testing-in-applications"></a>
 </h2>
-<p>By far the most common approach to pre-testing in applications is to run an <strong>event-study regression</strong>. Here, the idea is to run a regression that includes leads and lags of the treatment dummy variable such as <math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><munderover><mo>∑</mo><mrow><mi>l</mi><mo>=</mo><mo>−</mo><mstyle mathvariant="script"><mi>𝒯</mi></mstyle></mrow><mrow><mstyle mathvariant="script"><mi>𝒯</mi></mstyle><mo>−</mo><mn>1</mn></mrow></munderover><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><msub><mi>μ</mi><mi>l</mi></msub><mo>+</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">
+<p>By far the most common approach to pre-testing in applications is to
+run an <strong>event-study regression</strong>. Here, the idea is to run
+a regression that includes leads and lags of the treatment dummy
+variable such as
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><munderover><mo>∑</mo><mrow><mi>l</mi><mo>=</mo><mo>−</mo><mi>𝒯</mi></mrow><mrow><mi>𝒯</mi><mo>−</mo><mn>1</mn></mrow></munderover><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><msub><mi>μ</mi><mi>l</mi></msub><mo>+</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">
   Y_{it} = \theta_t + \eta_i + \sum_{l=-\mathcal{T}}^{\mathcal{T}-1} D_{it}^l \mu_l + v_{it}
 </annotation></semantics></math></p>
-<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^l = 1</annotation></semantics></math> if individual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> has been exposed to the treatment for <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>l</mi><annotation encoding="application/x-tex">l</annotation></semantics></math> periods in period <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">D_{it}^l = 0</annotation></semantics></math> otherwise. To be clear here, it is helpful to give some examples. Suppose individual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> becomes treated in period 3. Then,</p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^l = 1</annotation></semantics></math>
+if individual
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+has been exposed to the treatment for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>l</mi><annotation encoding="application/x-tex">l</annotation></semantics></math>
+periods in period
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>,
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">D_{it}^l = 0</annotation></semantics></math>
+otherwise. To be clear here, it is helpful to give some examples.
+Suppose individual
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
+becomes treated in period 3. Then,</p>
 <ul>
-<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mn>0</mn></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^0 = 1</annotation></semantics></math> when <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">t=3</annotation></semantics></math> and is equal to 0 in other time periods</p></li>
-<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^2 = 1</annotation></semantics></math> when <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">t=5</annotation></semantics></math> and is equal to 0 in other time periods</p></li>
-<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mrow><mo>−</mo><mn>2</mn></mrow></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^{-2} = 1</annotation></semantics></math> when <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t=1</annotation></semantics></math> and is equal to 0 in other time periods.</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mn>0</mn></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^0 = 1</annotation></semantics></math>
+when
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">t=3</annotation></semantics></math>
+and is equal to 0 in other time periods</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mn>2</mn></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^2 = 1</annotation></semantics></math>
+when
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">t=5</annotation></semantics></math>
+and is equal to 0 in other time periods</p></li>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mrow><mo>−</mo><mn>2</mn></mrow></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^{-2} = 1</annotation></semantics></math>
+when
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t=1</annotation></semantics></math>
+and is equal to 0 in other time periods.</p></li>
 </ul>
-<p>And <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math> is interpreted as the effect of treatment for different lengths of exposure to the treatment. Typically, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msub><annotation encoding="application/x-tex">\mu_{-1}</annotation></semantics></math> is normalized to be equal to 0, and we follow that convention here. It is common to interpret estimated <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math>’s with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">l &lt; 0</annotation></semantics></math> as a way to pre-test the parallel trends assumption.</p>
+<p>And
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math>
+is interpreted as the effect of treatment for different lengths of
+exposure to the treatment. Typically,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msub><annotation encoding="application/x-tex">\mu_{-1}</annotation></semantics></math>
+is normalized to be equal to 0, and we follow that convention here. It
+is common to interpret estimated
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math>’s
+with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>l</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">l &lt; 0</annotation></semantics></math>
+as a way to pre-test the parallel trends assumption.</p>
 <div class="section level3">
 <h3 id="pitfalls-with-event-study-regressions">Pitfalls with Event Study Regressions<a class="anchor" aria-label="anchor" href="#pitfalls-with-event-study-regressions"></a>
 </h3>
 <div class="section level4">
 <h4 id="best-case-scenario-for-pre-testing">Best Case Scenario for Pre-Testing<a class="anchor" aria-label="anchor" href="#best-case-scenario-for-pre-testing"></a>
 </h4>
-<p>First, let’s start with a case where an event study regression is going to work well for pre-testing the parallel trends assumption</p>
+<p>First, let’s start with a case where an event study regression is
+going to work well for pre-testing the parallel trends assumption</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># generate dataset with 4 time periods</span></span>
 <span><span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
@@ -143,7 +177,8 @@
 <span><span class="co">#&gt; 8002  4 1.123550  2      2  7.038382     1</span></span></code></pre></div>
 <p>The main thing to notice here:</p>
 <ul>
-<li>The dynamics are common across all groups. This is the case where an event-study regression will work.</li>
+<li>The dynamics are common across all groups. This is the case where an
+event-study regression will work.</li>
 </ul>
 <p>Next, a bit more code</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
@@ -238,8 +273,12 @@
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" width="90%" style="display: block; margin: auto;"></p>
-<p>You will notice that everything looks good here. The pre-test performs well (the caveat to this is that the standard errors are “pointwise” and would be better to have uniform confidence bands though this does not seem to be standard practice in applications).</p>
-<p>We can compare this to what happens using the <code>did</code> package:</p>
+<p>You will notice that everything looks good here. The pre-test
+performs well (the caveat to this is that the standard errors are
+“pointwise” and would be better to have uniform confidence bands though
+this does not seem to be standard practice in applications).</p>
+<p>We can compare this to what happens using the <code>did</code>
+package:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># estimate group-group time average treatment effects</span></span>
 <span><span class="va">did_att_gt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
@@ -285,15 +324,35 @@
 <span><span class="co"># plot the event study</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_es</span><span class="op">)</span></span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-6-1.png" width="90%" style="display: block; margin: auto;"></p>
-<p>Overall, everything looks good using either approach. (Just to keep things fair, we report pointwise confidence intervals for group-time average treatment effects, but it is easy to get uniform confidence bands by setting the options <code>bstrap=TRUE, cband=TRUE</code> to the call to <code>att_gt</code>.)</p>
+<p>Overall, everything looks good using either approach. (Just to keep
+things fair, we report pointwise confidence intervals for group-time
+average treatment effects, but it is easy to get uniform confidence
+bands by setting the options <code>bstrap=TRUE, cband=TRUE</code> to the
+call to <code>att_gt</code>.)</p>
 </div>
 <div class="section level4">
 <h4 id="pitfall-selective-treatment-timing">Pitfall: Selective Treatment Timing<a class="anchor" aria-label="anchor" href="#pitfall-selective-treatment-timing"></a>
 </h4>
-<p>Sun and Abraham (2021) point out a major limitation of event study regressions: when there is <strong>selective treatment timing</strong> the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math> end up being weighted averages of treatment effects <em>across different lengths of exposures</em>.</p>
-<p><strong>Selective treatment timing</strong> means that individuals in different groups experience systematically different effects of participating in the treatment from individuals in other groups. For example, there would be selective treatment timing if individuals choose to be treated in earlier periods if they tend to experience larger benefits from participating in the treatment. This sort of selective treatment timing is likely to be present in many applications in economics / policy evaluation.</p>
-<p>Contrary to event study regressions, pre-tests based on group-time average treatment effects (or based on group-time average treatment effects that are aggregated into an event study plot) <strong>are still valid even in the presence of selective treatment timing</strong>.</p>
-<p>To see this in action, let’s keep the same example as before, but add selective treatment timing.</p>
+<p>Sun and Abraham (2021) point out a major limitation of event study
+regressions: when there is <strong>selective treatment timing</strong>
+the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math>
+end up being weighted averages of treatment effects <em>across different
+lengths of exposures</em>.</p>
+<p><strong>Selective treatment timing</strong> means that individuals in
+different groups experience systematically different effects of
+participating in the treatment from individuals in other groups. For
+example, there would be selective treatment timing if individuals choose
+to be treated in earlier periods if they tend to experience larger
+benefits from participating in the treatment. This sort of selective
+treatment timing is likely to be present in many applications in
+economics / policy evaluation.</p>
+<p>Contrary to event study regressions, pre-tests based on group-time
+average treatment effects (or based on group-time average treatment
+effects that are aggregated into an event study plot) <strong>are still
+valid even in the presence of selective treatment timing</strong>.</p>
+<p>To see this in action, let’s keep the same example as before, but add
+selective treatment timing.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># generate dataset with 4 time periods</span></span>
 <span><span class="va">time.periods</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
@@ -357,8 +416,13 @@
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-13-1.png" width="90%" style="display: block; margin: auto;"></p>
-<p>In contrast to the last case, it is clear that things have gone wrong here. <strong>Parallel trends holds in all time periods and for all groups here</strong>, but the event study regression incorrectly rejects that parallel trends holds – this is due to the selective treatment timing.</p>
-<p>We can compare this to what happens using the <code>did</code> package:</p>
+<p>In contrast to the last case, it is clear that things have gone wrong
+here. <strong>Parallel trends holds in all time periods and for all
+groups here</strong>, but the event study regression incorrectly rejects
+that parallel trends holds – this is due to the selective treatment
+timing.</p>
+<p>We can compare this to what happens using the <code>did</code>
+package:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># estimate group-group time average treatment effects</span></span>
 <span><span class="va">did.att.gt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
@@ -377,15 +441,15 @@
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Group-Time Average Treatment Effects:</span></span>
 <span><span class="co">#&gt;  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  </span></span>
-<span><span class="co">#&gt;      2    2   5.0030     0.0864        4.7790      5.2269 *</span></span>
-<span><span class="co">#&gt;      2    3   4.0634     0.1126        3.7717      4.3550 *</span></span>
-<span><span class="co">#&gt;      2    4   3.1105     0.1417        2.7434      3.4775 *</span></span>
-<span><span class="co">#&gt;      3    2  -0.0276     0.0494       -0.1557      0.1005  </span></span>
-<span><span class="co">#&gt;      3    3   3.9993     0.1125        3.7079      4.2906 *</span></span>
-<span><span class="co">#&gt;      3    4   2.9554     0.1403        2.5920      3.3188 *</span></span>
-<span><span class="co">#&gt;      4    2  -0.0420     0.0507       -0.1734      0.0893  </span></span>
-<span><span class="co">#&gt;      4    3   0.0016     0.0501       -0.1282      0.1313  </span></span>
-<span><span class="co">#&gt;      4    4   2.0335     0.1371        1.6783      2.3887 *</span></span>
+<span><span class="co">#&gt;      2    2   5.0030     0.0868        4.7636      5.2423 *</span></span>
+<span><span class="co">#&gt;      2    3   4.0634     0.1104        3.7590      4.3677 *</span></span>
+<span><span class="co">#&gt;      2    4   3.1105     0.1424        2.7180      3.5029 *</span></span>
+<span><span class="co">#&gt;      3    2  -0.0276     0.0497       -0.1646      0.1095  </span></span>
+<span><span class="co">#&gt;      3    3   3.9993     0.1069        3.7047      4.2939 *</span></span>
+<span><span class="co">#&gt;      3    4   2.9554     0.1323        2.5909      3.3200 *</span></span>
+<span><span class="co">#&gt;      4    2  -0.0420     0.0511       -0.1828      0.0987  </span></span>
+<span><span class="co">#&gt;      4    3   0.0016     0.0493       -0.1343      0.1374  </span></span>
+<span><span class="co">#&gt;      4    4   2.0335     0.1396        1.6487      2.4182 *</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; Signif. codes: `*' confidence band does not cover 0</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -403,16 +467,37 @@
 <span><span class="co"># plot the event study</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.es</span><span class="op">)</span></span></code></pre></div>
 <p><img src="pre-testing_files/figure-html/unnamed-chunk-15-1.png" width="90%" style="display: block; margin: auto;"></p>
-<p>This is the correct performance (up to aforementioned caveats about multiple hypothesis testing).</p>
+<p>This is the correct performance (up to aforementioned caveats about
+multiple hypothesis testing).</p>
 </div>
 </div>
 </div>
 <div class="section level2">
 <h2 id="conditional-moment-tests">Conditional Moment Tests<a class="anchor" aria-label="anchor" href="#conditional-moment-tests"></a>
 </h2>
-<p>Another main use case for the <code>did</code> package is when the parallel trends assumptions holds after conditioning on some covariates. This is likely to be important in many applications. For example, to evaluate the effect of participating in a job training program on earnings, it is likely to be important to condition on an individual’s education. This would be true if (i) the distribution of education is different for individuals that participate in job training relative to those that don’t (this is very likely to hold as people that participate in job training tend to have less education than those who do not), and (ii) if the path of earnings (absent participating in job training) depends on an individual’s education. See Heckman, Ichimura, and Todd (1998) and Abadie (2005) for more discussion.</p>
-<p>Even when one includes covariates to estimate group-time average treatment effects, pre-tests based only on group-time average treatment effects can fail to detect some violations of the parallel trends assumption. To give an example, suppose that the only covariate is binary variable for an individual’s sex. Pre-tests based on group-time average treatment effects could fail to detect violations of the conditional parallel trends assumption in cases where it is violated in one direction for men and in the other direction for women.</p>
-<p>The <code>did</code> package contains an additional pre-test for the conditional parallel trends assumption in the <code>conditional_did_pretest</code> function.</p>
+<p>Another main use case for the <code>did</code> package is when the
+parallel trends assumptions holds after conditioning on some covariates.
+This is likely to be important in many applications. For example, to
+evaluate the effect of participating in a job training program on
+earnings, it is likely to be important to condition on an individual’s
+education. This would be true if (i) the distribution of education is
+different for individuals that participate in job training relative to
+those that don’t (this is very likely to hold as people that participate
+in job training tend to have less education than those who do not), and
+(ii) if the path of earnings (absent participating in job training)
+depends on an individual’s education. See Heckman, Ichimura, and Todd
+(1998) and Abadie (2005) for more discussion.</p>
+<p>Even when one includes covariates to estimate group-time average
+treatment effects, pre-tests based only on group-time average treatment
+effects can fail to detect some violations of the parallel trends
+assumption. To give an example, suppose that the only covariate is
+binary variable for an individual’s sex. Pre-tests based on group-time
+average treatment effects could fail to detect violations of the
+conditional parallel trends assumption in cases where it is violated in
+one direction for men and in the other direction for women.</p>
+<p>The <code>did</code> package contains an additional pre-test for the
+conditional parallel trends assumption in the
+<code>conditional_did_pretest</code> function.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># not run (this code can be substantially slower)</span></span>
 <span><span class="fu"><a href="../reference/reset.sim.html">reset.sim</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -426,35 +511,39 @@
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
 <ul>
-<li><p><a href="https://doi.org/10.1111/0034-6527.00321" class="external-link">Abadie, Alberto. “Semiparametric difference-in-differences estimators.” The Review of Economic Studies 72.1 (2005): 1-19.</a></p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway, Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with multiple time periods.” Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021</a>.</p></li>
-<li><p><a href="https://doi.org/10.2307/2971733" class="external-link">Heckman, James J., Hidehiko Ichimura, and Petra Todd. “Matching as an econometric evaluation estimator.” The Review of Economic Studies 65.2 (1998): 261-294.</a></p></li>
-<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006" class="external-link">Sun, Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in event studies with heterogeneous treatment effects.” Journal of Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
+<li><p><a href="https://doi.org/10.1111/0034-6527.00321" class="external-link">Abadie,
+Alberto. “Semiparametric difference-in-differences estimators.” The
+Review of Economic Studies 72.1 (2005): 1-19.</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.12.001" class="external-link">Callaway,
+Brantly, and Pedro H. C. Sant’Anna. “Difference-in-differences with
+multiple time periods.” Journal of Econometrics, Vol. 225, No. 2,
+pp. 200-230, 2021</a>.</p></li>
+<li><p><a href="https://doi.org/10.2307/2971733" class="external-link">Heckman, James J.,
+Hidehiko Ichimura, and Petra Todd. “Matching as an econometric
+evaluation estimator.” The Review of Economic Studies 65.2 (1998):
+261-294.</a></p></li>
+<li><p><a href="https://doi.org/10.1016/j.jeconom.2020.09.006" class="external-link">Sun,
+Liyang, and Sarah Abraham. “Estimating dynamic treatment effects in
+event studies with heterogeneous treatment effects.” Journal of
+Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
 </ul>
 </div>
-  </div>
-
-  <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
-
-      </div>
-
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 
 
-      <footer><div class="copyright">
-  <p></p>
-<p>Developed by <a href="https://bcallaway11.github.io/" class="external-link">Brantly Callaway</a>, <a href="https://pedrohcgs.github.io/" class="external-link">Pedro H. C. Sant’Anna</a>.</p>
+    <footer><div class="pkgdown-footer-left">
+  <p>Developed by <a href="https://bcallaway11.github.io/" class="external-link">Brantly Callaway</a>, <a href="https://pedrohcgs.github.io/" class="external-link">Pedro H. C. Sant’Anna</a>.</p>
 </div>
 
-<div class="pkgdown">
-  <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+<div class="pkgdown-footer-right">
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.2.</p>
 </div>
 
-      </footer>
+    </footer>
 </div>
-
 
 
 

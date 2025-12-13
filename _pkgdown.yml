@@ -1,6 +1,6 @@
 template:
-  params:
-    bootswatch: flatly
+  bootstrap: 5
+  bootswatch: flatly
 
 authors:
   Brantly Callaway:
@@ -8,6 +8,8 @@ authors:
 
   Pedro H. C. Sant'Anna:
     href: https://pedrohcgs.github.io/
+
+url: https://bcallaway11.github.io/did/
 
 navbar:
   title: "did"
@@ -82,6 +84,7 @@ reference:
       - mboot
       - test.mboot
       - pre_process_did
+      - pre_process_did2
       - process_attgt
       - indicator
       - build_sim_dataset

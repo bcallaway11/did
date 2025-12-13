@@ -1,5 +1,5 @@
-pandoc: 2.9.2.1
-pkgdown: 2.1.0
+pandoc: 3.1.3
+pkgdown: 2.1.2
 pkgdown_sha: ~
 articles:
   did-basics: did-basics.html
@@ -7,4 +7,7 @@ articles:
   multi-period-did: multi-period-did.html
   pre-testing: pre-testing.html
   TWFE: TWFE.html
-last_built: 2024-09-11T02:45Z
+last_built: 2025-12-13T02:47Z
+urls:
+  reference: https://bcallaway11.github.io/did/reference
+  article: https://bcallaway11.github.io/did/articles
