@@ -16,7 +16,6 @@
 #'
 #' @export
 compute.att_gt <- function(dp) {
-
   #-----------------------------------------------------------------------------
   # unpack DIDparams
   #-----------------------------------------------------------------------------
@@ -34,7 +33,7 @@ compute.att_gt <- function(dp) {
   control_group <- dp$control_group
   anticipation <- dp$anticipation
   gname <- dp$gname
-  n  <- dp$n
+  n <- dp$n
   nT <- dp$nT
   nG <- dp$nG
   tlist <- dp$tlist
@@ -55,7 +54,7 @@ compute.att_gt <- function(dp) {
   tfac <- ifelse(base_period != "universal", 1, 0)
 
   # influence function
-  inffunc <- Matrix::Matrix(data = 0, nrow = n, ncol = nG*(nT-tfac), sparse = TRUE)
+  inffunc <- Matrix::Matrix(data = 0, nrow = n, ncol = nG * (nT - tfac), sparse = TRUE)
 
   # list of collect sparse matrix updates
   inffunc_updates <- list()
@@ -65,20 +64,18 @@ compute.att_gt <- function(dp) {
   # never treated option
   nevertreated <- (control_group[1] == "nevertreated")
 
-  if(nevertreated) {
+  if (nevertreated) {
     data[, .C := as.integer(get(gname) == 0)]
   }
   data[, .y := get(yname), .SDcols = yname]
 
   # loop over groups
   for (g in 1:nG) {
-
     # Set up .G once
     data[, .G := as.numeric(get(gname) == glist[[..g]]), .SDcols = gname]
 
     # loop over time periods
     for (t in 1:tlist.length) {
-
       #-----------------------------------------------------------------------------
       # Set pret
 
@@ -88,28 +85,27 @@ compute.att_gt <- function(dp) {
       # universal base period
       if (base_period == "universal") {
         # use same base period as for post-treatment periods
-        pret <- tail(which( (tlist+anticipation) < glist[g]),1)
+        pret <- tail(which((tlist + anticipation) < glist[g]), 1)
       }
 
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,
       # but not treated by the current period (+ anticipation)
-      if(!nevertreated) {
+      if (!nevertreated) {
         # Capture loop variable t before data.table evaluation to avoid scoping issues
         # (data.table expressions access columns by name, so 't' would refer to tname column)
         time_threshold <- tlist[max(t, pret) + tfac] + anticipation
         data[, .C := as.integer((get(gname) == 0) |
-                                  ((get(gname) > time_threshold) &
-                                     (get(gname) != glist[[..g]])))]
+          ((get(gname) > time_threshold) &
+            (get(gname) != glist[[..g]])))]
       }
 
 
       # check if in post-treatment period
-      if ((glist[g]<=tlist[(t+tfac)])) {
-
+      if ((glist[g] <= tlist[(t + tfac)])) {
         # update pre-period if in post-treatment period to
         # be  period (g-delta-1)
-        pret <- tail(which( (tlist+anticipation) < glist[g]),1)
+        pret <- tail(which((tlist + anticipation) < glist[g]), 1)
 
         # print a warning message if there are no pre-treatment period
         if (length(pret) == 0) {
@@ -126,13 +122,13 @@ compute.att_gt <- function(dp) {
       # if we are in period (g-1), normalize results to be equal to 0
       # and break without computing anything
       if (base_period == "universal") {
-        if (tlist[pret] == tlist[(t+tfac)]) {
-          attgt.list[[counter]] <- list(att=0, group=glist[g], year=tlist[(t+tfac)], post=0)
+        if (tlist[pret] == tlist[(t + tfac)]) {
+          attgt.list[[counter]] <- list(att = 0, group = glist[g], year = tlist[(t + tfac)], post = 0)
           # inffunc[,counter] <- rep(0,n)
           # counter <- counter+1
           inffunc_updates[[update_counter]] <- list(
-            indices = rep(TRUE, n),  # Apply to all units
-            values = as.matrix(rep(0, n))       # Zero influence function
+            indices = rep(TRUE, n), # Apply to all units
+            values = as.matrix(rep(0, n)) # Zero influence function
           )
 
           # Update the counters
@@ -144,7 +140,7 @@ compute.att_gt <- function(dp) {
 
       # print the details of which iteration we are on
       if (print_details) {
-        cat(paste("current period:", tlist[(t+tfac)]), "\n")
+        cat(paste("current period:", tlist[(t + tfac)]), "\n")
         cat(paste("current group:", glist[g]), "\n")
         cat(paste("set pretreatment period to be", tlist[pret]), "\n")
       }
@@ -154,11 +150,11 @@ compute.att_gt <- function(dp) {
       #-----------------------------------------------------------------------------
 
       # post treatment dummy variable
-      post.treat <- 1*(glist[g] <= tlist[t+tfac])
+      post.treat <- 1 * (glist[g] <= tlist[t + tfac])
 
       # total number of units (not just included in G or C)
       # disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
-      target_times <- c(tlist[t+tfac], tlist[pret])
+      target_times <- c(tlist[t + tfac], tlist[pret])
       disdat <- data[get(tname) %in% target_times]
 
 
@@ -171,7 +167,7 @@ compute.att_gt <- function(dp) {
         n <- nrow(disdat)
 
         # pick up the indices for units that will be used to compute ATT(g,t)
-        disidx <- disdat$.G==1 | disdat$.C==1
+        disidx <- disdat$.G == 1 | disdat$.C == 1
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- disdat[disidx]
@@ -189,12 +185,12 @@ compute.att_gt <- function(dp) {
         # we need to do this because panel2cs2 just puts later period
         # in .y1, but if we are in a pre-treatment period with a universal
         # base period, then the "base period" is actually the later period
-        Ypre <- if(tlist[(t+tfac)] > tlist[pret]) disdat$.y0 else disdat$.y1
-        Ypost <- if(tlist[(t+tfac)] > tlist[pret]) disdat$.y1 else disdat$.y0
+        Ypre <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y0 else disdat$.y1
+        Ypost <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y1 else disdat$.y0
         w <- disdat$.w
 
         # matrix of covariates
-        covariates <- model.matrix(xformla, data=disdat)
+        covariates <- model.matrix(xformla, data = disdat)
 
         #-----------------------------------------------------------------------------
         # more checks for enough observations in each group
@@ -208,32 +204,32 @@ compute.att_gt <- function(dp) {
 
           # checks for pscore based methods
           if (est_method %in% c("dr", "ipw")) {
-            #preliminary_logit <- glm(G ~ -1 + covariates, family=binomial(link=logit))
+            # preliminary_logit <- glm(G ~ -1 + covariates, family=binomial(link=logit))
             preliminary_logit <- parglm::parglm(G ~ -1 + covariates, family = "binomial")
-            preliminary_pscores <- predict(preliminary_logit, type="response")
+            preliminary_pscores <- predict(preliminary_logit, type = "response")
             if (max(preliminary_pscores) >= 0.999) {
               pscore_problems_likely <- TRUE
-              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t+tfac]))
+              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
             }
           }
 
           # check if can run regression using control units
           if (est_method %in% c("dr", "reg")) {
-            control_covs <- covariates[G==0,,drop=FALSE]
-            #if (determinant(t(control_covs)%*%control_covs, logarithm=FALSE)$modulus < .Machine$double.eps) {
-            if ( rcond(t(control_covs)%*%control_covs) < .Machine$double.eps) {
+            control_covs <- covariates[G == 0, , drop = FALSE]
+            # if (determinant(t(control_covs)%*%control_covs, logarithm=FALSE)$modulus < .Machine$double.eps) {
+            if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
               reg_problems_likely <- TRUE
-              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t+tfac], " to run specified regression"))
+              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
             }
           }
 
           if (reg_problems_likely | pscore_problems_likely) {
-            attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+tfac)], post=post.treat)
+            attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
             # inffunc[,counter] <- NA
             # counter <- counter+1
             inffunc_updates[[update_counter]] <- list(
-              indices = rep(TRUE, n),  # Apply to all units
-              values = as.matrix(rep(NA, n))      # NA influence function
+              indices = rep(TRUE, n), # Apply to all units
+              values = as.matrix(rep(NA, n)) # NA influence function
             )
 
             # Update the counters
@@ -247,37 +243,41 @@ compute.att_gt <- function(dp) {
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
-        if (inherits(est_method,"function")) {
+        if (inherits(est_method, "function")) {
           # user-specified function
-          attgt <- est_method(y1=Ypost, y0=Ypre,
-                              D=G,
-                              covariates=covariates,
-                              i.weights=w,
-                              inffunc=TRUE)
+          attgt <- est_method(
+            y1 = Ypost, y0 = Ypre,
+            D = G,
+            covariates = covariates,
+            i.weights = w,
+            inffunc = TRUE
+          )
         } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
-                                            covariates=covariates,
-                                            i.weights=w,
-                                            boot=FALSE, inffunc=TRUE)
+            covariates = covariates,
+            i.weights = w,
+            boot = FALSE, inffunc = TRUE
+          )
         } else if (est_method == "reg") {
           # regression
           attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
-                                        covariates=covariates,
-                                        i.weights=w,
-                                        boot=FALSE, inffunc=TRUE)
+            covariates = covariates,
+            i.weights = w,
+            boot = FALSE, inffunc = TRUE
+          )
         } else {
           # doubly robust, this is default
           attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
-                                      covariates=covariates,
-                                      i.weights=w,
-                                      boot=FALSE, inffunc=TRUE)
+            covariates = covariates,
+            i.weights = w,
+            boot = FALSE, inffunc = TRUE
+          )
         }
 
         # adjust influence function to account for only using
         # subgroup to estimate att(g,t)
-        attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
-
+        attgt$att.inf.func <- (n / n1) * attgt$att.inf.func
       } else { # repeated cross sections / unbalanced panel
 
         # pick up the indices for units that will be used to compute ATT(g,t)
@@ -285,15 +285,15 @@ compute.att_gt <- function(dp) {
         # (2) you are in the right group (it is possible to be observed in
         # the right period but still not be part of the treated or control
         # group in that period here
-        rightids <- disdat$.rowid[ disdat$.G==1 | disdat$.C==1]
+        rightids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
 
         # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
         # with true repeated cross sections, but should pick up the right time periods
         # only with unbalanced panel
-        disidx <- (data$.rowid %in% rightids) & ( (data[[tname]] == tlist[t+tfac]) | (data[[tname]]==tlist[pret]))
+        disidx <- (data$.rowid %in% rightids) & ((data[[tname]] == tlist[t + tfac]) | (data[[tname]] == tlist[pret]))
 
         # pick up the data that will be used to compute ATT(g,t)
-        disdat <- data[disidx,]
+        disdat <- data[disidx, ]
 
         # drop missing factors
         disdat <- droplevels(disdat)
@@ -302,38 +302,38 @@ compute.att_gt <- function(dp) {
         G <- disdat$.G
         C <- disdat$.C
         Y <- disdat[[yname]]
-        post <- 1*(disdat[[tname]] == tlist[t+tfac])
+        post <- 1 * (disdat[[tname]] == tlist[t + tfac])
         # num obs. for computing ATT(g,t), have to be careful here
-        n1 <- sum(G+C)
+        n1 <- sum(G + C)
         w <- disdat$.w
 
         #-----------------------------------------------------------------------------
         # checks to make sure that we have enough observations
         skip_this_att_gt <- FALSE
-        if ( sum(G*post) == 0 ) {
-          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t+tfac]))
+        if (sum(G * post) == 0) {
+          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t + tfac]))
           skip_this_att_gt <- TRUE
         }
-        if ( sum(G*(1-post)) == 0) {
+        if (sum(G * (1 - post)) == 0) {
           warning(paste0("No units in group ", glist[g], " in time period ", tlist[t]))
           skip_this_att_gt <- TRUE
         }
-        if (sum(C*post) == 0) {
-          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t+tfac]))
+        if (sum(C * post) == 0) {
+          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t + tfac]))
           skip_this_att_gt <- TRUE
         }
-        if (sum(C*(1-post)) == 0) {
+        if (sum(C * (1 - post)) == 0) {
           warning(paste0("No availabe control units for group ", glist[g], " in time period ", tlist[t]))
           skip_this_att_gt <- TRUE
         }
 
         if (skip_this_att_gt) {
-          attgt.list[[counter]] <- list(att=NA, group=glist[g], year=tlist[(t+tfac)], post=post.treat)
+          attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
           # inffunc[,counter] <- NA
           # counter <- counter+1
           inffunc_updates[[update_counter]] <- list(
-            indices = rep(TRUE, n),  # Apply to all units
-            values = as.matrix(rep(NA, n))      # NA influence function
+            indices = rep(TRUE, n), # Apply to all units
+            values = as.matrix(rep(NA, n)) # NA influence function
           )
 
           # Update the counters
@@ -344,7 +344,7 @@ compute.att_gt <- function(dp) {
 
 
         # matrix of covariates
-        covariates <- model.matrix(xformla, data=disdat)
+        covariates <- model.matrix(xformla, data = disdat)
 
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
@@ -352,59 +352,66 @@ compute.att_gt <- function(dp) {
 
         if (inherits(est_method, "function")) {
           # user-specified function
-          attgt <- est_method(y=Y,
-                              post=post,
-                              D=G,
-                              covariates=covariates,
-                              i.weights=w,
-                              inffunc=TRUE)
+          attgt <- est_method(
+            y = Y,
+            post = post,
+            D = G,
+            covariates = covariates,
+            i.weights = w,
+            inffunc = TRUE
+          )
         } else if (est_method == "ipw") {
           # inverse-probability weights
-          attgt <- DRDID::std_ipw_did_rc(y=Y,
-                                         post=post,
-                                         D=G,
-                                         covariates=covariates,
-                                         i.weights=w,
-                                         boot=FALSE, inffunc=TRUE)
+          attgt <- DRDID::std_ipw_did_rc(
+            y = Y,
+            post = post,
+            D = G,
+            covariates = covariates,
+            i.weights = w,
+            boot = FALSE, inffunc = TRUE
+          )
         } else if (est_method == "reg") {
           # regression
-          attgt <- DRDID::reg_did_rc(y=Y,
-                                     post=post,
-                                     D=G,
-                                     covariates=covariates,
-                                     i.weights=w,
-                                     boot=FALSE, inffunc=TRUE)
+          attgt <- DRDID::reg_did_rc(
+            y = Y,
+            post = post,
+            D = G,
+            covariates = covariates,
+            i.weights = w,
+            boot = FALSE, inffunc = TRUE
+          )
         } else {
           # doubly robust, this is default
-          attgt <- DRDID::drdid_rc(y=Y,
-                                   post=post,
-                                   D=G,
-                                   covariates=covariates,
-                                   i.weights=w,
-                                   boot=FALSE, inffunc=TRUE)
+          attgt <- DRDID::drdid_rc(
+            y = Y,
+            post = post,
+            D = G,
+            covariates = covariates,
+            i.weights = w,
+            boot = FALSE, inffunc = TRUE
+          )
         }
 
         # n/n1 adjusts for estimating the
         # att_gt only using observations from groups
         # G and C
-        attgt$att.inf.func <- (n/n1)*attgt$att.inf.func
+        attgt$att.inf.func <- (n / n1) * attgt$att.inf.func
 
         # If ATT is NaN, replace it with NA, and make Influence functions equal to zero
-        if(is.nan(attgt$ATT)){
+        if (is.nan(attgt$ATT)) {
           attgt$ATT <- NA
           attgt$att.inf.func <- 0 * attgt$att.inf.func
         }
-
-      } #end panel if
+      } # end panel if
 
       # save results for this att(g,t)
       attgt.list[[counter]] <- list(
-        att = attgt$ATT, group = glist[g], year = tlist[(t+tfac)], post = post.treat
+        att = attgt$ATT, group = glist[g], year = tlist[(t + tfac)], post = post.treat
       )
 
 
       # populate the influence function in the right places
-      if(panel) {
+      if (panel) {
         # inf.func[disidx] <- attgt$att.inf.func
         # Collect the indices and corresponding values for the update
         inffunc_updates[[update_counter]] <- list(
@@ -413,23 +420,23 @@ compute.att_gt <- function(dp) {
         )
       } else {
         # aggregate inf functions by id (order by id)
-        aggte_inffunc = suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
-        disidx <- (unique(data$.rowid) %in% aggte_inffunc[,1])
-        #inf.func[disidx] <- aggte_inffunc[,2]
+        aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
+        disidx <- (unique(data$.rowid) %in% aggte_inffunc[, 1])
+        # inf.func[disidx] <- aggte_inffunc[,2]
         inffunc_updates[[update_counter]] <- list(
           indices = disidx,
-          values = aggte_inffunc[,2]
+          values = aggte_inffunc[, 2]
         )
       }
 
 
       # save it in influence function matrix
       # inffunc[g,t,] <- inf.func
-      #inffunc[,counter] <- inf.func
+      # inffunc[,counter] <- inf.func
       update_counter <- update_counter + 1
 
       # update counter
-      counter <- counter+1
+      counter <- counter + 1
     } # end looping over t
   } # end looping over g
 
@@ -442,5 +449,5 @@ compute.att_gt <- function(dp) {
   inffunc[cbind(update_inffunc$row, update_inffunc$col)] <- update_inffunc$value
 
 
-  return(list(attgt.list=attgt.list, inffunc=inffunc))
+  return(list(attgt.list = attgt.list, inffunc = inffunc))
 }
