@@ -20,3 +20,4 @@ Icon?
 ^R/honest_did$
 ^CLAUDE\.md$
 ^\.lintr$
+^revdep_manual$

@@ -62,6 +62,19 @@
 #'  is NULL which is equivalent to `xformla=~1`.  This is
 #'  used to create a matrix of covariates which is then passed
 #'  to the 2x2 DID estimator chosen in `est_method`.
+#'
+#'  For time-varying covariates: (1) With balanced panel data,
+#'  in each 2x2 comparison, the covariates
+#'  are taken to be the value of the covariates in the earlier time
+#'  period, and all of the underlying computation involve change in Y
+#'  as a function of those values of covariates.  (2) With repeated cross
+#'  sections data and unbalanced panel data, the covariates are taken
+#'  from each time period and computations involve Y_post conditional
+#'  on X_post minus Y_pre conditional on X_pre.  A byproduct of this
+#'  is that, with balanced panel data and in the presence of
+#'  time-varying covariates, it is possible to get different numerical
+#'  results according to whether or not `allow_unbalanced_panel=TRUE` or
+#'  `FALSE`.
 #' @param panel Whether or not the data is a panel dataset.
 #'  The panel dataset should be provided in long format -- that
 #'  is, where each row corresponds to a unit observed at a
