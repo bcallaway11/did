@@ -806,12 +806,12 @@ As expected, the results look good, too
 
 Now, we want to consider a setup with heterogeneous treatment effect dynamics and with a "never-treated" group. This DGP is a modification of the one we have considered above, where now the "unit-specific" treatment effect at time $t$ is given by
 $$ \tau_{i,t} = \mu_g \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},$$
-where we set $\mu_{1986} = 3$, $\mu_{1992} = 2$ and $\mu_{1998} = 1$. This implies that for the group who started treatment in 1986, its average treatment effects evolves with elapsed time as $3,6, 9,\dots$. For the group that started treatment in 1992 (1998), its average treatment effect evolves with elapsed time as $2,4, 6,\dots$ ($1,2, 3,\dots$). Of course, treatment effect is zero for the "never-treated" cohort ($g=2004$, which later we will relabel to $g=\infty$). This is a DGP where "early-treated" units benefit more from the treatment than "later-treated" units.
+where we set $\mu_{1986} = 3$, $\mu_{1992} = 2$ and $\mu_{1998} = 1$. This implies that for the group who started treatment in 1986, its average treatment effects evolve with elapsed time as $3,6, 9,\dots$. For the group that started treatment in 1992 (1998), its average treatment effect evolves with elapsed time as $2,4, 6,\dots$ ($1,2, 3,\dots$). Of course, the treatment effect is zero for the "never-treated" cohort ($g=2004$, which later we will relabel to $g=\infty$). This is a DGP where "early-treated" units benefit more from the treatment than "later-treated" units.
 
-Given that each group has same size (on average), the true average treatment effect dynamic across treated groups is $(3+2+1)/3 = 2$ at the time a unit is treated, $2 \times (3+2+1)/3 = 4$ in the first period after treatment started, etc.
+Given that each group has the same size (on average), the true average treatment effect dynamic across treated groups is $(3+2+1)/3 = 2$ at the time a unit is treated, $2 \times (3+2+1)/3 = 4$ in the first period after treatment started, etc.
 
 ### Visualizing the DGP
-Like before, let's start the discussion by visualizing how this DGP looks like.
+Like before, let's start the discussion by visualizing what this DGP looks like.
 
 ```{r DGP_viz3, message = FALSE, warning = FALSE, cache = TRUE, cache.lazy = TRUE, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 
@@ -819,7 +819,7 @@ Like before, let's start the discussion by visualizing how this DGP looks like.
 make_data3 <- function(nobs = 1000, 
                       nstates = 40) {
   
-  # unit fixed effects (unobservd heterogeneity)
+  # unit fixed effects (unobserved heterogeneity)
   unit <- tibble(
     unit = 1:nobs,
     # generate state
@@ -907,9 +907,9 @@ plot3
 
 Like before, we start by estimating a TWFE event-study regression 
 $$Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}$$
-with $K$ and $L$ set to 5. That is, binning the end points.
+with $K$ and $L$ set to 5. That is, binning the endpoints.
 
-As you can see from the results below, the bias are still substantial. Given the results we have shown before, this should be not a surprise.
+As you can see from the results below, the biases are still substantial. Given the results we have shown before, this should not be a surprise.
 ```{r ES1_never_het, message = FALSE, warning = FALSE, cache = TRUE, cache.lazy = TRUE, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 # function to run ES DID
 # variables we will use
@@ -986,7 +986,7 @@ ES_plot_classical_never_het
 ```
 ![](es_plot_classical_never_het.png){ width=100% }
 
-Next, we consider the case where one include almost all leads and lags ($K=17$ and $L=24$) but omit the furthest lead $K=18$. 
+Next, we consider the case in which one includes almost all leads and lags ($K=17$ and $L=24$) but omits the furthest lead, $K=18$. 
 
 
 ```{r ES3_never_het, message = FALSE, warning = FALSE, cache = TRUE, cache.lazy = TRUE, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
@@ -1141,7 +1141,7 @@ ES_plot_CS_never_het
 As expected, the results look good!
 
  
-Now, let's consider the "not-yet-treated" units as comparison group.
+Now, let's consider the "not-yet-treated" units as a comparison group.
 
 ```{r CS_ny_het, message = FALSE, warning = FALSE, cache = TRUE, cache.lazy = TRUE, fig.width=8,fig.height=5, fig.align='center', out.width="90%", dpi = 200}
 
@@ -1208,11 +1208,11 @@ As expected, the results look good, too!
 
 ## Conclusion
 
-In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant'Anna (2021) and implement in our **did** package does not suffer from these drawbacks. 
+In this vignette, we have shown that relying on TWFE event-study regressions can lead to very misleading conclusions about treatment effect dynamics. On the other hand, the approach put forward by Callaway and Sant'Anna (2021) and implemented in our **did** package does not suffer from these drawbacks. 
 
 ## References
 
-* [Borusyak, Kirill, Jaravel, Xavier and Spiess, Jann. "Revisiting Event Study Designs: Robust and Efficient Estimation".](https://arxiv.org/abs/2108.12419v5)
+* [Borusyak, Kirill, Jaravel, Xavier and Spiess, Jann. "Revisiting Event Study Designs: Robust and Efficient Estimation". The Review of Economic Studies, Vol. 91, No 6, pp. 3253–3285](https://doi.org/10.1093/restud/rdae007)
 
 * [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
