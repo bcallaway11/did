@@ -130,7 +130,7 @@ did_standarization <- function(data, args){
 
   # Ensure gname column is numeric (double) so it can hold Inf
   if (is.integer(data[[args$gname]])) {
-    data[, (args$gname) := as.double(get(args$gname))]
+    data[, (args$gname) := as.numeric(get(args$gname))]
   }
 
   # Coerce control group identified with zero as Inf
