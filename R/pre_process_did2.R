@@ -128,6 +128,11 @@ did_standarization <- function(data, args){
   # get a list of dates from min to max
   tlist <- data[, sort(unique(get(args$tname)))]
 
+  # Ensure gname column is numeric (double) so it can hold Inf
+  if (is.integer(data[[args$gname]])) {
+    data[, (args$gname) := as.numeric(get(args$gname))]
+  }
+
   # Coerce control group identified with zero as Inf
   data[get(args$gname) == 0, (args$gname) := Inf]
 
