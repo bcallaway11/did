@@ -22,7 +22,10 @@ tidy.MP <- function(x, ...) {
     conf.low  = x$att - x$c * x$se,
     conf.high = x$att + x$c * x$se,
     point.conf.low  = x$att - stats::qnorm(1 - x$alp/2) * x$se,
-    point.conf.high = x$att + stats::qnorm(1 - x$alp/2) * x$se)
+    point.conf.high = x$att + stats::qnorm(1 - x$alp/2) * x$se,
+    statistic = x$att / x$se,
+    p.value   = 2 * (1 - stats::pnorm(abs(x$att / x$se)))
+    )
   out
 }
 
@@ -35,8 +38,8 @@ tidy.MP <- function(x, ...) {
 glance.MP <- function(x, ...) {
   out <- data.frame(
     nobs          = x$n,
-    ngroup        = x$DIDparams$nG,
-    ntime         = x$DIDparams$nT,
+    #ngroup        = x$DIDparams$nG,
+    #ntime         = x$DIDparams$nT,
     control.group = x$DIDparams$control_group,
     est.method    = x$DIDparams$est_method)
   out
