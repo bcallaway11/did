@@ -250,41 +250,58 @@ compute.att_gt <- function(dp) {
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
-        if (inherits(est_method, "function")) {
-          # user-specified function
-          attgt <- do.call(est_method, c(list(
-            y1 = Ypost, y0 = Ypre,
-            D = G,
-            covariates = covariates,
-            i.weights = w,
-            inffunc = TRUE
-          ), extra_args))
-        } else if (est_method == "ipw") {
-          # inverse-probability weights
-          attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
-            covariates = covariates,
-            i.weights = w,
-            boot = FALSE, inffunc = TRUE
-          )
-        } else if (est_method == "reg") {
-          # regression
-          attgt <- DRDID::reg_did_panel(Ypost, Ypre, G,
-            covariates = covariates,
-            i.weights = w,
-            boot = FALSE, inffunc = TRUE
-          )
-        } else {
-          # doubly robust, this is default
-          attgt <- DRDID::drdid_panel(Ypost, Ypre, G,
-            covariates = covariates,
-            i.weights = w,
-            boot = FALSE, inffunc = TRUE
-          )
-        }
+        attgt <- tryCatch({
+          if (inherits(est_method, "function")) {
+            # user-specified function
+            res <- do.call(est_method, c(list(
+              y1 = Ypost, y0 = Ypre,
+              D = G,
+              covariates = covariates,
+              i.weights = w,
+              inffunc = TRUE
+            ), extra_args))
+          } else if (est_method == "ipw") {
+            # inverse-probability weights
+            res <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
+              covariates = covariates,
+              i.weights = w,
+              boot = FALSE, inffunc = TRUE
+            )
+          } else if (est_method == "reg") {
+            # regression
+            res <- DRDID::reg_did_panel(Ypost, Ypre, G,
+              covariates = covariates,
+              i.weights = w,
+              boot = FALSE, inffunc = TRUE
+            )
+          } else {
+            # doubly robust, this is default
+            res <- DRDID::drdid_panel(Ypost, Ypre, G,
+              covariates = covariates,
+              i.weights = w,
+              boot = FALSE, inffunc = TRUE
+            )
+          }
 
-        # adjust influence function to account for only using
-        # subgroup to estimate att(g,t)
-        attgt$att.inf.func <- (n / n1) * attgt$att.inf.func
+          # adjust influence function to account for only using
+          # subgroup to estimate att(g,t)
+          res$att.inf.func <- (n / n1) * res$att.inf.func
+          res
+        }, error = function(e) {
+          warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
+          NULL
+        })
+
+        if (is.null(attgt)) {
+          attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
+          inffunc_updates[[update_counter]] <- list(
+            indices = seq_len(n),
+            values = rep(NA_real_, n)
+          )
+          update_counter <- update_counter + 1
+          counter <- counter + 1
+          next
+        }
       } else { # repeated cross sections / unbalanced panel
 
         # pick up the indices for units that will be used to compute ATT(g,t)
@@ -357,57 +374,74 @@ compute.att_gt <- function(dp) {
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
-        if (inherits(est_method, "function")) {
-          # user-specified function
-          attgt <- do.call(est_method, c(list(
-            y = Y,
-            post = post,
-            D = G,
-            covariates = covariates,
-            i.weights = w,
-            inffunc = TRUE
-          ), extra_args))
-        } else if (est_method == "ipw") {
-          # inverse-probability weights
-          attgt <- DRDID::std_ipw_did_rc(
-            y = Y,
-            post = post,
-            D = G,
-            covariates = covariates,
-            i.weights = w,
-            boot = FALSE, inffunc = TRUE
-          )
-        } else if (est_method == "reg") {
-          # regression
-          attgt <- DRDID::reg_did_rc(
-            y = Y,
-            post = post,
-            D = G,
-            covariates = covariates,
-            i.weights = w,
-            boot = FALSE, inffunc = TRUE
-          )
-        } else {
-          # doubly robust, this is default
-          attgt <- DRDID::drdid_rc(
-            y = Y,
-            post = post,
-            D = G,
-            covariates = covariates,
-            i.weights = w,
-            boot = FALSE, inffunc = TRUE
-          )
-        }
+        attgt <- tryCatch({
+          if (inherits(est_method, "function")) {
+            # user-specified function
+            res <- do.call(est_method, c(list(
+              y = Y,
+              post = post,
+              D = G,
+              covariates = covariates,
+              i.weights = w,
+              inffunc = TRUE
+            ), extra_args))
+          } else if (est_method == "ipw") {
+            # inverse-probability weights
+            res <- DRDID::std_ipw_did_rc(
+              y = Y,
+              post = post,
+              D = G,
+              covariates = covariates,
+              i.weights = w,
+              boot = FALSE, inffunc = TRUE
+            )
+          } else if (est_method == "reg") {
+            # regression
+            res <- DRDID::reg_did_rc(
+              y = Y,
+              post = post,
+              D = G,
+              covariates = covariates,
+              i.weights = w,
+              boot = FALSE, inffunc = TRUE
+            )
+          } else {
+            # doubly robust, this is default
+            res <- DRDID::drdid_rc(
+              y = Y,
+              post = post,
+              D = G,
+              covariates = covariates,
+              i.weights = w,
+              boot = FALSE, inffunc = TRUE
+            )
+          }
 
-        # n/n1 adjusts for estimating the
-        # att_gt only using observations from groups
-        # G and C
-        attgt$att.inf.func <- (n / n1) * attgt$att.inf.func
+          # n/n1 adjusts for estimating the
+          # att_gt only using observations from groups
+          # G and C
+          res$att.inf.func <- (n / n1) * res$att.inf.func
 
-        # If ATT is NaN, replace it with NA, and make Influence functions equal to zero
-        if (is.nan(attgt$ATT)) {
-          attgt$ATT <- NA
-          attgt$att.inf.func <- 0 * attgt$att.inf.func
+          # If ATT is NaN, replace it with NA, and make Influence functions equal to zero
+          if (is.nan(res$ATT)) {
+            res$ATT <- NA
+            res$att.inf.func <- 0 * res$att.inf.func
+          }
+          res
+        }, error = function(e) {
+          warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
+          NULL
+        })
+
+        if (is.null(attgt)) {
+          attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
+          inffunc_updates[[update_counter]] <- list(
+            indices = seq_len(n),
+            values = rep(NA_real_, n)
+          )
+          update_counter <- update_counter + 1
+          counter <- counter + 1
+          next
         }
       } # end panel if
 
