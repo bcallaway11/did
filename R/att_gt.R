@@ -229,7 +229,7 @@ att_gt <- function(yname,
   }
 
   # Warn users about anticipation and never-treated units
-  if (anticipation > 0) {
+  if (anticipation > 0 && print_details) {
     message("Note: anticipation = ", anticipation, ". Never-treated units (with group status 0 or Inf) ",
             "are assumed to never anticipate treatment. Anticipation only applies to eventually-treated units.")
   }

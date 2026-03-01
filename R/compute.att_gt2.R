@@ -328,7 +328,7 @@ run_att_gt_estimation <- function(g, t, dp2){
   # run estimation
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
                          error = function(e) {
-                           warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t], "): ", e$message, ". The ATT for this cell will be set to NA.")
+                           warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
                            return(NULL)
                          })
   return(did_result)
