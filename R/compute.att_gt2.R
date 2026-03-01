@@ -38,6 +38,10 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 
     # treated group boundaries
     treat_idx <- match(dp2$treated_groups[group], cohort_vec)
+    if (is.na(treat_idx)) {
+      stop("Internal error: treated group ", dp2$treated_groups[group],
+           " not found in cohort_vec. Please report this issue.")
+    }
     start_treat <- if (treat_idx == 1L) 1L else cum_sizes[treat_idx - 1L] + 1L
     end_treat <- cum_sizes[treat_idx]
 
