@@ -547,11 +547,11 @@ test_that("small comparison group", {
   #-----------------------------------------------------------------------------
 
   # dr
-  expect_error(expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-                                               gname="G", est_method="dr", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
+  expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                               gname="G", est_method="dr", faster_mode = TRUE), "very few observations")
   # reg
-  expect_error(expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-                                                gname="G", est_method="reg", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
+  expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                                                gname="G", est_method="reg", faster_mode = TRUE), "very few observations")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
                                    gname="G", est_method="ipw", faster_mode = TRUE), "very few observations")

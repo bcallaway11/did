@@ -426,6 +426,11 @@ compute.att_gt2 <- function(dp2) {
   # Filter out NULL results
   gt_results <- Filter(Negate(is.null), gt_results)
 
+  if (length(gt_results) == 0L) {
+    stop("No valid (g, t) cells found for att_gt() estimation. ",
+         "Check treatment timing, control group definition, and anticipation settings.")
+  }
+
   # Post processing: Build sparse influence function matrix directly from triplets
   n_rows <- length(gt_results[[1]]$inffunc_updates)
   n_cols <- length(gt_results)

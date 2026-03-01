@@ -10,9 +10,6 @@ validate_args <- function(args, data){
   data_names <- names(data)
 
   # ---------------------- Error Checking ----------------------
-  if (length(args$control_group) > 1) {
-    warning("control_group should be a single string, not a vector. Using '", args$control_group[1], "'.")
-  }
   args$control_group <- args$control_group[1]
   # Flag for control group types
   control_group_message <- "control_group must be either 'nevertreated' or 'notyettreated'"

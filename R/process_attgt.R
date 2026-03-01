@@ -9,13 +9,6 @@
 #'
 #' @export
 process_attgt <- function(attgt.list) {
-  nG <- length(unique(vapply(attgt.list, `[[`, numeric(1), "group")))
-  nT <- length(unique(vapply(attgt.list, `[[`, numeric(1), "year")))
-
-  if (length(attgt.list) != nG * nT) {
-    stop("Number of results does not match expected group-time combinations")
-  }
-
   group <- vapply(attgt.list, `[[`, numeric(1), "group")
   att   <- vapply(attgt.list, `[[`, numeric(1), "att")
   tt    <- vapply(attgt.list, `[[`, numeric(1), "year")
