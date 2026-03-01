@@ -9,9 +9,9 @@
 #'
 #' @export
 process_attgt <- function(attgt.list) {
-  group <- vapply(attgt.list, `[[`, numeric(1), "group")
-  att   <- vapply(attgt.list, `[[`, numeric(1), "att")
-  tt    <- vapply(attgt.list, `[[`, numeric(1), "year")
+  group <- vapply(attgt.list, function(x) as.numeric(x[["group"]]), numeric(1))
+  att   <- vapply(attgt.list, function(x) as.numeric(x[["att"]]), numeric(1))
+  tt    <- vapply(attgt.list, function(x) as.numeric(x[["year"]]), numeric(1))
 
   list(group=group, att=att, tt=tt)
 }
