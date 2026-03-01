@@ -216,5 +216,9 @@ test_that("groups treated after max(t) but within anticipation window are not co
   # (it has enough pre-treatment periods: periods 1,2,3 are all before 6-2=4)
   expect_true(6 %in% res_ant2$group)
   expect_true(6 %in% res_ant2_fast$group)
+
+  # The results should differ: with anticipation=2, group 6 is no longer
+  # in the control pool, so there are more treated groups in the output
+  expect_true(length(unique(res_ant2$group)) > length(unique(res_ant0$group)))
 })
 
