@@ -30,6 +30,8 @@
 
   * `aggte()` dimension errors: improved guards against matrix subsetting failures when all `att_gt()` estimates are NA (fixes #185, #190)
 
+  * Graceful error handling: when internal 2x2 DiD estimation fails for a specific (g, t) cell (e.g., singular matrix), `att_gt()` now warns and sets that cell's ATT to NA instead of crashing. This applies to both `faster_mode = TRUE` and `faster_mode = FALSE`
+
 # did 2.3.0
 
   * Code improvements that make the package faster and more memory efficient
