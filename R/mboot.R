@@ -72,9 +72,8 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   if (length(clustervars) > 0) {
     if(!DIDparams$faster_mode){
       # check that cluster variable does not vary over time within unit
-      # dta was already set above when need_data is TRUE
-      full_data <- as.data.frame(DIDparams$data)
-      clust_tv <- aggregate(full_data[,clustervars], by=list(full_data[,idname]), function(rr) length(unique(rr))==1)
+      # reuse 'data' already loaded above (need_data is TRUE when clustervars > 0)
+      clust_tv <- aggregate(data[,clustervars], by=list(data[,idname]), function(rr) length(unique(rr))==1)
       if (!all(clust_tv[,2])) {
         stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
       }

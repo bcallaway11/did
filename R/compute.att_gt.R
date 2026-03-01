@@ -497,7 +497,7 @@ compute.att_gt <- function(dp) {
     i = trip_i,
     j = trip_j,
     x = trip_x,
-    dims = c(inffunc_nrow, inffunc_ncol)
+    dims = c(inffunc_nrow, length(inffunc_updates))
   )
 
   return(list(attgt.list = attgt.list, inffunc = inffunc))
