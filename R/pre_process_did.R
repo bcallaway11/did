@@ -37,10 +37,7 @@ pre_process_did <- function(yname,
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
   # set control group
-  if (length(control_group) > 1) {
-    warning("control_group should be a single string, not a vector. Using '", control_group[1], "'.")
-    control_group <- control_group[1]
-  }
+  control_group <- control_group[1]
   if(!(control_group %in% c("nevertreated","notyettreated"))){
     stop("control_group must be either 'nevertreated' or 'notyettreated'")
   }

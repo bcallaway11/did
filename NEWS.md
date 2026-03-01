@@ -26,8 +26,6 @@
 
   * `est_method` validation: passing an invalid string or unquoted variable now produces a clear error instead of silently defaulting to `"dr"` (fixes #194)
 
-  * `control_group` validation: passing a vector instead of a single string now warns instead of silently taking the first element
-
   * Windows parallel processing: `pl = TRUE` on Windows now warns and falls back to sequential processing instead of crashing (fixes #176)
 
   * `aggte()` dimension errors: improved guards against matrix subsetting failures when all `att_gt()` estimates are NA (fixes #185, #190)
