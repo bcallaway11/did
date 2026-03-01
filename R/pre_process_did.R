@@ -37,7 +37,10 @@ pre_process_did <- function(yname,
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
   # set control group
-  control_group <- control_group[1]
+  if (length(control_group) > 1) {
+    warning("control_group should be a single string, not a vector. Using '", control_group[1], "'.")
+    control_group <- control_group[1]
+  }
   if(!(control_group %in% c("nevertreated","notyettreated"))){
     stop("control_group must be either 'nevertreated' or 'notyettreated'")
   }
@@ -47,11 +50,20 @@ pre_process_did <- function(yname,
     data <- as.data.frame(data)
   }
 
+  # validate that all required column names exist in the data
+  required_cols <- c(yname, tname, idname, gname, weightsname, clustervars)
+  missing_cols <- setdiff(required_cols, colnames(data))
+  if (length(missing_cols) > 0) {
+    stop("The following column(s) are not found in the data: ",
+         paste(missing_cols, collapse = ", "), ". ",
+         "Please check the spelling of yname, tname, idname, gname, weightsname, and clustervars.")
+  }
+
   # make sure time periods are numeric
-  if (! (is.numeric(data[, tname])) ) stop("data[, tname] must be numeric")
+  if (! (is.numeric(data[, tname])) ) stop("The time variable '", tname, "' must be numeric. Please convert it.")
 
   #  make sure gname is numeric
-  if (! (is.numeric(data[, gname])) ) stop("data[, gname] must be numeric")
+  if (! (is.numeric(data[, gname])) ) stop("The group variable '", gname, "' must be numeric. Please convert it.")
 
   # put in blank xformla if no covariates or check whether all variables are in data
   if (is.null(xformla)) {
@@ -83,7 +95,7 @@ pre_process_did <- function(yname,
   # weights if null
   ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
 
-  if (".w" %in% colnames(data)) stop("`did` tried to use column named \".w\" internally, but there was already a column with this name")
+  if (".w" %in% colnames(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
   data$.w <- w
 
   # Outcome variable will be denoted by y
@@ -93,8 +105,11 @@ pre_process_did <- function(yname,
   # list of dates from smallest to largest
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
 
-  # Groups with treatment time bigger than max time period are considered to be never treated
-  asif_never_treated <- (data[,gname] > max(tlist, na.rm = TRUE))
+  # Groups with treatment time bigger than max time period + anticipation are considered to be never treated.
+  # We account for anticipation because units treated shortly after the last observed period
+  # may already exhibit anticipatory effects during the observed time window, and should
+  # not be used as controls.
+  asif_never_treated <- (data[,gname] > max(tlist, na.rm = TRUE) + anticipation)
   asif_never_treated[is.na(asif_never_treated)] <- FALSE
   data[asif_never_treated, gname] <- 0
 
@@ -142,7 +157,7 @@ pre_process_did <- function(yname,
       lines.gmax <- data[, gname]==latest_g
       data[lines.gmax, gname] <- 0
     } else {
-      # If "notyetreated", we simply drop those periods and leave gnames alone
+      # If "notyettreated", we simply drop those periods and leave gnames alone
       data <- data[ data[[ tname ]] < cutoff_t, , drop = FALSE ]
     }
 
@@ -164,9 +179,9 @@ pre_process_did <- function(yname,
   first.period <- tlist[1]
   glist <- glist[glist > first.period + anticipation]
 
-  # check for groups treated in the first period and drop these
+  # check for groups treated in the first period (accounting for anticipation) and drop these
   # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
-  treated_first_period <- ( data[,gname] <= first.period ) & ( !(data[,gname]==0) )
+  treated_first_period <- ( data[,gname] <= first.period + anticipation ) & ( !(data[,gname]==0) )
   treated_first_period[is.na(treated_first_period)] <- FALSE
   nfirstperiod <- ifelse(panel, length(unique(data[treated_first_period,][,idname])), nrow(data[treated_first_period,]))
   if ( nfirstperiod > 0 ) {
@@ -186,7 +201,7 @@ pre_process_did <- function(yname,
   #  make sure id is numeric
   if (! is.null(idname)){
     #  make sure id is numeric
-    if (! (is.numeric(data[, idname])) ) stop("data[, idname] must be numeric")
+    if (! (is.numeric(data[, idname])) ) stop("The id variable '", idname, "' must be numeric. Please convert it.")
 
     ## # checks below are useful, but removing due to being slow
     ## # might ought to figure out a way to do these faster later
@@ -271,7 +286,7 @@ pre_process_did <- function(yname,
 
       # If drop all data, you do not have a panel.
       if (nrow(data)==0) {
-        stop("All observations dropped to converted data to balanced panel. Consider setting `panel = FALSE' and/or revisit 'idname'.")
+        stop("All observations dropped while converting data to balanced panel. Consider setting `panel = FALSE` and/or revisiting 'idname'.")
       }
 
       n <- nrow(data[ data[,tname]==tlist[1], ])
@@ -301,7 +316,7 @@ pre_process_did <- function(yname,
 
     # If drop all data, you do not have a panel.
     if (nrow(data)==0) {
-      stop("All observations dropped due to missing data problems.")
+      stop("All observations were dropped due to missing data. Check your outcome, group, time, and covariate variables for missing values.")
     }
 
     # n-row data.frame to hold the influence function
@@ -359,10 +374,10 @@ pre_process_did <- function(yname,
   # warn if some groups are small
   if (nrow(gsize) > 0) {
     gpaste <-  paste(gsize[,1], collapse=",")
-    warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
+    warning(paste0("Some groups in your dataset have very few observations, which may cause estimation problems.\n  Check groups: ", gpaste, "."))
 
     if ( (0 %in% gsize[,1]) & (control_group == "nevertreated") ) {
-      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
+      stop("The never-treated group is too small to serve as a reliable control. Try setting `control_group = 'notyettreated'` to include not-yet-treated units as controls.")
     }
   }
   #----------------------------------------------------------------------------

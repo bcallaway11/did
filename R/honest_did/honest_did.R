@@ -50,12 +50,12 @@ honest_did.AGGTEobj <- function(es,
   
   # make sure that user is passing in an event study
   if (es$type != "dynamic") {
-    stop("need to pass in an event study")
+    stop("'es' must be an AGGTEobj of type 'dynamic' (an event study). Use `aggte(., type = 'dynamic')` to create one.")
   }
 
   # check if used universal base period and warn otherwise
   if (es$DIDparams$base_period != "universal") {
-    warning("it is recommended to use a universal base period for honest_did")
+    warning("It is recommended to use a universal base period for honest_did(). Set `base_period = 'universal'` in your call to att_gt().")
   }
   
   # recover influence function for event study estimates

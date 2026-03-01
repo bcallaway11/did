@@ -26,6 +26,7 @@ compute.att_gt <- function(dp) {
   xformla <- dp$xformla
   weightsname <- dp$weightsname
   est_method <- dp$est_method
+  extra_args <- if (is.null(dp$extra_args)) list() else dp$extra_args
   base_period <- dp$base_period
   panel <- dp$panel
   true_repeated_cross_sections <- dp$true_repeated_cross_sections
@@ -50,13 +51,14 @@ compute.att_gt <- function(dp) {
   counter <- 1
 
   # number of time periods
-  tlist.length <- ifelse(base_period != "universal", length(tlist) - 1, length(tlist))
-  tfac <- ifelse(base_period != "universal", 1, 0)
+  tlist.length <- if (base_period != "universal") length(tlist) - 1L else length(tlist)
+  tfac <- if (base_period != "universal") 1L else 0L
 
-  # influence function
-  inffunc <- Matrix::Matrix(data = 0, nrow = n, ncol = nG * (nT - tfac), sparse = TRUE)
+  # influence function dimensions
+  inffunc_nrow <- n
+  inffunc_ncol <- nG * (nT - tfac)
 
-  # list of collect sparse matrix updates
+  # list to collect sparse matrix updates (built into sparse matrix after loops)
   inffunc_updates <- list()
   # counter for keeping track of updates
   update_counter <- 1
@@ -64,15 +66,23 @@ compute.att_gt <- function(dp) {
   # never treated option
   nevertreated <- (control_group[1] == "nevertreated")
 
+  # Pre-extract columns to avoid repeated get() inside data.table (which is slow)
+  g_col <- data[[gname]]
+  t_col <- data[[tname]]
+
   if (nevertreated) {
-    data[, .C := as.integer(get(gname) == 0)]
+    set(data, j = ".C", value = as.integer(g_col == 0))
   }
-  data[, .y := get(yname), .SDcols = yname]
+  set(data, j = ".y", value = data[[yname]])
 
   # loop over groups
   for (g in 1:nG) {
-    # Set up .G once
-    data[, .G := as.numeric(get(gname) == glist[[..g]]), .SDcols = gname]
+    # Set up .G once (use pre-extracted g_col to avoid get() inside data.table)
+    current_g <- glist[g]
+    set(data, j = ".G", value = as.numeric(g_col == current_g))
+
+    # pre-compute the universal/post-treatment base period for this group (used multiple times)
+    pret_g <- tail(which((tlist + anticipation) < glist[g]), 1)
 
     # loop over time periods
     for (t in 1:tlist.length) {
@@ -85,19 +95,18 @@ compute.att_gt <- function(dp) {
       # universal base period
       if (base_period == "universal") {
         # use same base period as for post-treatment periods
-        pret <- tail(which((tlist + anticipation) < glist[g]), 1)
+        pret <- pret_g
       }
 
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,
       # but not treated by the current period (+ anticipation)
       if (!nevertreated) {
-        # Capture loop variable t before data.table evaluation to avoid scoping issues
-        # (data.table expressions access columns by name, so 't' would refer to tname column)
+        # Use pre-extracted g_col to avoid get() inside data.table
         time_threshold <- tlist[max(t, pret) + tfac] + anticipation
-        data[, .C := as.integer((get(gname) == 0) |
-          ((get(gname) > time_threshold) &
-            (get(gname) != glist[[..g]])))]
+        set(data, j = ".C", value = as.integer((g_col == 0) |
+          ((g_col > time_threshold) &
+            (g_col != current_g))))
       }
 
 
@@ -105,13 +114,13 @@ compute.att_gt <- function(dp) {
       if ((glist[g] <= tlist[(t + tfac)])) {
         # update pre-period if in post-treatment period to
         # be  period (g-delta-1)
-        pret <- tail(which((tlist + anticipation) < glist[g]), 1)
+        pret <- pret_g
 
-        # print a warning message if there are no pre-treatment period
+        # print a warning message if there are no pre-treatment periods
         if (length(pret) == 0) {
           warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g], "\nUnits from this group are dropped"))
 
-          # if there are not pre-treatment periods, code will
+          # if there are no pre-treatment periods, code will
           # jump out of this loop
           break
         }
@@ -127,8 +136,8 @@ compute.att_gt <- function(dp) {
           # inffunc[,counter] <- rep(0,n)
           # counter <- counter+1
           inffunc_updates[[update_counter]] <- list(
-            indices = rep(TRUE, n), # Apply to all units
-            values = as.matrix(rep(0, n)) # Zero influence function
+            indices = integer(0), # No non-zero entries
+            values = numeric(0)
           )
 
           # Update the counters
@@ -155,7 +164,8 @@ compute.att_gt <- function(dp) {
       # total number of units (not just included in G or C)
       # disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
       target_times <- c(tlist[t + tfac], tlist[pret])
-      disdat <- data[get(tname) %in% target_times]
+      time_mask <- t_col %in% target_times
+      disdat <- data[time_mask]
 
 
       if (panel) {
@@ -224,11 +234,9 @@ compute.att_gt <- function(dp) {
 
           if (reg_problems_likely | pscore_problems_likely) {
             attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
-            # inffunc[,counter] <- NA
-            # counter <- counter+1
             inffunc_updates[[update_counter]] <- list(
-              indices = rep(TRUE, n), # Apply to all units
-              values = as.matrix(rep(NA, n)) # NA influence function
+              indices = seq_len(n),
+              values = rep(NA_real_, n)
             )
 
             # Update the counters
@@ -244,13 +252,13 @@ compute.att_gt <- function(dp) {
 
         if (inherits(est_method, "function")) {
           # user-specified function
-          attgt <- est_method(
+          attgt <- do.call(est_method, c(list(
             y1 = Ypost, y0 = Ypre,
             D = G,
             covariates = covariates,
             i.weights = w,
             inffunc = TRUE
-          )
+          ), extra_args))
         } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
@@ -289,7 +297,7 @@ compute.att_gt <- function(dp) {
         # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
         # with true repeated cross sections, but should pick up the right time periods
         # only with unbalanced panel
-        disidx <- (data$.rowid %in% rightids) & ((data[[tname]] == tlist[t + tfac]) | (data[[tname]] == tlist[pret]))
+        disidx <- (data$.rowid %in% rightids) & ((t_col == tlist[t + tfac]) | (t_col == tlist[pret]))
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- data[disidx, ]
@@ -322,7 +330,7 @@ compute.att_gt <- function(dp) {
           skip_this_att_gt <- TRUE
         }
         if (sum(C * (1 - post)) == 0) {
-          warning(paste0("No availabe control units for group ", glist[g], " in time period ", tlist[t]))
+          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t]))
           skip_this_att_gt <- TRUE
         }
 
@@ -331,8 +339,8 @@ compute.att_gt <- function(dp) {
           # inffunc[,counter] <- NA
           # counter <- counter+1
           inffunc_updates[[update_counter]] <- list(
-            indices = rep(TRUE, n), # Apply to all units
-            values = as.matrix(rep(NA, n)) # NA influence function
+            indices = seq_len(n),
+            values = rep(NA_real_, n)
           )
 
           # Update the counters
@@ -351,14 +359,14 @@ compute.att_gt <- function(dp) {
 
         if (inherits(est_method, "function")) {
           # user-specified function
-          attgt <- est_method(
+          attgt <- do.call(est_method, c(list(
             y = Y,
             post = post,
             D = G,
             covariates = covariates,
             i.weights = w,
             inffunc = TRUE
-          )
+          ), extra_args))
         } else if (est_method == "ipw") {
           # inverse-probability weights
           attgt <- DRDID::std_ipw_did_rc(
@@ -411,19 +419,18 @@ compute.att_gt <- function(dp) {
 
       # populate the influence function in the right places
       if (panel) {
-        # inf.func[disidx] <- attgt$att.inf.func
-        # Collect the indices and corresponding values for the update
+        # Store integer indices directly (avoids which() later)
+        idx <- which(disidx)
         inffunc_updates[[update_counter]] <- list(
-          indices = disidx,
+          indices = idx,
           values = attgt$att.inf.func
         )
       } else {
         # aggregate inf functions by id (order by id)
         aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
-        disidx <- (unique(data$.rowid) %in% aggte_inffunc[, 1])
-        # inf.func[disidx] <- aggte_inffunc[,2]
+        idx <- which(unique(data$.rowid) %in% aggte_inffunc[, 1])
         inffunc_updates[[update_counter]] <- list(
-          indices = disidx,
+          indices = idx,
           values = aggte_inffunc[, 2]
         )
       }
@@ -439,14 +446,25 @@ compute.att_gt <- function(dp) {
     } # end looping over t
   } # end looping over g
 
-  # Apply the updates to the influence function matrix
-  update_inffunc <- rbindlist(lapply(seq_along(inffunc_updates), function(i) {
-    update <- inffunc_updates[[i]]
-    data.table(row = which(update$indices), col = i, value = update$values)
-  }), fill = TRUE)
-  # Apply updates to the sparse matrix
-  inffunc[cbind(update_inffunc$row, update_inffunc$col)] <- update_inffunc$value
-
+  # Build the influence function sparse matrix directly from triplets
+  trip_i <- integer(0)
+  trip_j <- integer(0)
+  trip_x <- numeric(0)
+  for (j in seq_along(inffunc_updates)) {
+    update <- inffunc_updates[[j]]
+    idx <- update$indices  # already integer indices
+    if (length(idx) > 0L) {
+      trip_i <- c(trip_i, idx)
+      trip_j <- c(trip_j, rep.int(j, length(idx)))
+      trip_x <- c(trip_x, update$values)
+    }
+  }
+  inffunc <- Matrix::sparseMatrix(
+    i = trip_i,
+    j = trip_j,
+    x = trip_x,
+    dims = c(inffunc_nrow, inffunc_ncol)
+  )
 
   return(list(attgt.list = attgt.list, inffunc = inffunc))
 }

@@ -13,6 +13,7 @@ desktop.ini
 /Meta/
 did.Rproj
 ..Rcheck/
-CLAUDE.md
+.claude/
 .vscode/
 .revdep_manual/
+vignettes/*_cache/

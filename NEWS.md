@@ -1,6 +1,40 @@
+# did 2.3.1.901
+
+  * `att_gt()` now accepts `...` (dots) for passing additional arguments to custom `est_method` functions
+
+  * Fixed bug where groups treated after the last observed period but within the anticipation window were incorrectly coerced to never-treated, contaminating the control group with anticipation effects
+
+  * Fixed data filter inconsistency for always-treated units when `anticipation > 0`
+
+  * Added informative message when `anticipation > 0` clarifying that never-treated units are not affected by anticipation
+
+  * Performance optimizations for `faster_mode = TRUE`: cumulative cohort sizes, cached pre-treatment periods, sparse matrix triplet construction
+
+  * Robustness improvements: replaced `get()` and `:=` with `set()` inside data.table loops to prevent non-standard evaluation scoping bugs
+
+  * Grammar and typo fixes across documentation, vignettes, and error messages
+
+  * Fixed typo in `pre-testing` vignette (`idnam` to `idname`)
+
+  * Fixed `mpdta` data documentation to correctly report 6 variables
+
+  * Removed development path reference from `README.Rmd`
+
+  * Improved error messages throughout the package for better user experience
+
+  * Column name validation: misspelled `yname`, `idname`, `tname`, `gname`, `weightsname`, or `clustervars` now produces a clear message listing the missing columns (fixes #203)
+
+  * `est_method` validation: passing an invalid string or unquoted variable now produces a clear error instead of silently defaulting to `"dr"` (fixes #194)
+
+  * `control_group` validation: passing a vector instead of a single string now warns instead of silently taking the first element
+
+  * Windows parallel processing: `pl = TRUE` on Windows now warns and falls back to sequential processing instead of crashing (fixes #176)
+
+  * `aggte()` dimension errors: improved guards against matrix subsetting failures when all `att_gt()` estimates are NA (fixes #185, #190)
+
 # did 2.3.0
 
-  * Code improvements that made the package faster and more memory efficient
+  * Code improvements that make the package faster and more memory efficient
 
   * Improved automated testing and regression testing
 
@@ -10,7 +44,7 @@
 
 # did 2.2.0
 
-  * Skipped as the number of changes was sufficiently large to warrant a minor version bump
+  * Skipped, as the number of changes was large enough to warrant a minor version bump
 
 # did 2.1.2
 
@@ -24,7 +58,7 @@
 
 # did 2.1.1
 
-  * Bug fixes related unbalanced panel and clustered standard errors
+  * Bug fixes related to unbalanced panel and clustered standard errors
 
   * Bug fixes for conditional_did_pretest
 

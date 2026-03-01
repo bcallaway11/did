@@ -1,6 +1,5 @@
 library(DRDID)
 library(BMisc)
-library(tidyverse)
 library(data.table)
 #library(ggplot2)
 #library(ggpubr)
@@ -504,13 +503,13 @@ test_that("small groups", {
 
   # dr
   expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="dr"), "small groups")
+              gname="G", est_method="dr"), "very few observations")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="reg"), "small groups")
+              gname="G", est_method="reg"), "very few observations")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="ipw"), "small groups")
+              gname="G", est_method="ipw"), "very few observations")
 
   # estimates will be imprecise for group 2
   idx <- which(res_dr$group == 3 & res_dr$t==3)
@@ -535,13 +534,13 @@ test_that("small comparison group", {
   #-----------------------------------------------------------------------------
   # dr
   expect_error(expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="dr"), "small groups"), "never treated group is too small")
+              gname="G", est_method="dr"), "very few observations"), "never-treated group is too small")
   # reg
   expect_error(expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="reg"), "small groups"), "never treated group is too small")
+              gname="G", est_method="reg"), "very few observations"), "never-treated group is too small")
   # ipw
   expect_error(expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="ipw"), "small groups"), "never treated group is too small")
+              gname="G", est_method="ipw"), "very few observations"), "never-treated group is too small")
 
   #-----------------------------------------------------------------------------
   # not-yet-treated comparison group with faster_mode = TRUE
@@ -555,14 +554,14 @@ test_that("small comparison group", {
                                                 gname="G", est_method="reg", faster_mode = TRUE), "matrix is singular"), "faster_mode=FALSE")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-                                   gname="G", est_method="ipw", faster_mode = TRUE), "small groups")
+                                   gname="G", est_method="ipw", faster_mode = TRUE), "very few observations")
 
   #-----------------------------------------------------------------------------
   # not-yet-treated comparison group
   #-----------------------------------------------------------------------------
   # dr
   expect_warning(res_dr <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="dr", faster_mode = FALSE), "small group")
+              gname="G", est_method="dr", faster_mode = FALSE), "very few observations")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
               gname="G", est_method="reg", faster_mode = FALSE), "Not enough control units")
@@ -589,7 +588,6 @@ test_that("small comparison group", {
   expect_false(is.na(agg_dyn$se.egt[3]))
   expect_false(is.na(agg_group$se.egt[1]))
 
-  skip_if(TRUE, message="known bug about calendar time aggregations, not high priority to fix")
   agg_cal <- aggte(res_ipw, type="calendar", na.rm=TRUE)
   expect_equal(agg_cal$att.egt[1], 1, tol=.5)
   expect_false(is.na(agg_cal$se.egt[1]))
@@ -895,10 +893,10 @@ test_that("faster model enabled for unbalanced panel data and time-varying covar
   expect_equal(att_slower$se, as.numeric(att_faster$se))
 
   # get event study estimates
-  out1 = att_slower %>%
+  out1 = att_slower |>
     aggte(type = "dynamic",  cband = FALSE, bstrap = FALSE)
 
-  out2 = att_faster %>%
+  out2 = att_faster |>
     aggte(type = "dynamic", cband = FALSE, bstrap = FALSE)
 
   # check if results are equal.
@@ -939,11 +937,11 @@ test_that("faster model enabled for unbalanced panel data and time-varying covar
 
 
   # get event study estimates
-  out1 = att_slow %>%
+  out1 = att_slow |>
     aggte(type = "dynamic",  cband = FALSE, bstrap = FALSE)
 
 
-  out2 = att_fast %>%
+  out2 = att_fast |>
     aggte(type = "dynamic", cband = FALSE, bstrap = FALSE)
 
   # check if results are equal.

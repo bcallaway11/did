@@ -30,14 +30,23 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   panel <- DIDparams$panel
   true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
   unbalanced_panel <- DIDparams$allow_unbalanced_panel
-  data <- as.data.frame(DIDparams$data)
-  tlist <- ifelse(DIDparams$faster_mode, DIDparams$time_periods, unique(data[,tname])[order(unique(data[,tname]))])
-  # just get n observations (for clustering below...)
-  ifelse(panel,
-         dta <- data[ data[,tname]==tlist[1], ],
-         dta <- data)
+  # Avoid full data copy when possible; only needed for clustering
+  need_data <- length(clustervars) > 0
+  if (need_data) {
+    if (isTRUE(DIDparams$faster_mode) && !is.null(DIDparams$time_invariant_data)) {
+      dta <- as.data.frame(DIDparams$time_invariant_data)
+    } else {
+      data <- as.data.frame(DIDparams$data)
+      tlist <- if (isTRUE(DIDparams$faster_mode)) DIDparams$time_periods else sort(unique(data[,tname]))
+      if (panel) {
+        dta <- data[data[,tname] == tlist[1], ]
+      } else {
+        dta <- data
+      }
+    }
+  }
 
-  # Make sure inf.func is matrix because we need this for computing n below
+  # Convert sparse matrix to dense for bootstrap computation
   inf.func <- as.matrix(inf.func)
 
   # set correct number of units
@@ -51,32 +60,24 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
   if(!is.null(clustervars)){
     if(is.numeric(clustervars)){
-      stop("clustervars need to be the name of the clustering variable.")
+      stop("'clustervars' must be a character string specifying the name of the clustering variable, not a numeric value.")
     }
   }
   # we can only handle up to 2-way clustering
   # (in principle could do more, but not high priority now)
   if (length(clustervars) > 1) {
-    stop("can't handle that many cluster variables")
+    stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
   }
 
   if (length(clustervars) > 0) {
     if(!DIDparams$faster_mode){
       # check that cluster variable does not vary over time within unit
-      clust_tv <- aggregate(data[,clustervars], by=list(data[,idname]), function(rr) length(unique(rr))==1)
+      # dta was already set above when need_data is TRUE
+      full_data <- as.data.frame(DIDparams$data)
+      clust_tv <- aggregate(full_data[,clustervars], by=list(full_data[,idname]), function(rr) length(unique(rr))==1)
       if (!all(clust_tv[,2])) {
-        stop("can't handle time-varying cluster variables")
+        stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
       }
-      ## # CHECK iF CLUSTERVAR is TIME-VARYING
-      ## clust_tv = base::suppressWarnings(stats::aggregate(data[,clustervars], list((data[,idname])), sd))
-      ## clust_tv$x[is.na(clust_tv$x)] <- 0
-      ## if(any(clust_tv[,2]>.Machine$double.eps)){
-      ##   stop("can't handle time-varying cluster variables")
-      ## } else if (!panel){
-      ##   # IF NOT, SUBSET DTA TO ONE VALUE PER ID
-      ##   # Here we do not care about tname and yname as we do not use these
-      ##   dta <- base::suppressWarnings(stats::aggregate(dta, list((data[,idname])), mean)[,-1])
-      ## }
     }
   }
 
@@ -136,6 +137,10 @@ run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
     BMisc::multiplier_bootstrap(inf.func, biters)
   }
   # From tests, this is about where it becomes worth it to parallelize
+  if (.Platform$OS.type == "windows" && pl == TRUE && cores > 1) {
+    warning("Parallel processing (pl=TRUE) is not supported on Windows. Using sequential processing instead.")
+    pl <- FALSE
+  }
   if(n > 2500 & pl == TRUE & cores > 1) {
     results = parallel::mclapply(
       chunks,

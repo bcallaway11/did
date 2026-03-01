@@ -9,24 +9,16 @@
 #'
 #' @export
 process_attgt <- function(attgt.list) {
-  nG <- length(unique(unlist(BMisc::getListElement(attgt.list, "group"))))
-  nT <- length(unique(unlist(BMisc::getListElement(attgt.list, "year"))))
-  
-  # create vectors to hold the results
-  group <- c()
-  att <- c()
-  tt <- c()
-  i <- 1
+  nG <- length(unique(vapply(attgt.list, `[[`, numeric(1), "group")))
+  nT <- length(unique(vapply(attgt.list, `[[`, numeric(1), "year")))
 
-  # populate result vectors and matrices
-  for (f in 1:nG) {
-    for (s in 1:nT) {
-      group[i] <- attgt.list[[i]]$group
-      tt[i] <- attgt.list[[i]]$year
-      att[i] <- attgt.list[[i]]$att
-      i <- i+1
-    }
+  if (length(attgt.list) != nG * nT) {
+    stop("Number of results does not match expected group-time combinations")
   }
+
+  group <- vapply(attgt.list, `[[`, numeric(1), "group")
+  att   <- vapply(attgt.list, `[[`, numeric(1), "att")
+  tt    <- vapply(attgt.list, `[[`, numeric(1), "year")
 
   list(group=group, att=att, tt=tt)
 }

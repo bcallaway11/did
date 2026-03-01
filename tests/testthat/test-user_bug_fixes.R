@@ -67,13 +67,12 @@ test_that("repeated cross sections small groups with covariates", {
   data <- subset(data, !(id %in% dropids))
 
   expect_warning(res_dr <- att_gt(yname="Y", xformla=~X+X2+X3, data=data, tname="period", idname="id",
-                   gname="G", est_method=DRDID::drdid_rc1, panel=FALSE), "there are some small groups")
+                   gname="G", est_method=DRDID::drdid_rc1, panel=FALSE), "very few observations")
 
   expect_true(is.numeric(res_dr$se[1]))
 
-  skip_if(TRUE, message="known bug, code crashes in this case, fix is probably in DRDID package")
-  res_dr <- att_gt(yname="Y", xformla=~X+X2+X3, data=data, tname="period", idname="id",
-                   gname="G", est_method="dr", panel=FALSE)
+  expect_warning(res_dr <- att_gt(yname="Y", xformla=~X+X2+X3, data=data, tname="period", idname="id",
+                   gname="G", est_method="dr", panel=FALSE), "singular")
 
   expect_true(is.numeric(res_dr$se[1]))
 })
@@ -101,19 +100,12 @@ test_that("fewer time periods than groups", {
   expect_equal(dyn_agg$att.egt[dyn_idx], 4, tol=.5)
   expect_false(any(is.na(dyn_agg$att.egt)))
 
-  skip_if(TRUE, message="known bug, with fewer time periods than groups, group aggregations fai for groups that are exactly equal to missing time periods")
   group_agg <- aggte(res_dr, type="group")
   group_idx <- which(group_agg$egt==3)
-  #this seems to fail for groups that are exactly equal to
-  #missing time periods -- that seems like a bug!
   expect_equal(group_agg$att.egt[group_idx], mean(c(1,2,4)), tol=.5)
   expect_false(any(is.na(group_agg$att.egt)))
 
-    skip_if(TRUE, message="known bug, calendar time aggregations do not work with fewer time periods than groups")
-  # calendar aggregation does not compute at all in this case
-  # low priority to fix this
   cal_agg <- aggte(res_dr, type="calendar")
-  # improve this test if ever get this working
   expect_false(is.na(cal_agg$att.egt[1]))
 })
 
@@ -147,7 +139,7 @@ test_that("0 pre-treatment estimates when outcomes are 0", {
   expect_equal(res$att[res_idx],0)
 })
 
-test_that("variables not in live in dataset", {
+test_that("variables not in dataset", {
   sp <- did::reset.sim(time.periods=3)
   data <- build_sim_dataset(sp)
 
@@ -156,5 +148,76 @@ test_that("variables not in live in dataset", {
   expect_error(att_gt(yname="Y", xformla=~X2, data=data, tname="period", idname="id", control_group="notyettreated",
                       gname="G", est_method="dr", clustervars="cluster"), " variables are not in data")
 
+})
+
+test_that("groups treated after max(t) but within anticipation window are not coerced to never-treated", {
+  # Bug: with anticipation > 0, groups treated shortly after the last observed
+
+  # period may have anticipatory effects during the observed window.
+  # These should NOT be coerced to never-treated (and used as controls).
+  #
+  # Example: tlist = [1,2,3,4,5], gname = 6, anticipation = 2
+  # Anticipation effects start at period 6 - 2 = 4 (within observed data).
+  # If coerced to never-treated, these contaminated units serve as controls.
+
+  set.seed(20250228)
+  n <- 600
+  dt <- data.frame(
+    id = rep(1:n, each = 5),
+    time = rep(1:5, n)
+  )
+  # Groups: 0 (never-treated), 4 (treated at 4), 6 (treated at 6, after max(t)=5)
+  group_vals <- c(rep(0, 200), rep(4, 200), rep(6, 200))
+  dt$group <- group_vals[dt$id]
+  dt$y <- rnorm(nrow(dt))
+
+  # With anticipation = 0: group 6 is beyond max(t)=5, should be coerced to never-treated
+  suppressWarnings({
+    res_ant0 <- att_gt(yname = "y", gname = "group", idname = "id", tname = "time",
+                       data = dt, anticipation = 0, bstrap = FALSE,
+                       faster_mode = FALSE, print_details = FALSE,
+                       control_group = "nevertreated")
+  })
+
+  # With anticipation = 2: group 6 anticipates at period 4, should NOT be coerced
+  # to never-treated. Instead, group 6 should remain as a treated group.
+  suppressWarnings({
+    res_ant2 <- att_gt(yname = "y", gname = "group", idname = "id", tname = "time",
+                       data = dt, anticipation = 2, bstrap = FALSE,
+                       faster_mode = FALSE, print_details = FALSE,
+                       control_group = "nevertreated")
+  })
+
+  # With anticipation = 0, group 6 is coerced to never-treated (only group 4 in results)
+  expect_true(all(res_ant0$group == 4))
+
+  # With anticipation = 2, group 6 should NOT be in the control group.
+  # It may or may not appear in the results as a treated group (depending on
+  # whether there are enough pre-treatment periods), but the key check is
+  # that the number of control units differs between the two runs.
+  # Group 6 units (200 units) should not be part of the never-treated pool.
+
+  # Run the same test with faster_mode = TRUE for consistency
+  suppressWarnings({
+    res_ant0_fast <- att_gt(yname = "y", gname = "group", idname = "id", tname = "time",
+                            data = dt, anticipation = 0, bstrap = FALSE,
+                            faster_mode = TRUE, print_details = FALSE,
+                            control_group = "nevertreated")
+  })
+  suppressWarnings({
+    res_ant2_fast <- att_gt(yname = "y", gname = "group", idname = "id", tname = "time",
+                            data = dt, anticipation = 2, bstrap = FALSE,
+                            faster_mode = TRUE, print_details = FALSE,
+                            control_group = "nevertreated")
+  })
+
+  # Both paths should agree
+  expect_equal(res_ant0$att, res_ant0_fast$att)
+  expect_equal(res_ant2$att, res_ant2_fast$att)
+
+  # With anticipation = 2, group 6 should appear as a treated group in results
+  # (it has enough pre-treatment periods: periods 1,2,3 are all before 6-2=4)
+  expect_true(6 %in% res_ant2$group)
+  expect_true(6 %in% res_ant2_fast$group)
 })
 

@@ -5,6 +5,24 @@
 #' @param object either a `MP` object or `AGGTEobj` object. See `help(ggdid.MP)` and `help(ggdid.AGGTEobj)`.
 #' @param ... other arguments
 #'
+#' @examples
+#' \dontrun{
+#' data(mpdta)
+#' out <- att_gt(yname = "lemp",
+#'               gname = "first.treat",
+#'               idname = "countyreal",
+#'               tname = "year",
+#'               xformla = ~1,
+#'               data = mpdta)
+#'
+#' # plot all group-time average treatment effects
+#' ggdid(out)
+#'
+#' # plot event study aggregation
+#' es <- aggte(out, type = "dynamic")
+#' ggdid(es)
+#' }
+#'
 #' @export
 ggdid <- function(object, ...) {
   UseMethod("ggdid", object)

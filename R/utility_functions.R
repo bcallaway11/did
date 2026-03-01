@@ -61,10 +61,11 @@ get_wide_data <- function(data, yname, idname, tname) {
     stop("data must have exactly 2 periods")
   }
 
-  # making computations
-  data$.y1 <- data.table::shift(data[[yname]], -1)
-  data$.y0 <- data[[yname]]
-  data$.dy <- data$.y1 - data$.y0
+  # making computations — use set() to avoid copy triggered by $<-
+  y_vals <- data[[yname]]
+  set(data, j = ".y1", value = data.table::shift(y_vals, -1))
+  set(data, j = ".y0", value = y_vals)
+  set(data, j = ".dy", value = data[[".y1"]] - y_vals)
 
   # Subset to first row
   first.period <- min(data[[tname]])

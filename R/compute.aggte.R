@@ -82,10 +82,15 @@ compute.aggte <- function(MP,
 
   if (na.rm) {
     notna <- !is.na(att)
+    if (!any(notna)) {
+      stop("All att_gt() estimates are NA. Cannot compute aggregated treatment effects. ",
+           "Check your att_gt() results for estimation problems (e.g., too few observations, ",
+           "singular matrices, or overlap violations).")
+    }
     group <- group[notna]
     t <- t[notna]
     att <- att[notna]
-    inffunc1 <- inffunc1[, notna]
+    inffunc1 <- inffunc1[, notna, drop = FALSE]
     # tlist <- sort(unique(t))
     glist <- sort(unique(group))
 
@@ -102,17 +107,21 @@ compute.aggte <- function(MP,
       gnotna <- glist[gnotna]
       # indicator for not all post-treatment ATT(g,t) missing
       not_all_na <- group %in% gnotna
+      if (!any(not_all_na)) {
+        stop("No groups have non-missing post-treatment att_gt() estimates. ",
+             "Cannot compute group aggregation. Check your att_gt() results.")
+      }
       # Re-do the na.rm thing to update the groups
       group <- group[not_all_na]
       t <- t[not_all_na]
       att <- att[not_all_na]
-      inffunc1 <- inffunc1[, not_all_na]
+      inffunc1 <- inffunc1[, not_all_na, drop = FALSE]
       # tlist <- sort(unique(t))
       glist <- sort(unique(group))
     }
   }
 
-  if ((na.rm == FALSE) && base::anyNA(att)) stop("Missing values at att_gt found. If you want to remove these, set `na.rm = TRUE'.")
+  if ((na.rm == FALSE) && base::anyNA(att)) stop("Missing values found in att_gt() estimates. To remove them, set `na.rm = TRUE`.")
 
   # data from first period
   # ifelse(panel,
@@ -120,9 +129,15 @@ compute.aggte <- function(MP,
   #       dta <- data
   #       )
   if (panel) {
-    # TODO; THIS HAS TO BE OPTIMIZED WITH faster_mode enabled.
-    # data from first period
-    dta <- data[data[, tname] == tlist[1], ]
+    if (isTRUE(dp$faster_mode) && !is.null(dp$time_invariant_data)) {
+      # use pre-computed time-invariant data (one row per unit) instead of subsetting
+      dta <- as.data.frame(dp$time_invariant_data)
+      # map Inf back to 0 for gname to match the old convention
+      dta[dta[, gname] == Inf, gname] <- 0
+    } else {
+      # data from first period
+      dta <- data[data[, tname] == tlist[1], ]
+    }
   } else {
     # aggregate data
     dta <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean)[, -1])
@@ -141,20 +156,20 @@ compute.aggte <- function(MP,
   # In case g's are not part of tlist
   originalgtlist <- sort(unique(c(originaltlist, originalglist)))
   uniquet <- seq(1, length(unique(originalgtlist)))
-  # function to switch from "new" t values to  original t values
+  # lookup vectors for vectorized mapping between original and new t values
+  orig_with_zero <- c(originalgtlist, 0)
+  new_with_zero <- c(uniquet, 0)
+  # vectorized function to switch from "new" t values to original t values
   t2orig <- function(t) {
-    unique(c(originalgtlist, 0))[which(c(uniquet, 0) == t)]
+    orig_with_zero[match(t, new_with_zero)]
   }
-  # function to switch between "original"
-  #  t values and new t values
-  orig2t <- function(orig) {
-    new_t <- c(uniquet, 0)[which(unique(c(originalgtlist, 0)) == orig)]
-    out <- ifelse(length(new_t) == 0, NA, new_t)
-    out
+  # vectorized function to switch from original t values to new sequential t values
+  orig2t_vec <- function(orig) {
+    new_with_zero[match(orig, orig_with_zero)]
   }
-  t <- sapply(originalt, orig2t)
-  group <- sapply(originalgroup, orig2t)
-  glist <- sapply(originalglist, orig2t)
+  t <- orig2t_vec(originalt)
+  group <- orig2t_vec(originalgroup)
+  glist <- orig2t_vec(originalglist)
   tlist <- unique(t)
   maxT <- max(t)
 
@@ -175,7 +190,7 @@ compute.aggte <- function(MP,
   keepers <- which(group <= t & t <= (group + max_e)) ### added second condition to allow for limit on longest period included in att
 
   # n x 1 vector of group variable
-  G <- unlist(lapply(dta[, gname], orig2t))
+  G <- orig2t_vec(dta[, gname])
 
   #-----------------------------------------------------------------------------
   # Compute the simple ATT summary
@@ -266,19 +281,19 @@ compute.aggte <- function(MP,
       selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
 
       if (is.na(selective.crit.val) | is.infinite(selective.crit.val)) {
-        warning("Simultaneous critival value is NA. This probably happened because we cannot compute t-statistic (std errors are NA). We then report pointwise conf. intervals.")
+        warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
         selective.crit.val <- stats::qnorm(1 - alp / 2)
         dp$cband <- FALSE
       }
 
       if (selective.crit.val < stats::qnorm(1 - alp / 2)) {
-        warning("Simultaneous conf. band is somehow smaller than pointwise one using normal approximation. Since this is unusual, we are reporting pointwise confidence intervals")
+        warning("The simultaneous confidence band is narrower than the pointwise confidence interval, which is unexpected. Falling back to pointwise confidence intervals.")
         selective.crit.val <- stats::qnorm(1 - alp / 2)
         dp$cband <- FALSE
       }
 
       if (selective.crit.val >= 7) {
-        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is very large, suggesting it may be unreliable. This typically happens when the number of observations per group is small and/or there is not much variation in outcomes. Consider using pointwise confidence intervals instead (set `cband = FALSE`).")
       }
     }
 
@@ -401,19 +416,19 @@ compute.aggte <- function(MP,
       dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
 
       if (is.na(dynamic.crit.val) | is.infinite(dynamic.crit.val)) {
-        warning("Simultaneous critival value is NA. This probably happened because we cannot compute t-statistic (std errors are NA). We then report pointwise conf. intervals.")
+        warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
         dynamic.crit.val <- stats::qnorm(1 - alp / 2)
         dp$cband <- FALSE
       }
 
       if (dynamic.crit.val < stats::qnorm(1 - alp / 2)) {
-        warning("Simultaneous conf. band is somehow smaller than pointwise one using normal approximation. Since this is unusual, we are reporting pointwise confidence intervals")
+        warning("The simultaneous confidence band is narrower than the pointwise confidence interval, which is unexpected. Falling back to pointwise confidence intervals.")
         dynamic.crit.val <- stats::qnorm(1 - alp / 2)
         dp$cband <- FALSE
       }
 
       if (dynamic.crit.val >= 7) {
-        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is very large, suggesting it may be unreliable. This typically happens when the number of observations per group is small and/or there is not much variation in outcomes. Consider using pointwise confidence intervals instead (set `cband = FALSE`).")
       }
     }
 
@@ -513,19 +528,19 @@ compute.aggte <- function(MP,
       calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
 
       if (is.na(calendar.crit.val) | is.infinite(calendar.crit.val)) {
-        warning("Simultaneous critival value is NA. This probably happened because we cannot compute t-statistic (std errors are NA). We then report pointwise conf. intervals.")
+        warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
         calendar.crit.val <- stats::qnorm(1 - alp / 2)
         dp$cband <- FALSE
       }
 
       if (calendar.crit.val < stats::qnorm(1 - alp / 2)) {
-        warning("Simultaneous conf. band is somehow smaller than pointwise one using normal approximation. Since this is unusual, we are reporting pointwise confidence intervals")
+        warning("The simultaneous confidence band is narrower than the pointwise confidence interval, which is unexpected. Falling back to pointwise confidence intervals.")
         calendar.crit.val <- stats::qnorm(1 - alp / 2)
         dp$cband <- FALSE
       }
 
       if (calendar.crit.val >= 7) {
-        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is very large, suggesting it may be unreliable. This typically happens when the number of observations per group is small and/or there is not much variation in outcomes. Consider using pointwise confidence intervals instead (set `cband = FALSE`).")
       }
     }
 
@@ -551,7 +566,7 @@ compute.aggte <- function(MP,
       overall.att = calendar.att,
       overall.se = calendar.se,
       type = type,
-      egt = sapply(calendar.tlist, t2orig),
+      egt = t2orig(calendar.tlist),
       att.egt = calendar.att.t,
       se.egt = calendar.se.t,
       crit.val.egt = calendar.crit.val,
@@ -629,8 +644,18 @@ get_agg_inf_func <- function(att, inffunc1, whichones, weights.agg, wif = NULL) 
   # enforce weights are in matrix form
   weights.agg <- as.matrix(weights.agg)
 
+  # check dimensions
+  if (length(whichones) == 0) {
+    stop("No valid att_gt() estimates found for this aggregation. ",
+         "This may happen if all estimates for a particular group or time period are NA.")
+  }
+  if (max(whichones) > ncol(inffunc1)) {
+    stop("Internal error: influence function column indices (", max(whichones),
+         ") exceed available columns (", ncol(inffunc1), "). Please report this as a bug.")
+  }
+
   # multiplies influence function times weights and sums to get vector of weighted IF (of length n)
-  thisinffunc <- inffunc1[, whichones] %*% weights.agg
+  thisinffunc <- inffunc1[, whichones, drop = FALSE] %*% weights.agg
 
   # Incorporate influence function of the weights
   if (!is.null(wif)) {
