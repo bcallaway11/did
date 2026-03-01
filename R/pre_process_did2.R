@@ -41,7 +41,7 @@ validate_args <- function(args, data){
     # Check if gname is unique by idname: irreversibility of the treatment
     # Use direct column access instead of get() for speed
     id_g_unique <- unique(data[, c(args$idname, args$gname), with = FALSE])
-    check_treatment_uniqueness <- !anyDuplicated(id_g_unique[[1]])
+    check_treatment_uniqueness <- anyDuplicated(id_g_unique[[1]]) == 0L
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
     }

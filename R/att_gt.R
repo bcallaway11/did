@@ -210,6 +210,13 @@ att_gt <- function(yname,
   # Capture extra arguments for custom est_method
   extra_args <- list(...)
 
+  # Warn if extra arguments passed with built-in est_method
+  if (length(extra_args) > 0 && !inherits(est_method, "function")) {
+    warning("Extra arguments (", paste(names(extra_args), collapse = ", "),
+            ") are ignored when using built-in est_method = \"", est_method,
+            "\". Extra arguments are only passed to custom est_method functions.")
+  }
+
   # Validate est_method
   if (!inherits(est_method, "function")) {
     if (!is.character(est_method) || length(est_method) != 1) {
