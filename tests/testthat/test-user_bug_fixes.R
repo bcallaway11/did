@@ -71,11 +71,7 @@ test_that("repeated cross sections small groups with covariates", {
 
   expect_true(is.numeric(res_dr$se[1]))
 
-  # est_method="dr" with repeated cross sections and very small groups
-  # can segfault in fastglm (C code in DRDID) on some platforms when the
-  # design matrix is singular. This is an upstream DRDID/fastglm issue,
-  # not a did bug. Skip to avoid CI crashes.
-  skip("upstream DRDID/fastglm segfault on singular matrix with very small RC groups")
+  skip("known bug, code crashes in this case, fix is probably in DRDID package")
 })
 
 
