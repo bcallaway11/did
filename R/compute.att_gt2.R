@@ -416,9 +416,9 @@ compute.att_gt2 <- function(dp2) {
       att <- gt_result$att
       inf_func <- gt_result$inf_func
 
-      # Handle NaN ATT
+      # Handle NaN ATT: treat as estimation failure (consistent with compute.att_gt)
       if (is.nan(att)) {
-        att <- 0
+        att <- NA
         inf_func <- rep(0, n)
       }
 
