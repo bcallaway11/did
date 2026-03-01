@@ -452,7 +452,7 @@ compute.att_gt2 <- function(dp2) {
   trip_x <- numeric(0)
   for (j in seq_len(n_cols)) {
     vec <- gt_results[[j]]$inffunc_updates
-    nz <- which(vec != 0)
+    nz <- which(is.na(vec) | vec != 0)
     if (length(nz) > 0L) {
       trip_i <- c(trip_i, nz)
       trip_j <- c(trip_j, rep.int(j, length(nz)))
