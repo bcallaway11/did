@@ -38,6 +38,10 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 
     # treated group boundaries
     treat_idx <- match(dp2$treated_groups[group], cohort_vec)
+    if (is.na(treat_idx)) {
+      stop("Internal error: treated group ", dp2$treated_groups[group],
+           " not found in cohort_vec. Please report this issue.")
+    }
     start_treat <- if (treat_idx == 1L) 1L else cum_sizes[treat_idx - 1L] + 1L
     end_treat <- cum_sizes[treat_idx]
 
@@ -296,7 +300,7 @@ run_att_gt_estimation <- function(g, t, dp2){
   # and break without computing anything
   if (dp2$base_period == "universal") {
     if (dp2$time_periods[pret] == dp2$time_periods[(t+tfac)]) {
-      return(NULL)
+      return(list(base_period_norm = TRUE))
     }
   }
 
@@ -391,11 +395,18 @@ compute.att_gt2 <- function(dp2) {
       # Compute post-treatment indicator
     post.treat <- as.integer(dp2$treated_groups[g] <= dp2$time_periods[t+tfac])
 
+    # Base period normalization: ATT is 0 by construction
+    if (!is.null(gt_result$base_period_norm)) {
+      inffunc_updates <- rep(0, n)
+      gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
+    }
+
     if (is.null(gt_result) || is.null(gt_result$att)) {
-      # Estimation failed or was skipped
+      # Estimation failed or was skipped: set ATT to NA (consistent with compute.att_gt)
       if(dp2$base_period == "universal"){
-        inffunc_updates <- rep(0, n)
-        gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+        inffunc_updates <- rep(NA_real_, n)
+        gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
         return(gt_result)
       } else {
         return(NULL)
