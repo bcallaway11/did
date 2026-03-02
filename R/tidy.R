@@ -6,6 +6,32 @@ generics::tidy
 #' @export
 generics::glance
 
+#' Number of observations used to fit an MP object
+#'
+#' @importFrom stats nobs
+#' @param object a model of class MP produced by the [att_gt()] function
+#' @param ... additional arguments (ignored)
+#' @return Integer. The number of unique units in the data.
+#' @export
+nobs.MP <- function(object, ...) {
+  object$n
+}
+
+#' Number of observations used to fit an AGGTEobj object
+#'
+#' @importFrom stats nobs
+#' @param object a model of class AGGTEobj produced by the [aggte()] function
+#' @param ... additional arguments (ignored)
+#' @return Integer. The number of unique units in the data.
+#' @export
+nobs.AGGTEobj <- function(object, ...) {
+  if (object$DIDparams$faster_mode) {
+    object$DIDparams$id_count
+  } else {
+    object$DIDparams$n
+  }
+}
+
 #' Tidy an MP object into a data frame
 #'
 #' Returns a tidy data frame of group-time average treatment effect estimates
@@ -21,6 +47,10 @@ generics::glance
 #'   \item{time}{the time period t}
 #'   \item{estimate}{the ATT(g,t) point estimate}
 #'   \item{std.error}{standard error}
+#'   \item{statistic}{t-statistic (\code{estimate / std.error})}
+#'   \item{p.value}{two-sided pointwise p-value (\code{2*(1-pnorm(|t|))}).
+#'     Marginal per-estimate; does \strong{not} account for multiple testing
+#'     across ATT(g,t) cells.}
 #'   \item{conf.low, conf.high}{simultaneous confidence band limits, using the
 #'     bootstrap uniform critical value when \code{bstrap=TRUE} and
 #'     \code{cband=TRUE}, otherwise pointwise}
@@ -35,6 +65,8 @@ tidy.MP <- function(x, ...) {
     time      = x$t,
     estimate  = x$att,
     std.error = x$se,
+    statistic = x$att / x$se,
+    p.value   = 2 * (1 - stats::pnorm(abs(x$att / x$se))),
     conf.low  = x$att - x$c * x$se,
     conf.high = x$att + x$c * x$se,
     point.conf.low  = x$att - stats::qnorm(1 - x$alp/2) * x$se,
@@ -73,6 +105,10 @@ glance.MP <- function(x, ...) {
 #'   \item{term}{label for each estimate}
 #'   \item{estimate}{point estimate}
 #'   \item{std.error}{standard error}
+#'   \item{statistic}{t-statistic (\code{estimate / std.error})}
+#'   \item{p.value}{two-sided pointwise p-value (\code{2*(1-pnorm(|t|))}).
+#'     Marginal per-estimate; does \strong{not} account for multiple testing
+#'     across event times or groups.}
 #'   \item{conf.low, conf.high}{simultaneous confidence band limits.  When
 #'     \code{bstrap=TRUE} and \code{cband=TRUE} these use the bootstrap uniform
 #'     critical value (\code{crit.val.egt}); otherwise they equal the pointwise
@@ -98,6 +134,8 @@ tidy.AGGTEobj<- function(x, ...) {
       event.time= x$egt,
       estimate  = x$att.egt,
       std.error = x$se.egt,
+      statistic = x$att.egt / x$se.egt,
+      p.value   = 2 * (1 - stats::pnorm(abs(x$att.egt / x$se.egt))),
       conf.low  = x$att.egt - x$crit.val.egt * x$se.egt,
       conf.high = x$att.egt + x$crit.val.egt * x$se.egt,
       point.conf.low  = x$att.egt - stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt,
@@ -110,6 +148,8 @@ tidy.AGGTEobj<- function(x, ...) {
       group    = c('Average', x$egt),
       estimate  = c(x$overall.att, x$att.egt),
       std.error = c(x$overall.se, x$se.egt),
+      statistic = c(x$overall.att, x$att.egt) / c(x$overall.se, x$se.egt),
+      p.value   = 2 * (1 - stats::pnorm(abs(c(x$overall.att, x$att.egt) / c(x$overall.se, x$se.egt)))),
       conf.low  = c(x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se, x$att.egt - x$crit.val.egt * x$se.egt),
       conf.high = c(x$overall.att + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se, x$att.egt + x$crit.val.egt * x$se.egt),
       point.conf.low  = c(x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se, x$att.egt - stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt),
@@ -123,18 +163,22 @@ tidy.AGGTEobj<- function(x, ...) {
       term = paste0('ATT(', x$egt, ")"),
       estimate  = x$att.egt,
       std.error = x$se.egt,
+      statistic = x$att.egt / x$se.egt,
+      p.value   = 2 * (1 - stats::pnorm(abs(x$att.egt / x$se.egt))),
       conf.low  = x$att.egt - x$crit.val.egt * x$se.egt,
       conf.high = x$att.egt + x$crit.val.egt * x$se.egt,
       point.conf.low  = x$att.egt - stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt,
       point.conf.high = x$att.egt + stats::qnorm(1 - x$DIDparams$alp/2) * x$se.egt)
   }
-  
+
   if(x$type == "simple"){
     out <- data.frame(
       type      = x$type,
       term      = 'ATT(simple average)',
       estimate  = x$overall.att,
       std.error = x$overall.se,
+      statistic = x$overall.att / x$overall.se,
+      p.value   = 2 * (1 - stats::pnorm(abs(x$overall.att / x$overall.se))),
       conf.low  = x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
       conf.high = x$overall.att + stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
       point.conf.low  = x$overall.att - stats::qnorm(1 - x$DIDparams$alp/2) * x$overall.se,
