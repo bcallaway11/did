@@ -223,13 +223,16 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL){
     if (!custom_est_method) {
       D_vec <- cohort_data[, D]
 
+      # determine correct inf_func length for early returns
+      n_inf <- if (dp2$allow_unbalanced_panel) dp2$id_count else n
+
       # checks for pscore based methods
       if (dp2$est_method %in% c("dr", "ipw")) {
         preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
           warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = rep(NA_real_, n)))
+          return(list(att = NA, inf_func = rep(NA_real_, n_inf)))
         }
       }
 
@@ -238,7 +241,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL){
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
         if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
           warning(paste0("Not enough control units", gt_label, " to run specified regression"))
-          return(list(att = NA, inf_func = rep(NA_real_, n)))
+          return(list(att = NA, inf_func = rep(NA_real_, n_inf)))
         }
       }
     }
