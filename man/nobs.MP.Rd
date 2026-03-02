@@ -2,7 +2,7 @@
 % Please edit documentation in R/tidy.R
 \name{nobs.MP}
 \alias{nobs.MP}
-\title{Number of observations used to fit an MP object}
+\title{Number of unique cross-sectional units in an MP object}
 \usage{
 \method{nobs}{MP}(object, ...)
 }
@@ -12,8 +12,8 @@
 \item{...}{additional arguments (ignored)}
 }
 \value{
-Integer. The number of unique units in the data.
+Integer. The number of unique cross-sectional units in the data.
 }
 \description{
-Number of observations used to fit an MP object
+Number of unique cross-sectional units in an MP object
 }

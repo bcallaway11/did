@@ -30,4 +30,5 @@ Suggests:
     here,
     knitr,
     covr,
-    backports
+    backports,
+    broom

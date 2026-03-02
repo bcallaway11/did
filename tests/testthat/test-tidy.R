@@ -1,9 +1,11 @@
 
 #-----------------------------------------------------------------------------
 #
-# Tests for tidy(), glance(), and nobs() S3 methods
+# Tests for tidy() and nobs() S3 methods
 #
 #-----------------------------------------------------------------------------
+
+skip_if_not_installed("broom")
 
 data(mpdta, package = "did")
 
