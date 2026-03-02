@@ -20,10 +20,12 @@ if (!file.exists(jel_data_path)) {
         quiet = TRUE
       )
     }, error = function(e) {
-      # If download fails, tests will be skipped
+      # If download fails, tests will be skipped via skip_if_not below
     })
   }
 }
+
+jel_data_available <- file.exists(jel_data_path)
 
 # Helper to load and clean JEL data
 load_jel_data <- function(path, filter_2xt = TRUE) {
@@ -72,7 +74,8 @@ load_jel_data <- function(path, filter_2xt = TRUE) {
 # Table 7: 2x2 CS-DiD with Covariates (Sant'Anna-Zhao)
 # ===========================================================================
 test_that("JEL Table 7: 2x2 CS-DiD point estimates match", {
-  skip_if_not(file.exists(jel_data_path), "JEL-DiD data not available")
+  skip_on_cran()
+  skip_if_not(jel_data_available, "JEL-DiD data not available")
 
   mydata <- load_jel_data(jel_data_path, filter_2xt = TRUE)
 
@@ -122,7 +125,8 @@ test_that("JEL Table 7: 2x2 CS-DiD point estimates match", {
 # 2xT Event Study: No covariates, weighted, reg, nevertreated
 # ===========================================================================
 test_that("JEL 2xT: event study ATT(g,t) point estimates match", {
-  skip_if_not(file.exists(jel_data_path), "JEL-DiD data not available")
+  skip_on_cran()
+  skip_if_not(jel_data_available, "JEL-DiD data not available")
 
   mydata <- load_jel_data(jel_data_path, filter_2xt = TRUE)
   mydata$treat_year <- ifelse(!is.na(mydata$yaca) & mydata$yaca == 2014, 2014, 0)
@@ -170,7 +174,8 @@ test_that("JEL 2xT: event study ATT(g,t) point estimates match", {
 # 2xT with covariates: 3 estimation methods
 # ===========================================================================
 test_that("JEL 2xT: event study with covariates matches across methods", {
-  skip_if_not(file.exists(jel_data_path), "JEL-DiD data not available")
+  skip_on_cran()
+  skip_if_not(jel_data_available, "JEL-DiD data not available")
 
   mydata <- load_jel_data(jel_data_path, filter_2xt = TRUE)
   mydata$treat_year <- ifelse(!is.na(mydata$yaca) & mydata$yaca == 2014, 2014, 0)
@@ -208,7 +213,8 @@ test_that("JEL 2xT: event study with covariates matches across methods", {
 # GxT: No covariates, weighted, notyettreated
 # ===========================================================================
 test_that("JEL GxT: staggered event study without covariates matches", {
-  skip_if_not(file.exists(jel_data_path), "JEL-DiD data not available")
+  skip_on_cran()
+  skip_if_not(jel_data_available, "JEL-DiD data not available")
 
   mydata <- load_jel_data(jel_data_path, filter_2xt = FALSE)  # GxT keeps all groups
   mydata$treat_year <- ifelse(!is.na(mydata$yaca) & mydata$yaca <= 2019, mydata$yaca, 0)
@@ -262,7 +268,8 @@ test_that("JEL GxT: staggered event study without covariates matches", {
 # GxT: With covariates, DR, weighted, notyettreated
 # ===========================================================================
 test_that("JEL GxT: staggered event study with DR covariates matches", {
-  skip_if_not(file.exists(jel_data_path), "JEL-DiD data not available")
+  skip_on_cran()
+  skip_if_not(jel_data_available, "JEL-DiD data not available")
 
   mydata <- load_jel_data(jel_data_path, filter_2xt = FALSE)
   mydata$treat_year <- ifelse(!is.na(mydata$yaca) & mydata$yaca <= 2019, mydata$yaca, 0)
@@ -317,7 +324,8 @@ test_that("JEL GxT: staggered event study with DR covariates matches", {
 # Consistency: faster_mode should match regular mode for all JEL analyses
 # ===========================================================================
 test_that("JEL: faster_mode matches regular mode", {
-  skip_if_not(file.exists(jel_data_path), "JEL-DiD data not available")
+  skip_on_cran()
+  skip_if_not(jel_data_available, "JEL-DiD data not available")
 
   mydata <- load_jel_data(jel_data_path, filter_2xt = TRUE)
 
