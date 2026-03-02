@@ -395,6 +395,17 @@ compute.att_gt2 <- function(dp2) {
       # Compute post-treatment indicator
     post.treat <- as.integer(dp2$treated_groups[g] <= dp2$time_periods[t+tfac])
 
+    # Check for NULL first (estimation failed or was skipped)
+    if (is.null(gt_result)) {
+      if(dp2$base_period == "universal"){
+        inffunc_updates <- rep(NA_real_, n)
+        gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+        return(gt_result)
+      } else {
+        return(NULL)
+      }
+    }
+
     # Base period normalization: ATT is 0 by construction
     if (!is.null(gt_result$base_period_norm)) {
       inffunc_updates <- rep(0, n)
@@ -402,8 +413,8 @@ compute.att_gt2 <- function(dp2) {
       return(gt_result)
     }
 
-    if (is.null(gt_result) || is.null(gt_result$att)) {
-      # Estimation failed or was skipped: set ATT to NA (consistent with compute.att_gt)
+    if (is.null(gt_result$att)) {
+      # Estimation returned a result but without an ATT
       if(dp2$base_period == "universal"){
         inffunc_updates <- rep(NA_real_, n)
         gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)

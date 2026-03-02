@@ -81,7 +81,8 @@ compute.att_gt <- function(dp) {
     set(data, j = ".G", value = as.numeric(g_col == current_g))
 
     # pre-compute the universal/post-treatment base period for this group (used multiple times)
-    pret_g <- tail(which((tlist + anticipation) < glist[g]), 1)
+    idx_g <- which((tlist + anticipation) < glist[g])
+    pret_g <- if (length(idx_g) == 0L) NA_integer_ else idx_g[length(idx_g)]
 
     # loop over time periods
     for (t in 1:tlist.length) {
@@ -97,6 +98,19 @@ compute.att_gt <- function(dp) {
         pret <- pret_g
       }
 
+      # check if in post-treatment period
+      if ((glist[g] <= tlist[(t + tfac)])) {
+        # update pre-period if in post-treatment period to
+        # be  period (g-delta-1)
+        pret <- pret_g
+      }
+
+      # check if there are no pre-treatment periods
+      if (is.na(pret)) {
+        warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g], "\nUnits from this group are dropped"))
+        break
+      }
+
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,
       # but not treated by the current period (+ anticipation)
@@ -106,23 +120,6 @@ compute.att_gt <- function(dp) {
         set(data, j = ".C", value = as.integer((g_col == 0) |
           ((g_col > time_threshold) &
             (g_col != current_g))))
-      }
-
-
-      # check if in post-treatment period
-      if ((glist[g] <= tlist[(t + tfac)])) {
-        # update pre-period if in post-treatment period to
-        # be  period (g-delta-1)
-        pret <- pret_g
-
-        # print a warning message if there are no pre-treatment periods
-        if (length(pret) == 0) {
-          warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g], "\nUnits from this group are dropped"))
-
-          # if there are no pre-treatment periods, code will
-          # jump out of this loop
-          break
-        }
       }
 
 
