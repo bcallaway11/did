@@ -6,11 +6,27 @@ generics::tidy
 #' @export
 generics::glance
 
-#' tidy results from MP objects
+#' Tidy an MP object into a data frame
+#'
+#' Returns a tidy data frame of group-time average treatment effect estimates
+#' from an [att_gt()] result.
 #'
 #' @importFrom generics tidy
 #' @param x a model of class MP produced by the [att_gt()] function
 #' @param ... Additional arguments to tidying method.
+#'
+#' @return A data frame with one row per ATT(g,t) estimate and columns:
+#'   \item{term}{ATT(g,t) label}
+#'   \item{group}{the treatment cohort g}
+#'   \item{time}{the time period t}
+#'   \item{estimate}{the ATT(g,t) point estimate}
+#'   \item{std.error}{standard error}
+#'   \item{conf.low, conf.high}{simultaneous confidence band limits, using the
+#'     bootstrap uniform critical value when \code{bstrap=TRUE} and
+#'     \code{cband=TRUE}, otherwise pointwise}
+#'   \item{point.conf.low, point.conf.high}{pointwise confidence interval limits
+#'     using \code{qnorm(1 - alp/2)}, always}
+#'
 #' @export
 tidy.MP <- function(x, ...) {
   out <- data.frame(
@@ -42,11 +58,37 @@ glance.MP <- function(x, ...) {
   out
 }
 
-#' tidy results from AGGTEobj objects
+#' Tidy an AGGTEobj into a data frame
+#'
+#' Returns a tidy data frame of aggregated treatment effect estimates from an
+#' [aggte()] result.
 #'
 #' @importFrom generics tidy
 #' @param x a model of class AGGTEobj produced by the [aggte()] function
 #' @param ... Additional arguments to tidying method.
+#'
+#' @return A data frame whose columns depend on \code{type}:
+#'   \item{type}{the aggregation type: \code{"simple"}, \code{"dynamic"},
+#'     \code{"group"}, or \code{"calendar"}}
+#'   \item{term}{label for each estimate}
+#'   \item{estimate}{point estimate}
+#'   \item{std.error}{standard error}
+#'   \item{conf.low, conf.high}{simultaneous confidence band limits.  When
+#'     \code{bstrap=TRUE} and \code{cband=TRUE} these use the bootstrap uniform
+#'     critical value (\code{crit.val.egt}); otherwise they equal the pointwise
+#'     intervals.  For \code{type="simple"} and the overall average row of
+#'     \code{type="group"}, a single scalar is returned so simultaneous and
+#'     pointwise coincide.}
+#'   \item{point.conf.low, point.conf.high}{pointwise confidence interval limits
+#'     always using \code{qnorm(1 - alp/2)}.}
+#'
+#' @details
+#' The key distinction between \code{conf.low}/\code{conf.high} and
+#' \code{point.conf.low}/\code{point.conf.high} is that the former accounts for
+#' multiple testing across all estimates (simultaneous coverage), while the
+#' latter provides marginal (per-estimate) coverage only.  Use the simultaneous
+#' bands when you want to make joint inferences across all event times or groups.
+#'
 #' @export
 tidy.AGGTEobj<- function(x, ...) {
   if(x$type == "dynamic"){
