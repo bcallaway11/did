@@ -6,9 +6,24 @@
 library(testthat)
 library(did)
 
-# Path to the JEL-DiD data file
+# Path to the JEL-DiD data file: check env var, local path, or download from GitHub
 jel_data_path <- Sys.getenv("JEL_DID_DATA_PATH",
                             unset = file.path(path.expand("~"), "JEL-DiD", "data", "county_mortality_data.csv"))
+
+if (!file.exists(jel_data_path)) {
+  jel_data_path <- file.path(tempdir(), "county_mortality_data.csv")
+  if (!file.exists(jel_data_path)) {
+    tryCatch({
+      download.file(
+        "https://raw.githubusercontent.com/pedrohcgs/JEL-DiD/main/data/county_mortality_data.csv",
+        destfile = jel_data_path,
+        quiet = TRUE
+      )
+    }, error = function(e) {
+      # If download fails, tests will be skipped
+    })
+  }
+}
 
 # Helper to load and clean JEL data
 load_jel_data <- function(path, filter_2xt = TRUE) {
