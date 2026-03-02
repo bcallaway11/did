@@ -378,46 +378,77 @@ att_gt <- function(yname,
   # compute Wald pre-test
   #-----------------------------------------------------------------------------
 
-  # select which periods are pre-treatment
-  pre <- which(group > tt)
+  # Determine whether the analytical V is a valid basis for the Wald pre-test.
+  # V = t(inffunc) %*% inffunc / n is valid for balanced panels, unbalanced
+  # panels (influence functions are aggregated to the unit level), and repeated
+  # cross-sections (CLT applies per independent observation).
+  #
+  # It is invalid when an extra cluster variable (beyond idname) is specified:
+  # the analytical V ignores between-cluster correlation, making the Wald stat
+  # anti-conservative.  In that case we skip the test and message the user to
+  # rely on bootstrap confidence intervals instead.
 
-  # Drop group-periods that have variance equal to zero (singularity problems)
-  if (length(zero_na_sd_entry) > 0) {
-    pre <- pre[!(pre %in% zero_na_sd_entry)]
-  }
-  # pseudo-atts in pre-treatment periods
-  preatt <- as.matrix(att[pre])
+  extra_clustervars <- clustervars[!(clustervars %in% c(idname, ""))]
+  extra_clustervars <- extra_clustervars[!is.null(extra_clustervars)]
 
-  # covariance matrix of pre-treatment atts
-  preV <- as.matrix(V[pre, pre])
-
-  # check if there are actually any pre-treatment periods
-  if (length(preV) == 0) {
-    msg <- paste0(
-      "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
-      "This can happen when all groups are first treated early in the panel ",
-      "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
+  wald_invalid <- NULL
+  if (length(extra_clustervars) > 0) {
+    wald_invalid <- paste0(
+      "The Wald pre-test is not reported when clustering beyond the unit level ",
+      "(clustervars = '", paste(extra_clustervars, collapse = "', '"), "') ",
+      "because the analytical variance matrix does not account for between-cluster ",
+      "correlation. Use the bootstrap confidence intervals to assess pre-trends."
     )
-    if (anticipation > 0) {
-      msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+  }
+
+  if (!is.null(wald_invalid)) {
+    message(wald_invalid)
+    W <- NULL
+    Wpval <- NULL
+  }
+
+  if (is.null(wald_invalid)) {
+    # select which periods are pre-treatment
+    pre <- which(group > tt)
+
+    # Drop group-periods that have variance equal to zero (singularity problems)
+    if (length(zero_na_sd_entry) > 0) {
+      pre <- pre[!(pre %in% zero_na_sd_entry)]
     }
-    warning(msg)
-    W <- NULL
-    Wpval <- NULL
-  } else if (sum(is.na(preV))) {
-    warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
-    W <- NULL
-    Wpval <- NULL
-  } else if (rcond(preV) <= .Machine$double.eps) {
-    # singular covariance matrix for pre-treatment periods
-    warning("Not returning pre-test Wald statistic due to singular covariance matrix")
-    W <- NULL
-    Wpval <- NULL
-  } else {
-    # everything is working...
-    W <- n * t(preatt) %*% solve(preV) %*% preatt
-    q <- length(pre) # number of restrictions
-    Wpval <- round(1 - pchisq(W, q), 5)
+    # pseudo-atts in pre-treatment periods
+    preatt <- as.matrix(att[pre])
+
+    # covariance matrix of pre-treatment atts
+    preV <- as.matrix(V[pre, pre])
+
+    # check if there are actually any pre-treatment periods
+    if (length(preV) == 0) {
+      msg <- paste0(
+        "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
+        "This can happen when all groups are first treated early in the panel ",
+        "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
+      )
+      if (anticipation > 0) {
+        msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+      }
+      warning(msg)
+      W <- NULL
+      Wpval <- NULL
+    } else if (sum(is.na(preV))) {
+      warning("Not returning pre-test Wald statistic due to NA pre-treatment values")
+      W <- NULL
+      Wpval <- NULL
+    } else if (rcond(preV) <= .Machine$double.eps) {
+      # singular covariance matrix for pre-treatment periods
+      warning("Not returning pre-test Wald statistic due to singular covariance matrix")
+      W <- NULL
+      Wpval <- NULL
+    } else {
+      # everything is working...
+      W <- n * t(preatt) %*% solve(preV) %*% preatt
+      q <- length(pre) # number of restrictions
+      Wpval <- round(1 - pchisq(W, q), 5)
+    }
   }
 
 
