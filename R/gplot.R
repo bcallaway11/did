@@ -13,12 +13,14 @@
 #' @export
 gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
                   legend=TRUE, ref_line = 0, theming = TRUE) {
-  dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
+  unique_years <- sort(unique(as.numeric(as.character(ssresults$year))))
+  xgap_int <- max(1L, as.integer(round(xgap)))
+  dabreaks <- unique_years[seq(1, length(unique_years), by = xgap_int)]
 
   c.point <-  qnorm(1 - ssresults$alp/2)
 
   p <- ggplot(ssresults,
-              aes(x=as.numeric(year), y=att, ymin=(att-c*att.se),
+              aes(x=as.numeric(as.character(year)), y=att, ymin=(att-c*att.se),
                   ymax=(att+c*att.se))) +
 
     geom_point(aes(colour=post), size=1.5) +

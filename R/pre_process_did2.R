@@ -228,7 +228,9 @@ did_standardization <- function(data, args){
 
   # handle units treated in the first period
   if (nfirstperiod > 0) {
-    warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period."))
+    warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
+                    if (args$anticipation > 0) paste0(" (accounting for anticipation = ", args$anticipation, ")") else "",
+                    "."))
     data <- data[get(args$gname) %in% c(glist, Inf)]
 
     # update tlist and glist

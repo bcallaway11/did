@@ -182,7 +182,9 @@ pre_process_did <- function(yname,
   treated_first_period[is.na(treated_first_period)] <- FALSE
   nfirstperiod <- ifelse(panel, length(unique(data[treated_first_period,][,idname])), nrow(data[treated_first_period,]))
   if ( nfirstperiod > 0 ) {
-    warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period."))
+    warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
+                    if (anticipation > 0) paste0(" (accounting for anticipation = ", anticipation, ")") else "",
+                    "."))
     data <- data[ data[,gname] %in% c(0,glist), ]
     # update tlist and glist
     tlist <- unique(data[,tname])[order(unique(data[,tname]))]
