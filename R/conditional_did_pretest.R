@@ -75,7 +75,7 @@ conditional_did_pretest <- function(yname,
   # note: tlist[2] contains the 2nd time period
   # (which is the first period where able to calculate ATT(g,t)'s)
   if ( max(glist) <= tlist[2] ) {
-    stop("There are no pre-treatment periods to use to conduct test.")
+    stop("There are no pre-treatment periods available to conduct the conditional pre-test. Ensure your data has sufficient pre-treatment periods.")
   }
 
 
@@ -86,7 +86,7 @@ conditional_did_pretest <- function(yname,
 
 
   if (allow_unbalanced_panel) {
-    stop("Conditional pre-test not currently supported for unbalanced panel.")
+    stop("The conditional pre-test is not supported for unbalanced panel data. Set `allow_unbalanced_panel = FALSE` to balance the panel, or use the pre-test reported by att_gt() instead.")
   }
 
   # create dataset with n observations;
@@ -304,7 +304,7 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
   # we can only handle up to 2-way clustering
   # (in principle could do more, but not high priority now)
   if (length(clustervars) > 1) {
-    stop("can't handle that many cluster variables")
+    stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
   }
 
   # bootstrap

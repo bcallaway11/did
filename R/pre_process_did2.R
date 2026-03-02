@@ -20,14 +20,14 @@ validate_args <- function(args, data){
   dreamerr::check_set_arg(args$tname, args$gname, args$yname, "match", .choices = data_names, .message = name_message, .up = 1)
 
   # Flag for clustervars and weightsname
-  checkvar_message <- "__ARG__ must be NULL or a character scalar if a name of columns from the dataset."
+  checkvar_message <- "__ARG__ must be NULL or a character scalar that is a name of a column from the dataset."
   dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
 
-  # check if times periods are numeric
-  if(!data[, is.numeric(get(args$tname))]){stop("tname = ",args$tname,  " is not numeric. Please convert it")}
+  # check if time periods are numeric
+  if(!data[, is.numeric(get(args$tname))]){stop("The time variable '", args$tname, "' must be numeric. Please convert it.")}
 
   # Check if gname is numeric
-  if(!data[, is.numeric(get(args$gname))]){stop("gname = ",args$gname,  " is not numeric. Please convert it")}
+  if(!data[, is.numeric(get(args$gname))]){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
 
   # Flag for idname
   if(!is.null(args$idname)){
@@ -36,23 +36,25 @@ validate_args <- function(args, data){
     dreamerr::check_set_arg(args$idname, "match", .choices = data_names, .message = name_message, .up = 1)
 
     #  check if idname is numeric
-    if(!data[, is.numeric(get(args$idname))]){stop("idname = ", args$idname,  " is not numeric. Please convert it")}
+    if(!data[, is.numeric(get(args$idname))]){stop("The id variable '", args$idname, "' must be numeric. Please convert it.")}
 
     # Check if gname is unique by idname: irreversibility of the treatment
-    check_treatment_uniqueness <- data[, .(constant = all(get(args$gname)[1] == get(args$gname))), by = get(args$idname)][, all(constant, na.rm = TRUE)]
+    # Use direct column access instead of get() for speed
+    id_g_unique <- unique(data[, c(args$idname, args$gname), with = FALSE])
+    check_treatment_uniqueness <- anyDuplicated(id_g_unique[[1]]) == 0L
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
     }
 
     # Check if any combination of idname and tname is duplicated
-    n_id_year = anyDuplicated(data[, .(args$idname, args$tname)])
+    n_id_year <- anyDuplicated(data, by = c(args$idname, args$tname))
     # If any combination is duplicated, stop execution and throw an error
     if (n_id_year > 0) {
       stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
     }
   }
 
-  # Flag for based period: not in c("universal", "varying"), stop
+  # Flag for base period: not in c("universal", "varying"), stop
   args$base_period <- args$base_period[1]
   base_period_message <- "base_period must be either 'universal' or 'varying'."
   dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
@@ -87,19 +89,19 @@ validate_args <- function(args, data){
 
   # Check if anticipation is positive
   if (args$anticipation < 0) {
-    stop("anticipation must be positive. Please check your arguments.")
+    stop("anticipation must be non-negative. Please check your arguments.")
   }
 
 }
 
-#' @title DiD standarization
-#' @description A utility function to coerce the data in standard format
+#' @title DiD standardization
+#' @description A utility function to coerce the data into standard format
 #' @param data data.table used in function
 #' @param args list of arguments to validate
 #'
-#' @return A List, containing order data and arguments
+#' @return A list containing ordered data and arguments
 #' @noRd
-did_standarization <- function(data, args){
+did_standardization <- function(data, args){
   # keep relevant columns in data
   cols_to_keep <-  c(args$idname, args$tname, args$gname, args$yname, args$weightsname, args$clustervars)
 
@@ -137,10 +139,12 @@ did_standarization <- function(data, args){
   data[get(args$gname) == 0, (args$gname) := Inf]
 
   # Working out the dates
-  # Identify groups with treatment time bigger than the maximum treatment time
-  # calculate the maximum treatment time
+  # Identify groups with treatment time bigger than the maximum treatment time + anticipation.
+  # We account for anticipation because units treated shortly after the last observed period
+  # may already exhibit anticipatory effects during the observed time window, and should
+  # not be used as controls.
   max_treatment_time <- max(tlist, na.rm = TRUE)
-  data[, asif_never_treated := (get(args$gname) > max_treatment_time)]
+  data[, asif_never_treated := (get(args$gname) > max_treatment_time + args$anticipation)]
   # replace NA values with FALSE in the logical vector
   data[is.na(asif_never_treated), asif_never_treated := FALSE]
   # set gname to 0 for those groups considered as never treated
@@ -151,7 +155,7 @@ did_standarization <- function(data, args){
   # get list of treated groups (by time) from min to max
   glist <- sort(unique(data[[args$gname]]))
 
-  # Check  if there is a never treated group in the data
+  # Check if there is a never treated group in the data
   # if (!(Inf %in% glist)) {
   #   if (args$control_group == "nevertreated") {
   #     stop("There is no available never-treated group")
@@ -210,13 +214,17 @@ did_standarization <- function(data, args){
   # drop groups treated in the first period or before; keep only treated groups
   glist <- glist[glist != Inf & glist > first_period + args$anticipation]
 
-  # Check for groups treated in the first period and drop them
+  # Check for groups treated in the first period (accounting for anticipation) and drop them
   # identify groups treated in the first period
-  data[, treated_first_period := (get(args$gname) <= first_period)]
+  data[, treated_first_period := (is.finite(get(args$gname)) & get(args$gname) <= first_period + args$anticipation)]
   data[is.na(treated_first_period), treated_first_period := FALSE]
 
   # count the number of units treated in the first period
-  nfirstperiod <- ifelse(args$panel, uniqueN(data[treated_first_period == TRUE, get(args$idname)]), nrow(data[treated_first_period == TRUE]))
+  if (args$panel) {
+    nfirstperiod <- length(unique(data[[args$idname]][data$treated_first_period == TRUE]))
+  } else {
+    nfirstperiod <- sum(data$treated_first_period == TRUE)
+  }
 
   # handle units treated in the first period
   if (nfirstperiod > 0) {
@@ -272,23 +280,16 @@ did_standarization <- function(data, args){
 
       # Focus on complete cases
       keepers <- complete.cases(data)
-      n <- uniqueN(data[[args$idname]])
-      n_keep <- uniqueN(data[keepers, ][[args$idname]])
+      id_col <- data[[args$idname]]
+      n <- length(unique(id_col))
+      n_keep <- length(unique(id_col[keepers]))
       if (n_keep < n) {
         warning(paste0("Dropped ", (n - n_keep), " observations that had missing data."))
         data <- data[keepers, ]
       }
 
-
       # Make balanced panel
-      # n_old <- uniqueN(data[[args$idname]])
-      # data <- BMisc::makeBalancedPanel(data, args$idname, args$tname, return_data.table = TRUE) # coerce to data.table again. This is ugly, find a better way to do it.
-      # n <- uniqueN(data[[args$idname]])
-      #
-      # if (n < n_old) {
-      #   warning(paste0("Dropped ", n_old - n, " observations while converting to balanced panel."))
-      # }
-      raw_time_size <- uniqueN(data[[args$tname]])
+      raw_time_size <- length(unique(data[[args$tname]]))
       unit_count <- data[, .(count = .N), by = get(args$idname)]
       if(any(unit_count[, count < raw_time_size])){
         mis_unit <- unit_count[count < raw_time_size]
@@ -301,14 +302,9 @@ did_standarization <- function(data, args){
         stop("All observations dropped while converting data to balanced panel. Consider setting `panel = FALSE` and/or revisiting 'idname'.")
       }
 
-      n <- data[get(args$tname) == tlist[1], .N]
+      n <- sum(data[[args$tname]] == tlist[1])
 
-      # Check if the treatment is irreversible
-      # Ensure The value of gname must be the same across all periods for each particular individual.
-      check_treatment_uniqueness <- data[, .(constant = uniqueN(get(args$gname)) == 1), by = get(args$idname)][, all(constant)]
-      if (!check_treatment_uniqueness) {
-        stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
-      }
+      # Note: treatment irreversibility was already checked in validate_args()
     }
   }
 
@@ -321,7 +317,7 @@ did_standarization <- function(data, args){
     data <- data[complete.cases(data)]
 
     if (nrow(data) == 0) {
-      stop("All observations dropped due to missing data problems.")
+      stop("All observations were dropped due to missing data. Check your outcome, group, time, and covariate variables for missing values.")
     }
 
     # n-row data.frame to hold the influence function
@@ -334,7 +330,7 @@ did_standarization <- function(data, args){
     }
 
     # Count unique number of cross section observations
-    n <- uniqueN(data[[args$idname]])
+    n <- length(unique(data[[args$idname]]))
   }
 
   # Check if groups is empty (usually a problem with the way people defined groups)
@@ -364,11 +360,11 @@ did_standarization <- function(data, args){
   # Warn if some groups are small
   if (nrow(gsize) > 0) {
     gpaste <- paste(gsize[,1], collapse = ",")
-    warning(paste0("Be aware that there are some small groups in your dataset.\n  Check groups: ", gpaste, "."))
+    warning(paste0("Some groups in your dataset have very few observations, which may cause estimation problems.\n  Check groups: ", gpaste, "."))
 
     # Check if the never treated group is too small
     if ((Inf %in% gsize[,1]) & (args$control_group == "nevertreated")) {
-      stop("never treated group is too small, try setting control_group=\"notyettreated\"")
+      stop("The never-treated group is too small to serve as a reliable control. Try setting `control_group = 'notyettreated'` to include not-yet-treated units as controls.")
     }
   }
 
@@ -396,25 +392,26 @@ did_standarization <- function(data, args){
 }
 
 #' @title DiD tensors
-#' @description A utility function that split the data in a list of outcomes tensors and a list of arguments.
-#' Tensor are objects of dimension id_count x 1 x time_periods_count and are used for faster filtering in the computation of the DiD estimator.
+#' @description A utility function that splits the data into a list of outcome tensors and a list of arguments.
+#' Tensors are objects of dimension id_count x 1 x time_periods_count and are used for faster filtering in the computation of the DiD estimator.
 #' @param data data.table used in function
 #' @param args list of arguments to validate
 #'
-#' @return A List, containing outcomes tensor, time invariant data, cohort counts, covariates matrix, cluster vector and weights vector.
+#' @return A list containing outcome tensors, time invariant data, cohort counts, covariates matrix, cluster vector, and weights vector.
 #' @noRd
 get_did_tensors <- function(data, args){
 
-  # Getting the outcomes tensor: a vector a outcome variables per time period of dimension id_count x 1 x time_periods_count
-  outcomes_tensor <- list()
+  # Getting the outcome tensor: a vector of outcome variables per time period of dimension id_count x 1 x time_periods_count
   #if(!args$allow_unbalanced_panel){
   if(args$panel){
-    for(time in seq_along(args$time_periods)){
-      # iterating over index
-      # creating buckets of outcomes of size from 1 to id_size, id_size+1 to 2*id_size, etc.
-      start <- (time - 1) * args$id_count + 1
-      end <- time * args$id_count
-      outcomes_tensor[[time]] <- data[seq(start,end), get(args$yname)]
+    # Extract the outcome column once as a plain vector, then split by time period
+    y_vec <- data[[args$yname]]
+    n <- args$id_count
+    nT <- args$time_periods_count
+    outcomes_tensor <- vector("list", nT)
+    for(time in seq_len(nT)){
+      start <- (time - 1L) * n + 1L
+      outcomes_tensor[[time]] <- y_vec[start:(start + n - 1L)]
     }
   } else {
     # for(time in args$time_periods){
@@ -485,17 +482,20 @@ get_did_tensors <- function(data, args){
   #
   # }
   if (args$xformla == ~1) {
-    covariates_tensor <- replicate(args$time_periods_count,
-                                   rep(1, args$id_count),
+    ones_vec <- rep(1, args$id_count)
+    covariates_tensor <- replicate(args$time_periods_count, ones_vec,
                                    simplify = FALSE)
     covariates_matrix <- matrix(1, nrow = nrow(invariant_data), ncol = 1)
   } else {
     if (args$panel) {
-      covariates_tensor <- vector("list", args$time_periods_count)
-      for (tt in seq_along(args$time_periods)) {
-        rng <- ((tt - 1) * args$id_count + 1):(tt * args$id_count)
-        covariates_tensor[[tt]] <-
-          model.matrix(args$xformla, data = data[rng], na.action = na.pass)
+      # Compute model.matrix once on the full stacked data, then split by time period
+      full_mm <- model.matrix(args$xformla, data = data, na.action = na.pass)
+      n <- args$id_count
+      nT <- args$time_periods_count
+      covariates_tensor <- vector("list", nT)
+      for (tt in seq_len(nT)) {
+        start <- (tt - 1L) * n + 1L
+        covariates_tensor[[tt]] <- full_mm[start:(start + n - 1L), , drop = FALSE]
       }
       covariates_matrix <- NULL        # not needed in balanced panel
     } else {                             # RCS / unbalanced
@@ -506,15 +506,15 @@ get_did_tensors <- function(data, args){
     }
   }
 
-  # Get the cluster variable only
+  # Get the cluster variable only (direct column access is faster than .SD/.SDcols)
   if(!is.null(args$clustervars)){
-    cluster <- invariant_data[, .SD, .SDcols = args$clustervars] |> unlist()
+    cluster <- invariant_data[[args$clustervars]]
   } else {
     cluster <- NA
   }
 
   # Get the weights only
-  weights <- invariant_data[, .SD, .SDcols = "weights"] |> unlist()
+  weights <- invariant_data[["weights"]]
 
   # Gather all the arguments to return
   return(list(outcomes_tensor = outcomes_tensor,
@@ -599,7 +599,7 @@ pre_process_did2 <- function(yname,
   }
 
   # Put the data in a standard format after some validation
-  cleaned_did <- did_standarization(data, args)
+  cleaned_did <- did_standardization(data, args)
 
   # Partition staggered DiD into a 2x2 DiD for faster implementation
   did_tensors <- get_did_tensors(cleaned_did$data, cleaned_did$args)

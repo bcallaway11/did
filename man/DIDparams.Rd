@@ -57,7 +57,7 @@ to the 2x2 DID estimator chosen in \code{est_method}.
 For time-varying covariates: (1) With balanced panel data,
 in each 2x2 comparison, the covariates
 are taken to be the value of the covariates in the earlier time
-period, and all of the underlying computation involve change in Y
+period, and all of the underlying computations involve changes in Y
 as a function of those values of covariates.  (2) With repeated cross
 sections data and unbalanced panel data, the covariates are taken
 from each time period and computations involve Y_post conditional
@@ -69,7 +69,7 @@ results according to whether or not \code{allow_unbalanced_panel=TRUE} or
 
 \item{data}{The name of the data.frame that contains the data}
 
-\item{control_group}{Which units to use the control group.
+\item{control_group}{Which units to use as the control group.
 The default is "nevertreated" which sets the control group
 to be the group of units that never participate in the
 treatment.  This group does not change across groups or
@@ -171,7 +171,7 @@ extra estimate in an earlier period.}
 The panel dataset should be provided in long format -- that
 is, where each row corresponds to a unit observed at a
 particular point in time.  The default is TRUE.  When
-is using a panel dataset, the variable \code{idname} must
+using a panel dataset, the variable \code{idname} must
 be set.  When \code{panel=FALSE}, the data is treated
 as repeated cross sections.}
 

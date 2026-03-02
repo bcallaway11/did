@@ -5,7 +5,7 @@
 \alias{mpdta}
 \title{County Teen Employment Dataset}
 \format{
-A data frame with 2000 rows and 5 variables:
+A data frame with 2000 rows and 6 variables:
 \describe{
 \item{year}{the year of the observation}
 \item{countyreal}{a unique identifier for a particular county}
@@ -19,7 +19,7 @@ period.}
 }
 }
 \source{
-Callaway and Sant'Anna (2020)
+Callaway and Sant'Anna (2021)
 }
 \usage{
 mpdta

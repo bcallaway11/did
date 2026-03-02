@@ -18,7 +18,7 @@ the influence function which is used externally to compute
 standard errors.
 }
 \description{
-\code{compute.att_gt} does the (g,t) cell and send it to estimation,
-then do all the post process after estimation
+\code{compute.att_gt2} does the (g,t) cell computation and sends it to estimation,
+then does all the post-processing after estimation
 }
 \keyword{internal}

@@ -14,3 +14,22 @@ ggdid(object, ...)
 \description{
 Function to plot objects from the \code{did} package
 }
+\examples{
+\dontrun{
+data(mpdta)
+out <- att_gt(yname = "lemp",
+              gname = "first.treat",
+              idname = "countyreal",
+              tname = "year",
+              xformla = ~1,
+              data = mpdta)
+
+# plot all group-time average treatment effects
+ggdid(out)
+
+# plot event study aggregation
+es <- aggte(out, type = "dynamic")
+ggdid(es)
+}
+
+}

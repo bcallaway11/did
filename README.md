@@ -135,18 +135,18 @@ summary(out)
 #> 
 #> Group-Time Average Treatment Effects:
 #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]  
-#>   2004 2004  -0.0105     0.0237       -0.0727      0.0517  
-#>   2004 2005  -0.0704     0.0311       -0.1518      0.0110  
-#>   2004 2006  -0.1373     0.0393       -0.2401     -0.0344 *
-#>   2004 2007  -0.1008     0.0355       -0.1938     -0.0078 *
-#>   2006 2004   0.0065     0.0230       -0.0537      0.0668  
-#>   2006 2005  -0.0028     0.0203       -0.0558      0.0503  
-#>   2006 2006  -0.0046     0.0181       -0.0521      0.0429  
-#>   2006 2007  -0.0412     0.0214       -0.0973      0.0148  
-#>   2007 2004   0.0305     0.0164       -0.0124      0.0734  
-#>   2007 2005  -0.0027     0.0170       -0.0474      0.0419  
-#>   2007 2006  -0.0311     0.0188       -0.0804      0.0183  
-#>   2007 2007  -0.0261     0.0168       -0.0701      0.0180  
+#>   2004 2004  -0.0105     0.0241       -0.0749      0.0539  
+#>   2004 2005  -0.0704     0.0313       -0.1540      0.0131  
+#>   2004 2006  -0.1373     0.0380       -0.2389     -0.0357 *
+#>   2004 2007  -0.1008     0.0337       -0.1909     -0.0107 *
+#>   2006 2004   0.0065     0.0223       -0.0531      0.0662  
+#>   2006 2005  -0.0028     0.0196       -0.0552      0.0497  
+#>   2006 2006  -0.0046     0.0188       -0.0549      0.0457  
+#>   2006 2007  -0.0412     0.0202       -0.0952      0.0128  
+#>   2007 2004   0.0305     0.0154       -0.0107      0.0717  
+#>   2007 2005  -0.0027     0.0168       -0.0478      0.0423  
+#>   2007 2006  -0.0311     0.0190       -0.0818      0.0196  
+#>   2007 2007  -0.0261     0.0182       -0.0746      0.0225  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -171,7 +171,7 @@ effects. This can be done using the **ggdid** command:
 ggdid(out, ylim = c(-.25, .1))
 ```
 
-<img src="man/figures/README-unnamed-chunk-9-1.png" width="90%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="90%" style="display: block; margin: auto;" />
 
 The red dots in the plot are pre-treatment group-time average treatment
 effects . Here they are provided with 95% simultaneous confidence
@@ -211,18 +211,18 @@ summary(es)
 #> 
 #> Overall summary of ATT's based on event-study/dynamic aggregation:  
 #>      ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.0772        0.0209    -0.1182     -0.0363 *
+#>  -0.0772        0.0196    -0.1156     -0.0389 *
 #> 
 #> 
 #> Dynamic Effects:
 #>  Event time Estimate Std. Error [95% Simult.  Conf. Band]  
-#>          -3   0.0305     0.0158       -0.0111      0.0721  
-#>          -2  -0.0006     0.0128       -0.0342      0.0331  
-#>          -1  -0.0245     0.0145       -0.0627      0.0137  
-#>           0  -0.0199     0.0110       -0.0489      0.0090  
-#>           1  -0.0510     0.0177       -0.0974     -0.0046 *
-#>           2  -0.1373     0.0382       -0.2375     -0.0370 *
-#>           3  -0.1008     0.0357       -0.1947     -0.0069 *
+#>          -3   0.0305     0.0153       -0.0082      0.0692  
+#>          -2  -0.0006     0.0136       -0.0350      0.0339  
+#>          -1  -0.0245     0.0138       -0.0594      0.0105  
+#>           0  -0.0199     0.0115       -0.0490      0.0091  
+#>           1  -0.0510     0.0174       -0.0952     -0.0068 *
+#>           2  -0.1373     0.0356       -0.2275     -0.0470 *
+#>           3  -0.1008     0.0354       -0.1906     -0.0110 *
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 
@@ -242,7 +242,7 @@ To plot the event study, use **ggdid**
 ggdid(es)
 ```
 
-<img src="man/figures/README-unnamed-chunk-12-1.png" width="90%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="90%" style="display: block; margin: auto;" />
 
 The figure here is very similar to the group-time average treatment
 effects. Red dots are pre-treatment periods, blue dots are
@@ -276,14 +276,14 @@ summary(group_effects)
 #> 
 #> Overall summary of ATT's based on group/cohort aggregation:  
 #>     ATT    Std. Error     [ 95%  Conf. Int.]  
-#>  -0.031        0.0129    -0.0563     -0.0057 *
+#>  -0.031        0.0123     -0.055      -0.007 *
 #> 
 #> 
 #> Group Effects:
 #>  Group Estimate Std. Error [95% Simult.  Conf. Band]  
-#>   2004  -0.0797     0.0279       -0.1460     -0.0135 *
-#>   2006  -0.0229     0.0165       -0.0621      0.0163  
-#>   2007  -0.0261     0.0174       -0.0674      0.0153  
+#>   2004  -0.0797     0.0277       -0.1420     -0.0175 *
+#>   2006  -0.0229     0.0172       -0.0617      0.0159  
+#>   2007  -0.0261     0.0177       -0.0659      0.0138  
 #> ---
 #> Signif. codes: `*' confidence band does not cover 0
 #> 

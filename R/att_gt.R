@@ -66,7 +66,7 @@
 #'  For time-varying covariates: (1) With balanced panel data,
 #'  in each 2x2 comparison, the covariates
 #'  are taken to be the value of the covariates in the earlier time
-#'  period, and all of the underlying computation involve change in Y
+#'  period, and all of the underlying computations involve changes in Y
 #'  as a function of those values of covariates.  (2) With repeated cross
 #'  sections data and unbalanced panel data, the covariates are taken
 #'  from each time period and computations involve Y_post conditional
@@ -79,16 +79,16 @@
 #'  The panel dataset should be provided in long format -- that
 #'  is, where each row corresponds to a unit observed at a
 #'  particular point in time.  The default is TRUE.  When
-#'  is using a panel dataset, the variable `idname` must
+#'  using a panel dataset, the variable `idname` must
 #'  be set.  When `panel=FALSE`, the data is treated
 #'  as repeated cross sections.
 #' @param allow_unbalanced_panel Whether or not function should
 #'  "balance" the panel with respect to time and id.  The default
-#'  values if `FALSE` which means that [att_gt()] will drop
+#'  value is `FALSE` which means that [att_gt()] will drop
 #'  all units where data is not observed in all periods.
 #'  The advantage of this is that the computations are faster
 #'  (sometimes substantially).
-#' @param control_group Which units to use the control group.
+#' @param control_group Which units to use as the control group.
 #'  The default is "nevertreated" which sets the control group
 #'  to be the group of units that never participate in the
 #'  treatment.  This group does not change across groups or
@@ -130,6 +130,10 @@
 #'  estimate in the period right before treatment (or earlier when
 #'  the user allows for anticipation) to be equal to 0, but one
 #'  extra estimate in an earlier period.
+#'
+#' @param ... Additional arguments to be passed to a custom `est_method`
+#'  function. These are ignored when using built-in estimation methods
+#'  (`"dr"`, `"ipw"`, `"reg"`).
 #'
 #' @references Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. \doi{10.1016/j.jeconom.2020.12.001}, <https://arxiv.org/abs/1803.09015>
 #'
@@ -201,7 +205,35 @@ att_gt <- function(yname,
                    faster_mode = TRUE,
                    print_details = FALSE,
                    pl = FALSE,
-                   cores = 1) {
+                   cores = 1,
+                   ...) {
+  # Capture extra arguments for custom est_method
+  extra_args <- list(...)
+
+  # Warn if extra arguments passed with built-in est_method
+  if (length(extra_args) > 0 && !inherits(est_method, "function")) {
+    warning("Extra arguments (", paste(names(extra_args), collapse = ", "),
+            ") are ignored when using built-in est_method = \"", est_method,
+            "\". Extra arguments are only passed to custom est_method functions.")
+  }
+
+  # Validate est_method
+  if (!inherits(est_method, "function")) {
+    if (!is.character(est_method) || length(est_method) != 1) {
+      stop("est_method must be a character string (\"dr\", \"ipw\", or \"reg\") or a custom function. ",
+           "Received an object of class '", class(est_method)[1], "'.")
+    }
+    if (!(est_method %in% c("dr", "ipw", "reg"))) {
+      stop("est_method must be one of \"dr\", \"ipw\", or \"reg\". Received: \"", est_method, "\".")
+    }
+  }
+
+  # Warn users about anticipation and never-treated units
+  if (anticipation > 0) {
+    message("Note: anticipation = ", anticipation, ". Never-treated units (with group status 0 or Inf) ",
+            "are assumed to never anticipate treatment. Anticipation only applies to eventually-treated units.")
+  }
+
   # Check if user wants to run faster mode:
   if (faster_mode) {
     # this is a DIDparams2 object
@@ -230,6 +262,9 @@ att_gt <- function(yname,
       cores = cores,
       call = match.call()
     )
+
+    # attach extra args for custom est_method
+    dp$extra_args <- extra_args
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
@@ -261,6 +296,9 @@ att_gt <- function(yname,
       cores = cores,
       call = match.call()
     )
+
+    # attach extra args for custom est_method
+    dp$extra_args <- extra_args
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
@@ -315,7 +353,7 @@ att_gt <- function(yname,
   # bootstrap (in principle, could come up with an analytical standard
   # errors here though)
   if ((length(clustervars) > 0) & !bstrap) {
-    warning("clustering the standard errors requires using the bootstrap, resulting standard errors are NOT accounting for clustering")
+    warning("Clustered standard errors require the bootstrap (bstrap = TRUE). Because bstrap = FALSE, the reported standard errors do NOT account for clustering.")
   }
 
   # Identify entries of main diagonal V that are zero or NA
@@ -363,7 +401,7 @@ att_gt <- function(yname,
     W <- NULL
     Wpval <- NULL
   } else if (rcond(preV) <= .Machine$double.eps) {
-    # singluar covariance matrix for pre-treatment periods
+    # singular covariance matrix for pre-treatment periods
     warning("Not returning pre-test Wald statistic due to singular covariance matrix")
     W <- NULL
     Wpval <- NULL
@@ -403,7 +441,7 @@ att_gt <- function(yname,
       bT <- apply(bres, 1, function(b) max(abs(b / bSigma), na.rm = TRUE))
       cval <- quantile(bT, 1 - alp, type = 1, na.rm = T)
       if (cval >= 7) {
-        warning("Simultaneous critical value is arguably `too large' to be realible. This usually happens when number of observations per group is small and/or there is no much variation in outcomes.")
+        warning("Simultaneous critical value is arguably `too large' to be reliable. This usually happens when the number of observations per group is small and/or there is not much variation in outcomes.")
       }
     }
   }

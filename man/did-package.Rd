@@ -22,7 +22,7 @@ Useful links:
 
 Authors:
 \itemize{
-  \item Pedro H. C. Sant'Anna \email{pedro.h.santanna@vanderbilt.edu}
+  \item Pedro H. C. Sant'Anna \email{pedro.santanna@emory.edu}
 }
 
 }
