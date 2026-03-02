@@ -2,7 +2,7 @@
 % Please edit documentation in R/tidy.R
 \name{tidy.AGGTEobj}
 \alias{tidy.AGGTEobj}
-\title{tidy results from AGGTEobj objects}
+\title{Tidy an AGGTEobj into a data frame}
 \usage{
 \method{tidy}{AGGTEobj}(x, ...)
 }
@@ -11,6 +11,37 @@
 
 \item{...}{Additional arguments to tidying method.}
 }
+\value{
+A data frame whose columns depend on \code{type}:
+\describe{
+\item{type}{the aggregation type: \code{"simple"}, \code{"dynamic"},
+\code{"group"}, or \code{"calendar"}}
+\item{term}{label for each estimate}
+\item{estimate}{point estimate}
+\item{std.error}{standard error}
+\item{statistic}{t-statistic (\code{estimate / std.error})}
+\item{p.value}{two-sided pointwise p-value
+(\code{2 * (1 - pnorm(abs(statistic)))}).
+Marginal per-estimate; does \strong{not} account for multiple testing
+across event times or groups.}
+\item{conf.low, conf.high}{simultaneous confidence band limits.  When
+\code{bstrap=TRUE} and \code{cband=TRUE} these use the bootstrap uniform
+critical value (\code{crit.val.egt}); otherwise they equal the pointwise
+intervals.  For \code{type="simple"} and the overall average row of
+\code{type="group"}, a single scalar is returned so simultaneous and
+pointwise coincide.}
+\item{point.conf.low, point.conf.high}{pointwise confidence interval limits
+always using \code{qnorm(1 - alp/2)}.}
+}
+}
 \description{
-tidy results from AGGTEobj objects
+Returns a tidy data frame of aggregated treatment effect estimates from an
+\code{\link[=aggte]{aggte()}} result.
+}
+\details{
+The key distinction between \code{conf.low}/\code{conf.high} and
+\code{point.conf.low}/\code{point.conf.high} is that the former accounts for
+multiple testing across all estimates (simultaneous coverage), while the
+latter provides marginal (per-estimate) coverage only.  Use the simultaneous
+bands when you want to make joint inferences across all event times or groups.
 }

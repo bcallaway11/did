@@ -19,6 +19,14 @@ validate_args <- function(args, data){
   name_message <- "__ARG__ must be a character scalar and a name of a column from the dataset."
   dreamerr::check_set_arg(args$tname, args$gname, args$yname, "match", .choices = data_names, .message = name_message, .up = 1)
 
+  # Strip idname from clustervars before validation: users may naturally pass
+  # clustervars = c(idname, extra_var), and idname clustering is implicit/redundant.
+  # This must happen before the dreamerr check which enforces scalar length.
+  if (!is.null(args$clustervars) && !is.null(args$idname) && (args$idname %in% args$clustervars)) {
+    args$clustervars <- setdiff(args$clustervars, args$idname)
+    if (length(args$clustervars) == 0L) args$clustervars <- NULL
+  }
+
   # Flag for clustervars and weightsname
   checkvar_message <- "__ARG__ must be NULL or a character scalar that is a name of a column from the dataset."
   dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
@@ -60,13 +68,9 @@ validate_args <- function(args, data){
   dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
 
   # Flags for cluster variable
+  # Note: idname was already stripped from clustervars above (before dreamerr check)
   if (!is.null(args$clustervars)) {
-    # dropping idname from cluster
-    if ((!is.null(args$idname)) && (args$idname %in% args$clustervars)){
-      args$clustervars <- setdiff(args$clustervars, args$idname)
-    }
-
-    # check if user is providing more than 2 cluster variables (different than idname)
+    # check if user is providing more than 1 cluster variable (beyond idname)
     if (length(args$clustervars) > 1) {
       stop("You can only provide 1 cluster variable additionally to the one provided in idname. Please check your arguments.")
     }
@@ -583,6 +587,14 @@ pre_process_did2 <- function(yname,
 
   # run error checking on arguments
   validate_args(args, data)
+
+  # Strip idname from clustervars in the caller's copy of args.
+  # validate_args works on a local copy, so we must repeat this here.
+  # Clustering at the unit level (idname) is already done implicitly.
+  if (!is.null(args$clustervars) && !is.null(args$idname) && (args$idname %in% args$clustervars)) {
+    args$clustervars <- setdiff(args$clustervars, args$idname)
+    if (length(args$clustervars) == 0L) args$clustervars <- NULL
+  }
 
   # put in blank xformla if no covariates
   if (is.null(args$xformla)) {

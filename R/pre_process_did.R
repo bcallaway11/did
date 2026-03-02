@@ -202,22 +202,12 @@ pre_process_did <- function(yname,
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("The id variable '", idname, "' must be numeric. Please convert it.")
 
-    ## # checks below are useful, but removing due to being slow
-    ## # might ought to figure out a way to do these faster later
-    ## # these checks are also closely related to making sure
-    ## # that we have a well-balanced panel, so it might make
-    ## # sense to move them over to the BMisc package
-
-    ## # Check if idname is unique by tname
-    ## n_id_year = all( table(data[, idname], data[, tname]) <= 1)
-    ## if (! n_id_year) stop("The value of idname must be the unique (by tname)")
-
-    ## # make sure gname doesn't change across periods for particular individuals
-    ## if (!all(sapply( split(data, data[,idname]), function(df) {
-    ##   length(unique(df[,gname]))==1
-    ## }))) {
-    ##   stop("The value of gname must be the same across all periods for each particular individual.")
-    ## }
+    # Check that gname is time-invariant within each unit (treatment irreversibility).
+    # Uses unique() + anyDuplicated() for O(n) performance.
+    id_g_unique <- unique(data[, c(idname, gname)])
+    if (anyDuplicated(id_g_unique[[idname]]) != 0L) {
+      stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+    }
   }
 
 
