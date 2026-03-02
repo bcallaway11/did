@@ -389,7 +389,6 @@ att_gt <- function(yname,
   # rely on bootstrap confidence intervals instead.
 
   extra_clustervars <- clustervars[!(clustervars %in% c(idname, ""))]
-  extra_clustervars <- extra_clustervars[!is.null(extra_clustervars)]
 
   wald_invalid <- NULL
   if (length(extra_clustervars) > 0) {
