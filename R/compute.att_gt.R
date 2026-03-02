@@ -202,7 +202,7 @@ compute.att_gt <- function(dp) {
         # more checks for enough observations in each group
 
         # if using custom estimation method, skip this part
-        custom_est_method <- class(est_method) == "function"
+        custom_est_method <- is.function(est_method)
 
         if (!custom_est_method) {
           pscore_problems_likely <- FALSE
@@ -370,7 +370,7 @@ compute.att_gt <- function(dp) {
         # more checks for enough observations in each group
 
         # if using custom estimation method, skip this part
-        custom_est_method <- class(est_method) == "function"
+        custom_est_method <- is.function(est_method)
 
         if (!custom_est_method) {
           pscore_problems_likely <- FALSE

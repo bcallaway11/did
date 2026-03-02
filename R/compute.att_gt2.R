@@ -88,9 +88,10 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 #'
 #' @return A list containing the estimated ATT and the influence function vector.
 #' @noRd
-run_DRDID <- function(cohort_data, covariates, dp2){
+run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL){
 
   extra_args <- if (is.null(dp2$extra_args)) list() else dp2$extra_args
+  gt_label <- if (!is.null(g_val) && !is.null(t_val)) paste0(" for group ", g_val, " in time period ", t_val) else ""
 
   if(dp2$panel){
     # --------------------------------------
@@ -127,7 +128,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
         preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
-          warning(paste0("overlap condition violated for this (g,t) cell"))
+          warning(paste0("overlap condition violated", gt_label))
           return(list(att = NA, inf_func = rep(NA_real_, n)))
         }
       }
@@ -136,7 +137,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
       if (dp2$est_method %in% c("dr", "reg")) {
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
         if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-          warning(paste0("Not enough control units to run specified regression"))
+          warning(paste0("Not enough control units", gt_label, " to run specified regression"))
           return(list(att = NA, inf_func = rep(NA_real_, n)))
         }
       }
@@ -227,7 +228,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
         preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
-          warning(paste0("overlap condition violated for this (g,t) cell"))
+          warning(paste0("overlap condition violated", gt_label))
           return(list(att = NA, inf_func = rep(NA_real_, n)))
         }
       }
@@ -236,7 +237,7 @@ run_DRDID <- function(cohort_data, covariates, dp2){
       if (dp2$est_method %in% c("dr", "reg")) {
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
         if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-          warning(paste0("Not enough control units to run specified regression"))
+          warning(paste0("Not enough control units", gt_label, " to run specified regression"))
           return(list(att = NA, inf_func = rep(NA_real_, n)))
         }
       }
@@ -386,7 +387,7 @@ run_att_gt_estimation <- function(g, t, dp2){
   }
 
   # run estimation
-  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2),
+  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g], t_val = dp2$time_periods[t+tfac]),
                          error = function(e) {
                            warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
                            return(NULL)
