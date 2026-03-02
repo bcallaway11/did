@@ -13,13 +13,15 @@
 }
 \value{
 A data frame with one row per ATT(g,t) estimate and columns:
+\describe{
 \item{term}{ATT(g,t) label}
 \item{group}{the treatment cohort g}
 \item{time}{the time period t}
 \item{estimate}{the ATT(g,t) point estimate}
 \item{std.error}{standard error}
 \item{statistic}{t-statistic (\code{estimate / std.error})}
-\item{p.value}{two-sided pointwise p-value (\code{2*(1-pnorm(|t|))}).
+\item{p.value}{two-sided pointwise p-value
+(\code{2 * (1 - pnorm(abs(statistic)))}).
 Marginal per-estimate; does \strong{not} account for multiple testing
 across ATT(g,t) cells.}
 \item{conf.low, conf.high}{simultaneous confidence band limits, using the
@@ -27,6 +29,7 @@ bootstrap uniform critical value when \code{bstrap=TRUE} and
 \code{cband=TRUE}, otherwise pointwise}
 \item{point.conf.low, point.conf.high}{pointwise confidence interval limits
 using \code{qnorm(1 - alp/2)}, always}
+}
 }
 \description{
 Returns a tidy data frame of group-time average treatment effect estimates

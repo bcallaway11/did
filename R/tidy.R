@@ -42,13 +42,15 @@ nobs.AGGTEobj <- function(object, ...) {
 #' @param ... Additional arguments to tidying method.
 #'
 #' @return A data frame with one row per ATT(g,t) estimate and columns:
+#' \describe{
 #'   \item{term}{ATT(g,t) label}
 #'   \item{group}{the treatment cohort g}
 #'   \item{time}{the time period t}
 #'   \item{estimate}{the ATT(g,t) point estimate}
 #'   \item{std.error}{standard error}
 #'   \item{statistic}{t-statistic (\code{estimate / std.error})}
-#'   \item{p.value}{two-sided pointwise p-value (\code{2*(1-pnorm(|t|))}).
+#'   \item{p.value}{two-sided pointwise p-value
+#'     (\code{2 * (1 - pnorm(abs(statistic)))}).
 #'     Marginal per-estimate; does \strong{not} account for multiple testing
 #'     across ATT(g,t) cells.}
 #'   \item{conf.low, conf.high}{simultaneous confidence band limits, using the
@@ -56,6 +58,7 @@ nobs.AGGTEobj <- function(object, ...) {
 #'     \code{cband=TRUE}, otherwise pointwise}
 #'   \item{point.conf.low, point.conf.high}{pointwise confidence interval limits
 #'     using \code{qnorm(1 - alp/2)}, always}
+#' }
 #'
 #' @export
 tidy.MP <- function(x, ...) {
@@ -100,13 +103,15 @@ glance.MP <- function(x, ...) {
 #' @param ... Additional arguments to tidying method.
 #'
 #' @return A data frame whose columns depend on \code{type}:
+#' \describe{
 #'   \item{type}{the aggregation type: \code{"simple"}, \code{"dynamic"},
 #'     \code{"group"}, or \code{"calendar"}}
 #'   \item{term}{label for each estimate}
 #'   \item{estimate}{point estimate}
 #'   \item{std.error}{standard error}
 #'   \item{statistic}{t-statistic (\code{estimate / std.error})}
-#'   \item{p.value}{two-sided pointwise p-value (\code{2*(1-pnorm(|t|))}).
+#'   \item{p.value}{two-sided pointwise p-value
+#'     (\code{2 * (1 - pnorm(abs(statistic)))}).
 #'     Marginal per-estimate; does \strong{not} account for multiple testing
 #'     across event times or groups.}
 #'   \item{conf.low, conf.high}{simultaneous confidence band limits.  When
@@ -117,6 +122,7 @@ glance.MP <- function(x, ...) {
 #'     pointwise coincide.}
 #'   \item{point.conf.low, point.conf.high}{pointwise confidence interval limits
 #'     always using \code{qnorm(1 - alp/2)}.}
+#' }
 #'
 #' @details
 #' The key distinction between \code{conf.low}/\code{conf.high} and

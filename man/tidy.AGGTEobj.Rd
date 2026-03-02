@@ -13,13 +13,15 @@
 }
 \value{
 A data frame whose columns depend on \code{type}:
+\describe{
 \item{type}{the aggregation type: \code{"simple"}, \code{"dynamic"},
 \code{"group"}, or \code{"calendar"}}
 \item{term}{label for each estimate}
 \item{estimate}{point estimate}
 \item{std.error}{standard error}
 \item{statistic}{t-statistic (\code{estimate / std.error})}
-\item{p.value}{two-sided pointwise p-value (\code{2*(1-pnorm(|t|))}).
+\item{p.value}{two-sided pointwise p-value
+(\code{2 * (1 - pnorm(abs(statistic)))}).
 Marginal per-estimate; does \strong{not} account for multiple testing
 across event times or groups.}
 \item{conf.low, conf.high}{simultaneous confidence band limits.  When
@@ -30,6 +32,7 @@ intervals.  For \code{type="simple"} and the overall average row of
 pointwise coincide.}
 \item{point.conf.low, point.conf.high}{pointwise confidence interval limits
 always using \code{qnorm(1 - alp/2)}.}
+}
 }
 \description{
 Returns a tidy data frame of aggregated treatment effect estimates from an
