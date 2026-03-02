@@ -661,10 +661,10 @@ test_that("inference with unbalanced panel", {
   expect_equal(reg_2.1.2$se[1], reg_new$se[1], tol = .01)
   expect_equal(ipw_2.1.2$se[1], ipw_new$se[1], tol = .01)
 
-  # aggregations
-  set.seed(1234)
+  # aggregations — set seed inside each subprocess for reproducible bootstrap SEs
   dyn_2.1.2 <- callr::r(
     function(data, temp_lib) {
+      set.seed(1234)
       library(did, lib.loc = temp_lib)
       res <- att_gt(
         yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -676,6 +676,7 @@ test_that("inference with unbalanced panel", {
   )
   group_2.1.2 <- callr::r(
     function(data, temp_lib) {
+      set.seed(1234)
       library(did, lib.loc = temp_lib)
       res <- att_gt(
         yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -687,6 +688,7 @@ test_that("inference with unbalanced panel", {
   )
   cal_2.1.2 <- callr::r(
     function(data, temp_lib) {
+      set.seed(1234)
       library(did, lib.loc = temp_lib)
       res <- att_gt(
         yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -697,8 +699,11 @@ test_that("inference with unbalanced panel", {
     args = list(data = data, temp_lib = temp_lib)
   )
 
+  set.seed(1234)
   dyn_new <- aggte(ipw_new, type = "dynamic")
+  set.seed(1234)
   group_new <- aggte(reg_new, type = "group")
+  set.seed(1234)
   cal_new <- aggte(dr_new, type = "calendar")
 
 
@@ -790,10 +795,10 @@ test_that("inference with unbalanced panel and clustering", {
   expect_equal(reg_2.1.2$se[1], reg_new$se[1], tol = .01)
   expect_equal(ipw_2.1.2$se[1], ipw_new$se[1], tol = .01)
 
-  # aggregations
-  set.seed(1234)
+  # aggregations — set seed inside each subprocess for reproducible bootstrap SEs
   dyn_2.1.2 <- callr::r(
     function(data, temp_lib) {
+      set.seed(1234)
       library(did, lib.loc = temp_lib)
       res <- att_gt(
         yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -805,6 +810,7 @@ test_that("inference with unbalanced panel and clustering", {
   )
   group_2.1.2 <- callr::r(
     function(data, temp_lib) {
+      set.seed(1234)
       library(did, lib.loc = temp_lib)
       res <- att_gt(
         yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -816,6 +822,7 @@ test_that("inference with unbalanced panel and clustering", {
   )
   cal_2.1.2 <- callr::r(
     function(data, temp_lib) {
+      set.seed(1234)
       library(did, lib.loc = temp_lib)
       res <- att_gt(
         yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
@@ -826,8 +833,11 @@ test_that("inference with unbalanced panel and clustering", {
     args = list(data = data, temp_lib = temp_lib)
   )
 
+  set.seed(1234)
   dyn_new <- aggte(ipw_new, type = "dynamic")
+  set.seed(1234)
   group_new <- aggte(reg_new, type = "group")
+  set.seed(1234)
   cal_new <- aggte(dr_new, type = "calendar")
 
   # checks for aggregations

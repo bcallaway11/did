@@ -141,7 +141,9 @@ ggdid.AGGTEobj <- function(object,
                               att=object$att.egt,
                               att.se=object$se.egt,
                               post=as.factor(post.treat))
-  results$c <- ifelse(is.null(object$crit.val.egt), abs(qnorm(.025)), object$crit.val.egt)
+  alp <- object$DIDparams$alp
+  if (is.null(alp)) alp <- 0.05
+  results$c <- ifelse(is.null(object$crit.val.egt), abs(qnorm(alp/2)), object$crit.val.egt)
 
   if (title == "") {
     # get title right depending on which aggregation

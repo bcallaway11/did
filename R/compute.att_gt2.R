@@ -115,6 +115,34 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     n1 <- cohort_data[, .N]
 
     #-----------------------------------------------------------------------------
+    # check for overlap and regression problems
+    #-----------------------------------------------------------------------------
+    custom_est_method <- inherits(dp2$est_method, "function")
+
+    if (!custom_est_method) {
+      D_vec <- cohort_data[, D]
+
+      # checks for pscore based methods
+      if (dp2$est_method %in% c("dr", "ipw")) {
+        preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
+        preliminary_pscores <- preliminary_logit$fitted.values
+        if (max(preliminary_pscores) >= 0.999) {
+          warning(paste0("overlap condition violated for this (g,t) cell"))
+          return(list(att = NA, inf_func = rep(NA_real_, n)))
+        }
+      }
+
+      # check if can run regression using control units
+      if (dp2$est_method %in% c("dr", "reg")) {
+        control_covs <- covariates[D_vec == 0, , drop = FALSE]
+        if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
+          warning(paste0("Not enough control units to run specified regression"))
+          return(list(att = NA, inf_func = rep(NA_real_, n)))
+        }
+      }
+    }
+
+    #-----------------------------------------------------------------------------
     # code for actually computing ATT(g,t)
     #-----------------------------------------------------------------------------
 
@@ -185,6 +213,34 @@ run_DRDID <- function(cohort_data, covariates, dp2){
     }
 
     covariates <- as.matrix(covariates)
+
+    #-----------------------------------------------------------------------------
+    # check for overlap and regression problems
+    #-----------------------------------------------------------------------------
+    custom_est_method <- inherits(dp2$est_method, "function")
+
+    if (!custom_est_method) {
+      D_vec <- cohort_data[, D]
+
+      # checks for pscore based methods
+      if (dp2$est_method %in% c("dr", "ipw")) {
+        preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
+        preliminary_pscores <- preliminary_logit$fitted.values
+        if (max(preliminary_pscores) >= 0.999) {
+          warning(paste0("overlap condition violated for this (g,t) cell"))
+          return(list(att = NA, inf_func = rep(NA_real_, n)))
+        }
+      }
+
+      # check if can run regression using control units
+      if (dp2$est_method %in% c("dr", "reg")) {
+        control_covs <- covariates[D_vec == 0, , drop = FALSE]
+        if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
+          warning(paste0("Not enough control units to run specified regression"))
+          return(list(att = NA, inf_func = rep(NA_real_, n)))
+        }
+      }
+    }
 
     #-----------------------------------------------------------------------------
     # code for actually computing ATT(g,t)

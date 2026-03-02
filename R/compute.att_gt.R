@@ -367,6 +367,49 @@ compute.att_gt <- function(dp) {
         covariates <- model.matrix(xformla, data = disdat)
 
         #-----------------------------------------------------------------------------
+        # more checks for enough observations in each group
+
+        # if using custom estimation method, skip this part
+        custom_est_method <- class(est_method) == "function"
+
+        if (!custom_est_method) {
+          pscore_problems_likely <- FALSE
+          reg_problems_likely <- FALSE
+
+          # checks for pscore based methods
+          if (est_method %in% c("dr", "ipw")) {
+            preliminary_logit <- fastglm::fastglm(covariates, G, family = binomial())
+            preliminary_pscores <- preliminary_logit$fitted.values
+            if (max(preliminary_pscores) >= 0.999) {
+              pscore_problems_likely <- TRUE
+              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+            }
+          }
+
+          # check if can run regression using control units
+          if (est_method %in% c("dr", "reg")) {
+            control_covs <- covariates[G == 0, , drop = FALSE]
+            if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
+              reg_problems_likely <- TRUE
+              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+            }
+          }
+
+          if (reg_problems_likely | pscore_problems_likely) {
+            attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
+            inffunc_updates[[update_counter]] <- list(
+              indices = seq_len(n),
+              values = rep(NA_real_, n)
+            )
+
+            # Update the counters
+            update_counter <- update_counter + 1
+            counter <- counter + 1
+            next
+          }
+        }
+
+        #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 

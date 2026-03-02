@@ -393,7 +393,15 @@ att_gt <- function(yname,
 
   # check if there are actually any pre-treatment periods
   if (length(preV) == 0) {
-    message("No pre-treatment periods to test")
+    msg <- paste0(
+      "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
+      "This can happen when all groups are first treated early in the panel ",
+      "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
+    )
+    if (anticipation > 0) {
+      msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+    }
+    warning(msg)
     W <- NULL
     Wpval <- NULL
   } else if (sum(is.na(preV))) {

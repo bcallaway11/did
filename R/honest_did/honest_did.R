@@ -17,8 +17,8 @@ honest_did <- function(es, ...) {
 #'  using the approach of Rambachan and Roth (2021) when
 #'  the event study is estimating using the `did` package
 #'
-#' @param e event time to compute the sensitivity analysis for.
-#'  The default value is `e=0` corresponding to the "on impact"
+#' @param e_time event time to compute the sensitivity analysis for.
+#'  The default value is `e_time=0` corresponding to the "on impact"
 #'  effect of participating in the treatment.
 #' @param type Options are "smoothness" (which conducts a
 #'  sensitivity analysis allowing for violations of linear trends
@@ -30,7 +30,7 @@ honest_did <- function(es, ...) {
 #' 
 #' @export
 honest_did.AGGTEobj <- function(es,
-                                e=0,
+                                e_time=0,
                                 type=c("smoothness", "relative_magnitude"),
                                 method=NULL,
                                 bound="deviation from parallel trends",
@@ -74,7 +74,7 @@ honest_did.AGGTEobj <- function(es,
   npre <- sum(1*(es$egt < 0))
   npost <- nperiods - npre
 
-  baseVec1 <- basisVector(index=(e+1),size=npost)
+  baseVec1 <- basisVector(index=(e_time+1),size=npost)
 
   orig_ci <- constructOriginalCS(betahat = es$att.egt,
                                  sigma = V, numPrePeriods = npre,

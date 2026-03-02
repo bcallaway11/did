@@ -13,7 +13,8 @@
 #' @export
 gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
                   legend=TRUE, ref_line = 0, theming = TRUE) {
-  dabreaks <- ssresults$year[seq(1, length(ssresults$year), xgap)]
+  unique_years <- sort(unique(as.numeric(ssresults$year)))
+  dabreaks <- unique_years[seq(1, length(unique_years), as.integer(xgap))]
 
   c.point <-  qnorm(1 - ssresults$alp/2)
 
