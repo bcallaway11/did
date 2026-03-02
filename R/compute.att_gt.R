@@ -56,7 +56,6 @@ compute.att_gt <- function(dp) {
 
   # influence function dimensions
   inffunc_nrow <- n
-  inffunc_ncol <- nG * (nT - tfac)
 
   # list to collect sparse matrix updates (built into sparse matrix after loops)
   inffunc_updates <- list()
@@ -422,10 +421,10 @@ compute.att_gt <- function(dp) {
           # G and C
           res$att.inf.func <- (n / n1) * res$att.inf.func
 
-          # If ATT is NaN, replace it with NA, and make Influence functions equal to zero
+          # If ATT is NaN, replace it with NA, and mark influence function as missing
           if (is.nan(res$ATT)) {
             res$ATT <- NA
-            res$att.inf.func <- 0 * res$att.inf.func
+            res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
           }
           res
         }, error = function(e) {
