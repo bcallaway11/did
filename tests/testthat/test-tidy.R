@@ -15,14 +15,13 @@ mp <- att_gt(
   tname   = "year",
   xformla = ~1,
   data    = mpdta,
-  bstrap  = TRUE,
-  cband   = TRUE
+  bstrap  = FALSE
 )
 
-agg_dyn      <- aggte(mp, type = "dynamic")
-agg_group    <- aggte(mp, type = "group")
-agg_calendar <- aggte(mp, type = "calendar")
-agg_simple   <- aggte(mp, type = "simple")
+agg_dyn      <- aggte(mp, type = "dynamic",  bstrap = FALSE, cband = FALSE)
+agg_group    <- aggte(mp, type = "group",    bstrap = FALSE, cband = FALSE)
+agg_calendar <- aggte(mp, type = "calendar", bstrap = FALSE, cband = FALSE)
+agg_simple   <- aggte(mp, type = "simple",   bstrap = FALSE, cband = FALSE)
 
 # ---------------------------------------------------------------------------
 # tidy.MP

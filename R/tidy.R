@@ -14,7 +14,7 @@ generics::glance
 #' @return Integer. The number of unique units in the data.
 #' @export
 nobs.MP <- function(object, ...) {
-  object$n
+  as.integer(object$n)
 }
 
 #' Number of observations used to fit an AGGTEobj object
@@ -26,9 +26,9 @@ nobs.MP <- function(object, ...) {
 #' @export
 nobs.AGGTEobj <- function(object, ...) {
   if (object$DIDparams$faster_mode) {
-    object$DIDparams$id_count
+    as.integer(object$DIDparams$id_count)
   } else {
-    object$DIDparams$n
+    as.integer(object$DIDparams$n)
   }
 }
 
