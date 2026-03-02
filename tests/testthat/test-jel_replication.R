@@ -13,17 +13,24 @@ get_jel_data_path <- function() {
   if (file.exists(path)) return(path)
 
   path <- file.path(tempdir(), "county_mortality_data.csv")
-  if (file.exists(path)) return(path)
+  if (file.exists(path) && file.info(path)$size > 0) return(path)
 
+  download_ok <- FALSE
   tryCatch({
-    download.file(
+    res <- download.file(
       "https://raw.githubusercontent.com/pedrohcgs/JEL-DiD/main/data/county_mortality_data.csv",
       destfile = path,
       quiet = TRUE
     )
+    download_ok <- identical(res, 0L)
   }, error = function(e) {
-    # download failed; return path anyway, skip_if_not will handle it
+    # download failed; skip_if_not will handle missing file
   })
+
+  # Remove empty/corrupt files so file.exists() correctly triggers skip
+  if (!download_ok || !file.exists(path) || file.info(path)$size <= 0) {
+    if (file.exists(path)) unlink(path)
+  }
   path
 }
 
