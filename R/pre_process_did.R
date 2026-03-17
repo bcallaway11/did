@@ -32,6 +32,7 @@ pre_process_did <- function(yname,
                             faster_mode = FALSE,
                             pl = FALSE,
                             cores = 1,
+                            est_method_vars = NULL,
                             call = NULL) {
   #-----------------------------------------------------------------------------
   # Data pre-processing and error checking
@@ -79,7 +80,7 @@ pre_process_did <- function(yname,
   }
 
   # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname, clustervars)], model.frame(xformla, data=data, na.action=na.pass))
+  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname, clustervars, est_method_vars)], model.frame(xformla, data=data, na.action=na.pass))
 
   # check if any covariates were missing
   n_orig <- nrow(data)
@@ -399,6 +400,7 @@ pre_process_did <- function(yname,
                   pl=pl,
                   cores=cores,
                   est_method=est_method,
+                  est_method_vars=est_method_vars,
                   base_period=base_period,
                   panel=panel,
                   true_repeated_cross_sections=true_repeated_cross_sections,

@@ -32,6 +32,7 @@ DIDparams(
   nT = NULL,
   tlist = NULL,
   glist = NULL,
+  est_method_vars = NULL,
   call = NULL
 )
 }
@@ -190,6 +191,12 @@ of rows in a panel dataset).}
 \item{tlist}{a vector containing each time period}
 
 \item{glist}{a vector containing each group}
+
+\item{est_method_vars}{Optional character vector of column names from \code{data}
+to pass through to a custom \code{est_method} function. These columns are
+preserved through preprocessing, subsetted to match each (g,t) partition,
+and passed to \code{est_method} as an additional \code{data} argument (a data.frame).
+Ignored when using built-in estimation methods. Default is \code{NULL}.}
 
 \item{call}{Function call to att_gt}
 }

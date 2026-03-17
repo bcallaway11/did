@@ -16,6 +16,7 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
   xformla <- args$xformla # formula of covariates
   panel <- args$panel
   est_method <- args$est_method
+  est_method_vars <- args$est_method_vars
   bstrap <- args$bstrap
   biters <- args$biters
   cband <- args$cband
@@ -58,6 +59,7 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
               xformla=xformla,
               panel=panel,
               est_method=est_method,
+              est_method_vars=est_method_vars,
               bstrap=bstrap,
               biters=biters,
               cband=cband,

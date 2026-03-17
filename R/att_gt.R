@@ -131,6 +131,11 @@
 #'  the user allows for anticipation) to be equal to 0, but one
 #'  extra estimate in an earlier period.
 #'
+#' @param est_method_vars Optional character vector of column names from `data`
+#'  to pass through to a custom `est_method` function. These columns are
+#'  preserved through preprocessing, subsetted to match each (g,t) partition,
+#'  and passed to `est_method` as an additional `data` argument (a data.frame).
+#'  Ignored when using built-in estimation methods. Default is `NULL`.
 #' @param ... Additional arguments to be passed to a custom `est_method`
 #'  function. These are ignored when using built-in estimation methods
 #'  (`"dr"`, `"ipw"`, `"reg"`).
@@ -206,6 +211,7 @@ att_gt <- function(yname,
                    print_details = FALSE,
                    pl = FALSE,
                    cores = 1,
+                   est_method_vars = NULL,
                    ...) {
   # Capture extra arguments for custom est_method
   extra_args <- list(...)
@@ -215,6 +221,22 @@ att_gt <- function(yname,
     warning("Extra arguments (", paste(names(extra_args), collapse = ", "),
             ") are ignored when using built-in est_method = \"", est_method,
             "\". Extra arguments are only passed to custom est_method functions.")
+  }
+
+  # Validate est_method_vars
+  if (!is.null(est_method_vars)) {
+    if (!is.character(est_method_vars)) {
+      stop("est_method_vars must be a character vector of column names from data.")
+    }
+    missing_emv <- setdiff(est_method_vars, colnames(data))
+    if (length(missing_emv) > 0) {
+      stop("The following est_method_vars are not found in data: ",
+           paste(missing_emv, collapse = ", "), ".")
+    }
+    if (!inherits(est_method, "function")) {
+      warning("est_method_vars is specified but est_method is not a custom function. ",
+              "est_method_vars will be ignored.")
+    }
   }
 
   # Validate est_method
@@ -255,6 +277,7 @@ att_gt <- function(yname,
       biters = biters,
       clustervars = clustervars,
       est_method = est_method,
+      est_method_vars = est_method_vars,
       base_period = base_period,
       print_details = print_details,
       faster_mode = faster_mode,
@@ -290,6 +313,7 @@ att_gt <- function(yname,
       biters = biters,
       clustervars = clustervars,
       est_method = est_method,
+      est_method_vars = est_method_vars,
       base_period = base_period,
       print_details = print_details,
       pl = pl,
@@ -485,6 +509,9 @@ att_gt <- function(yname,
   }
 
 
-  # Return this list
-  return(MP(group = group, t = tt, att = att, V_analytical = V, se = se, c = cval, inffunc = inffunc, n = n, W = W, Wpval = Wpval, alp = alp, DIDparams = dp))
+  # Build the MP object, append extra_gt results form est_method calls if any
+  extra_gt <- Filter(Negate(is.null), lapply(attgt.list, function(x) x$extra))
+  MP(group = group, t = tt, att = att, V_analytical = V, se = se, c = cval,
+     inffunc = inffunc, n = n, W = W, Wpval = Wpval, alp = alp,
+     DIDparams = dp, extra_gt = if (length(extra_gt)) extra_gt)
 }

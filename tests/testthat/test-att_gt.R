@@ -1275,3 +1275,158 @@ test_that("faster_mode time indexing with universal base period", {
   expect_equal(res_slow$att, res_fast$att)
   expect_equal(res_slow$se, as.numeric(res_fast$se))
 })
+
+test_that("est_method_vars passes through variables to custom est_method", {
+  set.seed(09142024)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  # Add a column that we want to pass through
+  data$fold_id <- sample(1:3, nrow(data), replace = TRUE)
+
+  # Custom est_method that checks for the data argument
+  my_est <- function(y1, y0, D, covariates, i.weights, inffunc, data) {
+    # Verify data is a data.frame with the right column
+    stopifnot(is.data.frame(data))
+    stopifnot("fold_id" %in% names(data))
+    stopifnot(nrow(data) == length(y1))
+
+    # Use DRDID to compute the actual estimate
+    DRDID::drdid_imp_panel(y1 = y1, y0 = y0, D = D,
+                           covariates = covariates,
+                           i.weights = i.weights,
+                           inffunc = inffunc)
+  }
+
+  # faster_mode = TRUE (panel)
+  res_fast <- att_gt(yname = "Y", xformla = ~X, data = data,
+                     tname = "period", idname = "id", gname = "G",
+                     est_method = my_est, est_method_vars = c("fold_id"),
+                     bstrap = FALSE, cband = FALSE, faster_mode = TRUE)
+  expect_equal(res_fast$att[1], 1, tol = .5)
+
+  # faster_mode = FALSE (panel)
+  res_slow <- att_gt(yname = "Y", xformla = ~X, data = data,
+                     tname = "period", idname = "id", gname = "G",
+                     est_method = my_est, est_method_vars = c("fold_id"),
+                     bstrap = FALSE, cband = FALSE, faster_mode = FALSE)
+  expect_equal(res_slow$att[1], 1, tol = .5)
+
+  # ATTs should be the same across modes
+  expect_equal(res_fast$att, res_slow$att)
+})
+
+test_that("est_method_vars works with multiple variables", {
+  set.seed(09142024)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$fold_id <- sample(1:3, nrow(data), replace = TRUE)
+  data$stratum <- sample(letters[1:5], nrow(data), replace = TRUE)
+
+  my_est <- function(y1, y0, D, covariates, i.weights, inffunc, data) {
+    stopifnot(all(c("fold_id", "stratum") %in% names(data)))
+    DRDID::drdid_imp_panel(y1 = y1, y0 = y0, D = D,
+                           covariates = covariates,
+                           i.weights = i.weights, inffunc = inffunc)
+  }
+
+  res <- att_gt(yname = "Y", xformla = ~X, data = data,
+                tname = "period", idname = "id", gname = "G",
+                est_method = my_est,
+                est_method_vars = c("fold_id", "stratum"),
+                bstrap = FALSE, cband = FALSE)
+  expect_equal(res$att[1], 1, tol = .5)
+})
+
+test_that("est_method_vars validation errors", {
+  set.seed(09142024)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  # Non-existent column
+  expect_error(
+    att_gt(yname = "Y", xformla = ~X, data = data,
+           tname = "period", idname = "id", gname = "G",
+           est_method = function(...) NULL,
+           est_method_vars = c("nonexistent_col")),
+    "not found in data"
+  )
+
+  # Non-character input
+  expect_error(
+    att_gt(yname = "Y", xformla = ~X, data = data,
+           tname = "period", idname = "id", gname = "G",
+           est_method = function(...) NULL,
+           est_method_vars = 42),
+    "character vector"
+  )
+
+  # Warning when used with built-in est_method
+  expect_warning(
+    att_gt(yname = "Y", xformla = ~X, data = data,
+           tname = "period", idname = "id", gname = "G",
+           est_method = "dr",
+           est_method_vars = c("X")),
+    "not a custom function"
+  )
+})
+
+test_that("extra_gt captures additional outputs from custom est_method", {
+  set.seed(09142024)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  # Custom est_method that returns extra fields
+  my_est_extra <- function(y1, y0, D, covariates, i.weights, inffunc) {
+    res <- DRDID::drdid_imp_panel(y1 = y1, y0 = y0, D = D,
+                                   covariates = covariates,
+                                   i.weights = i.weights,
+                                   inffunc = inffunc)
+    # Add extra fields
+    res$n_treated <- sum(D)
+    res$n_control <- sum(1 - D)
+    res$my_diagnostic <- "ok"
+    res
+  }
+
+  # faster_mode = TRUE
+  res_fast <- att_gt(yname = "Y", xformla = ~X, data = data,
+                     tname = "period", idname = "id", gname = "G",
+                     est_method = my_est_extra,
+                     bstrap = FALSE, cband = FALSE, faster_mode = TRUE)
+
+  # extra_gt should exist and be a list
+  expect_true(!is.null(res_fast$extra_gt))
+  expect_true(is.list(res_fast$extra_gt))
+  expect_equal(length(res_fast$extra_gt), length(res_fast$att))
+
+  # Each entry should have the extra fields
+  first_extra <- res_fast$extra_gt[[1]]
+  expect_true("n_treated" %in% names(first_extra))
+  expect_true("n_control" %in% names(first_extra))
+  expect_true("my_diagnostic" %in% names(first_extra))
+  expect_equal(first_extra$my_diagnostic, "ok")
+
+  # faster_mode = FALSE
+  res_slow <- att_gt(yname = "Y", xformla = ~X, data = data,
+                     tname = "period", idname = "id", gname = "G",
+                     est_method = my_est_extra,
+                     bstrap = FALSE, cband = FALSE, faster_mode = FALSE)
+
+  expect_true(!is.null(res_slow$extra_gt))
+  expect_equal(length(res_slow$extra_gt), length(res_slow$att))
+  expect_true("n_treated" %in% names(res_slow$extra_gt[[1]]))
+})
+
+test_that("extra_gt is NULL for built-in est_method", {
+  set.seed(09142024)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  res <- att_gt(yname = "Y", xformla = ~X, data = data,
+                tname = "period", idname = "id", gname = "G",
+                est_method = "dr", bstrap = FALSE, cband = FALSE)
+
+  # Built-in methods should not produce extra_gt
+  expect_null(res$extra_gt)
+})

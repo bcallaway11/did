@@ -107,7 +107,7 @@ validate_args <- function(args, data){
 #' @noRd
 did_standardization <- function(data, args){
   # keep relevant columns in data
-  cols_to_keep <-  c(args$idname, args$tname, args$gname, args$yname, args$weightsname, args$clustervars)
+  cols_to_keep <-  c(args$idname, args$tname, args$gname, args$yname, args$weightsname, args$clustervars, args$est_method_vars)
 
   model_frame <- model.frame(args$xformla, data = data, na.action = na.pass)
   # Subset the dataset to keep only the relevant columns
@@ -570,6 +570,7 @@ pre_process_did2 <- function(yname,
                             faster_mode=FALSE,
                             pl = FALSE,
                             cores = 1,
+                            est_method_vars = NULL,
                             call = NULL) {
 
 

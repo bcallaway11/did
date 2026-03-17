@@ -27,6 +27,7 @@ pre_process_did2(
   faster_mode = FALSE,
   pl = FALSE,
   cores = 1,
+  est_method_vars = NULL,
   call = NULL
 )
 }
@@ -176,6 +177,12 @@ it is recommended for use with large datasets.}
 \item{pl}{Whether or not to use parallel processing}
 
 \item{cores}{The number of cores to use for parallel processing}
+
+\item{est_method_vars}{Optional character vector of column names from \code{data}
+to pass through to a custom \code{est_method} function. These columns are
+preserved through preprocessing, subsetted to match each (g,t) partition,
+and passed to \code{est_method} as an additional \code{data} argument (a data.frame).
+Ignored when using built-in estimation methods. Default is \code{NULL}.}
 
 \item{call}{Function call to att_gt}
 }
