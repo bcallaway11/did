@@ -31,8 +31,8 @@ same_matrix_elem <- function(A, B) {
 temp_lib <- tempfile()
 dir.create(temp_lib)
 old_did_available <- tryCatch({
-  remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org", quiet = TRUE)
-  TRUE
+  remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "https://cloud.r-project.org", quiet = TRUE)
+  isTRUE(requireNamespace("did", lib.loc = temp_lib, quietly = TRUE))
 }, error = function(e) FALSE)
 
 if (!old_did_available) {

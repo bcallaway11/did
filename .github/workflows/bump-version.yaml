@@ -5,6 +5,10 @@ on:
     types: [closed]
     branches: [master, main]
 
+concurrency:
+  group: bump-version
+  cancel-in-progress: false
+
 jobs:
   bump-version:
     if: github.event.pull_request.merged == true
