@@ -450,8 +450,9 @@ run_att_gt_estimation <- function(g, t, dp2){
                            return(NULL)
                          })
 
-  # When force_rc on balanced panel, the influence function has 2*id_count rows
-  # (stacked pre + post). Aggregate back to id_count by summing pre + post contributions.
+  # When force_rc on balanced panel, the influence function has 2*n_units rows.
+  # Half-split is safe here: cohort_data is explicitly stacked as
+  # [all pre, all post] via rep(c(0L, 1L), each = n_units) in construction above.
   if (force_rc && !is.null(did_result) && dp2$panel) {
     inf <- did_result$inf_func
     n_half <- length(inf) %/% 2L

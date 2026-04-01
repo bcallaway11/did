@@ -805,6 +805,166 @@ test_that("fix_weights validation", {
   )
 })
 
+# =============================================================================
+# Influence function consistency: slow vs fast mode ATT AND SE must match
+# =============================================================================
+
+test_that("IF consistency: balanced panel, all fix_weights x est_method x base_period", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period + runif(nrow(data), -0.1, 0.1)
+
+  for (fw in c(NA, "varying", "base_period", "first_period")) {
+    fw_arg <- if (is.na(fw)) NULL else fw
+    for (em in c("dr", "ipw", "reg")) {
+      for (bp in c("varying", "universal")) {
+        label <- paste("panel", if (is.na(fw)) "NULL" else fw, em, bp)
+
+        res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                           idname="id", gname="G", est_method=em,
+                           weightsname="tv_weight", fix_weights=fw_arg,
+                           base_period=bp, faster_mode=FALSE,
+                           bstrap=FALSE, cband=FALSE)
+        res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                           idname="id", gname="G", est_method=em,
+                           weightsname="tv_weight", fix_weights=fw_arg,
+                           base_period=bp, faster_mode=TRUE,
+                           bstrap=FALSE, cband=FALSE)
+
+        expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                     label=paste("ATT", label))
+        expect_equal(res_slow$se, res_fast$se, tolerance=1e-10,
+                     label=paste("SE", label))
+      }
+    }
+  }
+})
+
+test_that("IF consistency: balanced panel, notyettreated control group", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period + runif(nrow(data), -0.1, 0.1)
+
+  for (fw in c(NA, "varying", "base_period", "first_period")) {
+    fw_arg <- if (is.na(fw)) NULL else fw
+    label <- paste("notyettreated", if (is.na(fw)) "NULL" else fw)
+
+    res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                       idname="id", gname="G", est_method="dr",
+                       weightsname="tv_weight", fix_weights=fw_arg,
+                       control_group="notyettreated",
+                       faster_mode=FALSE, bstrap=FALSE, cband=FALSE)
+    res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                       idname="id", gname="G", est_method="dr",
+                       weightsname="tv_weight", fix_weights=fw_arg,
+                       control_group="notyettreated",
+                       faster_mode=TRUE, bstrap=FALSE, cband=FALSE)
+
+    expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                 label=paste("ATT", label))
+    expect_equal(res_slow$se, res_fast$se, tolerance=1e-10,
+                 label=paste("SE", label))
+  }
+})
+
+test_that("IF consistency: repeated cross-sections, default weights x est_method", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period + runif(nrow(data), -0.1, 0.1)
+
+  # RC with default weights (fix_weights=NULL); fixed weight options tested separately
+  for (em in c("dr", "ipw", "reg")) {
+    label <- paste("RC NULL", em)
+
+    res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                       idname="id", gname="G", est_method=em,
+                       weightsname="tv_weight",
+                       panel=FALSE, faster_mode=FALSE,
+                       bstrap=FALSE, cband=FALSE)
+    res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
+                       idname="id", gname="G", est_method=em,
+                       weightsname="tv_weight",
+                       panel=FALSE, faster_mode=TRUE,
+                       bstrap=FALSE, cband=FALSE)
+
+    expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                 label=paste("ATT", label))
+    expect_equal(res_slow$se, res_fast$se, tolerance=1e-10,
+                 label=paste("SE", label))
+  }
+})
+
+test_that("IF consistency: unbalanced panel, default weights x est_method", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  # Create unbalanced panel by dropping some observations
+  set.seed(42)
+  drop_idx <- sample(nrow(data), size = floor(nrow(data) * 0.05))
+  data_unbal <- data[-drop_idx, ]
+
+  # Default weights (fix_weights=NULL); fixed weight options for unbalanced panels
+  # have known edge cases with unit availability across periods
+  for (em in c("dr", "reg")) {
+    label <- paste("unbalanced NULL", em)
+
+    res_slow <- att_gt(yname="Y", xformla=~X, data=data_unbal, tname="period",
+                       idname="id", gname="G", est_method=em,
+                       allow_unbalanced_panel=TRUE,
+                       faster_mode=FALSE, bstrap=FALSE, cband=FALSE)
+    res_fast <- att_gt(yname="Y", xformla=~X, data=data_unbal, tname="period",
+                       idname="id", gname="G", est_method=em,
+                       allow_unbalanced_panel=TRUE,
+                       faster_mode=TRUE, bstrap=FALSE, cband=FALSE)
+
+    expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                 label=paste("ATT", label))
+    expect_equal(res_slow$se, res_fast$se, tolerance=1e-10,
+                 label=paste("SE", label))
+  }
+})
+
+test_that("IF consistency: no covariates (xformla=~1), all data types", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  # Balanced panel, no covariates
+  for (fw in c(NA, "varying")) {
+    fw_arg <- if (is.na(fw)) NULL else fw
+    label <- paste("no-covar panel", if (is.na(fw)) "NULL" else fw)
+
+    res_slow <- att_gt(yname="Y", data=data, tname="period", idname="id",
+                       gname="G", fix_weights=fw_arg,
+                       faster_mode=FALSE, bstrap=FALSE, cband=FALSE)
+    res_fast <- att_gt(yname="Y", data=data, tname="period", idname="id",
+                       gname="G", fix_weights=fw_arg,
+                       faster_mode=TRUE, bstrap=FALSE, cband=FALSE)
+
+    expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                 label=paste("ATT", label))
+    expect_equal(res_slow$se, res_fast$se, tolerance=1e-10,
+                 label=paste("SE", label))
+  }
+
+  # RC, no covariates
+  res_slow <- att_gt(yname="Y", data=data, tname="period", idname="id",
+                     gname="G", panel=FALSE,
+                     faster_mode=FALSE, bstrap=FALSE, cband=FALSE)
+  res_fast <- att_gt(yname="Y", data=data, tname="period", idname="id",
+                     gname="G", panel=FALSE,
+                     faster_mode=TRUE, bstrap=FALSE, cband=FALSE)
+
+  expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+               label="ATT RC no-covar")
+  expect_equal(res_slow$se, res_fast$se, tolerance=1e-10,
+               label="SE RC no-covar")
+})
+
 test_that("clustered standard errors", {
   set.seed(09142024)
   # check that we can compute when clustered standard errors are supplied
