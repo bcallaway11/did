@@ -86,10 +86,10 @@ get_wide_data <- function(data, yname, idname, tname) {
 check_balance <- function(data, id_col, time_col) {
 
   # Count the number of observations per unit (idname)
-  panel_counts <- data[, .N, by = get(id_col)]
+  panel_counts <- data[, .N, by = c(id_col)]
 
   # Determine the maximum number of time periods for any unit
-  max_time_periods <- data[, uniqueN(get(time_col))]
+  max_time_periods <- data[, uniqueN(data[[time_col]])]
 
   # Check if every unit has the same number of time periods as max_time_periods
   is_balanced <- all(panel_counts$N == max_time_periods)

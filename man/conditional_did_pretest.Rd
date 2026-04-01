@@ -88,7 +88,24 @@ eventually participate in the treatment, but have not
 participated yet.}
 
 \item{weightsname}{The name of the column containing the sampling weights.
-If not set, all observations have same weight.}
+If not set, all observations have same weight. When weights are
+time-invariant (constant within each unit across periods), all
+\code{fix_weights} options produce identical results and no special
+handling is needed.
+
+When weights vary across time (e.g., time-varying population sizes),
+the default behavior differs by panel type:
+\describe{
+\item{Balanced panel}{Each 2x2 DiD comparison uses the weight from the
+earlier of the two time periods involved. For post-treatment cells,
+this is the base period (g-1). For pre-treatment cells with
+\code{base_period="varying"}, this is the pre-treatment period itself.
+The panel DRDID estimators are used.}
+\item{Repeated cross sections and unbalanced panels}{Both periods'
+per-observation weights are passed directly to the RC DRDID estimators,
+so each observation carries its own period-specific weight.}
+}
+Use the \code{fix_weights} argument to override the default behavior.}
 
 \item{alp}{the significance level, default is 0.05}
 

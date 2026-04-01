@@ -6,10 +6,12 @@
 #' @keywords internal
 "_PACKAGE"
 
-#' @import stats
-#' @import utils
+#' @importFrom stats pnorm qnorm pchisq quantile cov aggregate setNames
+#'   model.frame model.matrix na.pass complete.cases binomial rnorm var
+#' @importFrom utils globalVariables
 #' @import ggplot2
-#' @import BMisc
+#' @importFrom BMisc toformula rhs.vars makeBalancedPanel getListElement
+#'   multiplier_bootstrap TorF
 #' @import data.table
 #' @import fastglm
 #' @importFrom tidyr gather

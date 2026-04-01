@@ -49,6 +49,8 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
   covariates_matrix <- did_tensors$covariates_matrix
   cluster_vector <- did_tensors$cluster
   weights_vector <- did_tensors$weights
+  weights_tensor <- did_tensors$weights_tensor
+  fix_weights <- args$fix_weights
 
 
   out <- list(yname=yname,
@@ -89,6 +91,8 @@ DIDparams2 <- function(did_tensors, args, call=NULL) {
               covariates_matrix = covariates_matrix,
               cluster_vector=cluster_vector,
               weights_vector=weights_vector,
+              weights_tensor=weights_tensor,
+              fix_weights=fix_weights,
               call=call)
   class(out) <- "DIDparams"
   return(out)

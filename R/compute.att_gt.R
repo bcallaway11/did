@@ -65,9 +65,19 @@ compute.att_gt <- function(dp) {
   # never treated option
   nevertreated <- (control_group[1] == "nevertreated")
 
+  fix_weights <- dp$fix_weights
+
   # Pre-extract columns to avoid repeated get() inside data.table (which is slow)
   g_col <- data[[gname]]
   t_col <- data[[tname]]
+
+  # Build weight lookup by period for fix_weights options (balanced panel only)
+  if (!is.null(fix_weights) && panel) {
+    weights_by_period <- list()
+    for (tp in seq_along(tlist)) {
+      weights_by_period[[tp]] <- data[t_col == tlist[tp], .w]
+    }
+  }
 
   if (nevertreated) {
     set(data, j = ".C", value = as.integer(g_col == 0))
@@ -193,7 +203,20 @@ compute.att_gt <- function(dp) {
         # base period, then the "base period" is actually the later period
         Ypre <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y0 else disdat$.y1
         Ypost <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y1 else disdat$.y0
-        w <- disdat$.w
+
+        # Select weights based on fix_weights
+        if (is.null(fix_weights)) {
+          # Default: .w from get_wide_data (earlier period)
+          w <- disdat$.w
+        } else if (fix_weights == "base_period") {
+          w <- weights_by_period[[pret_g]][disidx]
+        } else if (fix_weights == "first_period") {
+          w <- weights_by_period[[1L]][disidx]
+        } else if (fix_weights == "varying") {
+          w <- disdat$.w  # will be overridden below when switching to RC estimator
+        } else {
+          w <- disdat$.w
+        }
 
         # matrix of covariates
         covariates <- model.matrix(xformla, data = disdat)
@@ -247,7 +270,39 @@ compute.att_gt <- function(dp) {
         #-----------------------------------------------------------------------------
 
         attgt <- tryCatch({
-          if (inherits(est_method, "function")) {
+          if (!is.null(fix_weights) && fix_weights == "varying") {
+            # fix_weights = "varying": use RC estimators with per-period weights
+            # Go back to long-format data for this (g,t) cell
+            disdat_long <- data[time_mask]
+            disdat_long_idx <- disdat_long$.G == 1 | disdat_long$.C == 1
+            disdat_long <- disdat_long[disdat_long_idx]
+            Y_rc <- disdat_long[[yname]]
+            G_rc <- disdat_long$.G
+            post_rc <- as.numeric(disdat_long[[tname]] == tlist[t + tfac])
+            w_rc <- disdat_long$.w
+            covariates_rc <- model.matrix(xformla, data = disdat_long)
+            n1_rc <- sum(G_rc + disdat_long$.C) # careful: n1 for RC is different
+
+            if (inherits(est_method, "function")) {
+              res <- do.call(est_method, c(list(
+                y = Y_rc, post = post_rc,
+                D = G_rc, covariates = covariates_rc,
+                i.weights = w_rc, inffunc = TRUE
+              ), extra_args))
+            } else if (est_method == "ipw") {
+              res <- DRDID::std_ipw_did_rc(Y_rc, post_rc, G_rc,
+                covariates = covariates_rc,
+                i.weights = w_rc, boot = FALSE, inffunc = TRUE)
+            } else if (est_method == "reg") {
+              res <- DRDID::reg_did_rc(Y_rc, post_rc, G_rc,
+                covariates = covariates_rc,
+                i.weights = w_rc, boot = FALSE, inffunc = TRUE)
+            } else {
+              res <- DRDID::drdid_rc(Y_rc, post_rc, G_rc,
+                covariates = covariates_rc,
+                i.weights = w_rc, boot = FALSE, inffunc = TRUE)
+            }
+          } else if (inherits(est_method, "function")) {
             # user-specified function
             res <- do.call(est_method, c(list(
               y1 = Ypost, y0 = Ypre,
@@ -281,7 +336,16 @@ compute.att_gt <- function(dp) {
 
           # adjust influence function to account for only using
           # subgroup to estimate att(g,t)
-          res$att.inf.func <- (n / n1) * res$att.inf.func
+          if (!is.null(fix_weights) && fix_weights == "varying") {
+            # RC influence function has 2*n1 rows (stacked pre + post);
+            # aggregate back to unit level by summing pre and post contributions
+            inf_rc <- res$att.inf.func
+            n1_half <- length(inf_rc) %/% 2L
+            res$att.inf.func <- inf_rc[1:n1_half] + inf_rc[(n1_half + 1):(2 * n1_half)]
+            res$att.inf.func <- (n / n1) * res$att.inf.func
+          } else {
+            res$att.inf.func <- (n / n1) * res$att.inf.func
+          }
           res
         }, error = function(e) {
           warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
@@ -325,7 +389,38 @@ compute.att_gt <- function(dp) {
         post <- 1 * (disdat[[tname]] == tlist[t + tfac])
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G + C)
-        w <- disdat$.w
+
+        # Handle fix_weights for RC/unbalanced panel
+        if (!is.null(fix_weights) && fix_weights %in% c("base_period", "first_period")) {
+          # Determine which period's weight to use
+          if (fix_weights == "base_period") {
+            target_period <- tlist[pret_g]
+          } else {
+            target_period <- tlist[1]
+          }
+          # Build lookup: weight from target period per unit
+          target_rows <- data[t_col == target_period, ]
+          target_w <- stats::setNames(target_rows$.w, target_rows$.rowid)
+          # Look up weight for each observation's unit
+          w <- as.numeric(target_w[as.character(disdat$.rowid)])
+          # Drop units not observed in the target period
+          missing_w <- is.na(w)
+          if (any(missing_w)) {
+            n_dropped <- length(unique(disdat$.rowid[missing_w]))
+            warning(paste0("Dropped ", n_dropped, " units not observed in ",
+                           fix_weights, " (period ", target_period, ") ",
+                           "for group ", glist[g], " in time period ", tlist[t + tfac]))
+            disdat <- disdat[!missing_w, ]
+            G <- disdat$.G
+            C <- disdat$.C
+            Y <- disdat[[yname]]
+            post <- 1 * (disdat[[tname]] == tlist[t + tfac])
+            n1 <- sum(G + C)
+            w <- w[!missing_w]
+          }
+        } else {
+          w <- disdat$.w
+        }
 
         #-----------------------------------------------------------------------------
         # checks to make sure that we have enough observations

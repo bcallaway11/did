@@ -628,6 +628,183 @@ test_that("sampling weights", {
 
 })
 
+# =============================================================================
+# Column naming: user columns named gname/tname/idname should not crash
+# =============================================================================
+
+test_that("works when user column is literally named 'gname'", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  # Rename columns to match parameter names exactly
+  names(data)[names(data) == "G"] <- "gname"
+  names(data)[names(data) == "period"] <- "tname"
+  names(data)[names(data) == "id"] <- "idname"
+
+  mod <- att_gt(yname="Y", xformla=~X, data=data, tname="tname", idname="idname",
+                gname="gname", est_method="reg", bstrap=FALSE)
+  expect_false(all(is.na(mod$att)))
+
+  # aggte should also work (this was the specific dreamerr bug)
+  agg <- aggte(mod, type="simple")
+  expect_false(is.na(agg$overall.att))
+
+  agg_dyn <- aggte(mod, type="dynamic")
+  expect_false(is.na(agg_dyn$overall.att))
+})
+
+test_that("works when user column is literally named 'gname' with faster_mode", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  names(data)[names(data) == "G"] <- "gname"
+  names(data)[names(data) == "period"] <- "tname"
+  names(data)[names(data) == "id"] <- "idname"
+
+  mod <- att_gt(yname="Y", xformla=~X, data=data, tname="tname", idname="idname",
+                gname="gname", est_method="reg", bstrap=FALSE, faster_mode=TRUE)
+  expect_false(all(is.na(mod$att)))
+
+  agg <- aggte(mod, type="simple")
+  expect_false(is.na(agg$overall.att))
+})
+
+# =============================================================================
+# Time-varying weights: fix_weights tests
+# =============================================================================
+
+test_that("time-varying weights: faster_mode matches slow mode (default fix_weights=NULL)", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period + runif(nrow(data), -0.1, 0.1)
+
+  for (em in c("reg", "dr", "ipw")) {
+    for (bp in c("varying", "universal")) {
+      res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                         gname="G", est_method=em, weightsname="tv_weight",
+                         base_period=bp, faster_mode=FALSE, bstrap=FALSE)
+      res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                         gname="G", est_method=em, weightsname="tv_weight",
+                         base_period=bp, faster_mode=TRUE, bstrap=FALSE)
+
+      expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                   label=paste("ATT match:", em, bp))
+    }
+  }
+})
+
+test_that("fix_weights options: faster_mode matches slow mode (balanced panel)", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period + runif(nrow(data), -0.1, 0.1)
+
+  for (fw in c("varying", "base_period", "first_period")) {
+    res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                       gname="G", est_method="dr", weightsname="tv_weight",
+                       fix_weights=fw, faster_mode=FALSE, bstrap=FALSE)
+    res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                       gname="G", est_method="dr", weightsname="tv_weight",
+                       fix_weights=fw, faster_mode=TRUE, bstrap=FALSE)
+
+    expect_equal(res_slow$att, res_fast$att, tolerance=1e-10,
+                 label=paste("ATT match:", fw))
+  }
+})
+
+test_that("time-invariant weights: all fix_weights options produce identical ATTs", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  n_ids <- length(unique(data$id))
+  n_periods <- length(unique(data$period))
+  data$const_weight <- rep(runif(n_ids, 1, 10), each = n_periods)
+
+  res_default <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                        gname="G", est_method="reg", weightsname="const_weight",
+                        bstrap=FALSE)
+
+  for (fw in c("base_period", "first_period")) {
+    res_fw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                     gname="G", est_method="reg", weightsname="const_weight",
+                     fix_weights=fw, bstrap=FALSE)
+    expect_equal(res_default$att, res_fw$att, tolerance=1e-10,
+                 label=paste("same ATT for", fw))
+  }
+})
+
+test_that("message emitted for time-varying weights in balanced panel", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period * 1.0 + runif(nrow(data), 0, 0.5)
+
+  expect_message(
+    att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+           gname="G", weightsname="tv_weight", bstrap=FALSE),
+    "Time-varying weights detected"
+  )
+})
+
+test_that("no message for time-invariant weights", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  n_ids <- length(unique(data$id))
+  n_periods <- length(unique(data$period))
+  data$const_weight <- rep(runif(n_ids, 1, 10), each = n_periods)
+
+  expect_no_message(
+    att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+           gname="G", weightsname="const_weight", bstrap=FALSE)
+  )
+})
+
+test_that("notyettreated with time-varying weights: faster_mode matches", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period + runif(nrow(data), 0, 0.5)
+
+  res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                     gname="G", est_method="dr", weightsname="tv_weight",
+                     control_group="notyettreated", faster_mode=FALSE, bstrap=FALSE)
+  res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+                     gname="G", est_method="dr", weightsname="tv_weight",
+                     control_group="notyettreated", faster_mode=TRUE, bstrap=FALSE)
+
+  expect_equal(res_slow$att, res_fast$att, tolerance=1e-10)
+})
+
+test_that("RC with time-varying weights: faster_mode matches", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tv_weight <- data$period * 1.0 + runif(nrow(data), 0, 0.5)
+
+  res_slow <- att_gt(yname="Y", data=data, tname="period", idname="id",
+                     gname="G", est_method="reg", weightsname="tv_weight",
+                     panel=FALSE, faster_mode=FALSE, bstrap=FALSE)
+  res_fast <- att_gt(yname="Y", data=data, tname="period", idname="id",
+                     gname="G", est_method="reg", weightsname="tv_weight",
+                     panel=FALSE, faster_mode=TRUE, bstrap=FALSE)
+
+  expect_equal(res_slow$att, res_fast$att, tolerance=1e-10)
+})
+
+test_that("fix_weights validation", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  expect_error(
+    att_gt(yname="Y", data=data, tname="period", idname="id",
+           gname="G", fix_weights="invalid_option", bstrap=FALSE),
+    "fix_weights must be NULL"
+  )
+})
+
 test_that("clustered standard errors", {
   set.seed(09142024)
   # check that we can compute when clustered standard errors are supplied
