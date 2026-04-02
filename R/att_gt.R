@@ -50,15 +50,17 @@
 #'      post-period observations each carry their own weight. This is the
 #'      most flexible option but sacrifices the efficiency of the panel
 #'      estimator. For RC/unbalanced panel, this is identical to the
-#'      default.}
+#'      default. Not supported with custom \code{est_method} functions.}
 #'    \item{\code{"base_period"}}{Fixes weights at the base period (g-1) for
 #'      all (g,t) cells within a group, for both pre-treatment and
 #'      post-treatment comparisons. Ensures all cells within a group use the
-#'      same weights. For RC/unbalanced panel, units not observed in the base
-#'      period are dropped with a warning.}
+#'      same weights. For unbalanced panels, units not observed in the base
+#'      period are dropped with a warning. Not supported for repeated cross
+#'      sections (\code{panel = FALSE}).}
 #'    \item{\code{"first_period"}}{Fixes weights at the first time period in
-#'      the dataset for all (g,t) cells. For RC/unbalanced panel, units not
-#'      observed in the first period are dropped with a warning.}
+#'      the dataset for all (g,t) cells. For unbalanced panels, units not
+#'      observed in the first period are dropped with a warning. Not supported
+#'      for repeated cross sections (\code{panel = FALSE}).}
 #'  }
 #' @param alp the significance level, default is 0.05
 #' @param bstrap Boolean for whether or not to compute standard errors using
@@ -266,6 +268,17 @@ att_gt <- function(yname,
     if (!is.character(fix_weights) || length(fix_weights) != 1 ||
         !(fix_weights %in% c("varying", "base_period", "first_period"))) {
       stop("fix_weights must be NULL or one of \"varying\", \"base_period\", or \"first_period\".")
+    }
+    if (!panel && fix_weights %in% c("base_period", "first_period")) {
+      stop("fix_weights = \"", fix_weights, "\" is not supported for repeated cross sections ",
+           "(panel = FALSE) because units are not tracked across periods. ",
+           "Use fix_weights = \"varying\" or NULL instead.")
+    }
+    if (fix_weights == "varying" && inherits(est_method, "function")) {
+      stop("fix_weights = \"varying\" is not currently supported with custom est_method functions. ",
+           "The \"varying\" option uses repeated cross-section estimators internally, which require ",
+           "a different function signature (y, post, D) than the documented panel signature (y1, y0, D). ",
+           "Use fix_weights = NULL, \"base_period\", or \"first_period\" instead.")
     }
   }
 

@@ -433,7 +433,16 @@ run_att_gt_estimation <- function(g, t, dp2){
       # Look up weight for each observation
       obs_ids <- as.character(tid[[dp2$idname]])
       fixed_w <- as.numeric(target_w_lookup[obs_ids])
-      # Units not in target period get NA weight — will be filtered in run_DRDID
+      # Exclude units not observed in target period by setting D to NA
+      # (run_DRDID filters on !is.na(D))
+      na_w <- is.na(fixed_w)
+      if (any(na_w & !is.na(did_cohort_index))) {
+        did_cohort_index[na_w] <- NA_integer_
+        warning(paste0("Some units not observed in ", dp2$fix_weights,
+                       " (period ", target_period, ") for group ",
+                       dp2$treated_groups[g], " in time period ",
+                       dp2$time_periods[t+tfac], ". These units are excluded."))
+      }
       cohort_data <- data.table(did_cohort_index, tid[[dp2$yname]], tid$post, fixed_w, tid$.rowid)
     } else {
       cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
@@ -443,7 +452,7 @@ run_att_gt_estimation <- function(g, t, dp2){
   }
 
   # run estimation
-  force_rc <- if (exists("use_rc_for_weights") && isTRUE(use_rc_for_weights)) TRUE else FALSE
+  force_rc <- !is.null(dp2$fix_weights) && dp2$fix_weights == "varying" && dp2$panel
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g], t_val = dp2$time_periods[t+tfac], force_rc = force_rc),
                          error = function(e) {
                            warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
@@ -521,13 +530,9 @@ compute.att_gt2 <- function(dp2) {
 
     # Check for NULL first (estimation failed or was skipped)
     if (is.null(gt_result)) {
-      if(dp2$base_period == "universal"){
-        inffunc_updates <- rep(NA_real_, n)
-        gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
-        return(gt_result)
-      } else {
-        return(NULL)
-      }
+      inffunc_updates <- rep(NA_real_, n)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
     }
 
     # Base period normalization: ATT is 0 by construction
@@ -539,14 +544,9 @@ compute.att_gt2 <- function(dp2) {
 
     if (is.null(gt_result$att)) {
       # Estimation returned a result but without an ATT
-      if(dp2$base_period == "universal"){
-        inffunc_updates <- rep(NA_real_, n)
-        gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
-        return(gt_result)
-      } else {
-        return(NULL)
-      }
-
+      inffunc_updates <- rep(NA_real_, n)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
     } else {
       att <- gt_result$att
       inf_func <- gt_result$inf_func

@@ -67,9 +67,11 @@ get_wide_data <- function(data, yname, idname, tname) {
   set(data, j = ".y0", value = y_vals)
   set(data, j = ".dy", value = data[[".y1"]] - y_vals)
 
-  # Subset to first row
-  first.period <- min(data[[tname]])
-  data <- data[data[[tname]] == first.period, ]
+  # Subset to first period's rows
+  # Pre-extract to avoid data.table .checkTypos when column name matches variable name
+  .time_vals <- data[[tname]]
+  first.period <- min(.time_vals)
+  data <- data[.time_vals == first.period]
 
   return(data)
 }
@@ -89,7 +91,7 @@ check_balance <- function(data, id_col, time_col) {
   panel_counts <- data[, .N, by = c(id_col)]
 
   # Determine the maximum number of time periods for any unit
-  max_time_periods <- data[, uniqueN(data[[time_col]])]
+  max_time_periods <- length(unique(data[[time_col]]))
 
   # Check if every unit has the same number of time periods as max_time_periods
   is_balanced <- all(panel_counts$N == max_time_periods)

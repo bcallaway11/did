@@ -21,7 +21,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump dev version in DESCRIPTION
         run: |

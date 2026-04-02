@@ -56,14 +56,16 @@ test_that("two period case", {
   sp$n <- 10000
   data <- did::build_sim_dataset(sp)
 
-  res <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
-              gname="G", est_method="reg")
+  res <- suppressWarnings(
+    att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id",
+           gname="G", est_method="reg")
+  )
   res
 
-  agg_simple <- aggte(res, type="simple")
-  agg_group <- aggte(res, type="group")
-  agg_dynamic <- aggte(res, type="dynamic")
-  agg_calendar <- aggte(res, type="calendar")
+  agg_simple <- suppressWarnings(aggte(res, type="simple"))
+  agg_group <- suppressWarnings(aggte(res, type="group"))
+  agg_dynamic <- suppressWarnings(aggte(res, type="dynamic"))
+  agg_calendar <- suppressWarnings(aggte(res, type="calendar"))
 
   expect_equal(agg_simple$overall.att, 1, tol=.5)
   expect_equal(agg_group$overall.att, 1, tol=.5)
@@ -646,10 +648,10 @@ test_that("works when user column is literally named 'gname'", {
   expect_false(all(is.na(mod$att)))
 
   # aggte should also work (this was the specific dreamerr bug)
-  agg <- aggte(mod, type="simple")
+  agg <- suppressWarnings(aggte(mod, type="simple"))
   expect_false(is.na(agg$overall.att))
 
-  agg_dyn <- aggte(mod, type="dynamic")
+  agg_dyn <- suppressWarnings(aggte(mod, type="dynamic"))
   expect_false(is.na(agg_dyn$overall.att))
 })
 
@@ -802,6 +804,28 @@ test_that("fix_weights validation", {
     att_gt(yname="Y", data=data, tname="period", idname="id",
            gname="G", fix_weights="invalid_option", bstrap=FALSE),
     "fix_weights must be NULL"
+  )
+
+  # base_period and first_period not supported for repeated cross sections
+  expect_error(
+    att_gt(yname="Y", data=data, tname="period", idname="id",
+           gname="G", fix_weights="base_period", panel=FALSE, bstrap=FALSE),
+    "not supported for repeated cross sections"
+  )
+  expect_error(
+    att_gt(yname="Y", data=data, tname="period", idname="id",
+           gname="G", fix_weights="first_period", panel=FALSE, bstrap=FALSE),
+    "not supported for repeated cross sections"
+  )
+
+  # varying not supported with custom est_method
+  my_est <- function(y1, y0, D, covariates, i.weights, inffunc, ...) {
+    list(ATT = mean(y1 - y0), att.inf.func = rep(0, length(y1)))
+  }
+  expect_error(
+    att_gt(yname="Y", data=data, tname="period", idname="id",
+           gname="G", fix_weights="varying", est_method=my_est, bstrap=FALSE),
+    "not currently supported with custom est_method"
   )
 })
 

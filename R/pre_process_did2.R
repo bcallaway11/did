@@ -133,7 +133,7 @@ did_standardization <- function(data, args){
 
   # Check for time-varying weights in panel data
   if (!is.null(args$weightsname) && args$panel) {
-    w_range <- data[, .(w_range = max(weights) - min(weights)), by = get(args$idname)]
+    w_range <- data[, .(w_range = max(weights) - min(weights)), by = c(args$idname)]
     if (any(w_range$w_range > .Machine$double.eps^0.5, na.rm = TRUE)) {
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
