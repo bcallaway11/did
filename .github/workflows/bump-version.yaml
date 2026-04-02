@@ -5,6 +5,10 @@ on:
     types: [closed]
     branches: [master, main]
 
+concurrency:
+  group: bump-version
+  cancel-in-progress: false
+
 jobs:
   bump-version:
     if: github.event.pull_request.merged == true
@@ -17,7 +21,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Bump dev version in DESCRIPTION
         run: |

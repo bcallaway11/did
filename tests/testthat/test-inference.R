@@ -30,19 +30,17 @@ same_matrix_elem <- function(A, B) {
 
 temp_lib <- tempfile()
 dir.create(temp_lib)
-old_did_available <- tryCatch({
-  remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org", quiet = TRUE)
-  TRUE
-}, error = function(e) FALSE)
-
-if (!old_did_available) {
-  # Clean up and skip all tests in this file
-  unlink(temp_lib, recursive = TRUE)
+old_did_available <- FALSE
+# Only attempt install when not on CRAN (network access may be blocked)
+if (!identical(Sys.getenv("NOT_CRAN"), "false")) {
+  old_did_available <- tryCatch({
+    remotes::install_version("did", version = "2.1.2", lib = temp_lib,
+                             repos = "https://cloud.r-project.org", quiet = TRUE)
+    isTRUE(requireNamespace("did", lib.loc = temp_lib, quietly = TRUE))
+  }, error = function(e) FALSE)
 }
-# install.packages(
-#   "https://cran.r-project.org/src/contrib/did_2.1.2.tar.gz",
-#   repos = NULL, type = "source", lib = temp_lib
-# )
+# Always clean up temp_lib when tests finish
+withr::defer(unlink(temp_lib, recursive = TRUE), teardown_env())
 
 test_that("inference with balanced panel data and aggregations", {
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")

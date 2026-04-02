@@ -281,7 +281,6 @@ compute.att_gt <- function(dp) {
             post_rc <- as.numeric(disdat_long[[tname]] == tlist[t + tfac])
             w_rc <- disdat_long$.w
             covariates_rc <- model.matrix(xformla, data = disdat_long)
-            n1_rc <- sum(G_rc + disdat_long$.C) # careful: n1 for RC is different
 
             if (inherits(est_method, "function")) {
               res <- do.call(est_method, c(list(
@@ -337,11 +336,12 @@ compute.att_gt <- function(dp) {
           # adjust influence function to account for only using
           # subgroup to estimate att(g,t)
           if (!is.null(fix_weights) && fix_weights == "varying") {
-            # RC influence function has 2*n1 rows (stacked pre + post);
-            # aggregate back to unit level by summing pre and post contributions
-            inf_rc <- res$att.inf.func
-            n1_half <- length(inf_rc) %/% 2L
-            res$att.inf.func <- inf_rc[1:n1_half] + inf_rc[(n1_half + 1):(2 * n1_half)]
+            # RC influence function has one entry per observation in disdat_long
+            # (interleaved: unit1-pre, unit1-post, unit2-pre, ...).
+            # Aggregate back to unit level by summing within each unit ID.
+            res$att.inf.func <- as.numeric(
+              rowsum(res$att.inf.func, disdat_long[[idname]], reorder = FALSE)
+            )
             res$att.inf.func <- (n / n1) * res$att.inf.func
           } else {
             res$att.inf.func <- (n / n1) * res$att.inf.func
@@ -595,7 +595,9 @@ compute.att_gt <- function(dp) {
         )
       } else {
         # aggregate inf functions by id (order by id)
-        aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
+        # Use current disdat$.rowid (may differ from rightids if fix_weights dropped obs)
+        current_ids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
+        aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(current_ids), sum))
         idx <- which(unique(data$.rowid) %in% aggte_inffunc[, 1])
         inffunc_updates[[update_counter]] <- list(
           indices = idx,

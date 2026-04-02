@@ -122,15 +122,17 @@ repeated cross-section DRDID estimators so that pre-period and
 post-period observations each carry their own weight. This is the
 most flexible option but sacrifices the efficiency of the panel
 estimator. For RC/unbalanced panel, this is identical to the
-default.}
+default. Not supported with custom \code{est_method} functions.}
 \item{\code{"base_period"}}{Fixes weights at the base period (g-1) for
 all (g,t) cells within a group, for both pre-treatment and
 post-treatment comparisons. Ensures all cells within a group use the
-same weights. For RC/unbalanced panel, units not observed in the base
-period are dropped with a warning.}
+same weights. For unbalanced panels, units not observed in the base
+period are dropped with a warning. Not supported for repeated cross
+sections (\code{panel = FALSE}).}
 \item{\code{"first_period"}}{Fixes weights at the first time period in
-the dataset for all (g,t) cells. For RC/unbalanced panel, units not
-observed in the first period are dropped with a warning.}
+the dataset for all (g,t) cells. For unbalanced panels, units not
+observed in the first period are dropped with a warning. Not supported
+for repeated cross sections (\code{panel = FALSE}).}
 }}
 
 \item{alp}{the significance level, default is 0.05}

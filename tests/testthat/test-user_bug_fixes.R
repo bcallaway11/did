@@ -115,23 +115,23 @@ test_that("0 pre-treatment estimates when outcomes are 0", {
   data <- subset(data, G > 6)
   data <- subset(data, period > 5)
   data$Y[(data$period < data$G)] <- 0 # set pre-treatment = 0
-  res <- att_gt(yname="Y",
+  res <- suppressWarnings(att_gt(yname="Y",
                 tname="period",
                 idname="id",
                 gname="G",
                 data=data,
                 control_group = "notyettreated",
-                base_period="universal")
+                base_period="universal"))
   res_idx <- which(res$group==9 & res$t==7)
   expect_equal(res$att[res_idx],0)
 
-  res <- att_gt(yname="Y",
+  res <- suppressWarnings(att_gt(yname="Y",
                 tname="period",
                 idname="id",
                 gname="G",
                 data=data,
                 control_group = "notyettreated",
-                base_period="varying")
+                base_period="varying"))
   res_idx <- which(res$group==9 & res$t==7)
   expect_equal(res$att[res_idx],0)
 })

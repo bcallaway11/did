@@ -84,12 +84,22 @@ tidy.MP <- function(x, ...) {
 #' @param ... other arguments passed to methods
 #' @export
 glance.MP <- function(x, ...) {
-  out <- data.frame(
-    nobs          = x$n,
-    ngroup        = x$DIDparams$nG,
-    ntime         = x$DIDparams$nT,
-    control.group = x$DIDparams$control_group,
-    est.method    = x$DIDparams$est_method)
+  dp <- x$DIDparams
+  if (isTRUE(dp$faster_mode)) {
+    out <- data.frame(
+      nobs          = x$n,
+      ngroup        = dp$treated_groups_count,
+      ntime         = dp$time_periods_count,
+      control.group = dp$control_group,
+      est.method    = dp$est_method)
+  } else {
+    out <- data.frame(
+      nobs          = x$n,
+      ngroup        = dp$nG,
+      ntime         = dp$nT,
+      control.group = dp$control_group,
+      est.method    = dp$est_method)
+  }
   out
 }
 
@@ -205,7 +215,7 @@ glance.AGGTEobj<- function(x, ...) {
     out <- data.frame(
       type          = x$type,
       nobs          = x$DIDparams$id_count,
-      ngroup        = nrow(x$DIDparams$cohort_counts),
+      ngroup        = x$DIDparams$treated_groups_count,
       ntime         = x$DIDparams$time_periods_count,
       control.group = x$DIDparams$control_group,
       est.method    = x$DIDparams$est_method)  

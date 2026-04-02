@@ -112,14 +112,14 @@ test_that("JEL Table 7: 2x2 CS-DiD point estimates match", {
   for (method in c("reg", "ipw", "dr")) {
     for (wt_info in list(list(name = NULL, label = "unweighted"),
                          list(name = "set_wt", label = "weighted"))) {
-      res <- att_gt(
+      res <- suppressWarnings(att_gt(
         yname = "crude_rate_20_64", tname = "year", idname = "county_code",
         gname = "treat_year", xformla = covs_formula,
         data = short_data, panel = TRUE, control_group = "nevertreated",
         bstrap = FALSE, est_method = method, weightsname = wt_info$name,
         base_period = "universal"
-      )
-      agg <- aggte(res, na.rm = TRUE, bstrap = FALSE)
+      ))
+      agg <- suppressWarnings(aggte(res, na.rm = TRUE, bstrap = FALSE))
 
       key <- paste0(method, "_", wt_info$label)
       expect_equal(agg$overall.att, expected[[key]], tolerance = 1e-6,
@@ -170,11 +170,11 @@ test_that("JEL 2xT: event study ATT(g,t) point estimates match", {
   expect_equal(mod$att, expected_att, tolerance = 1e-6)
 
   # Dynamic aggregation
-  es <- aggte(mod, type = "dynamic", bstrap = FALSE)
+  es <- suppressWarnings(aggte(mod, type = "dynamic", bstrap = FALSE))
   expect_equal(es$att.egt, expected_att, tolerance = 1e-6)
 
   # Overall ATT for e in {0,5}
-  agg <- aggte(mod, type = "dynamic", min_e = 0, max_e = 5, bstrap = FALSE)
+  agg <- suppressWarnings(aggte(mod, type = "dynamic", min_e = 0, max_e = 5, bstrap = FALSE))
   expect_equal(agg$overall.att, -0.7035462478, tolerance = 1e-6)
 })
 
@@ -206,7 +206,7 @@ test_that("JEL 2xT: event study with covariates matches across methods", {
       base_period = "universal"
     )
 
-    es <- aggte(res, type = "dynamic", na.rm = TRUE, bstrap = FALSE)
+    es <- suppressWarnings(aggte(res, type = "dynamic", na.rm = TRUE, bstrap = FALSE))
 
     # Base period (e = -1) should be exactly 0
     base_idx <- which(es$egt == -1)
@@ -243,7 +243,7 @@ test_that("JEL GxT: staggered event study without covariates matches", {
   )
 
   # Dynamic aggregation
-  es <- aggte(mod, type = "dynamic", bstrap = FALSE)
+  es <- suppressWarnings(aggte(mod, type = "dynamic", bstrap = FALSE))
 
   # Expected dynamic ATT at key event times
   expected_dynamic <- c(
@@ -269,7 +269,7 @@ test_that("JEL GxT: staggered event study without covariates matches", {
   }
 
   # Overall ATT for e in {0,5}
-  agg <- aggte(mod, type = "dynamic", min_e = 0, max_e = 5, bstrap = FALSE)
+  agg <- suppressWarnings(aggte(mod, type = "dynamic", min_e = 0, max_e = 5, bstrap = FALSE))
   expect_equal(agg$overall.att, 0.0867675805, tolerance = 1e-6,
                label = "GxT no covs overall ATT (e=0:5)")
 })
@@ -293,21 +293,21 @@ test_that("JEL GxT: staggered event study with DR covariates matches", {
 
   covs_formula <- ~perc_female + perc_white + perc_hispanic + unemp_rate + poverty_rate + median_income
 
-  mod <- att_gt(
+  mod <- suppressWarnings(att_gt(
     yname = "crude_rate_20_64", tname = "year", idname = "county_code",
     gname = "treat_year", xformla = covs_formula,
     data = mydata, panel = TRUE, control_group = "notyettreated",
     bstrap = FALSE, est_method = "dr", weightsname = "set_wt",
     base_period = "universal"
-  )
+  ))
 
   # Overall ATT for e in {0,5}
-  agg <- aggte(mod, type = "dynamic", min_e = 0, max_e = 5, bstrap = FALSE)
+  agg <- suppressWarnings(aggte(mod, type = "dynamic", min_e = 0, max_e = 5, bstrap = FALSE))
   expect_equal(agg$overall.att, -2.2469982988, tolerance = 1e-6,
                label = "GxT DR covs overall ATT (e=0:5)")
 
   # Dynamic aggregation at key event times
-  es <- aggte(mod, type = "dynamic", bstrap = FALSE)
+  es <- suppressWarnings(aggte(mod, type = "dynamic", bstrap = FALSE))
 
   expected_dynamic <- c(
     `e=-5`  =  2.6684811691,
@@ -354,26 +354,26 @@ test_that("JEL: faster_mode matches regular mode", {
   covs_formula <- ~perc_female + perc_white + perc_hispanic + unemp_rate + poverty_rate + median_income
 
   # Test DR weighted
-  res_slow <- att_gt(
+  res_slow <- suppressWarnings(att_gt(
     yname = "crude_rate_20_64", tname = "year", idname = "county_code",
     gname = "treat_year", xformla = covs_formula,
     data = short_data, panel = TRUE, control_group = "nevertreated",
     bstrap = FALSE, est_method = "dr", weightsname = "set_wt",
     base_period = "universal", faster_mode = FALSE
-  )
-  res_fast <- att_gt(
+  ))
+  res_fast <- suppressWarnings(att_gt(
     yname = "crude_rate_20_64", tname = "year", idname = "county_code",
     gname = "treat_year", xformla = covs_formula,
     data = short_data, panel = TRUE, control_group = "nevertreated",
     bstrap = FALSE, est_method = "dr", weightsname = "set_wt",
     base_period = "universal", faster_mode = TRUE
-  )
+  ))
 
   expect_equal(res_slow$att, res_fast$att, tolerance = 1e-10,
                label = "2x2 DR weighted: ATTs match")
 
-  agg_slow <- aggte(res_slow, na.rm = TRUE, bstrap = FALSE)
-  agg_fast <- aggte(res_fast, na.rm = TRUE, bstrap = FALSE)
+  agg_slow <- suppressWarnings(aggte(res_slow, na.rm = TRUE, bstrap = FALSE))
+  agg_fast <- suppressWarnings(aggte(res_fast, na.rm = TRUE, bstrap = FALSE))
   expect_equal(agg_slow$overall.att, agg_fast$overall.att, tolerance = 1e-10,
                label = "2x2 DR weighted: aggregate ATT matches")
 })
