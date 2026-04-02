@@ -858,6 +858,35 @@ test_that("fix_weights validation", {
   expect_false(anyNA(rc_result$att))
 })
 
+test_that("unbalanced panel fix_weights with units missing from reference period", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+
+  # Drop some treated units from first period so fix_weights="first_period" must drop them
+  first_p <- min(data$period)
+  drop_ids <- unique(data$id[data$G > 0])[1:10]
+  data <- data[!(data$id %in% drop_ids & data$period == first_p), ]
+  data$w <- runif(nrow(data), 1, 5)
+
+  for (fw in c("first_period", "base_period")) {
+    res_slow <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", data = data, tname = "period", idname = "id",
+             gname = "G", allow_unbalanced_panel = TRUE,
+             fix_weights = fw, weightsname = "w",
+             bstrap = FALSE, faster_mode = FALSE)
+    ))
+    res_fast <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", data = data, tname = "period", idname = "id",
+             gname = "G", allow_unbalanced_panel = TRUE,
+             fix_weights = fw, weightsname = "w",
+             bstrap = FALSE, faster_mode = TRUE)
+    ))
+    expect_equal(res_slow$att, res_fast$att, tolerance = 1e-10,
+                 label = paste("unbalanced", fw, "ATT match"))
+  }
+})
+
 # =============================================================================
 # Influence function consistency: slow vs fast mode ATT AND SE must match
 # =============================================================================
