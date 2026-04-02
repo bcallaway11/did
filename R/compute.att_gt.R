@@ -596,7 +596,9 @@ compute.att_gt <- function(dp) {
         )
       } else {
         # aggregate inf functions by id (order by id)
-        aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(rightids), sum))
+        # Use current disdat$.rowid (may differ from rightids if fix_weights dropped obs)
+        current_ids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
+        aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(current_ids), sum))
         idx <- which(unique(data$.rowid) %in% aggte_inffunc[, 1])
         inffunc_updates[[update_counter]] <- list(
           indices = idx,

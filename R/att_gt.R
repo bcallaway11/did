@@ -91,10 +91,10 @@
 #' own function for estimating group time average treatment
 #' effects.  The required signature depends on the data structure:
 #'
-#' **Panel data** (`panel=TRUE`): `f(Y1, Y0, treat, covariates,
-#' i.weights, inffunc, ...)` where `Y1` is an `n x 1` vector of
-#' post-treatment outcomes, `Y0` is an `n x 1` vector of
-#' pre-treatment outcomes, `treat` is a binary vector indicating
+#' **Panel data** (`panel=TRUE`): `f(y1, y0, D, covariates,
+#' i.weights, inffunc, ...)` where `y1` is an `n x 1` vector of
+#' post-treatment outcomes, `y0` is an `n x 1` vector of
+#' pre-treatment outcomes, `D` is a binary vector indicating
 #' treatment group membership, `covariates` is an `n x k` matrix,
 #' `i.weights` is a vector of sampling weights, and `inffunc` is a
 #' logical requesting influence-function computation.

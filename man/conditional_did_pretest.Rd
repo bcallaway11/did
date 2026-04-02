@@ -135,16 +135,26 @@ approach in the \code{DRDID} package.  Other built-in methods
 include "ipw" for inverse probability weighting and "reg" for
 first step regression estimators.  The user can also pass their
 own function for estimating group time average treatment
-effects.  This should be a function
-\code{f(Y1,Y0,treat,covariates)} where \code{Y1} is an
-\code{n} x \code{1} vector of outcomes in the post-treatment
-outcomes, \code{Y0} is an \code{n} x \code{1} vector of
-pre-treatment outcomes, \code{treat} is a vector indicating
-whether or not an individual participates in the treatment,
-and \code{covariates} is an \code{n} x \code{k} matrix of
-covariates.  The function should return a list that includes
-\code{ATT} (an estimated average treatment effect), and
-\code{inf.func} (an \code{n} x \code{1} influence function).
+effects.  The required signature depends on the data structure:
+
+\strong{Panel data} (\code{panel=TRUE}): \code{f(y1, y0, D, covariates, i.weights, inffunc, ...)} where \code{y1} is an \verb{n x 1} vector of
+post-treatment outcomes, \code{y0} is an \verb{n x 1} vector of
+pre-treatment outcomes, \code{D} is a binary vector indicating
+treatment group membership, \code{covariates} is an \verb{n x k} matrix,
+\code{i.weights} is a vector of sampling weights, and \code{inffunc} is a
+logical requesting influence-function computation.
+
+\strong{Repeated cross sections / unbalanced panel} (\code{panel=FALSE}):
+\code{f(y, post, D, covariates, i.weights, inffunc, ...)} where \code{y} is
+the outcome vector (length \code{n}), \code{post} is a binary indicator for
+the post-treatment period, \code{D} is a binary treatment indicator,
+\code{covariates} is an \verb{n x k} matrix, \code{i.weights} is a vector of
+sampling weights, and \code{inffunc} is a logical.
+
+In both cases the function should return a list that includes
+\code{ATT} (the estimated group-time average treatment effect) and
+\code{att.inf.func} (an \verb{n x 1} influence function — one entry per
+observation passed into the estimator).
 The function can return other things as well, but these are
 the only two that are required. \code{est_method} is only used
 if covariates are included.}
