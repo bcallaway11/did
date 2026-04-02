@@ -818,15 +818,44 @@ test_that("fix_weights validation", {
     "not supported for repeated cross sections"
   )
 
-  # varying not supported with custom est_method
-  my_est <- function(y1, y0, D, covariates, i.weights, inffunc, ...) {
+  # varying not supported with custom est_method when panel = TRUE
+  my_panel_est <- function(y1, y0, D, covariates, i.weights, inffunc, ...) {
     list(ATT = mean(y1 - y0), att.inf.func = rep(0, length(y1)))
   }
   expect_error(
     att_gt(yname="Y", data=data, tname="period", idname="id",
-           gname="G", fix_weights="varying", est_method=my_est, bstrap=FALSE),
+           gname="G", fix_weights="varying", est_method=my_panel_est,
+           panel=TRUE, bstrap=FALSE),
     "not currently supported with custom est_method"
   )
+
+  # varying IS supported with custom est_method when panel = FALSE (RC signature)
+  my_rc_est <- function(y, post, D, covariates, i.weights, inffunc, ...) {
+    n_obs <- length(y)
+    post_c <- post[D==0]
+    y_c <- y[D==0]
+    w_c <- i.weights[D==0]
+    att <- mean(y_c[post_c==1] * w_c[post_c==1]) / mean(w_c[post_c==1]) -
+           mean(y_c[post_c==0] * w_c[post_c==0]) / mean(w_c[post_c==0])
+    list(ATT = att, att.inf.func = rep(0, n_obs))
+  }
+  # Wald pre-test warning is expected with this small sim dataset (group 2
+  # has only one pre-treatment period), but the key thing is: no error and
+  # no recycling warnings from mismatched influence-function length.
+  rc_result <- expect_no_error(
+    withCallingHandlers(
+      att_gt(yname="Y", data=data, tname="period", idname="id",
+             gname="G", fix_weights="varying", est_method=my_rc_est,
+             panel=FALSE, bstrap=FALSE),
+      warning = function(w) {
+        if (grepl("not a multiple of replacement length", conditionMessage(w)))
+          stop("IF length mismatch: ", conditionMessage(w))
+        invokeRestart("muffleWarning")
+      }
+    )
+  )
+  expect_true(inherits(rc_result, "MP"))
+  expect_false(anyNA(rc_result$att))
 })
 
 # =============================================================================

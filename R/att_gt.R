@@ -89,16 +89,27 @@
 #' include "ipw" for inverse probability weighting and "reg" for
 #' first step regression estimators.  The user can also pass their
 #' own function for estimating group time average treatment
-#' effects.  This should be a function
-#' `f(Y1,Y0,treat,covariates)` where `Y1` is an
-#' `n` x `1` vector of outcomes in the post-treatment
-#' outcomes, `Y0` is an `n` x `1` vector of
-#' pre-treatment outcomes, `treat` is a vector indicating
-#' whether or not an individual participates in the treatment,
-#' and `covariates` is an `n` x `k` matrix of
-#' covariates.  The function should return a list that includes
-#' `ATT` (an estimated average treatment effect), and
-#' `inf.func` (an `n` x `1` influence function).
+#' effects.  The required signature depends on the data structure:
+#'
+#' **Panel data** (`panel=TRUE`): `f(Y1, Y0, treat, covariates,
+#' i.weights, inffunc, ...)` where `Y1` is an `n x 1` vector of
+#' post-treatment outcomes, `Y0` is an `n x 1` vector of
+#' pre-treatment outcomes, `treat` is a binary vector indicating
+#' treatment group membership, `covariates` is an `n x k` matrix,
+#' `i.weights` is a vector of sampling weights, and `inffunc` is a
+#' logical requesting influence-function computation.
+#'
+#' **Repeated cross sections / unbalanced panel** (`panel=FALSE`):
+#' `f(y, post, D, covariates, i.weights, inffunc, ...)` where `y` is
+#' the outcome vector (length `n`), `post` is a binary indicator for
+#' the post-treatment period, `D` is a binary treatment indicator,
+#' `covariates` is an `n x k` matrix, `i.weights` is a vector of
+#' sampling weights, and `inffunc` is a logical.
+#'
+#' In both cases the function should return a list that includes
+#' `ATT` (the estimated group-time average treatment effect) and
+#' `att.inf.func` (an `n x 1` influence function — one entry per
+#' observation passed into the estimator).
 #' The function can return other things as well, but these are
 #' the only two that are required. `est_method` is only used
 #' if covariates are included.
@@ -274,11 +285,11 @@ att_gt <- function(yname,
            "(panel = FALSE) because units are not tracked across periods. ",
            "Use fix_weights = \"varying\" or NULL instead.")
     }
-    if (fix_weights == "varying" && inherits(est_method, "function")) {
-      stop("fix_weights = \"varying\" is not currently supported with custom est_method functions. ",
-           "The \"varying\" option uses repeated cross-section estimators internally, which require ",
-           "a different function signature (y, post, D) than the documented panel signature (y1, y0, D). ",
-           "Use fix_weights = NULL, \"base_period\", or \"first_period\" instead.")
+    if (fix_weights == "varying" && panel && inherits(est_method, "function")) {
+      stop("fix_weights = \"varying\" is not currently supported with custom est_method functions ",
+           "when panel = TRUE. The \"varying\" option uses repeated cross-section estimators internally, ",
+           "which require a different function signature (y, post, D) than the documented panel signature ",
+           "(y1, y0, D). Use fix_weights = NULL, \"base_period\", or \"first_period\" instead.")
     }
   }
 
