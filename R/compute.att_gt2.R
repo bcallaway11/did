@@ -388,13 +388,13 @@ run_att_gt_estimation <- function(g, t, dp2){
         post = rep(c(0L, 1L), each = n_units),
         i.weights = c(dp2$weights_tensor[[pret]], dp2$weights_tensor[[t+tfac]])
       )
-      # Stack covariates for both periods
-      cov_pre  <- dp2$covariates_tensor[[pret]]
-      cov_post <- dp2$covariates_tensor[[t+tfac]]
+      # Use pre-period covariates for both halves — fix_weights only
+      # changes weights, not the covariate conditioning set
+      cov_pre <- dp2$covariates_tensor[[pret]]
       if (is.matrix(cov_pre)) {
-        covariates <- rbind(cov_pre, cov_post)
+        covariates <- rbind(cov_pre, cov_pre)
       } else {
-        covariates <- c(cov_pre, cov_post)
+        covariates <- c(cov_pre, cov_pre)
       }
     } else {
       # Default or fixed weight options: use panel estimator with single weight vector

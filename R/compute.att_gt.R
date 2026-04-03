@@ -236,7 +236,17 @@ compute.att_gt <- function(dp) {
             G_rc <- disdat_long$.G
             post_rc <- as.numeric(disdat_long[[tname]] == tlist[t + tfac])
             w_rc <- disdat_long$.w
-            covariates_rc <- model.matrix(xformla, data = disdat_long)
+            # Use pre-period covariates for all observations — fix_weights only
+            # changes weights, not the covariate conditioning set.
+            # Build a lookup from pre-period rows, then replicate for each obs.
+            pre_mask <- disdat_long[[tname]] == tlist[pret]
+            disdat_pre <- disdat_long[pre_mask]
+            cov_pre <- model.matrix(xformla, data = disdat_pre)
+            # Map each row in disdat_long to its unit's pre-period covariates
+            pre_ids <- disdat_pre[[idname]]
+            all_ids <- disdat_long[[idname]]
+            id_map <- match(all_ids, pre_ids)
+            covariates_rc <- cov_pre[id_map, , drop = FALSE]
 
             # Run overlap/rank checks on RC data (not wide panel data)
             if (!is.function(est_method)) {
