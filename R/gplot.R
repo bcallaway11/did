@@ -85,7 +85,7 @@ splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group",
                   xmax=(att+c*att.se))) +
     geom_point(aes(colour=post), size=1.5) +
     #geom_ribbon(aes(x=as.numeric(year)), alpha=0.2) +
-    geom_errorbarh(aes(colour=post), height=0.1)  +
+    geom_errorbar(aes(colour=post), width=0.1, orientation="y")  +
     scale_y_discrete(breaks=as.factor(ssresults$year)) +
     #scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
     scale_x_continuous(limits=ylim) +
