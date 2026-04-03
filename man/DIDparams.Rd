@@ -121,8 +121,11 @@ for all panel types. For balanced panel data, this switches to the
 repeated cross-section DRDID estimators so that pre-period and
 post-period observations each carry their own weight. This is the
 most flexible option but sacrifices the efficiency of the panel
-estimator. For RC/unbalanced panel, this is identical to the
-default. Not supported with custom \code{est_method} functions.}
+estimator. Note: when covariates are time-varying, this mode also
+evaluates covariates at each period (rather than fixing them at the
+base period as the panel estimator does). For RC/unbalanced panel,
+this is identical to the default. Not supported with custom
+\code{est_method} functions.}
 \item{\code{"base_period"}}{Fixes weights at the base period (g-1) for
 all (g,t) cells within a group, for both pre-treatment and
 post-treatment comparisons. Ensures all cells within a group use the

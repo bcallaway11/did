@@ -27,8 +27,8 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          # Idempotency: check if this PR already triggered a bump (base branch only)
-          if git log --oneline ${{ github.event.pull_request.base.ref }} | grep -q "Bump version.*PR #${PR_NUMBER}"; then
+          # Idempotency: check if this PR already triggered a bump (exact match)
+          if git log --oneline ${{ github.event.pull_request.base.ref }} | grep -qF "(PR #${PR_NUMBER})"; then
             echo "Version already bumped for PR #${PR_NUMBER}, skipping."
             exit 0
           fi
