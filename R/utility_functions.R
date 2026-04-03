@@ -29,7 +29,7 @@ trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notye
   this.data$D <- 1*this.data[,gname]==g
   this.pscore_reg <- glm(BMisc::toformula("D", BMisc::rhs.vars(xformla)),
                          data=this.data,
-                         family=binomial(link=logit))
+                         family=binomial(link="logit"))
   this.pscore <- predict(this.pscore_reg, type="response")
   dropper <- (this.pscore >  threshold) & (this.data$D==1)
   if (sum(dropper) > 0) {
