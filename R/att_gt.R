@@ -287,8 +287,8 @@ att_gt <- function(yname,
     }
     if (fix_weights == "varying" && panel && inherits(est_method, "function")) {
       stop("fix_weights = \"varying\" is not currently supported with custom est_method functions ",
-           "when panel = TRUE. The \"varying\" option uses repeated cross-section estimators internally, ",
-           "which require a different function signature (y, post, D) than the documented panel signature ",
+           "on panel data. The \"varying\" option uses repeated cross-section estimators internally, ",
+           "which require a different function signature (y, post, D) than the panel signature ",
            "(y1, y0, D). Use fix_weights = NULL, \"base_period\", or \"first_period\" instead.")
     }
   }

@@ -21,9 +21,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
 
       - name: Bump dev version in DESCRIPTION
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          # Idempotency: check if this PR already triggered a bump (base branch only)
+          if git log --oneline ${{ github.event.pull_request.base.ref }} | grep -q "Bump version.*PR #${PR_NUMBER}"; then
+            echo "Version already bumped for PR #${PR_NUMBER}, skipping."
+            exit 0
+          fi
+
           # Extract current version
           current=$(grep '^Version:' DESCRIPTION | sed 's/Version: //')
           echo "Current version: $current"
@@ -47,7 +56,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Commit and push
+          # Commit and push with retry for race conditions
           git add DESCRIPTION
-          git diff --cached --quiet || git commit -m "Bump version to ${new_version}"
+          git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+          git commit -m "Bump version to ${new_version} (PR #${PR_NUMBER})"
+
+          # Pull latest before pushing to handle concurrent merges
+          git pull --rebase origin ${{ github.event.pull_request.base.ref }} || true
           git push

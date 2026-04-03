@@ -222,50 +222,6 @@ compute.att_gt <- function(dp) {
         covariates <- model.matrix(xformla, data = disdat)
 
         #-----------------------------------------------------------------------------
-        # more checks for enough observations in each group
-
-        # if using custom estimation method, skip this part
-        custom_est_method <- is.function(est_method)
-
-        if (!custom_est_method) {
-          pscore_problems_likely <- FALSE
-          reg_problems_likely <- FALSE
-
-          # checks for pscore based methods
-          if (est_method %in% c("dr", "ipw")) {
-            preliminary_logit <- fastglm::fastglm(covariates, G, family = binomial())
-            preliminary_pscores <- preliminary_logit$fitted.values
-            if (max(preliminary_pscores) >= 0.999) {
-              pscore_problems_likely <- TRUE
-              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
-            }
-          }
-
-          # check if can run regression using control units
-          if (est_method %in% c("dr", "reg")) {
-            control_covs <- covariates[G == 0, , drop = FALSE]
-            # if (determinant(t(control_covs)%*%control_covs, logarithm=FALSE)$modulus < .Machine$double.eps) {
-            if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-              reg_problems_likely <- TRUE
-              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
-            }
-          }
-
-          if (reg_problems_likely | pscore_problems_likely) {
-            attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
-            inffunc_updates[[update_counter]] <- list(
-              indices = seq_len(n),
-              values = rep(NA_real_, n)
-            )
-
-            # Update the counters
-            update_counter <- update_counter + 1
-            counter <- counter + 1
-            next
-          }
-        }
-
-        #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
@@ -275,12 +231,30 @@ compute.att_gt <- function(dp) {
             # Go back to long-format data for this (g,t) cell
             disdat_long <- data[time_mask]
             disdat_long_idx <- disdat_long$.G == 1 | disdat_long$.C == 1
-            disdat_long <- disdat_long[disdat_long_idx]
+            disdat_long <- droplevels(disdat_long[disdat_long_idx])
             Y_rc <- disdat_long[[yname]]
             G_rc <- disdat_long$.G
             post_rc <- as.numeric(disdat_long[[tname]] == tlist[t + tfac])
             w_rc <- disdat_long$.w
             covariates_rc <- model.matrix(xformla, data = disdat_long)
+
+            # Run overlap/rank checks on RC data (not wide panel data)
+            if (!is.function(est_method)) {
+              if (est_method %in% c("dr", "ipw")) {
+                preliminary_logit <- fastglm::fastglm(covariates_rc, G_rc, family = binomial())
+                if (max(preliminary_logit$fitted.values) >= 0.999) {
+                  warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+                  stop("overlap")
+                }
+              }
+              if (est_method %in% c("dr", "reg")) {
+                control_covs_rc <- covariates_rc[G_rc == 0, , drop = FALSE]
+                if (rcond(t(control_covs_rc) %*% control_covs_rc) < .Machine$double.eps) {
+                  warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+                  stop("singular")
+                }
+              }
+            }
 
             if (inherits(est_method, "function")) {
               res <- do.call(est_method, c(list(
@@ -301,36 +275,56 @@ compute.att_gt <- function(dp) {
                 covariates = covariates_rc,
                 i.weights = w_rc, boot = FALSE, inffunc = TRUE)
             }
-          } else if (inherits(est_method, "function")) {
-            # user-specified function
-            res <- do.call(est_method, c(list(
-              y1 = Ypost, y0 = Ypre,
-              D = G,
-              covariates = covariates,
-              i.weights = w,
-              inffunc = TRUE
-            ), extra_args))
-          } else if (est_method == "ipw") {
-            # inverse-probability weights
-            res <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
-              covariates = covariates,
-              i.weights = w,
-              boot = FALSE, inffunc = TRUE
-            )
-          } else if (est_method == "reg") {
-            # regression
-            res <- DRDID::reg_did_panel(Ypost, Ypre, G,
-              covariates = covariates,
-              i.weights = w,
-              boot = FALSE, inffunc = TRUE
-            )
           } else {
-            # doubly robust, this is default
-            res <- DRDID::drdid_panel(Ypost, Ypre, G,
-              covariates = covariates,
-              i.weights = w,
-              boot = FALSE, inffunc = TRUE
-            )
+            # Panel path: run overlap/rank checks on panel data
+            if (!is.function(est_method)) {
+              if (est_method %in% c("dr", "ipw")) {
+                preliminary_logit <- fastglm::fastglm(covariates, G, family = binomial())
+                if (max(preliminary_logit$fitted.values) >= 0.999) {
+                  warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+                  stop("overlap")
+                }
+              }
+              if (est_method %in% c("dr", "reg")) {
+                control_covs <- covariates[G == 0, , drop = FALSE]
+                if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
+                  warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+                  stop("singular")
+                }
+              }
+            }
+
+            if (inherits(est_method, "function")) {
+              # user-specified function
+              res <- do.call(est_method, c(list(
+                y1 = Ypost, y0 = Ypre,
+                D = G,
+                covariates = covariates,
+                i.weights = w,
+                inffunc = TRUE
+              ), extra_args))
+            } else if (est_method == "ipw") {
+              # inverse-probability weights
+              res <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
+                covariates = covariates,
+                i.weights = w,
+                boot = FALSE, inffunc = TRUE
+              )
+            } else if (est_method == "reg") {
+              # regression
+              res <- DRDID::reg_did_panel(Ypost, Ypre, G,
+                covariates = covariates,
+                i.weights = w,
+                boot = FALSE, inffunc = TRUE
+              )
+            } else {
+              # doubly robust, this is default
+              res <- DRDID::drdid_panel(Ypost, Ypre, G,
+                covariates = covariates,
+                i.weights = w,
+                boot = FALSE, inffunc = TRUE
+              )
+            }
           }
 
           # adjust influence function to account for only using
