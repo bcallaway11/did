@@ -281,7 +281,6 @@ compute.att_gt <- function(dp) {
             post_rc <- as.numeric(disdat_long[[tname]] == tlist[t + tfac])
             w_rc <- disdat_long$.w
             covariates_rc <- model.matrix(xformla, data = disdat_long)
-            n1_rc <- sum(G_rc + disdat_long$.C) # careful: n1 for RC is different
 
             if (inherits(est_method, "function")) {
               res <- do.call(est_method, c(list(

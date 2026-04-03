@@ -91,7 +91,7 @@ check_balance <- function(data, id_col, time_col) {
   panel_counts <- data[, .N, by = c(id_col)]
 
   # Determine the maximum number of time periods for any unit
-  max_time_periods <- length(unique(data[[time_col]]))
+  max_time_periods <- data.table::uniqueN(data[[time_col]])
 
   # Check if every unit has the same number of time periods as max_time_periods
   is_balanced <- all(panel_counts$N == max_time_periods)
