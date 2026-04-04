@@ -388,13 +388,15 @@ run_att_gt_estimation <- function(g, t, dp2){
         post = rep(c(0L, 1L), each = n_units),
         i.weights = c(dp2$weights_tensor[[pret]], dp2$weights_tensor[[t+tfac]])
       )
-      # Use pre-period covariates for both halves — fix_weights only
-      # changes weights, not the covariate conditioning set
-      cov_pre <- dp2$covariates_tensor[[pret]]
-      if (is.matrix(cov_pre)) {
-        covariates <- rbind(cov_pre, cov_pre)
+      # Use earlier-period covariates for both halves — fix_weights only
+      # changes weights, not the covariate conditioning set.
+      # Use min(pret, t) to match the panel estimator's convention:
+      # with base_period="universal", pret can be later than t for placebo cells.
+      cov_early <- dp2$covariates_tensor[[base::min(pret, t)]]
+      if (is.matrix(cov_early)) {
+        covariates <- rbind(cov_early, cov_early)
       } else {
-        covariates <- c(cov_pre, cov_pre)
+        covariates <- c(cov_early, cov_early)
       }
     } else {
       # Default or fixed weight options: use panel estimator with single weight vector
