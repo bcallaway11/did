@@ -86,3 +86,14 @@ test_that("ggdid.AGGTEobj works with ref_line=NULL", {
   p <- ggdid(agg_dyn, ref_line = NULL)
   expect_s3_class(p, "gg")
 })
+
+test_that("splot works for group-type and renders without deprecation warnings", {
+  # splot() is the path that uses the ggplot2 version-gated errorbar layer.
+  # It is called via ggdid.AGGTEobj() for type="group". Verify the output is
+  # a valid ggplot object and no deprecation warnings leak through.
+  expect_warning(p <- ggdid(agg_grp), regexp = NA)
+  expect_s3_class(p, "gg")
+  # Verify the plot actually builds (catches any layer construction errors)
+  built <- ggplot2::ggplot_build(p)
+  expect_s3_class(built, "ggplot_built")
+})

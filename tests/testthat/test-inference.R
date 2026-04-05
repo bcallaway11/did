@@ -42,6 +42,7 @@ if (!identical(Sys.getenv("NOT_CRAN"), "false")) {
 }
 
 test_that("inference with balanced panel data and aggregations", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
@@ -176,6 +177,7 @@ test_that("inference with balanced panel data and aggregations", {
 
 
 test_that("inference with clustering", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
@@ -305,6 +307,7 @@ test_that("inference with clustering", {
 })
 
 test_that("same inference with unbalanced panel and panel data", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
@@ -336,6 +339,7 @@ test_that("same inference with unbalanced panel and panel data", {
 
 
 test_that("inference with repeated cross sections", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp, panel = FALSE)
@@ -466,6 +470,7 @@ test_that("inference with repeated cross sections", {
 
 
 test_that("inference with repeated cross sections and clustering", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp, panel = FALSE)
@@ -596,6 +601,7 @@ test_that("inference with repeated cross sections and clustering", {
 
 
 test_that("inference with unbalanced panel", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
@@ -730,6 +736,7 @@ test_that("inference with unbalanced panel", {
 })
 
 test_that("inference with unbalanced panel and clustering", {
+  skip_on_cran()
   skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
