@@ -88,12 +88,12 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 #'
 #' @return A list containing the estimated ATT and the influence function vector.
 #' @noRd
-run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL){
+run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, force_rc = FALSE){
 
   extra_args <- if (is.null(dp2$extra_args)) list() else dp2$extra_args
   gt_label <- if (!is.null(g_val) && !is.null(t_val)) paste0(" for group ", g_val, " in time period ", t_val) else ""
 
-  if(dp2$panel){
+  if(dp2$panel && !force_rc){
     # --------------------------------------
     # Panel Data
     # --------------------------------------
@@ -376,25 +376,100 @@ run_att_gt_estimation <- function(g, t, dp2){
 
 
   if(dp2$panel){
-    cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t+tfac]], dp2$outcomes_tensor[[pret]], dp2$weights_vector)
-    names(cohort_data) <- c("D", "y1", "y0", "i.weights")
-    covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
+    # Determine which weight period to use based on fix_weights
+    use_rc_for_weights <- (!is.null(dp2$fix_weights) && dp2$fix_weights == "varying")
+
+    if (use_rc_for_weights) {
+      # fix_weights = "varying": stack into RC format with per-period weights
+      n_units <- length(did_cohort_index)
+      cohort_data <- data.table(
+        D = rep(did_cohort_index, 2),
+        y = c(dp2$outcomes_tensor[[pret]], dp2$outcomes_tensor[[t+tfac]]),
+        post = rep(c(0L, 1L), each = n_units),
+        i.weights = c(dp2$weights_tensor[[pret]], dp2$weights_tensor[[t+tfac]])
+      )
+      # Use earlier-period covariates for both halves — fix_weights only
+      # changes weights, not the covariate conditioning set.
+      # Use min(pret, t) to match the panel estimator's convention:
+      # with base_period="universal", pret can be later than t for placebo cells.
+      cov_early <- dp2$covariates_tensor[[base::min(pret, t)]]
+      if (is.matrix(cov_early)) {
+        covariates <- rbind(cov_early, cov_early)
+      } else {
+        covariates <- c(cov_early, cov_early)
+      }
+    } else {
+      # Default or fixed weight options: use panel estimator with single weight vector
+      if (is.null(dp2$fix_weights)) {
+        # Default: weight from earlier of the two periods
+        w_idx <- base::min(pret, t)
+      } else if (dp2$fix_weights == "base_period") {
+        w_idx <- dp2$.pret_by_group[g]
+      } else if (dp2$fix_weights == "first_period") {
+        w_idx <- 1L
+      }
+      cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t+tfac]],
+                                dp2$outcomes_tensor[[pret]], dp2$weights_tensor[[w_idx]])
+      names(cohort_data) <- c("D", "y1", "y0", "i.weights")
+      covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
+    }
   } else {
 
     log_vec <- dp2$time_invariant_data[[ dp2$tname ]] == dp2$time_periods[t+tfac]
     # convert TRUE/FALSE to 1/0 in place (fastest)
     set(dp2$time_invariant_data, j = "post", value = as.integer(log_vec))
-    cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
+
+    # Handle fix_weights for RC/unbalanced panel
+    if (!is.null(dp2$fix_weights) && dp2$fix_weights %in% c("base_period", "first_period")) {
+      if (dp2$fix_weights == "base_period") {
+        target_period <- dp2$time_periods[dp2$.pret_by_group[g]]
+      } else {
+        target_period <- dp2$time_periods[1]
+      }
+      # Build weight lookup from target period
+      tid <- dp2$time_invariant_data
+      target_mask <- tid[[dp2$tname]] == target_period
+      target_ids <- tid[[dp2$idname]][target_mask]
+      target_ws <- tid[["weights"]][target_mask]
+      target_w_lookup <- stats::setNames(target_ws, as.character(target_ids))
+      # Look up weight for each observation
+      obs_ids <- as.character(tid[[dp2$idname]])
+      fixed_w <- as.numeric(target_w_lookup[obs_ids])
+      # Exclude units not observed in target period by setting D to NA
+      # (run_DRDID filters on !is.na(D))
+      na_w <- is.na(fixed_w)
+      if (any(na_w & !is.na(did_cohort_index))) {
+        did_cohort_index[na_w] <- NA_integer_
+        warning(paste0("Some units not observed in ", dp2$fix_weights,
+                       " (period ", target_period, ") for group ",
+                       dp2$treated_groups[g], " in time period ",
+                       dp2$time_periods[t+tfac], ". These units are excluded."))
+      }
+      cohort_data <- data.table(did_cohort_index, tid[[dp2$yname]], tid$post, fixed_w, tid$.rowid)
+    } else {
+      cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
+    }
     names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
     covariates <- dp2$covariates_matrix
   }
 
   # run estimation
-  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g], t_val = dp2$time_periods[t+tfac]),
+  force_rc <- !is.null(dp2$fix_weights) && dp2$fix_weights == "varying" && dp2$panel
+  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g], t_val = dp2$time_periods[t+tfac], force_rc = force_rc),
                          error = function(e) {
                            warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
                            return(NULL)
                          })
+
+  # When force_rc on balanced panel, the influence function has 2*n_units rows.
+  # Half-split is safe here: cohort_data is explicitly stacked as
+  # [all pre, all post] via rep(c(0L, 1L), each = n_units) in construction above.
+  if (force_rc && !is.null(did_result) && dp2$panel) {
+    inf <- did_result$inf_func
+    n_half <- length(inf) %/% 2L
+    did_result$inf_func <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
+  }
+
   return(did_result)
 
 }
@@ -457,13 +532,9 @@ compute.att_gt2 <- function(dp2) {
 
     # Check for NULL first (estimation failed or was skipped)
     if (is.null(gt_result)) {
-      if(dp2$base_period == "universal"){
-        inffunc_updates <- rep(NA_real_, n)
-        gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
-        return(gt_result)
-      } else {
-        return(NULL)
-      }
+      inffunc_updates <- rep(NA_real_, n)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
     }
 
     # Base period normalization: ATT is 0 by construction
@@ -475,14 +546,9 @@ compute.att_gt2 <- function(dp2) {
 
     if (is.null(gt_result$att)) {
       # Estimation returned a result but without an ATT
-      if(dp2$base_period == "universal"){
-        inffunc_updates <- rep(NA_real_, n)
-        gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
-        return(gt_result)
-      } else {
-        return(NULL)
-      }
-
+      inffunc_updates <- rep(NA_real_, n)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      return(gt_result)
     } else {
       att <- gt_result$att
       inf_func <- gt_result$inf_func

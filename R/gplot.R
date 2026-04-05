@@ -80,12 +80,18 @@ splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group",
     ylab <- 'Group'
   }
 
+  errorbar_layer <- if (utils::packageVersion("ggplot2") >= "3.3.0") {
+    geom_errorbar(aes(colour=post), width=0.1, orientation="y")
+  } else {
+    geom_errorbarh(aes(colour=post), height=0.1)
+  }
+
   p <- ggplot(ssresults,
               aes(y=as.factor(year), x=att, xmin=(att-c*att.se),
                   xmax=(att+c*att.se))) +
     geom_point(aes(colour=post), size=1.5) +
     #geom_ribbon(aes(x=as.numeric(year)), alpha=0.2) +
-    geom_errorbarh(aes(colour=post), height=0.1)  +
+    errorbar_layer +
     scale_y_discrete(breaks=as.factor(ssresults$year)) +
     #scale_x_discrete(breaks=dabreaks, labels=as.character(dabreaks)) +
     scale_x_continuous(limits=ylim) +

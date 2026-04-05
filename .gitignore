@@ -14,6 +14,7 @@ desktop.ini
 did.Rproj
 ..Rcheck/
 .claude/
+CLAUDE.md
 .vscode/
 .revdep_manual/
 vignettes/*_cache/

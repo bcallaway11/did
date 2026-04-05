@@ -131,6 +131,20 @@ did_standardization <- function(data, args){
   weights <- weights/mean(weights)
   data$weights <- weights
 
+  # Check for time-varying weights in panel data
+  if (!is.null(args$weightsname) && args$panel) {
+    w_range <- data[, .(w_range = max(weights) - min(weights)), by = c(args$idname)]
+    if (any(w_range$w_range > .Machine$double.eps^0.5, na.rm = TRUE)) {
+      message(
+        "Time-varying weights detected. For balanced panel data, the default ",
+        "behavior uses the weight from the earlier of the two time periods in ",
+        "each 2x2 comparison (the base period for post-treatment cells). ",
+        "Use the 'fix_weights' argument to control this behavior. ",
+        "See ?att_gt for details."
+      )
+    }
+  }
+
   # get a list of dates from min to max
   tlist <- data[, sort(unique(get(args$tname)))]
 
@@ -419,6 +433,13 @@ get_did_tensors <- function(data, args){
       start <- (time - 1L) * n + 1L
       outcomes_tensor[[time]] <- y_vec[start:(start + n - 1L)]
     }
+    # Build weights tensor: one weight vector per time period
+    w_vec <- data[["weights"]]
+    weights_tensor <- vector("list", nT)
+    for(time in seq_len(nT)){
+      start <- (time - 1L) * n + 1L
+      weights_tensor[[time]] <- w_vec[start:(start + n - 1L)]
+    }
   } else {
     # for(time in args$time_periods){
     #   outcome_vector_time <- rep(NA, args$id_count)  # Initialize vector with NAs
@@ -430,6 +451,7 @@ get_did_tensors <- function(data, args){
     #   data[, outcome_vector_time := NULL]
     # }
     outcomes_tensor <- NULL
+    weights_tensor <- NULL
   }
 
   # Getting the time invariant data
@@ -533,7 +555,8 @@ get_did_tensors <- function(data, args){
               covariates_matrix  = covariates_matrix,
               covariates_tensor = covariates_tensor,
               cluster = cluster,
-              weights = weights))
+              weights = weights,
+              weights_tensor = weights_tensor))
 }
 
 #' @title Process `did` Function Arguments
@@ -559,6 +582,7 @@ pre_process_did2 <- function(yname,
                             control_group = c("nevertreated","notyettreated"),
                             anticipation = 0,
                             weightsname = NULL,
+                            fix_weights = NULL,
                             alp = 0.05,
                             bstrap = FALSE,
                             cband = FALSE,

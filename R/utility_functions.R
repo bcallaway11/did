@@ -29,7 +29,7 @@ trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notye
   this.data$D <- 1*this.data[,gname]==g
   this.pscore_reg <- glm(BMisc::toformula("D", BMisc::rhs.vars(xformla)),
                          data=this.data,
-                         family=binomial(link=logit))
+                         family=binomial(link="logit"))
   this.pscore <- predict(this.pscore_reg, type="response")
   dropper <- (this.pscore >  threshold) & (this.data$D==1)
   if (sum(dropper) > 0) {
@@ -67,9 +67,11 @@ get_wide_data <- function(data, yname, idname, tname) {
   set(data, j = ".y0", value = y_vals)
   set(data, j = ".dy", value = data[[".y1"]] - y_vals)
 
-  # Subset to first row
-  first.period <- min(data[[tname]])
-  data <- data[data[[tname]] == first.period, ]
+  # Subset to first period's rows
+  # Pre-extract to avoid data.table .checkTypos when column name matches variable name
+  .time_vals <- data[[tname]]
+  first.period <- min(.time_vals)
+  data <- data[.time_vals == first.period]
 
   return(data)
 }
@@ -86,10 +88,10 @@ get_wide_data <- function(data, yname, idname, tname) {
 check_balance <- function(data, id_col, time_col) {
 
   # Count the number of observations per unit (idname)
-  panel_counts <- data[, .N, by = get(id_col)]
+  panel_counts <- data[, .N, by = c(id_col)]
 
   # Determine the maximum number of time periods for any unit
-  max_time_periods <- data[, uniqueN(get(time_col))]
+  max_time_periods <- data.table::uniqueN(data[[time_col]])
 
   # Check if every unit has the same number of time periods as max_time_periods
   is_balanced <- all(panel_counts$N == max_time_periods)

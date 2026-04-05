@@ -30,13 +30,20 @@ same_matrix_elem <- function(A, B) {
 
 temp_lib <- tempfile()
 dir.create(temp_lib)
-remotes::install_version("did", version = "2.1.2", lib = temp_lib, repos = "http://cran.us.r-project.org")
-# install.packages(
-#   "https://cran.r-project.org/src/contrib/did_2.1.2.tar.gz",
-#   repos = NULL, type = "source", lib = temp_lib
-# )
+withr::defer(unlink(temp_lib, recursive = TRUE), teardown_env())
+
+old_did_available <- FALSE
+if (!identical(Sys.getenv("NOT_CRAN"), "false")) {
+  old_did_available <- tryCatch({
+    remotes::install_version("did", version = "2.1.2", lib = temp_lib,
+                             repos = "https://cloud.r-project.org", quiet = TRUE)
+    isTRUE(requireNamespace("did", lib.loc = temp_lib, quietly = TRUE))
+  }, error = function(e) FALSE)
+}
 
 test_that("inference with balanced panel data and aggregations", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
 
@@ -170,6 +177,8 @@ test_that("inference with balanced panel data and aggregations", {
 
 
 test_that("inference with clustering", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
 
@@ -298,6 +307,8 @@ test_that("inference with clustering", {
 })
 
 test_that("same inference with unbalanced panel and panel data", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
 
@@ -328,6 +339,8 @@ test_that("same inference with unbalanced panel and panel data", {
 
 
 test_that("inference with repeated cross sections", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp, panel = FALSE)
 
@@ -457,6 +470,8 @@ test_that("inference with repeated cross sections", {
 
 
 test_that("inference with repeated cross sections and clustering", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp, panel = FALSE)
 
@@ -586,6 +601,8 @@ test_that("inference with repeated cross sections and clustering", {
 
 
 test_that("inference with unbalanced panel", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
   data <- data[-3, ]
@@ -719,6 +736,8 @@ test_that("inference with unbalanced panel", {
 })
 
 test_that("inference with unbalanced panel and clustering", {
+  skip_on_cran()
+  skip_if(!old_did_available, "did v2.1.2 not available from CRAN")
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
   data <- data[-3, ]
@@ -850,5 +869,3 @@ test_that("inference with unbalanced panel and clustering", {
   expect_equal(group_2.1.2$se[1], group_new$se[1], tol = .01)
   expect_equal(cal_2.1.2$se[1], cal_new$se[1], tol = .01)
 })
-
-unlink(temp_lib)

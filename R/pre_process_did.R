@@ -21,6 +21,7 @@ pre_process_did <- function(yname,
                             control_group = c("nevertreated","notyettreated"),
                             anticipation = 0,
                             weightsname = NULL,
+                            fix_weights = NULL,
                             alp = 0.05,
                             bstrap = FALSE,
                             cband = FALSE,
@@ -94,6 +95,20 @@ pre_process_did <- function(yname,
 
   if (".w" %in% colnames(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
   data$.w <- w
+
+  # Check for time-varying weights in panel data
+  if (!is.null(weightsname) && panel) {
+    w_by_id <- tapply(data[, weightsname], data[, idname], function(x) max(x) - min(x))
+    if (any(w_by_id > .Machine$double.eps^0.5, na.rm = TRUE)) {
+      message(
+        "Time-varying weights detected. For balanced panel data, the default ",
+        "behavior uses the weight from the earlier of the two time periods in ",
+        "each 2x2 comparison (the base period for post-treatment cells). ",
+        "Use the 'fix_weights' argument to control this behavior. ",
+        "See ?att_gt for details."
+      )
+    }
+  }
 
   # Outcome variable will be denoted by y
   # data$.y <- data[, yname]
@@ -389,6 +404,7 @@ pre_process_did <- function(yname,
                   control_group=control_group,
                   anticipation=anticipation,
                   weightsname=weightsname,
+                  fix_weights=fix_weights,
                   alp=alp,
                   bstrap=bstrap,
                   biters=biters,

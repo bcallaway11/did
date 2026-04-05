@@ -16,7 +16,54 @@
 #'  It defines which "group" a unit belongs to.  It should be 0 for units
 #'  in the untreated group.
 #' @param weightsname The name of the column containing the sampling weights.
-#'  If not set, all observations have same weight.
+#'  If not set, all observations have same weight. When weights are
+#'  time-invariant (constant within each unit across periods), all
+#'  \code{fix_weights} options produce identical results and no special
+#'  handling is needed.
+#'
+#'  When weights vary across time (e.g., time-varying population sizes),
+#'  the default behavior differs by panel type:
+#'  \describe{
+#'    \item{Balanced panel}{Each 2x2 DiD comparison uses the weight from the
+#'      earlier of the two time periods involved. For post-treatment cells,
+#'      this is the base period (g-1). For pre-treatment cells with
+#'      \code{base_period="varying"}, this is the pre-treatment period itself.
+#'      The panel DRDID estimators are used.}
+#'    \item{Repeated cross sections and unbalanced panels}{Both periods'
+#'      per-observation weights are passed directly to the RC DRDID estimators,
+#'      so each observation carries its own period-specific weight.}
+#'  }
+#'  Use the \code{fix_weights} argument to override the default behavior.
+#' @param fix_weights Controls how time-varying sampling weights are resolved.
+#'  Only relevant when weights vary across time; with time-invariant weights,
+#'  all options produce identical results. Options:
+#'  \describe{
+#'    \item{\code{NULL} (default)}{For balanced panel: uses the weight from
+#'      the earlier of the two time periods in each 2x2 comparison. For
+#'      post-treatment cells, this is the base period (g-1). For
+#'      pre-treatment cells, this depends on the \code{base_period} setting.
+#'      For RC/unbalanced panel: uses per-observation weights from both
+#'      periods.}
+#'    \item{\code{"varying"}}{Uses per-observation, period-specific weights
+#'      for all panel types. For balanced panel data, this switches to the
+#'      repeated cross-section DRDID estimators so that pre-period and
+#'      post-period observations each carry their own weight. Covariates
+#'      are held fixed at their pre-period values (same as the default
+#'      panel estimator). This is the most flexible option for weights but
+#'      sacrifices the efficiency of the panel estimator. For RC/unbalanced
+#'      panel, this is identical to the default. Not supported with custom
+#'      \code{est_method} functions.}
+#'    \item{\code{"base_period"}}{Fixes weights at the base period (g-1) for
+#'      all (g,t) cells within a group, for both pre-treatment and
+#'      post-treatment comparisons. Ensures all cells within a group use the
+#'      same weights. For unbalanced panels, units not observed in the base
+#'      period are dropped with a warning. Not supported for repeated cross
+#'      sections (\code{panel = FALSE}).}
+#'    \item{\code{"first_period"}}{Fixes weights at the first time period in
+#'      the dataset for all (g,t) cells. For unbalanced panels, units not
+#'      observed in the first period are dropped with a warning. Not supported
+#'      for repeated cross sections (\code{panel = FALSE}).}
+#'  }
 #' @param alp the significance level, default is 0.05
 #' @param bstrap Boolean for whether or not to compute standard errors using
 #'  the multiplier bootstrap.  If standard errors are clustered, then one
@@ -44,16 +91,27 @@
 #' include "ipw" for inverse probability weighting and "reg" for
 #' first step regression estimators.  The user can also pass their
 #' own function for estimating group time average treatment
-#' effects.  This should be a function
-#' `f(Y1,Y0,treat,covariates)` where `Y1` is an
-#' `n` x `1` vector of outcomes in the post-treatment
-#' outcomes, `Y0` is an `n` x `1` vector of
-#' pre-treatment outcomes, `treat` is a vector indicating
-#' whether or not an individual participates in the treatment,
-#' and `covariates` is an `n` x `k` matrix of
-#' covariates.  The function should return a list that includes
-#' `ATT` (an estimated average treatment effect), and
-#' `inf.func` (an `n` x `1` influence function).
+#' effects.  The required signature depends on the data structure:
+#'
+#' **Panel data** (`panel=TRUE`): `f(y1, y0, D, covariates,
+#' i.weights, inffunc, ...)` where `y1` is an `n x 1` vector of
+#' post-treatment outcomes, `y0` is an `n x 1` vector of
+#' pre-treatment outcomes, `D` is a binary vector indicating
+#' treatment group membership, `covariates` is an `n x k` matrix,
+#' `i.weights` is a vector of sampling weights, and `inffunc` is a
+#' logical requesting influence-function computation.
+#'
+#' **Repeated cross sections / unbalanced panel** (`panel=FALSE`):
+#' `f(y, post, D, covariates, i.weights, inffunc, ...)` where `y` is
+#' the outcome vector (length `n`), `post` is a binary indicator for
+#' the post-treatment period, `D` is a binary treatment indicator,
+#' `covariates` is an `n x k` matrix, `i.weights` is a vector of
+#' sampling weights, and `inffunc` is a logical.
+#'
+#' In both cases the function should return a list that includes
+#' `ATT` (the estimated group-time average treatment effect) and
+#' `att.inf.func` (an `n x 1` influence function — one entry per
+#' observation passed into the estimator).
 #' The function can return other things as well, but these are
 #' the only two that are required. `est_method` is only used
 #' if covariates are included.
@@ -195,6 +253,7 @@ att_gt <- function(yname,
                    control_group = c("nevertreated", "notyettreated"),
                    anticipation = 0,
                    weightsname = NULL,
+                   fix_weights = NULL,
                    alp = 0.05,
                    bstrap = TRUE,
                    cband = TRUE,
@@ -215,6 +274,25 @@ att_gt <- function(yname,
     warning("Extra arguments (", paste(names(extra_args), collapse = ", "),
             ") are ignored when using built-in est_method = \"", est_method,
             "\". Extra arguments are only passed to custom est_method functions.")
+  }
+
+  # Validate fix_weights
+  if (!is.null(fix_weights)) {
+    if (!is.character(fix_weights) || length(fix_weights) != 1 ||
+        !(fix_weights %in% c("varying", "base_period", "first_period"))) {
+      stop("fix_weights must be NULL or one of \"varying\", \"base_period\", or \"first_period\".")
+    }
+    if (!panel && fix_weights %in% c("base_period", "first_period")) {
+      stop("fix_weights = \"", fix_weights, "\" is not supported for repeated cross sections ",
+           "(panel = FALSE) because units are not tracked across periods. ",
+           "Use fix_weights = \"varying\" or NULL instead.")
+    }
+    if (fix_weights == "varying" && panel && inherits(est_method, "function")) {
+      stop("fix_weights = \"varying\" is not currently supported with custom est_method functions ",
+           "on panel data. The \"varying\" option uses repeated cross-section estimators internally, ",
+           "which require a different function signature (y, post, D) than the panel signature ",
+           "(y1, y0, D). Use fix_weights = NULL, \"base_period\", or \"first_period\" instead.")
+    }
   }
 
   # Validate est_method
@@ -249,6 +327,7 @@ att_gt <- function(yname,
       control_group = control_group,
       anticipation = anticipation,
       weightsname = weightsname,
+      fix_weights = fix_weights,
       alp = alp,
       bstrap = bstrap,
       cband = cband,
@@ -284,6 +363,7 @@ att_gt <- function(yname,
       control_group = control_group,
       anticipation = anticipation,
       weightsname = weightsname,
+      fix_weights = fix_weights,
       alp = alp,
       bstrap = bstrap,
       cband = cband,

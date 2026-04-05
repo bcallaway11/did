@@ -57,7 +57,7 @@ compute.aggte <- function(MP,
   }
   if (isTRUE(dp$faster_mode)) {
     dt <- dp$data
-    dt[get(gname) == Inf, (gname) := 0] # going back to the old way
+    set(dt, i = which(dt[[gname]] == Inf), j = gname, value = 0) # going back to the old way
     data <- as.data.frame(dt)
     rm(dt)
     tlist <- dp$time_periods

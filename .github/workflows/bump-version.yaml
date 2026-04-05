@@ -1,0 +1,66 @@
+name: Bump dev version on PR merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master, main]
+
+concurrency:
+  group: bump-version
+  cancel-in-progress: false
+
+jobs:
+  bump-version:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
+
+      - name: Bump dev version in DESCRIPTION
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          # Idempotency: check if this PR already triggered a bump (exact match)
+          if git log --oneline ${{ github.event.pull_request.base.ref }} | grep -qF "(PR #${PR_NUMBER})"; then
+            echo "Version already bumped for PR #${PR_NUMBER}, skipping."
+            exit 0
+          fi
+
+          # Extract current version
+          current=$(grep '^Version:' DESCRIPTION | sed 's/Version: //')
+          echo "Current version: $current"
+
+          # Split into parts
+          IFS='.' read -ra parts <<< "$current"
+          major="${parts[0]}"
+          minor="${parts[1]}"
+          patch="${parts[2]}"
+          dev="${parts[3]:-0}"
+
+          # Increment dev version
+          new_dev=$((dev + 1))
+          new_version="${major}.${minor}.${patch}.${new_dev}"
+          echo "New version: $new_version"
+
+          # Update DESCRIPTION
+          sed -i "s/^Version: .*/Version: ${new_version}/" DESCRIPTION
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Commit and push with retry for race conditions
+          git add DESCRIPTION
+          git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+          git commit -m "Bump version to ${new_version} (PR #${PR_NUMBER})"
+
+          # Pull latest before pushing to handle concurrent merges
+          git pull --rebase origin ${{ github.event.pull_request.base.ref }} || true
+          git push
