@@ -267,8 +267,8 @@ edid <- function(
       class(bootstrap_res) <- c("edid_bootstrap", "list")
 
       # Overwrite SEs/CIs with bootstrap versions
-      if (do_overall && !is.null(overall_res) && !is.null(bootstrap_res$overall_draws)) {
-        bs_ov <- compute_bootstrap_stats_edid(bootstrap_res$overall_draws, overall_res$att, alpha)
+      if (do_overall && !is.null(overall_res) && !is.null(bootstrap_res$overall_b)) {
+        bs_ov <- compute_bootstrap_stats_edid(bootstrap_res$overall_b, overall_res$att, alpha)
         overall_res$se       <- bs_ov$se_boot
         overall_res$ci_lower <- bs_ov$ci_lower
         overall_res$ci_upper <- bs_ov$ci_upper
@@ -279,9 +279,9 @@ edid <- function(
       }
 
       if (do_event_study && !is.null(event_study_res) &&
-          !is.null(bootstrap_res$event_study_draws)) {
+          !is.null(bootstrap_res$event_study_b)) {
         for (e_nm in names(event_study_res)) {
-          draws <- bootstrap_res$event_study_draws[[e_nm]]
+          draws <- bootstrap_res$event_study_b[[e_nm]]
           if (is.null(draws)) next
           bs_es <- compute_bootstrap_stats_edid(draws, event_study_res[[e_nm]]$att, alpha)
           event_study_res[[e_nm]]$se       <- bs_es$se_boot
@@ -291,9 +291,9 @@ edid <- function(
         }
       }
 
-      if (do_group && !is.null(group_res) && !is.null(bootstrap_res$group_draws)) {
+      if (do_group && !is.null(group_res) && !is.null(bootstrap_res$group_b)) {
         for (g_nm in names(group_res)) {
-          draws <- bootstrap_res$group_draws[[g_nm]]
+          draws <- bootstrap_res$group_b[[g_nm]]
           if (is.null(draws)) next
           bs_gr <- compute_bootstrap_stats_edid(draws, group_res[[g_nm]]$att, alpha)
           group_res[[g_nm]]$se       <- bs_gr$se_boot

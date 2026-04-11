@@ -40,18 +40,32 @@ safe_inference_edid <- function(eif, cluster_indices = NULL, alpha = 0.05,
     se           <- sqrt((G / (G - 1)) * sum(cluster_sums^2) / (length(eif)^2))
   }
 
-  valid <- is.finite(se) && se > EDID_SE_EPS
+  valid_se <- is.finite(se) && se > EDID_SE_EPS
 
-  if (!valid) return(na_result)
+  if (!valid_se) return(na_result)
+
+  # att must be finite for CIs and p-value to be meaningful.
+  # If att is NA/non-finite, return the SE but mark inference as invalid
+  # (inference_valid = FALSE signals that CIs and p-value are not available).
+  if (!is.finite(att)) {
+    return(list(
+      se              = se,
+      ci_lower        = NA_real_,
+      ci_upper        = NA_real_,
+      t_stat          = NA_real_,
+      p_value         = NA_real_,
+      inference_valid = FALSE
+    ))
+  }
 
   z_crit  <- qnorm(1 - alpha / 2)
-  t_stat  <- if (is.finite(att)) att / se else NA_real_
-  p_value <- if (is.finite(t_stat)) 2 * pnorm(-abs(t_stat)) else NA_real_
+  t_stat  <- att / se
+  p_value <- 2 * pnorm(-abs(t_stat))
 
   list(
     se              = se,
-    ci_lower        = if (is.finite(att)) att - z_crit * se else NA_real_,
-    ci_upper        = if (is.finite(att)) att + z_crit * se else NA_real_,
+    ci_lower        = att - z_crit * se,
+    ci_upper        = att + z_crit * se,
     t_stat          = t_stat,
     p_value         = p_value,
     inference_valid = TRUE

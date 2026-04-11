@@ -20,8 +20,8 @@
 #' @param balance_e integer or NULL
 #' @param alpha significance level
 #'
-#' @return list with elements \code{overall_draws}, \code{event_study_draws},
-#'   \code{group_draws}, \code{n_bootstrap}, \code{weight_type}, \code{seed}
+#' @return list with elements \code{overall_b}, \code{event_study_b},
+#'   \code{group_b}, \code{n_bootstrap}, \code{weight_type}, \code{seed}
 #' @keywords internal
 run_multiplier_bootstrap_edid <- function(
   cells, eif_matrix, cell_index, panel_obj,
@@ -67,15 +67,15 @@ run_multiplier_bootstrap_edid <- function(
   # -----------------------------------------------------------------------
   # Overall bootstrap draws
   # -----------------------------------------------------------------------
-  overall_draws <- NULL
+  overall_b <- NULL
   if (aggregate %in% c("all", "overall")) {
-    overall_draws <- drop(att_boot_mat %*% q_norm)  # n_bootstrap vector
+    overall_b <- drop(att_boot_mat %*% q_norm)  # n_bootstrap vector
   }
 
   # -----------------------------------------------------------------------
   # Event-study bootstrap draws
   # -----------------------------------------------------------------------
-  event_study_draws <- NULL
+  event_study_b <- NULL
   if (aggregate %in% c("all", "event_study")) {
     cell_index_v <- cell_index[cell_index$cell_id %in% post_ids_v, , drop = FALSE]
     cell_index_v$e <- cell_index_v$time - cell_index_v$group
@@ -83,8 +83,8 @@ run_multiplier_bootstrap_edid <- function(
       cell_index_v <- cell_index_v[abs(cell_index_v$e) <= balance_e, , drop = FALSE]
     }
     unique_e <- sort(unique(cell_index_v$e))
-    event_study_draws <- vector("list", length(unique_e))
-    names(event_study_draws) <- as.character(unique_e)
+    event_study_b <- vector("list", length(unique_e))
+    names(event_study_b) <- as.character(unique_e)
 
     for (ii in seq_along(unique_e)) {
       e_val   <- unique_e[ii]
@@ -99,18 +99,18 @@ run_multiplier_bootstrap_edid <- function(
       e_Su    <- sum(e_pi)
       if (e_Su < EDID_DENOM_EPS) next
       e_q     <- e_pi / e_Su
-      event_study_draws[[ii]] <- drop(att_boot_mat[, col_idx, drop = FALSE] %*% e_q)
+      event_study_b[[ii]] <- drop(att_boot_mat[, col_idx, drop = FALSE] %*% e_q)
     }
   }
 
   # -----------------------------------------------------------------------
   # Group bootstrap draws
   # -----------------------------------------------------------------------
-  group_draws <- NULL
+  group_b <- NULL
   if (aggregate %in% c("all", "group")) {
-    tgroups     <- panel_obj$treatment_groups
-    group_draws <- vector("list", length(tgroups))
-    names(group_draws) <- as.character(tgroups)
+    tgroups <- panel_obj$treatment_groups
+    group_b <- vector("list", length(tgroups))
+    names(group_b) <- as.character(tgroups)
 
     for (ii in seq_along(tgroups)) {
       g_val   <- tgroups[ii]
@@ -121,17 +121,17 @@ run_multiplier_bootstrap_edid <- function(
       if (length(col_idx) == 0L) next
       m_g     <- length(col_idx)
       g_q     <- rep(1 / m_g, m_g)
-      group_draws[[ii]] <- drop(att_boot_mat[, col_idx, drop = FALSE] %*% g_q)
+      group_b[[ii]] <- drop(att_boot_mat[, col_idx, drop = FALSE] %*% g_q)
     }
   }
 
   list(
-    overall_draws       = overall_draws,
-    event_study_draws   = event_study_draws,
-    group_draws         = group_draws,
-    n_bootstrap         = n_bootstrap,
-    weight_type         = bootstrap_weights,
-    seed                = seed
+    overall_b       = overall_b,
+    event_study_b   = event_study_b,
+    group_b         = group_b,
+    n_bootstrap     = n_bootstrap,
+    weight_type     = bootstrap_weights,
+    seed            = seed
   )
 }
 

@@ -349,7 +349,8 @@ compute_eif_nocov_edid <- function(
     }
   }
 
-  # Center: EIF = score - ATT_hat
-  eif <- eif - att_gt
+  # The score accumulated above already has mean 0 by construction:
+  # each group's contribution is demeaned (delta_i - mean(delta)).
+  # The EIF is the score itself; do NOT subtract att_gt again.
   eif
 }
