@@ -1,5 +1,7 @@
 # did 2.3.1.904
 
+  * Added `edid()`: efficient DiD estimator (Chen, Sant'Anna & Xie 2025) supporting PT-All and PT-Post parallel trends assumptions, analytical EIF-based standard errors (iid and cluster-robust), multiplier bootstrap inference (Rademacher, Mammen, Webb), and overall/event-study/group aggregation with WIF correction.
+
   * Fixed bug where `faster_mode = TRUE` and `faster_mode = FALSE` produced different ATT estimates when sampling weights (`weightsname`) vary across time. The fast path was always using first-period weights; it now correctly uses the same period's weights as the slow path
 
   * New `fix_weights` argument in `att_gt()` gives users explicit control over how time-varying sampling weights are resolved in each 2x2 DiD comparison. Options: `NULL` (default, preserves existing behavior), `"varying"` (per-observation weights using RC estimators), `"base_period"` (fix at g-1 for all cells), `"first_period"` (fix at first period). See `?att_gt` for details
