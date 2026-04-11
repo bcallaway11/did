@@ -41,8 +41,8 @@ or \code{"webb"}}
 \item{alpha}{significance level}
 }
 \value{
-list with elements \code{overall_draws}, \code{event_study_draws},
-\code{group_draws}, \code{n_bootstrap}, \code{weight_type}, \code{seed}
+list with elements \code{overall_b}, \code{event_study_b},
+\code{group_b}, \code{n_bootstrap}, \code{weight_type}, \code{seed}
 }
 \description{
 Generates \code{n_bootstrap} perturbed versions of all cell-level ATTs
