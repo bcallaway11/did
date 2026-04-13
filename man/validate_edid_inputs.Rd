@@ -6,16 +6,16 @@
 \usage{
 validate_edid_inputs(
   data,
-  outcome,
-  unit,
-  time,
-  first_treat,
+  yname,
+  idname,
+  tname,
+  gname,
   covariates,
   pt_assumption,
-  alpha,
-  cluster,
+  alp,
+  clustervars,
   control_group,
-  n_bootstrap,
+  biters,
   anticipation,
   survey_design
 )
@@ -23,25 +23,25 @@ validate_edid_inputs(
 \arguments{
 \item{data}{data.frame or coercible}
 
-\item{outcome}{character scalar: outcome column name}
+\item{yname}{character scalar: outcome column name}
 
-\item{unit}{character scalar: unit id column name}
+\item{idname}{character scalar: unit id column name}
 
-\item{time}{character scalar: time column name}
+\item{tname}{character scalar: time column name}
 
-\item{first_treat}{character scalar: first-treatment-period column name}
+\item{gname}{character scalar: first-treatment-period column name}
 
 \item{covariates}{character vector or NULL}
 
 \item{pt_assumption}{character scalar, already matched via \code{match.arg}}
 
-\item{alpha}{numeric scalar in (0, 1)}
+\item{alp}{numeric scalar in (0, 1)}
 
-\item{cluster}{character scalar or NULL}
+\item{clustervars}{character scalar or NULL}
 
 \item{control_group}{character scalar, already matched via \code{match.arg}}
 
-\item{n_bootstrap}{non-negative integer}
+\item{biters}{non-negative integer (internal bootstrap iterations)}
 
 \item{anticipation}{non-negative integer}
 

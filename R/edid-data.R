@@ -7,21 +7,21 @@
 #' builds all masks and maps needed by downstream functions.
 #'
 #' @param data data.frame (or data.table / tibble) already validated
-#' @param outcome character scalar: outcome column name
-#' @param unit character scalar: unit id column name
-#' @param time character scalar: time column name
-#' @param first_treat character scalar: first-treatment-period column name
+#' @param yname character scalar: outcome column name
+#' @param idname character scalar: unit id column name
+#' @param tname character scalar: time column name
+#' @param gname character scalar: first-treatment-period column name
 #' @param covariates NULL (stub)
-#' @param cluster character scalar or NULL
-#' @param control_group \code{"never_treated"} or \code{"last_cohort"}
+#' @param clustervars character scalar or NULL
+#' @param control_group \code{"nevertreated"} or \code{"last_cohort"}
 #' @param anticipation non-negative integer
 #'
 #' @return a \code{panel_obj} list; see spec Section 5.1
 #' @keywords internal
 prepare_edid_panel <- function(
-  data, outcome, unit, time, first_treat,
-  covariates = NULL, cluster = NULL,
-  control_group = "never_treated",
+  data, yname, idname, tname, gname,
+  covariates = NULL, clustervars = NULL,
+  control_group = "nevertreated",
   anticipation = 0L
 ) {
 
@@ -29,13 +29,13 @@ prepare_edid_panel <- function(
   # 1. Coerce to data.table and sort
   # -----------------------------------------------------------------------
   dt <- data.table::as.data.table(data)
-  data.table::setkeyv(dt, c(unit, time))
+  data.table::setkeyv(dt, c(idname, tname))
 
   # -----------------------------------------------------------------------
   # 2-3. Extract sorted unique ids and time periods
   # -----------------------------------------------------------------------
-  all_units   <- sort(unique(dt[[unit]]))
-  time_periods <- sort(unique(dt[[time]]))
+  all_units   <- sort(unique(dt[[idname]]))
+  time_periods <- sort(unique(dt[[tname]]))
   n           <- length(all_units)
   T_periods   <- length(time_periods)
 
@@ -54,12 +54,12 @@ prepare_edid_panel <- function(
   # -----------------------------------------------------------------------
   wide_dt <- data.table::dcast(
     dt,
-    formula = stats::as.formula(paste(unit, "~ ", time)),
-    value.var = outcome
+    formula = stats::as.formula(paste(idname, "~ ", tname)),
+    value.var = yname
   )
   # Ensure rows in same order as all_units
   setattr <- function(x, nm, val) { attr(x, nm) <- val; x }
-  unit_order <- match(all_units, wide_dt[[unit]])
+  unit_order <- match(all_units, wide_dt[[idname]])
   wide_dt    <- wide_dt[unit_order, ]
 
   # Drop the unit id column; keep only the T_periods outcome columns
@@ -70,12 +70,12 @@ prepare_edid_panel <- function(
   colnames(outcome_wide) <- col_order
 
   # -----------------------------------------------------------------------
-  # 6. unit_cohorts: first_treat value per unit (Inf for never-treated)
+  # 6. unit_cohorts: gname value per unit (Inf for never-treated)
   # -----------------------------------------------------------------------
-  # Extract one first_treat per unit using base R tapply (avoids data.table NSE)
-  ft_vals      <- dt[[first_treat]]
-  unit_id_vals <- dt[[unit]]
-  # Get first value of first_treat per unit (treatment is constant within unit)
+  # Extract one gname per unit using base R tapply (avoids data.table NSE)
+  ft_vals      <- dt[[gname]]
+  unit_id_vals <- dt[[idname]]
+  # Get first value of gname per unit (treatment is constant within unit)
   unit_ft_map  <- tapply(ft_vals, unit_id_vals, function(x) x[1L])
   # Map to all_units order
   unit_cohorts <- as.numeric(unit_ft_map[match(all_units, names(unit_ft_map))])
@@ -134,8 +134,8 @@ prepare_edid_panel <- function(
   # -----------------------------------------------------------------------
   cluster_indices <- NULL
   n_clusters      <- NULL
-  if (!is.null(cluster)) {
-    cluster_indices <- build_cluster_index(dt, unit, cluster, all_units)
+  if (!is.null(clustervars)) {
+    cluster_indices <- build_cluster_index(dt, idname, clustervars, all_units)
     n_clusters      <- length(unique(cluster_indices))
   }
 
@@ -168,16 +168,16 @@ prepare_edid_panel <- function(
 #' Build cluster integer index from cluster id column
 #'
 #' @param dt data.table (long format), sorted by unit then time
-#' @param unit character scalar: unit id column name
-#' @param cluster character scalar: cluster id column name
+#' @param idname character scalar: unit id column name
+#' @param clustervars character scalar: cluster id column name
 #' @param all_units sorted vector of unique unit ids
 #'
 #' @return integer vector length n (values 1..G)
 #' @keywords internal
-build_cluster_index <- function(dt, unit, cluster, all_units) {
+build_cluster_index <- function(dt, idname, clustervars, all_units) {
   # Extract time-invariant cluster id per unit using base R tapply
-  cl_vals      <- dt[[cluster]]
-  unit_id_vals <- dt[[unit]]
+  cl_vals      <- dt[[clustervars]]
+  unit_id_vals <- dt[[idname]]
   cl_map       <- tapply(cl_vals, unit_id_vals, function(x) x[1L])
   cl_ids       <- cl_map[match(all_units, names(cl_map))]
 

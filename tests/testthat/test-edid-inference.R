@@ -40,8 +40,9 @@ test_that("cluster_aggregate_edid() sums EIF within clusters correctly", {
 
 test_that("cluster_aggregate_edid() SE with clustering differs from iid SE", {
   df    <- make_panel_clustered(seed = 42)
-  panel <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat",
-                               cluster = "cluster_id")
+  panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                               tname = "time", gname = "first_treat",
+                               clustervars = "cluster_id")
   pairs <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                       panel$period_1, "post")
   omega <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "post")

@@ -3,7 +3,8 @@
 
 #' Print method for edid_fit objects
 #'
-#' Calls \code{summary.edid_fit()} and returns the object invisibly.
+#' Displays the ATT(g,t) table in the same style as \code{print.MP} /
+#' \code{summary.MP}, followed by footer metadata.
 #'
 #' @param x an \code{edid_fit} object
 #' @param ... additional arguments (currently ignored)
@@ -11,14 +12,75 @@
 #' @return \code{x} invisibly
 #' @export
 print.edid_fit <- function(x, ...) {
-  summary(x, ...)
+  cat("\n")
+  cat("Call:\n")
+  print(x$call)
+  cat("\n")
+
+  cat("Group-Time Average Treatment Effects:\n")
+
+  alp <- x$alpha
+  # CI label: pointwise for analytical; simult if bootstrap
+  cband_text1a <- paste0(100 * (1 - alp), "% ")
+  cband_text1b <- ifelse(isTRUE(x$bstrap), "Simult. ", "Pointwise ")
+  cband_text1  <- paste0("[", cband_text1a, cband_text1b)
+
+  att_df <- x$att_gt
+  if (!is.null(att_df) && nrow(att_df) > 0L) {
+    ci_lower <- att_df$ci_lower
+    ci_upper <- att_df$ci_upper
+
+    sig <- (ci_upper < 0) | (ci_lower > 0)
+    sig[is.na(sig)] <- FALSE
+    sig_text <- ifelse(sig, "*", "")
+
+    out <- cbind.data.frame(
+      att_df$group,
+      att_df$time,
+      att_df$att,
+      att_df$se,
+      ci_lower,
+      ci_upper
+    )
+    out <- round(out, 4)
+    out <- cbind.data.frame(out, sig_text)
+    colnames(out) <- c("Group", "Time", "ATT(g,t)", "Std. Error",
+                       cband_text1, "Conf. Band]", "")
+    print(out, row.names = FALSE)
+  } else {
+    cat("  (no cells)\n")
+  }
+
+  cat("---\n")
+  cat("Signif. codes: `*' confidence band does not cover 0")
+  cat("\n\n")
+
+  # Control group footer
+  cg <- x$control_group
+  cg_text <- if (cg == "nevertreated") "Never Treated" else
+             if (cg == "last_cohort")  "Last Cohort"   else cg
+  cat("Control Group:  ")
+  cat(cg_text)
+  cat(",  ")
+  cat("Anticipation Periods:  ")
+  cat(x$anticipation)
+  cat("\n")
+
+  cat("Estimation Method:  Efficient DiD (Chen, Sant'Anna & Xie 2025)\n")
+
+  pt_text <- if (x$pt_assumption == "all") "PT-All" else "PT-Post"
+  cat("PT Assumption:  ")
+  cat(pt_text)
+  cat("\n")
+
   invisible(x)
 }
 
 #' Summary method for edid_fit objects
 #'
 #' Prints a structured summary of the EDiD estimation results including
-#' metadata, the cell-level ATT table, and aggregated estimates.
+#' the ATT(g,t) table (in MP style) plus aggregated overall, event-study,
+#' and group estimates.
 #'
 #' @param object an \code{edid_fit} object
 #' @param ... additional arguments (currently ignored)
@@ -26,44 +88,8 @@ print.edid_fit <- function(x, ...) {
 #' @return \code{object} invisibly
 #' @export
 summary.edid_fit <- function(object, ...) {
-  cat("\n=== Efficient Difference-in-Differences (EDiD) ===\n\n")
-
-  # Metadata
-  cat(sprintf("PT assumption     : %s\n", object$pt_assumption))
-  cat(sprintf("Control group     : %s\n", object$control_group))
-  cat(sprintf("Anticipation      : %d\n", object$anticipation))
-  cat(sprintf("Units (n)         : %d\n", object$n))
-  cat(sprintf("Time periods (T)  : %d\n", object$T_periods))
-  cat(sprintf("Treatment cohorts : %s\n",
-              paste(object$treatment_groups, collapse = ", ")))
-  cat(sprintf("Inference type    : %s\n", object$inference_type))
-  if (!is.null(object$cluster)) {
-    cat(sprintf("Cluster variable  : %s\n", object$cluster))
-  }
-  cat(sprintf("Significance (alpha): %.3f\n\n", object$alpha))
-
-  # Cell-level ATT table (compact)
-  cat("--- Cell-level ATT(g, t) ---\n")
-  if (!is.null(object$att_gt) && nrow(object$att_gt) > 0L) {
-    att_print <- object$att_gt
-    att_print$pre <- ifelse(att_print$is_pre, "pre", "post")
-    # Round numeric columns for display
-    fmt_num <- function(x) ifelse(is.na(x), "NA", sprintf("%.4f", x))
-    out <- data.frame(
-      group    = att_print$group,
-      time     = att_print$time,
-      type     = att_print$pre,
-      att      = fmt_num(att_print$att),
-      se       = fmt_num(att_print$se),
-      ci_lower = fmt_num(att_print$ci_lower),
-      ci_upper = fmt_num(att_print$ci_upper),
-      p_value  = fmt_num(att_print$p_value),
-      stringsAsFactors = FALSE
-    )
-    print(out, row.names = FALSE, quote = FALSE)
-  } else {
-    cat("  (no cells)\n")
-  }
+  # First, print the ATT(g,t) table in MP format
+  print.edid_fit(object, ...)
 
   # Overall ATT
   if (!is.null(object$overall)) {

@@ -16,5 +16,6 @@
 }
 \description{
 Prints a structured summary of the EDiD estimation results including
-metadata, the cell-level ATT table, and aggregated estimates.
+the ATT(g,t) table (in MP style) plus aggregated overall, event-study,
+and group estimates.
 }

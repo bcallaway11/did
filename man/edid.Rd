@@ -6,16 +6,17 @@
 \usage{
 edid(
   data,
-  outcome,
-  unit,
-  time,
-  first_treat,
+  yname,
+  idname,
+  tname,
+  gname,
   covariates = NULL,
   pt_assumption = c("all", "post"),
-  alpha = 0.05,
-  cluster = NULL,
-  control_group = c("never_treated", "last_cohort"),
-  n_bootstrap = 0L,
+  alp = 0.05,
+  clustervars = NULL,
+  control_group = c("nevertreated", "last_cohort"),
+  bstrap = FALSE,
+  biters = 1000L,
   bootstrap_weights = c("rademacher", "mammen", "webb"),
   seed = NULL,
   anticipation = 0L,
@@ -29,16 +30,17 @@ edid(
 \item{data}{A \code{data.frame}, \code{data.table}, or tibble in long format
 (one row per unit-time observation).}
 
-\item{outcome}{Character scalar: name of the outcome column (must be numeric
+\item{yname}{Character scalar: name of the outcome column (must be numeric
 with no missing or non-finite values).}
 
-\item{unit}{Character scalar: name of the unit identifier column.}
+\item{idname}{Character scalar: name of the unit identifier column.}
 
-\item{time}{Character scalar: name of the time period column (numeric).}
+\item{tname}{Character scalar: name of the time period column (numeric).}
 
-\item{first_treat}{Character scalar: name of the column recording each unit's
-first treatment period. Never-treated units should have \code{Inf} (or
-\code{NA} is not accepted --- use \code{Inf} explicitly).}
+\item{gname}{Character scalar: name of the column recording each unit's
+first treatment period. Never-treated units should have \code{Inf} or
+\code{0} (the \code{att_gt()} convention). \code{0} is automatically
+converted to \code{Inf} internally.}
 
 \item{covariates}{Character vector of covariate column names, or \code{NULL}
 (default). \strong{Currently not implemented}: passing non-NULL triggers an
@@ -52,21 +54,26 @@ periods (default). Uses all valid \eqn{(g', t_{pre})} pairs.}
 immediately before treatment. Each cell uses a single DiD moment.}
 }}
 
-\item{alpha}{Significance level for confidence intervals. Default \code{0.05}.}
+\item{alp}{Significance level for confidence intervals. Default \code{0.05}.}
 
-\item{cluster}{Character scalar naming a time-invariant cluster variable in
-\code{data}, or \code{NULL} for no clustering (default). When supplied,
-cluster-robust standard errors are computed via the sandwich EIF formula.}
+\item{clustervars}{Character scalar naming a time-invariant cluster variable
+in \code{data}, or \code{NULL} for no clustering (default). When supplied,
+cluster-robust standard errors are computed via the sandwich EIF formula.
+Note: edid() currently supports only a single cluster variable internally.}
 
 \item{control_group}{Control group definition. One of:
 \describe{
-\item{\code{"never_treated"}}{Use never-treated units (default).}
+\item{\code{"nevertreated"}}{Use never-treated units (default).}
 \item{\code{"last_cohort"}}{Use the last-treated cohort as
 pseudo-controls (relabeled as never-treated internally).}
 }}
 
-\item{n_bootstrap}{Non-negative integer: number of multiplier bootstrap draws.
-\code{0} (default) returns analytical standard errors only.}
+\item{bstrap}{Logical: whether to use multiplier bootstrap inference.
+Default \code{FALSE} (analytical standard errors). When \code{TRUE},
+\code{biters} bootstrap draws are used.}
+
+\item{biters}{Positive integer: number of multiplier bootstrap iterations.
+Default \code{1000L}. Only used when \code{bstrap = TRUE}.}
 
 \item{bootstrap_weights}{Distribution for multiplier weights. One of
 \code{"rademacher"} (default), \code{"mammen"}, or \code{"webb"}.}
@@ -91,7 +98,7 @@ implemented; passing a non-NULL value triggers an error.}
 
 \item{store_eif}{Logical: if \code{TRUE}, store the full \eqn{n \times K}
 EIF matrix in \code{edid_fit$eif}. Default \code{FALSE}. The EIF is
-always computed internally when \code{n_bootstrap > 0}.}
+always computed internally when \code{bstrap = TRUE}.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:
@@ -104,6 +111,7 @@ att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
 \item{\code{group}}{List of per-cohort ATTs.}
 \item{\code{eif}}{EIF matrix or \code{NULL}.}
 \item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
+\item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
 }
 }
 \description{
@@ -139,11 +147,11 @@ panel_df <- data.frame(
 )
 # Fit EDiD (no-covariate, PT-All, analytical SE)
 fit <- edid(
-  data        = panel_df,
-  outcome     = "y",
-  unit        = "id",
-  time        = "period",
-  first_treat = "first_treat",
+  data          = panel_df,
+  yname         = "y",
+  idname        = "id",
+  tname         = "period",
+  gname         = "first_treat",
   pt_assumption = "all"
 )
 # View overall ATT

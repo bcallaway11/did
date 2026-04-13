@@ -15,5 +15,6 @@
 \code{x} invisibly
 }
 \description{
-Calls \code{summary.edid_fit()} and returns the object invisibly.
+Displays the ATT(g,t) table in the same style as \code{print.MP} /
+\code{summary.MP}, followed by footer metadata.
 }

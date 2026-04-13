@@ -117,7 +117,8 @@ test_that("compute_bootstrap_stats_edid() p_value in [0, 1]", {
 # ============================================================
 test_that("run_multiplier_bootstrap_edid() runs without error and returns bootstrap draws", {
   df    <- make_panel_1cohort(seed = 77)
-  panel <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                               tname = "time", gname = "first_treat")
   fit   <- fit_edid_cells(panel, pt_assumption = "all", alpha = 0.05,
                            store_eif = TRUE, covariates = NULL)
   boot_res <- run_multiplier_bootstrap_edid(

@@ -4,14 +4,14 @@
 \alias{build_cluster_index}
 \title{Build cluster integer index from cluster id column}
 \usage{
-build_cluster_index(dt, unit, cluster, all_units)
+build_cluster_index(dt, idname, clustervars, all_units)
 }
 \arguments{
 \item{dt}{data.table (long format), sorted by unit then time}
 
-\item{unit}{character scalar: unit id column name}
+\item{idname}{character scalar: unit id column name}
 
-\item{cluster}{character scalar: cluster id column name}
+\item{clustervars}{character scalar: cluster id column name}
 
 \item{all_units}{sorted vector of unique unit ids}
 }

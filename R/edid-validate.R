@@ -8,25 +8,25 @@
 #' on any failure.
 #'
 #' @param data data.frame or coercible
-#' @param outcome character scalar: outcome column name
-#' @param unit character scalar: unit id column name
-#' @param time character scalar: time column name
-#' @param first_treat character scalar: first-treatment-period column name
+#' @param yname character scalar: outcome column name
+#' @param idname character scalar: unit id column name
+#' @param tname character scalar: time column name
+#' @param gname character scalar: first-treatment-period column name
 #' @param covariates character vector or NULL
 #' @param pt_assumption character scalar, already matched via \code{match.arg}
-#' @param alpha numeric scalar in (0, 1)
-#' @param cluster character scalar or NULL
+#' @param alp numeric scalar in (0, 1)
+#' @param clustervars character scalar or NULL
 #' @param control_group character scalar, already matched via \code{match.arg}
-#' @param n_bootstrap non-negative integer
+#' @param biters non-negative integer (internal bootstrap iterations)
 #' @param anticipation non-negative integer
 #' @param survey_design always NULL (survey not yet implemented)
 #'
 #' @return invisibly TRUE
 #' @keywords internal
 validate_edid_inputs <- function(
-  data, outcome, unit, time, first_treat, covariates,
-  pt_assumption, alpha, cluster, control_group,
-  n_bootstrap, anticipation, survey_design
+  data, yname, idname, tname, gname, covariates,
+  pt_assumption, alp, clustervars, control_group,
+  biters, anticipation, survey_design
 ) {
 
   # ------------------------------------------------------------------
@@ -45,7 +45,7 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 2. outcome / unit / time / first_treat are character scalars naming
+  # 2. yname / idname / tname / gname are character scalars naming
   #    existing columns
   # ------------------------------------------------------------------
   .check_col <- function(arg, argname) {
@@ -56,73 +56,70 @@ validate_edid_inputs <- function(
       stop(sprintf("`%s` = \"%s\" is not a column in `data`.", argname, arg))
     }
   }
-  .check_col(outcome,     "outcome")
-  .check_col(unit,        "unit")
-  .check_col(time,        "time")
-  .check_col(first_treat, "first_treat")
+  .check_col(yname,  "yname")
+  .check_col(idname, "idname")
+  .check_col(tname,  "tname")
+  .check_col(gname,  "gname")
 
   # Columns must be distinct
-  col_names <- c(outcome, unit, time, first_treat)
+  col_names <- c(yname, idname, tname, gname)
   if (anyDuplicated(col_names)) {
-    stop("`outcome`, `unit`, `time`, and `first_treat` must name distinct columns.")
+    stop("`yname`, `idname`, `tname`, and `gname` must name distinct columns.")
   }
 
   # ------------------------------------------------------------------
-  # 3. outcome column is numeric; no NA; all finite
+  # 3. yname column is numeric; no NA; all finite
   # ------------------------------------------------------------------
-  y_col <- data[[outcome]]
+  y_col <- data[[yname]]
   if (!is.numeric(y_col)) {
-    stop(sprintf("Column `%s` (outcome) must be numeric.", outcome))
+    stop(sprintf("Column `%s` (yname) must be numeric.", yname))
   }
   if (anyNA(y_col)) {
-    stop(sprintf("Column `%s` (outcome) contains NA values. ",
-                 outcome),
+    stop(sprintf("Column `%s` (yname) contains NA values. ", yname),
          "edid() requires a complete, balanced panel with no missing outcomes.")
   }
   if (!all(is.finite(y_col))) {
-    stop(sprintf("Column `%s` (outcome) contains non-finite values (Inf/-Inf/NaN). ",
-                 outcome),
+    stop(sprintf("Column `%s` (yname) contains non-finite values (Inf/-Inf/NaN). ", yname),
          "edid() requires all outcomes to be finite.")
   }
 
   # ------------------------------------------------------------------
-  # 4. time column is numeric; no NA
+  # 4. tname column is numeric; no NA
   # ------------------------------------------------------------------
-  t_col <- data[[time]]
+  t_col <- data[[tname]]
   if (!is.numeric(t_col)) {
-    stop(sprintf("Column `%s` (time) must be numeric.", time))
+    stop(sprintf("Column `%s` (tname) must be numeric.", tname))
   }
   if (anyNA(t_col)) {
-    stop(sprintf("Column `%s` (time) contains NA values.", time))
+    stop(sprintf("Column `%s` (tname) contains NA values.", tname))
   }
 
   # ------------------------------------------------------------------
-  # 5. first_treat column is numeric; no NA
+  # 5. gname column is numeric; no NA
   # ------------------------------------------------------------------
-  ft_col <- data[[first_treat]]
+  ft_col <- data[[gname]]
   if (!is.numeric(ft_col)) {
-    stop(sprintf("Column `%s` (first_treat) must be numeric.", first_treat))
+    stop(sprintf("Column `%s` (gname) must be numeric.", gname))
   }
   if (anyNA(ft_col)) {
-    stop(sprintf("Column `%s` (first_treat) contains NA values. ",
-                 first_treat),
+    stop(sprintf("Column `%s` (gname) contains NA values. ", gname),
          "Use Inf to denote never-treated units.")
   }
 
   # ------------------------------------------------------------------
-  # 6. No duplicate (unit, time) rows
+  # 6. No duplicate (idname, tname) rows
   # ------------------------------------------------------------------
-  ut_key <- paste(data[[unit]], data[[time]], sep = "___")
+  ut_key <- paste(data[[idname]], data[[tname]], sep = "___")
   if (anyDuplicated(ut_key)) {
-    stop("Duplicate (unit, time) pairs found in `data`. ",
+    stop("Duplicate (idname, tname) pairs found in `data`. ",
          "edid() requires a balanced panel with exactly one observation per unit-period.")
   }
 
   # ------------------------------------------------------------------
   # 7. Panel is balanced: every unit appears in every time period
   # ------------------------------------------------------------------
-  all_units_v  <- unique(data[[unit]])
-  all_times_v  <- unique(data[[time]])
+  all_units_v  <- unique(data[[idname]])
+  all_times_v  <- unique(data[[tname]])
   n_units      <- length(all_units_v)
   n_times      <- length(all_times_v)
   expected_obs <- n_units * n_times
@@ -134,28 +131,28 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 8. Treatment is absorbing: first_treat is constant within unit
+  # 8. Treatment is absorbing: gname is constant within unit
   # ------------------------------------------------------------------
-  ft_by_unit <- tapply(data[[first_treat]], data[[unit]], function(x) length(unique(x)))
+  ft_by_unit <- tapply(data[[gname]], data[[idname]], function(x) length(unique(x)))
   if (any(ft_by_unit > 1L)) {
     bad <- names(ft_by_unit)[ft_by_unit > 1L]
     stop(sprintf(
-      "`%s` (first_treat) is not constant within unit for %d unit(s) (e.g., %s). ",
-      first_treat, length(bad), bad[1]),
+      "`%s` (gname) is not constant within unit for %d unit(s) (e.g., %s). ",
+      gname, length(bad), bad[1]),
       "Treatment must be absorbing.")
   }
 
   # ------------------------------------------------------------------
   # 9-10. Control group availability
   # ------------------------------------------------------------------
-  # Get time-invariant first_treat per unit (one row per unit)
-  unit_ft <- tapply(data[[first_treat]], data[[unit]], `[`, 1L)
+  # Get time-invariant gname per unit (one row per unit)
+  unit_ft <- tapply(data[[gname]], data[[idname]], `[`, 1L)
 
-  if (control_group == "never_treated") {
+  if (control_group == "nevertreated") {
     n_never <- sum(is.infinite(unit_ft))
     if (n_never == 0L) {
-      stop("No never-treated units found (`first_treat == Inf`). ",
-           "edid() requires never-treated units when `control_group = \"never_treated\"`.")
+      stop("No never-treated units found (`gname == Inf`). ",
+           "edid() requires never-treated units when `control_group = \"nevertreated\"`.")
     }
   } else {
     # last_cohort
@@ -188,18 +185,18 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 13. alpha in (0, 1)
+  # 13. alp in (0, 1)
   # ------------------------------------------------------------------
-  if (!is.numeric(alpha) || length(alpha) != 1L || alpha <= 0 || alpha >= 1) {
-    stop("`alpha` must be a numeric scalar strictly between 0 and 1.")
+  if (!is.numeric(alp) || length(alp) != 1L || alp <= 0 || alp >= 1) {
+    stop("`alp` must be a numeric scalar strictly between 0 and 1.")
   }
 
   # ------------------------------------------------------------------
-  # 14. n_bootstrap >= 0 integer
+  # 14. biters >= 0 integer
   # ------------------------------------------------------------------
-  if (!is.numeric(n_bootstrap) || length(n_bootstrap) != 1L ||
-      n_bootstrap < 0 || n_bootstrap != floor(n_bootstrap)) {
-    stop("`n_bootstrap` must be a non-negative integer.")
+  if (!is.numeric(biters) || length(biters) != 1L ||
+      biters < 0 || biters != floor(biters)) {
+    stop("`biters` must be a non-negative integer.")
   }
 
   # ------------------------------------------------------------------
@@ -220,26 +217,26 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 16. cluster column checks
+  # 16. clustervars column checks
   # ------------------------------------------------------------------
-  if (!is.null(cluster)) {
-    if (!is.character(cluster) || length(cluster) != 1L) {
-      stop("`cluster` must be a character scalar naming a column in `data`, or NULL.")
+  if (!is.null(clustervars)) {
+    if (!is.character(clustervars) || length(clustervars) != 1L) {
+      stop("`clustervars` must be a character scalar naming a column in `data`, or NULL.")
     }
-    if (!cluster %in% names(data)) {
-      stop(sprintf("`cluster` = \"%s\" is not a column in `data`.", cluster))
+    if (!clustervars %in% names(data)) {
+      stop(sprintf("`clustervars` = \"%s\" is not a column in `data`.", clustervars))
     }
-    cl_col <- data[[cluster]]
+    cl_col <- data[[clustervars]]
     if (anyNA(cl_col)) {
-      stop(sprintf("Cluster column `%s` contains NA values.", cluster))
+      stop(sprintf("Cluster column `%s` contains NA values.", clustervars))
     }
     # Time-invariant within unit
-    cl_by_unit <- tapply(cl_col, data[[unit]], function(x) length(unique(x)))
+    cl_by_unit <- tapply(cl_col, data[[idname]], function(x) length(unique(x)))
     if (any(cl_by_unit > 1L)) {
       bad <- names(cl_by_unit)[cl_by_unit > 1L]
       stop(sprintf(
         "Cluster variable `%s` is not time-invariant for %d unit(s) (e.g., %s). ",
-        cluster, length(bad), bad[1]),
+        clustervars, length(bad), bad[1]),
         "Cluster variable must be constant within unit.")
     }
   }

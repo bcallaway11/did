@@ -6,32 +6,32 @@
 \usage{
 prepare_edid_panel(
   data,
-  outcome,
-  unit,
-  time,
-  first_treat,
+  yname,
+  idname,
+  tname,
+  gname,
   covariates = NULL,
-  cluster = NULL,
-  control_group = "never_treated",
+  clustervars = NULL,
+  control_group = "nevertreated",
   anticipation = 0L
 )
 }
 \arguments{
 \item{data}{data.frame (or data.table / tibble) already validated}
 
-\item{outcome}{character scalar: outcome column name}
+\item{yname}{character scalar: outcome column name}
 
-\item{unit}{character scalar: unit id column name}
+\item{idname}{character scalar: unit id column name}
 
-\item{time}{character scalar: time column name}
+\item{tname}{character scalar: time column name}
 
-\item{first_treat}{character scalar: first-treatment-period column name}
+\item{gname}{character scalar: first-treatment-period column name}
 
 \item{covariates}{NULL (stub)}
 
-\item{cluster}{character scalar or NULL}
+\item{clustervars}{character scalar or NULL}
 
-\item{control_group}{\code{"never_treated"} or \code{"last_cohort"}}
+\item{control_group}{\code{"nevertreated"} or \code{"last_cohort"}}
 
 \item{anticipation}{non-negative integer}
 }

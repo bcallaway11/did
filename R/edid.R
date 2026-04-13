@@ -8,13 +8,14 @@
 #'
 #' @param data A \code{data.frame}, \code{data.table}, or tibble in long format
 #'   (one row per unit-time observation).
-#' @param outcome Character scalar: name of the outcome column (must be numeric
+#' @param yname Character scalar: name of the outcome column (must be numeric
 #'   with no missing or non-finite values).
-#' @param unit Character scalar: name of the unit identifier column.
-#' @param time Character scalar: name of the time period column (numeric).
-#' @param first_treat Character scalar: name of the column recording each unit's
-#'   first treatment period. Never-treated units should have \code{Inf} (or
-#'   \code{NA} is not accepted --- use \code{Inf} explicitly).
+#' @param idname Character scalar: name of the unit identifier column.
+#' @param tname Character scalar: name of the time period column (numeric).
+#' @param gname Character scalar: name of the column recording each unit's
+#'   first treatment period. Never-treated units should have \code{Inf} or
+#'   \code{0} (the \code{att_gt()} convention). \code{0} is automatically
+#'   converted to \code{Inf} internally.
 #' @param covariates Character vector of covariate column names, or \code{NULL}
 #'   (default). \strong{Currently not implemented}: passing non-NULL triggers an
 #'   error.
@@ -25,18 +26,22 @@
 #'     \item{\code{"post"}}{PT-Post: parallel trends holds only for the period
 #'       immediately before treatment. Each cell uses a single DiD moment.}
 #'   }
-#' @param alpha Significance level for confidence intervals. Default \code{0.05}.
-#' @param cluster Character scalar naming a time-invariant cluster variable in
-#'   \code{data}, or \code{NULL} for no clustering (default). When supplied,
+#' @param alp Significance level for confidence intervals. Default \code{0.05}.
+#' @param clustervars Character scalar naming a time-invariant cluster variable
+#'   in \code{data}, or \code{NULL} for no clustering (default). When supplied,
 #'   cluster-robust standard errors are computed via the sandwich EIF formula.
+#'   Note: edid() currently supports only a single cluster variable internally.
 #' @param control_group Control group definition. One of:
 #'   \describe{
-#'     \item{\code{"never_treated"}}{Use never-treated units (default).}
+#'     \item{\code{"nevertreated"}}{Use never-treated units (default).}
 #'     \item{\code{"last_cohort"}}{Use the last-treated cohort as
 #'       pseudo-controls (relabeled as never-treated internally).}
 #'   }
-#' @param n_bootstrap Non-negative integer: number of multiplier bootstrap draws.
-#'   \code{0} (default) returns analytical standard errors only.
+#' @param bstrap Logical: whether to use multiplier bootstrap inference.
+#'   Default \code{FALSE} (analytical standard errors). When \code{TRUE},
+#'   \code{biters} bootstrap draws are used.
+#' @param biters Positive integer: number of multiplier bootstrap iterations.
+#'   Default \code{1000L}. Only used when \code{bstrap = TRUE}.
 #' @param bootstrap_weights Distribution for multiplier weights. One of
 #'   \code{"rademacher"} (default), \code{"mammen"}, or \code{"webb"}.
 #' @param seed Integer seed for reproducibility of bootstrap draws, or
@@ -54,7 +59,7 @@
 #'   implemented; passing a non-NULL value triggers an error.
 #' @param store_eif Logical: if \code{TRUE}, store the full \eqn{n \times K}
 #'   EIF matrix in \code{edid_fit$eif}. Default \code{FALSE}. The EIF is
-#'   always computed internally when \code{n_bootstrap > 0}.
+#'   always computed internally when \code{bstrap = TRUE}.
 #'
 #' @return An object of class \code{edid_fit} (a list) with elements:
 #'   \describe{
@@ -66,6 +71,7 @@
 #'     \item{\code{group}}{List of per-cohort ATTs.}
 #'     \item{\code{eif}}{EIF matrix or \code{NULL}.}
 #'     \item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
+#'     \item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
 #'   }
 #'
 #' @references Chen, L., Sant'Anna, P. H. C., & Xie, Y. (2025).
@@ -97,11 +103,11 @@
 #' )
 #' # Fit EDiD (no-covariate, PT-All, analytical SE)
 #' fit <- edid(
-#'   data        = panel_df,
-#'   outcome     = "y",
-#'   unit        = "id",
-#'   time        = "period",
-#'   first_treat = "first_treat",
+#'   data          = panel_df,
+#'   yname         = "y",
+#'   idname        = "id",
+#'   tname         = "period",
+#'   gname         = "first_treat",
 #'   pt_assumption = "all"
 #' )
 #' # View overall ATT
@@ -112,16 +118,17 @@
 #' @export
 edid <- function(
   data,
-  outcome,
-  unit,
-  time,
-  first_treat,
+  yname,
+  idname,
+  tname,
+  gname,
   covariates        = NULL,
   pt_assumption     = c("all", "post"),
-  alpha             = 0.05,
-  cluster           = NULL,
-  control_group     = c("never_treated", "last_cohort"),
-  n_bootstrap       = 0L,
+  alp               = 0.05,
+  clustervars       = NULL,
+  control_group     = c("nevertreated", "last_cohort"),
+  bstrap            = FALSE,
+  biters            = 1000L,
   bootstrap_weights = c("rademacher", "mammen", "webb"),
   seed              = NULL,
   anticipation      = 0L,
@@ -142,24 +149,37 @@ edid <- function(
   # When "all" is present it subsumes the others
   if ("all" %in% aggregate) aggregate <- "all"
 
-  n_bootstrap  <- as.integer(n_bootstrap)
   anticipation <- as.integer(anticipation)
+
+  # ------------------------------------------------------------------
+  # Bootstrap: derive internal n_bootstrap from bstrap + biters
+  # ------------------------------------------------------------------
+  n_bootstrap_internal <- if (bstrap) as.integer(biters) else 0L
+
+  # ------------------------------------------------------------------
+  # Accept G=0 (att_gt convention) or G=Inf (edid native) for never-treated
+  # Convert 0 -> Inf internally, matching att_gt's internal transformation
+  data <- as.data.frame(data)
+  zero_nt <- is.finite(data[[gname]]) & data[[gname]] == 0
+  if (any(zero_nt)) {
+    data[[gname]] <- ifelse(zero_nt, Inf, data[[gname]])
+  }
 
   # ------------------------------------------------------------------
   # Validation
   # ------------------------------------------------------------------
   validate_edid_inputs(
     data          = data,
-    outcome       = outcome,
-    unit          = unit,
-    time          = time,
-    first_treat   = first_treat,
+    yname         = yname,
+    idname        = idname,
+    tname         = tname,
+    gname         = gname,
     covariates    = covariates,
     pt_assumption = pt_assumption,
-    alpha         = alpha,
-    cluster       = cluster,
+    alp           = alp,
+    clustervars   = clustervars,
     control_group = control_group,
-    n_bootstrap   = n_bootstrap,
+    biters        = n_bootstrap_internal,
     anticipation  = anticipation,
     survey_design = survey_design
   )
@@ -169,12 +189,12 @@ edid <- function(
   # ------------------------------------------------------------------
   panel_obj <- prepare_edid_panel(
     data          = data,
-    outcome       = outcome,
-    unit          = unit,
-    time          = time,
-    first_treat   = first_treat,
+    yname         = yname,
+    idname        = idname,
+    tname         = tname,
+    gname         = gname,
     covariates    = covariates,
-    cluster       = cluster,
+    clustervars   = clustervars,
     control_group = control_group,
     anticipation  = anticipation
   )
@@ -184,14 +204,14 @@ edid <- function(
   # EIF is always needed for aggregated SE computation, not just bootstrap.
   # ------------------------------------------------------------------
   do_any_agg   <- !("none" %in% aggregate)
-  need_eif_for_boot <- (n_bootstrap > 0L)
+  need_eif_for_boot <- (n_bootstrap_internal > 0L)
   # need_eif: TRUE whenever we need aggregated inference OR bootstrap
   need_eif_internal <- do_any_agg || need_eif_for_boot
 
   fit_result <- fit_edid_cells(
     panel_obj     = panel_obj,
     pt_assumption = pt_assumption,
-    alpha         = alpha,
+    alpha         = alp,
     store_eif     = store_eif,
     covariates    = covariates,
     need_eif      = need_eif_internal
@@ -230,22 +250,22 @@ edid <- function(
   group_res      <- NULL
 
   if (do_overall) {
-    overall_res <- aggregate_overall_edid(cells, eif_matrix, cell_index, panel_obj, alpha)
+    overall_res <- aggregate_overall_edid(cells, eif_matrix, cell_index, panel_obj, alp)
   }
   if (do_event_study) {
     event_study_res <- aggregate_event_study_edid(
-      cells, eif_matrix, cell_index, panel_obj, alpha, balance_e
+      cells, eif_matrix, cell_index, panel_obj, alp, balance_e
     )
   }
   if (do_group) {
-    group_res <- aggregate_group_edid(cells, eif_matrix, cell_index, panel_obj, alpha)
+    group_res <- aggregate_group_edid(cells, eif_matrix, cell_index, panel_obj, alp)
   }
 
   # ------------------------------------------------------------------
   # Bootstrap
   # ------------------------------------------------------------------
   bootstrap_res <- NULL
-  if (n_bootstrap > 0L) {
+  if (n_bootstrap_internal > 0L) {
     if (is.null(eif_matrix)) {
       warning("EIF matrix is NULL; bootstrap cannot be run. ",
               "This should not happen --- please report this issue.")
@@ -257,18 +277,18 @@ edid <- function(
         eif_matrix        = eif_matrix,
         cell_index        = cell_index,
         panel_obj         = panel_obj,
-        n_bootstrap       = n_bootstrap,
+        n_bootstrap       = n_bootstrap_internal,
         bootstrap_weights = bootstrap_weights,
         seed              = seed,
         aggregate         = "all",
         balance_e         = balance_e,
-        alpha             = alpha
+        alpha             = alp
       )
       class(bootstrap_res) <- c("edid_bootstrap", "list")
 
       # Overwrite SEs/CIs with bootstrap versions
       if (do_overall && !is.null(overall_res) && !is.null(bootstrap_res$overall_b)) {
-        bs_ov <- compute_bootstrap_stats_edid(bootstrap_res$overall_b, overall_res$att, alpha)
+        bs_ov <- compute_bootstrap_stats_edid(bootstrap_res$overall_b, overall_res$att, alp)
         overall_res$se       <- bs_ov$se_boot
         overall_res$ci_lower <- bs_ov$ci_lower
         overall_res$ci_upper <- bs_ov$ci_upper
@@ -283,7 +303,7 @@ edid <- function(
         for (e_nm in names(event_study_res)) {
           draws <- bootstrap_res$event_study_b[[e_nm]]
           if (is.null(draws)) next
-          bs_es <- compute_bootstrap_stats_edid(draws, event_study_res[[e_nm]]$att, alpha)
+          bs_es <- compute_bootstrap_stats_edid(draws, event_study_res[[e_nm]]$att, alp)
           event_study_res[[e_nm]]$se       <- bs_es$se_boot
           event_study_res[[e_nm]]$ci_lower <- bs_es$ci_lower
           event_study_res[[e_nm]]$ci_upper <- bs_es$ci_upper
@@ -295,7 +315,7 @@ edid <- function(
         for (g_nm in names(group_res)) {
           draws <- bootstrap_res$group_b[[g_nm]]
           if (is.null(draws)) next
-          bs_gr <- compute_bootstrap_stats_edid(draws, group_res[[g_nm]]$att, alpha)
+          bs_gr <- compute_bootstrap_stats_edid(draws, group_res[[g_nm]]$att, alp)
           group_res[[g_nm]]$se       <- bs_gr$se_boot
           group_res[[g_nm]]$ci_lower <- bs_gr$ci_lower
           group_res[[g_nm]]$ci_upper <- bs_gr$ci_upper
@@ -319,13 +339,14 @@ edid <- function(
     call             = mc,
     pt_assumption    = pt_assumption,
     control_group    = control_group,
-    alpha            = alpha,
+    alpha            = alp,
     n                = panel_obj$n,
     T_periods        = panel_obj$T_periods,
     treatment_groups = panel_obj$treatment_groups,
     anticipation     = panel_obj$anticipation,
-    inference_type   = if (n_bootstrap > 0L) "bootstrap" else "analytical",
-    cluster          = cluster,
+    inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
+    clustervars      = clustervars,
+    bstrap           = bstrap,
     cells            = cells,
     att_gt           = att_gt_df,
     overall          = overall_res,
@@ -333,7 +354,7 @@ edid <- function(
     group            = group_res,
     eif              = eif_export,
     bootstrap        = bootstrap_res,
-    n_bootstrap      = n_bootstrap,
+    n_bootstrap      = n_bootstrap_internal,
     bootstrap_weights = bootstrap_weights
   )
 

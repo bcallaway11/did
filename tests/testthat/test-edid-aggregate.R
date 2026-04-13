@@ -4,7 +4,8 @@ library(testthat)
 fit_one_cohort <- function(seed = 42, n_treat = 30, n_never = 30, n_periods = 5) {
   df    <- make_panel_1cohort(n_treat = n_treat, n_never = n_never,
                                n_periods = n_periods, seed = seed)
-  panel <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                               tname = "time", gname = "first_treat")
   fit   <- fit_edid_cells(panel, pt_assumption = "all", alpha = 0.05,
                            store_eif = TRUE, covariates = NULL)
   list(fit = fit, panel = panel)
@@ -63,7 +64,8 @@ test_that("aggregate_event_study_edid() returns a list with entries for each rel
 # ============================================================
 test_that("aggregate_group_edid() returns one entry per treated cohort", {
   df    <- make_panel_2cohort()
-  panel <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                               tname = "time", gname = "first_treat")
   fit   <- fit_edid_cells(panel, pt_assumption = "all", alpha = 0.05,
                            store_eif = TRUE, covariates = NULL)
   grp <- aggregate_group_edid(fit$cells, fit$eif_matrix, fit$cell_index, panel, alpha = 0.05)

@@ -5,7 +5,8 @@ library(testthat)
 # ============================================================
 test_that("compute_omega_star_nocov_edid() returns H x H symmetric numeric matrix", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 1)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   H <- nrow(pairs)
@@ -17,7 +18,8 @@ test_that("compute_omega_star_nocov_edid() returns H x H symmetric numeric matri
 
 test_that("compute_omega_star_nocov_edid() is positive semi-definite (eigenvalues >= 0)", {
   df      <- make_panel_1cohort(n_treat = 40, n_never = 40, n_periods = 5, seed = 2)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
@@ -30,7 +32,8 @@ test_that("compute_omega_star_nocov_edid() is positive semi-definite (eigenvalue
 # ============================================================
 test_that("compute_omega_star_nocov_edid() returns 1x1 matrix under PT-Post", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 3)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "post")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "post")
@@ -44,7 +47,8 @@ test_that("compute_omega_star_nocov_edid() returns 1x1 matrix under PT-Post", {
 # ============================================================
 test_that("compute_efficient_weights_edid() weights sum to 1", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 4)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
@@ -79,7 +83,8 @@ test_that("compute_efficient_weights_edid() uses pseudoinverse fallback for sing
 
 test_that("compute_efficient_weights_edid() returns numeric vector with no NA or NaN", {
   df      <- make_panel_1cohort(n_treat = 25, n_never = 25, n_periods = 5, seed = 5)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
@@ -92,7 +97,8 @@ test_that("compute_efficient_weights_edid() returns numeric vector with no NA or
 # ============================================================
 test_that("compute_generated_outcomes_nocov_edid() returns length-H finite vector", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 6)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   y_hat   <- compute_generated_outcomes_nocov_edid(3L, 4L, pairs, panel, "all")
@@ -102,7 +108,8 @@ test_that("compute_generated_outcomes_nocov_edid() returns length-H finite vecto
 
 test_that("compute_generated_outcomes_nocov_edid() PT-Post returns length-1 vector", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 7)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "post")
   y_hat   <- compute_generated_outcomes_nocov_edid(3L, 4L, pairs, panel, "post")
@@ -112,7 +119,8 @@ test_that("compute_generated_outcomes_nocov_edid() PT-Post returns length-1 vect
 test_that("compute_generated_outcomes_nocov_edid() ATT=2 panel: generated outcome close to 2 for post period", {
   # Panel with known ATT=2 (from make_panel_1cohort default)
   df    <- make_panel_1cohort(n_treat = 200, n_never = 200, n_periods = 5, seed = 99)
-  panel <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                               tname = "time", gname = "first_treat")
   pairs <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                       panel$period_1, "post")
   y_hat <- compute_generated_outcomes_nocov_edid(3L, 3L, pairs, panel, "post")
@@ -125,7 +133,8 @@ test_that("compute_generated_outcomes_nocov_edid() ATT=2 panel: generated outcom
 # ============================================================
 test_that("compute_eif_nocov_edid() returns length-n finite vector", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 8)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   n       <- panel$n
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
@@ -140,7 +149,8 @@ test_that("compute_eif_nocov_edid() returns length-n finite vector", {
 
 test_that("compute_eif_nocov_edid() has zero mean (up to numerical precision)", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 9)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
@@ -153,7 +163,8 @@ test_that("compute_eif_nocov_edid() has zero mean (up to numerical precision)", 
 
 test_that("compute_eif_nocov_edid() PT-Post: EIF has zero mean", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 10)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "post")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "post")
@@ -166,7 +177,8 @@ test_that("compute_eif_nocov_edid() PT-Post: EIF has zero mean", {
 
 test_that("compute_eif_nocov_edid() sum of squared EIF is positive (non-degenerate)", {
   df      <- make_panel_1cohort(n_treat = 30, n_never = 30, n_periods = 5, seed = 11)
-  panel   <- prepare_edid_panel(df, "outcome", "unit", "time", "first_treat")
+  panel   <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
+                                 tname = "time", gname = "first_treat")
   pairs   <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
                                         panel$period_1, "all")
   omega   <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
