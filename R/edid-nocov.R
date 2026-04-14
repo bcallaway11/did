@@ -83,15 +83,9 @@ compute_omega_star_nocov_edid <- function(
     gp_val  <- unique_gp_tpre$gp[rr]
     tp_val  <- unique_gp_tpre$tpre[rr]
     key     <- paste0(gp_val, "_", tp_val)
-    if (is.finite(gp_val)) {
-      mask_gp <- panel_obj$cohort_masks[[as.character(gp_val)]]
-      col_pre <- .col(panel_obj, tp_val)
-      delta_gp_cache[[key]] <- ow[mask_gp, col_pre] - ow[mask_gp, col_1]
-    } else {
-      # Never-treated: delta_{inf, tpre, 1} = Y_{tpre} - Y_{period_1}
-      col_pre <- .col(panel_obj, tp_val)
-      delta_gp_cache[[key]] <- ow[mask_inf, col_pre] - ow[mask_inf, col_1]
-    }
+    mask_gp <- panel_obj$cohort_masks[[as.character(gp_val)]]
+    col_pre <- .col(panel_obj, tp_val)
+    delta_gp_cache[[key]] <- ow[mask_gp, col_pre] - ow[mask_gp, col_1]
   }
 
   omega <- matrix(0, nrow = H, ncol = H)
@@ -100,11 +94,7 @@ compute_omega_star_nocov_edid <- function(
     gp_j   <- pairs$gp[j]
     tpre_j <- pairs$tpre[j]
     key_j  <- paste0(gp_j, "_", tpre_j)
-    n_gp_j <- if (is.finite(gp_j)) {
-      sum(panel_obj$cohort_masks[[as.character(gp_j)]])
-    } else {
-      n_inf
-    }
+    n_gp_j <- sum(panel_obj$cohort_masks[[as.character(gp_j)]])
     delta_inf_j <- delta_inf_cache[[as.character(tpre_j)]]
     delta_gp_j  <- delta_gp_cache[[key_j]]
 
@@ -116,11 +106,7 @@ compute_omega_star_nocov_edid <- function(
       gp_k   <- pairs$gp[k]
       tpre_k <- pairs$tpre[k]
       key_k  <- paste0(gp_k, "_", tpre_k)
-      n_gp_k <- if (is.finite(gp_k)) {
-        sum(panel_obj$cohort_masks[[as.character(gp_k)]])
-      } else {
-        n_inf
-      }
+      n_gp_k <- sum(panel_obj$cohort_masks[[as.character(gp_k)]])
       delta_inf_k <- delta_inf_cache[[as.character(tpre_k)]]
       delta_gp_k  <- delta_gp_cache[[key_k]]
 
@@ -239,13 +225,8 @@ compute_generated_outcomes_nocov_edid <- function(
 
     term_inf <- mean(ow[mask_inf, col_t] - ow[mask_inf, col_pre])
 
-    if (is.finite(gp_j)) {
-      mask_gp  <- panel_obj$cohort_masks[[as.character(gp_j)]]
-      term_gp  <- mean(ow[mask_gp, col_pre] - ow[mask_gp, col_1])
-    } else {
-      # gp = Inf: comparison is never-treated baseline change
-      term_gp <- mean(ow[mask_inf, col_pre] - ow[mask_inf, col_1])
-    }
+    mask_gp  <- panel_obj$cohort_masks[[as.character(gp_j)]]
+    term_gp  <- mean(ow[mask_gp, col_pre] - ow[mask_gp, col_1])
 
     y_hat[j] <- term_g - term_inf - term_gp
   }
@@ -329,23 +310,13 @@ compute_eif_nocov_edid <- function(
       eif[mask_inf] <- eif[mask_inf] -
         w_j * (delta_inf_t_pre - mean_inf_t_pre) / pi_inf
 
-      # Comparison cohort contribution (subtract, only if gp_j is finite)
-      if (is.finite(gp_j)) {
-        mask_gp          <- panel_obj$cohort_masks[[as.character(gp_j)]]
-        pi_gp            <- panel_obj$cohort_fractions[[as.character(gp_j)]]
-        delta_gp_pre_base <- ow[mask_gp, col_pre] - ow[mask_gp, col_base]
-        mean_gp_pre_base  <- mean(delta_gp_pre_base)
-        eif[mask_gp] <- eif[mask_gp] -
-          w_j * (delta_gp_pre_base - mean_gp_pre_base) / pi_gp
-      }
-      # If gp_j == Inf: the comparison cohort is never-treated itself,
-      # which contributes only through the -delta_inf term above.
-      # The baseline change delta_{inf, tpre, 1} contributes to the
-      # never-treated units with an additional term when gp_j==Inf in PT-All.
-      # Per the EIF formula: phi_{ij} for gp_j==Inf has no 3rd indicator
-      # term (since I(G_i=gp_j) == I(G_i=Inf) which is already handled
-      # in the never-treated contribution above when we subtract the mean).
-      # No additional action needed here.
+      # Comparison cohort contribution (subtract)
+      mask_gp          <- panel_obj$cohort_masks[[as.character(gp_j)]]
+      pi_gp            <- panel_obj$cohort_fractions[[as.character(gp_j)]]
+      delta_gp_pre_base <- ow[mask_gp, col_pre] - ow[mask_gp, col_base]
+      mean_gp_pre_base  <- mean(delta_gp_pre_base)
+      eif[mask_gp] <- eif[mask_gp] -
+        w_j * (delta_gp_pre_base - mean_gp_pre_base) / pi_gp
     }
   }
 

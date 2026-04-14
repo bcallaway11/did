@@ -10,9 +10,15 @@
 #' or a 0-row data.frame if that pre-period does not exist in \code{time_periods} or
 #' equals \code{period_1}.
 #'
-#' Under \strong{PT-All}: returns all \code{(gp, tpre)} pairs where \code{gp} ranges
-#' over all cohorts (including never-treated) and \code{tpre} is a valid pre-period
-#' strictly less than the effective treatment start of \code{gp}, excluding \code{period_1}.
+#' Under \strong{PT-All}: iterates over treated cohorts \code{g'} only (the
+#' never-treated group is the time control inside every moment, not a comparison
+#' cohort). For \code{g' == target_g}: valid \code{tpre} are all periods strictly
+#' less than \code{g' - anticipation}, including \code{period_1} (this is the
+#' degenerate CS DiD moment whose comparison-cohort EIF term is identically zero).
+#' For \code{g' != target_g}: valid \code{tpre} are periods strictly between
+#' \code{period_1} and \code{g' - anticipation} (exclusive on both ends).
+#' Returns a 0-row data.frame if no valid pairs exist (e.g., single cohort with
+#' only one pre-period equal to \code{period_1}).
 #'
 #' @param target_g scalar: treatment cohort being estimated
 #' @param treatment_groups sorted numeric vector of all finite cohort values
@@ -48,22 +54,28 @@ enumerate_valid_pairs_edid <- function(
   }
 
   # -------------------------------------------------------------------------
-  # PT-All: loop over all candidate comparison cohorts
+  # PT-All: loop over treated cohorts only (never-treated is NOT a comparison
+  # cohort; it appears only as the time control E[Y_inf(t)-Y_inf(tpre)] inside
+  # each moment).
+  #
+  # For g' == target_g: valid tpre = {s : s < eff_start(g')}
+  #   -- INCLUDES period_1 (degenerate CS DiD moment; comparison EIF = 0)
+  # For g' != target_g: valid tpre = {s : period_1 < s < eff_start(g')}
+  #   -- EXCLUDES period_1 (non-degenerate moments only)
   # -------------------------------------------------------------------------
-  candidate_gps <- c(treatment_groups, never_treated_val)
-
   out_gp   <- numeric(0L)
   out_tpre <- numeric(0L)
 
-  for (gp in candidate_gps) {
-    if (is.finite(gp)) {
-      # Finite comparison cohort: effective treatment start = gp - anticipation
-      eff_start <- gp - anticipation
-      # Valid tpre: strictly less than eff_start, not period_1
-      valid_tpre <- time_periods[time_periods < eff_start & time_periods != period_1]
+  for (gp in treatment_groups) {
+    eff_start <- gp - anticipation
+    if (gp == target_g) {
+      # Self-pair: include period_1
+      valid_tpre <- time_periods[time_periods < eff_start]
     } else {
-      # Never-treated: all periods except period_1 are valid
-      valid_tpre <- time_periods[time_periods != period_1]
+      # Cross-pair: exclude period_1
+      valid_tpre <- time_periods[
+        time_periods > period_1 & time_periods < eff_start
+      ]
     }
     if (length(valid_tpre) > 0L) {
       out_gp   <- c(out_gp,   rep(gp, length(valid_tpre)))
