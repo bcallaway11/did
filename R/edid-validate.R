@@ -24,7 +24,7 @@
 #' @return invisibly TRUE
 #' @keywords internal
 validate_edid_inputs <- function(
-  data, yname, idname, tname, gname, covariates,
+  data, yname, idname, tname, gname, xformla = NULL, covariates,
   pt_assumption, alp, clustervars, control_group,
   biters, anticipation, survey_design
 ) {
@@ -169,11 +169,39 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 11. covariates != NULL -> stop (stub)
+  # 11. covariates is deprecated: error with redirect message
   # ------------------------------------------------------------------
   if (!is.null(covariates)) {
-    stop("covariate path not yet implemented in edid(). ",
-         "Pass covariates = NULL or omit the covariates argument.")
+    stop(
+      "The 'covariates' argument has been replaced by 'xformla'. ",
+      "Pass a formula like xformla = ~ X1 + X2."
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # 11b. xformla validation
+  # ------------------------------------------------------------------
+  if (!is.null(xformla)) {
+    if (!inherits(xformla, "formula")) {
+      stop("`xformla` must be a one-sided formula (e.g., ~ X1 + X2) or NULL.")
+    }
+    # Extract RHS variable names (skip ~1)
+    rhs_vars <- all.vars(xformla)
+    if (length(rhs_vars) > 0L) {
+      missing_vars <- setdiff(rhs_vars, names(data))
+      if (length(missing_vars) > 0L) {
+        stop(sprintf(
+          "Variable(s) in `xformla` not found in `data`: %s",
+          paste(missing_vars, collapse = ", ")
+        ))
+      }
+      # Check all covariate columns are numeric or factor
+      for (v in rhs_vars) {
+        if (!is.numeric(data[[v]]) && !is.factor(data[[v]])) {
+          stop(sprintf("Covariate column `%s` must be numeric or factor.", v))
+        }
+      }
+    }
   }
 
   # ------------------------------------------------------------------

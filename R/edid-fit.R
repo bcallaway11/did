@@ -11,7 +11,9 @@
 #' @param pt_assumption character: \code{"all"} or \code{"post"}
 #' @param alpha significance level in (0, 1)
 #' @param store_eif logical: if TRUE, include EIF vectors in returned cells
-#' @param covariates NULL (covariate path is a stub)
+#' @param xformla one-sided formula or NULL: covariate formula (routed to
+#'   covariate path when non-trivial and \code{panel_obj$covariate_matrix}
+#'   is non-NULL)
 #' @param need_eif logical: if TRUE, always store EIF regardless of store_eif
 #'   (used internally when \code{n_bootstrap > 0})
 #'
@@ -23,12 +25,19 @@
 #'   }
 #' @keywords internal
 fit_edid_cells <- function(
-  panel_obj, pt_assumption, alpha, store_eif, covariates,
+  panel_obj, pt_assumption, alpha, store_eif, xformla = NULL,
   need_eif = FALSE
 ) {
-  if (!is.null(covariates)) {
-    stop("covariate path not yet implemented in edid(). ",
-         "Pass covariates = NULL or omit the covariates argument.")
+  # Determine if covariate path is active
+  is_trivial_xformla <- is.null(xformla) ||
+    identical(deparse(xformla, width.cutoff = 500L), "~1")
+  use_cov_path <- !is_trivial_xformla && !is.null(panel_obj$covariate_matrix)
+
+  # Cross-fitting fold assignment (global, reused across all cells)
+  if (use_cov_path) {
+    fold_id <- build_crossfit_folds_edid(n = panel_obj$n, K = 5L, seed = NULL)
+  } else {
+    fold_id <- NULL
   }
 
   tgroups   <- panel_obj$treatment_groups
@@ -95,23 +104,57 @@ fit_edid_cells <- function(
         next
       }
 
-      # Step 2: generated outcomes
-      y_hat <- compute_generated_outcomes_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
+      # Covariate nuisance estimates (per cell)
+      prop_ratios  <- NULL
+      cond_means   <- NULL
 
-      # Step 3: Omega*
-      omega <- compute_omega_star_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
+      if (use_cov_path) {
+        prop_ratios <- estimate_all_propensity_ratios(
+          panel_obj = panel_obj,
+          g         = g,
+          pairs     = pairs,
+          bs_df    = 4L,
+          K_folds  = 5L,
+          fold_id  = fold_id
+        )
+        cond_means <- estimate_all_conditional_means(
+          panel_obj = panel_obj,
+          pairs     = pairs,
+          t_val    = t,
+          bs_df    = 4L,
+          K_folds  = 5L,
+          fold_id  = fold_id
+        )
+      }
 
-      # Condition number diagnostics
-      cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
-
-      # Step 4: efficient weights
-      weights <- compute_efficient_weights_edid(omega)
-
-      # Step 5: point estimate
-      att_gt <- sum(weights * y_hat)
-
-      # Step 6: EIF
-      eif_gt <- compute_eif_nocov_edid(g, t, pairs, weights, panel_obj, att_gt, pt_assumption)
+      # Steps 2-6: dispatch on covariate vs. no-covariate path
+      if (use_cov_path) {
+        # --- Covariate path ---
+        gen_out_mat <- compute_generated_outcomes_cov_edid(
+          panel_obj     = panel_obj,
+          g             = g,
+          t             = t,
+          pairs         = pairs,
+          prop_ratios   = prop_ratios,
+          cond_means    = cond_means,
+          pt_assumption = pt_assumption
+        )
+        omega   <- compute_omega_star_cov_edid(panel_obj, gen_out_mat)
+        cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
+        weights <- compute_efficient_weights_edid(omega)
+        # ATT: weighted mean of column means of gen_out_mat
+        col_means <- colMeans(gen_out_mat, na.rm = TRUE)
+        att_gt    <- sum(weights * col_means)
+        eif_gt    <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt)
+      } else {
+        # --- No-covariate path ---
+        y_hat    <- compute_generated_outcomes_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
+        omega    <- compute_omega_star_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
+        cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
+        weights  <- compute_efficient_weights_edid(omega)
+        att_gt   <- sum(weights * y_hat)
+        eif_gt   <- compute_eif_nocov_edid(g, t, pairs, weights, panel_obj, att_gt, pt_assumption)
+      }
 
       # Step 7: SE and inference
       inf_res <- safe_inference_edid(eif_gt, panel_obj$cluster_indices, alpha, att_gt)

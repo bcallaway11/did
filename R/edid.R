@@ -16,6 +16,11 @@
 #'   first treatment period. Never-treated units should have \code{Inf} or
 #'   \code{0} (the \code{att_gt()} convention). \code{0} is automatically
 #'   converted to \code{Inf} internally.
+#' @param xformla A one-sided formula specifying covariates to condition on,
+#'   e.g., \code{~ X1 + X2}. Default \code{NULL} (equivalent to \code{~1},
+#'   no covariates). When \code{NULL} or \code{~1}, the efficient no-covariate
+#'   path is used. \strong{Note}: The \code{covariates} argument is deprecated
+#'   and will error if non-NULL; use \code{xformla} instead.
 #' @param covariates Character vector of covariate column names, or \code{NULL}
 #'   (default). \strong{Currently not implemented}: passing non-NULL triggers an
 #'   error.
@@ -122,6 +127,7 @@ edid <- function(
   idname,
   tname,
   gname,
+  xformla           = NULL,
   covariates        = NULL,
   pt_assumption     = c("all", "post"),
   alp               = 0.05,
@@ -174,6 +180,7 @@ edid <- function(
     idname        = idname,
     tname         = tname,
     gname         = gname,
+    xformla       = xformla,
     covariates    = covariates,
     pt_assumption = pt_assumption,
     alp           = alp,
@@ -193,6 +200,7 @@ edid <- function(
     idname        = idname,
     tname         = tname,
     gname         = gname,
+    xformla       = xformla,
     covariates    = covariates,
     clustervars   = clustervars,
     control_group = control_group,
@@ -213,7 +221,7 @@ edid <- function(
     pt_assumption = pt_assumption,
     alpha         = alp,
     store_eif     = store_eif,
-    covariates    = covariates,
+    xformla       = xformla,
     need_eif      = need_eif_internal
   )
 
@@ -346,6 +354,7 @@ edid <- function(
     anticipation     = panel_obj$anticipation,
     inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
     clustervars      = clustervars,
+    xformla          = xformla,
     bstrap           = bstrap,
     cells            = cells,
     att_gt           = att_gt_df,

@@ -20,7 +20,7 @@
 #' @keywords internal
 prepare_edid_panel <- function(
   data, yname, idname, tname, gname,
-  covariates = NULL, clustervars = NULL,
+  xformla = NULL, covariates = NULL, clustervars = NULL,
   control_group = "nevertreated",
   anticipation = 0L
 ) {
@@ -140,6 +140,25 @@ prepare_edid_panel <- function(
   }
 
   # -----------------------------------------------------------------------
+  # 13. Covariate matrix extraction
+  # -----------------------------------------------------------------------
+  covariate_matrix <- NULL
+  is_trivial_xformla <- is.null(xformla) ||
+    identical(deparse(xformla, width.cutoff = 500L), "~1")
+
+  if (!is_trivial_xformla) {
+    rhs_vars <- all.vars(xformla)
+    if (length(rhs_vars) > 0L) {
+      # Extract one row per unit (time-invariant covariates assumed)
+      # Use the first time period for each unit
+      first_rows <- match(all_units, dt[[idname]])
+      cov_df     <- as.data.frame(dt)[first_rows, rhs_vars, drop = FALSE]
+      covariate_matrix <- as.matrix(cov_df)
+      rownames(covariate_matrix) <- NULL
+    }
+  }
+
+  # -----------------------------------------------------------------------
   # Assemble panel_obj
   # -----------------------------------------------------------------------
   panel_obj <- list(
@@ -157,7 +176,8 @@ prepare_edid_panel <- function(
     cohort_fractions   = cohort_fractions,
     cluster_indices    = cluster_indices,
     n_clusters         = n_clusters,
-    covariate_matrix   = NULL,   # deferred
+    covariate_matrix   = covariate_matrix,
+    xformla            = xformla,
     control_group      = control_group,
     anticipation       = as.integer(anticipation)
   )
