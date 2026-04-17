@@ -1,3 +1,41 @@
+# Implementation Record — Covariate Path Wiring + Prior Fixes
+
+---
+
+## Pass: covariate path wiring (2026-04-17)
+
+### Files modified
+
+| File | Change |
+|------|--------|
+| `R/edid-covariates.R` | Replaced stub stop() functions with empty comment |
+| `R/edid.R` | Added `xformla` arg; threaded through validate/prepare/fit calls; stored in `edid_fit` object |
+| `R/edid-validate.R` | Added `xformla` to signature; replaced covariates stub-stop with deprecated-alias error; added xformla formula/variable/type validation |
+| `R/edid-data.R` | Added `xformla` to signature; added section 13 (covariate matrix extraction); stored `covariate_matrix` and `xformla` in `panel_obj` |
+| `R/edid-fit.R` | Replaced `covariates` with `xformla`; added `use_cov_path` logic; fold assignment; per-cell nuisance estimation; dispatch to cov EIF functions |
+| `R/edid-cov.R` | Bug fix: `bs_objects[[k]] <<- NULL` removes list slot; replaced with fallback sentinel |
+| `R/edid-cov-eif.R` | Tracked and committed (pre-existing, not modified) |
+
+### Bug fix: bs_objects NULL sentinel
+In `build_basis_matrix_edid`, assigning `bs_objects[[k]] <<- NULL` inside a `tryCatch` error handler removes the list slot (standard R behavior). Fixed by assigning `list(fallback=TRUE, use_intercept=...)`. Updated `predict_basis_edid` to detect and handle the sentinel.
+
+### Smoke test results
+```
+nocov ATT: 0.1982735   # unchanged from pre-existing behavior
+cov   ATT: 0.1707095   # new covariate path
+```
+B-spline fallback warnings are expected with n=60, K=5 folds (training folds have ~16 obs/cohort < bs_df=4 threshold).
+
+### Known limitations / deferred
+- `bs_df=4` and `K=5` hardcoded in `fit_edid_cells`; could be user-exposed later
+- Covariate matrix extraction assumes time-invariant covariates (uses first obs per unit)
+- `compute_omega_star_cov_edid` is O(n²·H²); not addressed here
+- Bootstrap with `xformla` is wired but not explicitly smoke-tested
+
+---
+
+## Pass: PT-All pair enumeration fix (2026-04-13)
+
 # Implementation Record — PT-All Pair Enumeration Fix
 
 **Date**: 2026-04-13

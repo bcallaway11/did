@@ -67,3 +67,22 @@ The R `edid()` instead:
 - OR: regenerate the Python benchmark with a library version that uses the same 13-pair moment set as the fixed R edid()
 
 **All other tests pass**: 1041 PASS, 0 FAIL in the full package test suite.
+
+---
+
+## [2026-04-17] Builder — Covariate path wiring complete
+
+### Interface changes
+
+- `edid()` now accepts a new argument `xformla = NULL` (one-sided formula). The old `covariates` argument now errors with a redirect message instead of silently accepting NULL.
+- `edid_fit` object now includes `xformla` field.
+- `panel_obj` now includes `covariate_matrix` (n×d matrix or NULL) and `xformla` fields.
+- `fit_edid_cells` signature changed from `covariates` to `xformla`; any direct callers must update.
+- `prepare_edid_panel` signature: `xformla = NULL` added before `covariates`.
+- `validate_edid_inputs` signature: `xformla = NULL` added before `covariates`.
+
+### Bug fixed in edid-cov.R
+`build_basis_matrix_edid` now uses a fallback sentinel `list(fallback=TRUE, ...)` instead of `NULL` when the B-spline fails, to avoid list-slot deletion.
+
+### Smoke test passed
+No-covariate and covariate paths both return finite ATT estimates. B-spline fallback warnings are expected for small n.
