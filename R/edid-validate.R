@@ -155,7 +155,7 @@ validate_edid_inputs <- function(
            "edid() requires never-treated units when `control_group = \"nevertreated\"`.")
     }
   } else {
-    # last_cohort
+    # notyettreated
     finite_ft <- unit_ft[is.finite(unit_ft)]
     if (length(finite_ft) == 0L) {
       stop("No finite first-treatment values found; cannot determine last cohort.")
@@ -164,7 +164,7 @@ validate_edid_inputs <- function(
     n_last <- sum(finite_ft == last_g)
     if (n_last == 0L) {
       stop("No units in the last treated cohort found. ",
-           "Cannot use `control_group = \"last_cohort\"`.")
+           "Cannot use `control_group = \"notyettreated\"`.")
     }
   }
 

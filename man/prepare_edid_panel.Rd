@@ -31,7 +31,7 @@ prepare_edid_panel(
 
 \item{clustervars}{character scalar or NULL}
 
-\item{control_group}{\code{"nevertreated"} or \code{"last_cohort"}}
+\item{control_group}{\code{"nevertreated"} or \code{"notyettreated"}}
 
 \item{anticipation}{non-negative integer}
 }

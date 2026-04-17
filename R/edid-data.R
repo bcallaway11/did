@@ -13,7 +13,7 @@
 #' @param gname character scalar: first-treatment-period column name
 #' @param covariates NULL (stub)
 #' @param clustervars character scalar or NULL
-#' @param control_group \code{"nevertreated"} or \code{"last_cohort"}
+#' @param control_group \code{"nevertreated"} or \code{"notyettreated"}
 #' @param anticipation non-negative integer
 #'
 #' @return a \code{panel_obj} list; see spec Section 5.1
@@ -81,9 +81,9 @@ prepare_edid_panel <- function(
   unit_cohorts <- as.numeric(unit_ft_map[match(all_units, names(unit_ft_map))])
 
   # -----------------------------------------------------------------------
-  # 7. Handle last_cohort control group
+  # 7. Handle notyettreated control group
   # -----------------------------------------------------------------------
-  if (control_group == "last_cohort") {
+  if (control_group == "notyettreated") {
     finite_cohorts <- unit_cohorts[is.finite(unit_cohorts)]
     last_g         <- max(finite_cohorts)
     # Relabel last cohort as Inf (never-treated for estimation purposes)

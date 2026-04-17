@@ -55,8 +55,10 @@ test_that("enumerate_valid_pairs_edid() PT-Post baseline = period_1 returns 0 pa
 
 # ============================================================
 # 4.2 PT-All: multiple pairs including same-cohort
+# Updated 2026-04-13: gp=Inf is no longer included in PT-All;
+# period_1 IS valid as tpre for self-pairs (gp == target_g).
 # ============================================================
-test_that("enumerate_valid_pairs_edid() PT-All includes same-cohort comparisons", {
+test_that("enumerate_valid_pairs_edid() PT-All includes same-cohort comparisons but no gp=Inf", {
   pairs <- enumerate_valid_pairs_edid(
     target_g         = 3L,
     treatment_groups = c(3L, 5L),
@@ -69,13 +71,15 @@ test_that("enumerate_valid_pairs_edid() PT-All includes same-cohort comparisons"
   expect_true(nrow(pairs) > 1L)
   # Same-cohort comparison gp=3 must be present
   expect_true(any(pairs$gp == 3L))
-  # Never-treated comparison gp=Inf must be present
-  expect_true(any(is.infinite(pairs$gp)))
-  # period_1 must NOT appear as tpre
-  expect_false(any(pairs$tpre == 1L))
+  # Never-treated comparison gp=Inf must NOT be present (PT-All uses only treated cohorts)
+  expect_false(any(is.infinite(pairs$gp)))
+  # period_1 IS valid as tpre for self-pair (gp=3, tpre=1)
+  expect_true(any(pairs$gp == 3L & pairs$tpre == 1L))
 })
 
-test_that("enumerate_valid_pairs_edid() PT-All excludes period_1 as tpre", {
+test_that("enumerate_valid_pairs_edid() PT-All includes period_1 as tpre for self-pair", {
+  # Single cohort: gp=target_g is the only comparison cohort (self-pair).
+  # Self-pair includes period_1 as a valid tpre (degenerate CS DiD moment).
   pairs <- enumerate_valid_pairs_edid(
     target_g         = 3L,
     treatment_groups = c(3L),
@@ -85,12 +89,16 @@ test_that("enumerate_valid_pairs_edid() PT-All excludes period_1 as tpre", {
     anticipation     = 0L,
     never_treated_val = Inf
   )
-  expect_false(1L %in% pairs$tpre)
+  # period_1=1 MUST appear as tpre for the self-pair
+  expect_true(1L %in% pairs$tpre)
+  # All pairs have finite gp (no gp=Inf)
+  expect_true(all(is.finite(pairs$gp)))
 })
 
-test_that("enumerate_valid_pairs_edid() PT-All with anticipation=1 adjusts gp's effective treatment", {
-  # gp=3 with anticipation=1: effective treatment = 3-1=2; valid tpre < 2, excl period_1=1 -> none
-  # gp=Inf: all periods except period_1 -> tpre = 2,3,4
+test_that("enumerate_valid_pairs_edid() PT-All with anticipation=1 adjusts effective treatment", {
+  # target_g=3, anticipation=1: eff_start(3) = 2
+  # Self-pair (gp=3): valid tpre < 2, includes period_1=1 -> {1} = 1 row
+  # No gp=Inf in PT-All
   pairs <- enumerate_valid_pairs_edid(
     target_g         = 3L,
     treatment_groups = c(3L),
@@ -100,16 +108,20 @@ test_that("enumerate_valid_pairs_edid() PT-All with anticipation=1 adjusts gp's 
     anticipation     = 1L,
     never_treated_val = Inf
   )
-  # gp=3 has no valid tpre (effective treatment = 2, only tpre < 2 excl 1 = none)
-  expect_false(any(pairs$gp == 3L))
-  # never-treated pairs should still exist
-  expect_true(any(is.infinite(pairs$gp)))
+  # gp=3 self-pair with eff_start=2 has tpre=1 (period_1 is valid)
+  expect_true(any(pairs$gp == 3L))
+  expect_equal(nrow(pairs[pairs$gp == 3L, ]), 1L)
+  expect_equal(pairs$tpre[pairs$gp == 3L], 1L)
+  # No never-treated pairs in PT-All
+  expect_false(any(is.infinite(pairs$gp)))
 })
 
 # ============================================================
-# 4.3 Never-treated pairs retained
+# 4.3 Self-pair structure in PT-All
+# Updated 2026-04-13: gp=Inf no longer exists in PT-All;
+# the correct invariant is that only treated cohorts appear as gp.
 # ============================================================
-test_that("enumerate_valid_pairs_edid() PT-All includes all never-treated periods except period_1", {
+test_that("enumerate_valid_pairs_edid() PT-All has only treated-cohort gp values", {
   time_periods <- 1:6
   period_1     <- 1L
   pairs <- enumerate_valid_pairs_edid(
@@ -121,9 +133,11 @@ test_that("enumerate_valid_pairs_edid() PT-All includes all never-treated period
     anticipation     = 0L,
     never_treated_val = Inf
   )
-  inf_pairs <- pairs[is.infinite(pairs$gp), ]
-  # All periods 2..6 should appear as tpre for gp=Inf (5 periods)
-  expect_equal(sort(inf_pairs$tpre), 2:6)
+  # Only gp=3 (self-pair) should appear; no gp=Inf
+  expect_true(all(pairs$gp == 3L))
+  expect_true(all(is.finite(pairs$gp)))
+  # Self-pair: tpre < 3, includes period_1=1 -> {1, 2}
+  expect_equal(sort(pairs$tpre), c(1L, 2L))
 })
 
 # ============================================================

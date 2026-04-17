@@ -14,7 +14,7 @@ edid(
   pt_assumption = c("all", "post"),
   alp = 0.05,
   clustervars = NULL,
-  control_group = c("nevertreated", "last_cohort"),
+  control_group = c("nevertreated", "notyettreated"),
   bstrap = FALSE,
   biters = 1000L,
   bootstrap_weights = c("rademacher", "mammen", "webb"),
@@ -64,7 +64,7 @@ Note: edid() currently supports only a single cluster variable internally.}
 \item{control_group}{Control group definition. One of:
 \describe{
 \item{\code{"nevertreated"}}{Use never-treated units (default).}
-\item{\code{"last_cohort"}}{Use the last-treated cohort as
+\item{\code{"notyettreated"}}{Use the last-treated cohort as
 pseudo-controls (relabeled as never-treated internally).}
 }}
 

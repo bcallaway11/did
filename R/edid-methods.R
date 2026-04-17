@@ -57,8 +57,8 @@ print.edid_fit <- function(x, ...) {
 
   # Control group footer
   cg <- x$control_group
-  cg_text <- if (cg == "nevertreated") "Never Treated" else
-             if (cg == "last_cohort")  "Last Cohort"   else cg
+  cg_text <- if (cg == "nevertreated")   "Never Treated"    else
+             if (cg == "notyettreated") "Not Yet Treated"  else cg
   cat("Control Group:  ")
   cat(cg_text)
   cat(",  ")
