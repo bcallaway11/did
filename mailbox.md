@@ -86,3 +86,35 @@ The R `edid()` instead:
 
 ### Smoke test passed
 No-covariate and covariate paths both return finite ATT estimates. B-spline fallback warnings are expected for small n.
+
+---
+
+## [2026-04-17] Tester — Covariate Path Validation Complete
+
+**Overall verdict**: PASS after 3 bug fixes applied during testing.
+
+### Bugs Fixed
+
+**BUG-1** (`R/edid-cov.R`): `build_basis_matrix_edid` — `<<-` inside `tryCatch` failed to assign to function-local `bs_objects` list, causing B-spline to always fall back to linear basis. Fixed by storing `tryCatch` result then assigning directly.
+
+**BUG-2** (`R/edid-cov-eif.R`): `compute_generated_outcomes_cov_edid` — Spurious `+ m_diff` in generated outcome formula. `E[phi] = ATT + E[m_diff]` instead of `ATT`. For DGPs with non-zero unconditional outcome trends (e.g., DGP5), this caused ~1 unit of bias. Fixed by removing `+ m_diff` from both PT-Post and PT-All branches.
+
+**BUG-3** (`R/edid-cov-eif.R`, `R/edid-fit.R`): Self-comparison pairs (`gp = target_g`) used the TREATED group as its own control (`Igp = I(G=g)`, `r = P(G=g|X)/P(G=g|X) = 1`). This caused ATT estimates to collapse near zero. No-covariate path correctly uses never-treated as the DiD comparison for these pairs. Fixed by remapping `gp = g → gp = Inf` in `pairs_for_nuisance` before calling nuisance estimators, and adding `gp_lookup = Inf` in `compute_generated_outcomes_cov_edid`.
+
+### Test Results (after fixes)
+
+| Category | Verdict |
+|----------|---------|
+| 1. Load check | PASS |
+| 2. Regression test xformla=~1 | PASS (exact 0 diff) |
+| 3. Output structure | PASS |
+| 4. Validation errors | PASS |
+| 5. Nuisance unit tests | PASS |
+| 6. DGP5 simulation benchmark (R=50, n=200) | PASS (ATT bias < 0.10; SE ratio marginal for ATT(3,4)) |
+
+### Known Limitations
+
+- SE ratio for ATT(3,4) = 1.65 (threshold 1.5) — conservative inference, not anti-conservative; spec notes threshold is loose.
+- `validate_edid_inputs` does not check NA covariates or time-varying covariates (test-spec.md 3.5 rows 3-4).
+
+Full evidence in `/Users/marcelortiz/Library/CloudStorage/OneDrive-Emory/GitHub Repositories/did/audit_cov.md`.

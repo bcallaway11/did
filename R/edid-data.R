@@ -149,11 +149,22 @@ prepare_edid_panel <- function(
   if (!is_trivial_xformla) {
     rhs_vars <- all.vars(xformla)
     if (length(rhs_vars) > 0L) {
-      # Extract one row per unit (time-invariant covariates assumed)
+      # Extract one row per unit (time-invariant covariates enforced by validation)
       # Use the first time period for each unit
       first_rows <- match(all_units, dt[[idname]])
-      cov_df     <- as.data.frame(dt)[first_rows, rhs_vars, drop = FALSE]
-      covariate_matrix <- as.matrix(cov_df)
+      cov_df     <- as.data.frame(dt)[first_rows, , drop = FALSE]
+
+      # Use model.matrix() to properly expand the formula
+      # This handles I(), interactions, poly(), factors via dummy coding
+      mm <- stats::model.matrix(xformla, data = cov_df)
+
+      # Remove intercept column if present (estimator handles centering)
+      intercept_col <- which(colnames(mm) == "(Intercept)")
+      if (length(intercept_col) > 0L) {
+        mm <- mm[, -intercept_col, drop = FALSE]
+      }
+
+      covariate_matrix <- unname(mm)
       rownames(covariate_matrix) <- NULL
     }
   }

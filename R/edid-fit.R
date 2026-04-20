@@ -25,7 +25,7 @@
 #'   }
 #' @keywords internal
 fit_edid_cells <- function(
-  panel_obj, pt_assumption, alpha, store_eif, xformla = NULL,
+  panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
   need_eif = FALSE
 ) {
   # Determine if covariate path is active
@@ -35,7 +35,7 @@ fit_edid_cells <- function(
 
   # Cross-fitting fold assignment (global, reused across all cells)
   if (use_cov_path) {
-    fold_id <- build_crossfit_folds_edid(n = panel_obj$n, K = 5L, seed = NULL)
+    fold_id <- build_crossfit_folds_edid(n = panel_obj$n, K = 5L, seed = seed)
   } else {
     fold_id <- NULL
   }
@@ -62,6 +62,7 @@ fit_edid_cells <- function(
   eif_list <- if (keep_eif) vector("list", n_cells) else NULL
 
   cell_id <- 0L
+  n_extreme_ratio_instances <- 0L  # accumulate extreme-ratio warnings; emit once at end
 
   for (g in tgroups) {
     for (t in iter_periods) {
@@ -109,17 +110,48 @@ fit_edid_cells <- function(
       cond_means   <- NULL
 
       if (use_cov_path) {
-        prop_ratios <- estimate_all_propensity_ratios(
-          panel_obj = panel_obj,
-          g         = g,
-          pairs     = pairs,
-          bs_df    = 4L,
-          K_folds  = 5L,
-          fold_id  = fold_id
+        # Build nuisance estimation pairs.
+        # For Eq. (4.4), we need nuisances for:
+        #   - r[g, Inf] always (never-treated propensity ratio)
+        #   - r[g, gp] for each cross-cohort gp
+        #   - m_{Inf, t} and m_{Inf, tpre} for never-treated conditional means
+        #   - m_{gp, tpre} for each cross-cohort gp's pretrend
+        # Build pairs_for_nuisance that includes Inf + all cross-cohort gps
+        pairs_for_nuisance <- pairs
+        # Self-comparison pairs use Inf as comparison
+        self_cmp <- is.finite(pairs_for_nuisance$gp) & (pairs_for_nuisance$gp == g)
+        if (any(self_cmp)) {
+          pairs_for_nuisance$gp[self_cmp] <- Inf
+        }
+        # Ensure Inf is always present for never-treated nuisances
+        # (needed even for cross-cohort pairs)
+        cross_pairs <- pairs[is.finite(pairs$gp) & pairs$gp != g, , drop = FALSE]
+        if (nrow(cross_pairs) > 0L) {
+          # Add Inf-based pairs for the same tpre values (for m_{Inf,tpre})
+          inf_pairs <- data.frame(gp = Inf, tpre = unique(cross_pairs$tpre))
+          pairs_for_nuisance <- rbind(pairs_for_nuisance, inf_pairs)
+          pairs_for_nuisance <- unique(pairs_for_nuisance)
+        }
+
+        prop_ratios <- withCallingHandlers(
+          estimate_all_propensity_ratios(
+            panel_obj = panel_obj,
+            g         = g,
+            pairs     = pairs_for_nuisance,
+            bs_df    = 4L,
+            K_folds  = 5L,
+            fold_id  = fold_id
+          ),
+          warning = function(w) {
+            if (grepl("Extreme propensity ratios", conditionMessage(w), fixed = TRUE)) {
+              n_extreme_ratio_instances <<- n_extreme_ratio_instances + 1L
+              invokeRestart("muffleWarning")
+            }
+          }
         )
         cond_means <- estimate_all_conditional_means(
           panel_obj = panel_obj,
-          pairs     = pairs,
+          pairs     = pairs_for_nuisance,
           t_val    = t,
           bs_df    = 4L,
           K_folds  = 5L,
@@ -139,13 +171,14 @@ fit_edid_cells <- function(
           cond_means    = cond_means,
           pt_assumption = pt_assumption
         )
-        omega   <- compute_omega_star_cov_edid(panel_obj, gen_out_mat)
+        omega   <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
+                                                prop_ratios, cond_means)
         cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
         weights <- compute_efficient_weights_edid(omega)
         # ATT: weighted mean of column means of gen_out_mat
         col_means <- colMeans(gen_out_mat, na.rm = TRUE)
         att_gt    <- sum(weights * col_means)
-        eif_gt    <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt)
+        eif_gt    <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
       } else {
         # --- No-covariate path ---
         y_hat    <- compute_generated_outcomes_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
@@ -185,6 +218,13 @@ fit_edid_cells <- function(
 
       if (keep_eif) eif_list[[cell_id]] <- eif_gt
     }
+  }
+
+  if (n_extreme_ratio_instances > 0L) {
+    warning(sprintf(
+      "Extreme propensity ratios detected (max > 100) in %d estimation step(s). Results may be unstable.",
+      n_extreme_ratio_instances
+    ))
   }
 
   # Build EIF matrix if needed

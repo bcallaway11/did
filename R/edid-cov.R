@@ -69,17 +69,22 @@ build_basis_matrix_edid <- function(X_mat, bs_df = 4L) {
   for (k in seq_len(d)) {
     xk <- X_mat[, k]
     use_intercept <- (k == 1L)
-    block <- tryCatch({
-      bs_k <- splines::bs(xk, df = bs_df, intercept = use_intercept)
-      bs_objects[[k]] <<- bs_k
-      as.matrix(bs_k)
-    }, error = function(e) {
+    # All warnings from splines::bs() are benign in cross-fitting contexts:
+    # "boundary knots" fires when test covariates are outside the training range;
+    # "interior knots match" fires for binary/factor-derived dummy columns.
+    # Errors are caught and fall back to a linear basis.
+    bs_result <- tryCatch(
+      suppressWarnings(splines::bs(xk, df = bs_df, intercept = use_intercept)),
+      error = function(e) NULL
+    )
+    if (!is.null(bs_result)) {
+      bs_objects[[k]] <- bs_result
+      blocks[[k]]     <- as.matrix(bs_result)
+    } else {
       warning(sprintf("B-spline basis failed for covariate column %d; using linear basis.", k))
-      # Use a sentinel list (not NULL) so the list slot is preserved
-      bs_objects[[k]] <<- list(fallback = TRUE, use_intercept = use_intercept)
-      if (use_intercept) cbind(1, xk) else matrix(xk, ncol = 1L)
-    })
-    blocks[[k]] <- block
+      bs_objects[[k]] <- list(fallback = TRUE, use_intercept = use_intercept)
+      blocks[[k]]     <- if (use_intercept) cbind(1, xk) else matrix(xk, ncol = 1L)
+    }
   }
 
   B <- do.call(cbind, blocks)
@@ -113,7 +118,17 @@ predict_basis_edid <- function(bs_obj_list, X_new_mat) {
       use_intercept <- if (is.list(bsk) && !is.null(bsk$use_intercept)) bsk$use_intercept else (k == 1L)
       blocks[[k]] <- if (use_intercept) cbind(1, xk) else matrix(xk, ncol = 1L)
     } else {
-      blocks[[k]] <- predict(bsk, newx = xk)
+      # Suppress the splines::bs() "beyond boundary knots" warning that fires
+      # whenever a cross-fitting test fold contains covariate values outside the
+      # training fold's knot range.  This is a normal artifact of random splits
+      # and does not affect prediction correctness.  All other warnings propagate.
+      blocks[[k]] <- withCallingHandlers(
+        predict(bsk, newx = xk),
+        warning = function(w) {
+          if (grepl("boundary knots", conditionMessage(w), fixed = TRUE))
+            invokeRestart("muffleWarning")
+        }
+      )
     }
   }
 
@@ -183,11 +198,18 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   B_test <- predict_basis_edid(attr(B_train_obj, "bs_objects"), X_test)
   r_hat  <- pmax(drop(B_test %*% beta_hat), 0)
 
-  if (any(is.finite(r_hat)) && max(r_hat, na.rm = TRUE) > 100) {
-    warning("Extreme propensity ratios detected (max > 100). Results may be unstable.")
-  }
-
   r_hat
+}
+
+#' Check for extreme propensity ratios and warn once
+#' @keywords internal
+.check_extreme_ratios_edid <- function(r_vec, g, gp) {
+  if (any(is.finite(r_vec)) && max(r_vec, na.rm = TRUE) > 100) {
+    warning(sprintf(
+      "Extreme propensity ratios detected for g=%g, g'=%g (max > 100). Results may be unstable.",
+      g, gp
+    ))
+  }
 }
 
 #' Estimate the conditional mean E[Y_s - Y_1 | G=g', X]
@@ -288,6 +310,7 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
       )
     }
 
+    .check_extreme_ratios_edid(r_full, g, gp)
     result[[as.character(gp)]] <- r_full
   }
 

@@ -1,308 +1,253 @@
-# Implementation Spec — PT-All Pair Enumeration Fix
+# Spec: edid() Covariate Path Audit and Repair
 
-**Target branch**: `feature-efficient-DiD-estimator`
-**Files modified**: `R/edid-pairs.R`, `R/edid-nocov.R`
-**Files read-only (no changes)**: `R/edid-data.R`, `R/edid-utils.R`, `R/edid-linalg.R`, `R/edid-fit.R`
-
----
-
-## 1. Notation
-
-| Symbol | Type | Description |
-|--------|------|-------------|
-| `g` | scalar | Target treatment cohort (`target_g`) |
-| `t` | scalar | Target time period (`target_t`) |
-| `g'` (`gp`) | scalar | Comparison cohort — always finite under PT-All after this fix |
-| `t'` (`tpre`) | scalar | Pre-period used in the identifying moment |
-| `period_1` | scalar | `min(time_periods)` — universal first period |
-| `eff_start(g')` | scalar | `g' - anticipation` — effective treatment start of comparison cohort |
-| `G_treated` | vector | `treatment_groups` — sorted unique finite cohort values |
-| `n_g` | scalar | Number of units in cohort g |
-| `n_inf` | scalar | Number of never-treated units |
-| `n_{g'}` | scalar | Number of units in comparison cohort g' |
-| `pi_g` | scalar | `n_g / n` — cohort fraction |
-| `pi_inf` | scalar | `n_inf / n` |
-| `delta_g_t_1` | vector length `n_g` | `Y_g(t) - Y_g(period_1)` — treated group change |
-| `delta_inf_j` | vector length `n_inf` | `Y_inf(t) - Y_inf(tpre_j)` — never-treated time change for pair j |
-| `delta_gp_j` | vector length `n_{gp_j}` | `Y_{gp_j}(tpre_j) - Y_{gp_j}(period_1)` — comparison cohort pre-trend |
-| `H` | scalar integer | Number of valid pairs for cell (g, t) |
-| `Omega` | H x H matrix | Moment covariance matrix |
-| `w` | vector length H | Efficient weights, sum to 1 |
+**Run**: REQ-20260417-EDID-COV
+**Date**: 2026-04-17
+**Status**: READY FOR BUILDER
 
 ---
 
-## 2. File 1: `R/edid-pairs.R` — Replace PT-All Loop
+## 1. Paper Formula Reference (R-ready notation)
 
-### 2.1 What to Replace
-
-Replace the entire PT-All section (lines 50–76) — everything from the comment `# PT-All: loop over all candidate comparison cohorts` through the final `data.frame(...)` return — with the new logic below.
-
-Do NOT touch lines 38–48 (the empty sentinel and the PT-Post branch). Those are correct and must be preserved exactly.
-
-### 2.2 New PT-All Logic
-
-```r
-  # -------------------------------------------------------------------------
-  # PT-All: loop over treated cohorts only (never-treated is NOT a comparison
-  # cohort; it appears only as the time control E[Y_inf(t)-Y_inf(tpre)] inside
-  # each moment).
-  #
-  # For g' == target_g: valid tpre = {s : s < eff_start(g')}
-  #   -- INCLUDES period_1 (degenerate CS DiD moment; comparison EIF = 0)
-  # For g' != target_g: valid tpre = {s : period_1 < s < eff_start(g')}
-  #   -- EXCLUDES period_1 (non-degenerate moments only)
-  # -------------------------------------------------------------------------
-  out_gp   <- numeric(0L)
-  out_tpre <- numeric(0L)
-
-  for (gp in treatment_groups) {
-    eff_start <- gp - anticipation
-    if (gp == target_g) {
-      # Self-pair: include period_1
-      valid_tpre <- time_periods[time_periods < eff_start]
-    } else {
-      # Cross-pair: exclude period_1
-      valid_tpre <- time_periods[
-        time_periods > period_1 & time_periods < eff_start
-      ]
-    }
-    if (length(valid_tpre) > 0L) {
-      out_gp   <- c(out_gp,   rep(gp, length(valid_tpre)))
-      out_tpre <- c(out_tpre, valid_tpre)
-    }
-  }
-
-  if (length(out_gp) == 0L) return(empty)
-  data.frame(gp = out_gp, tpre = out_tpre, stringsAsFactors = FALSE)
-```
-
-### 2.3 Roxygen `@details` Update
-
-Replace the current `@details` paragraph (lines 13–17 in the existing file, contained within the roxygen block) with:
+### Eq. (3.9) — Generated Outcome for pair (g', tpre) targeting ATT(g,t)
 
 ```
-#' Under \strong{PT-Post}: returns exactly one pair \code{(Inf, target_g - 1 - anticipation)},
-#' or a 0-row data.frame if that pre-period does not exist in \code{time_periods} or
-#' equals \code{period_1}.
-#'
-#' Under \strong{PT-All}: iterates over treated cohorts \code{g'} only (the
-#' never-treated group is the time control inside every moment, not a comparison
-#' cohort). For \code{g' == target_g}: valid \code{tpre} are all periods strictly
-#' less than \code{g' - anticipation}, including \code{period_1} (this is the
-#' degenerate CS DiD moment whose comparison-cohort EIF term is identically zero).
-#' For \code{g' != target_g}: valid \code{tpre} are periods strictly between
-#' \code{period_1} and \code{g' - anticipation} (exclusive on both ends).
-#' Returns a 0-row data.frame if no valid pairs exist (e.g., single cohort with
-#' only one pre-period equal to \code{period_1}).
+Y_tilde[g',tpre] = (G_g / pi_g) * (Y_t - Y_1 - m_inf_t_tpre(X) - m_g'_tpre_1(X))
+                  - r[g,inf](X) * (G_inf / pi_g) * (Y_t - Y_tpre - m_inf_t_tpre(X))
+                  - r[g,g'](X)  * (G_g' / pi_g) * (Y_tpre - Y_1 - m_g'_tpre_1(X))
 ```
 
-The `@param` lines, `@return` line, and `@keywords internal` line are unchanged.
+Where:
+- `G_g = 1{G_i = g}`, `G_inf = 1{G_i = Inf}`, `G_g' = 1{G_i = g'}`
+- `pi_g = E[G_g] = n_g/n`
+- `m_inf_t_tpre(X) = E[Y_t - Y_tpre | G=Inf, X]` (never-treated trend from tpre to t)
+- `m_g'_tpre_1(X) = E[Y_tpre - Y_1 | G=g', X]` (comparison cohort trend from 1 to tpre)
+- `r[g,inf](X) = p_g(X) / p_inf(X)` (propensity ratio g vs never-treated)
+- `r[g,g'](X) = p_g(X) / p_g'(X)` (propensity ratio g vs comparison cohort g')
+
+**Self-comparison case (g' = g)**: The third term vanishes because there is no separate comparison cohort (G_g' = G_g is already used in the first term). The formula reduces to Eq. (3.2):
+
+```
+Y_tilde[g,tpre] = (G_g / pi_g) * (Y_t - Y_tpre - m_inf_t_tpre(X))
+                 - r[g,inf](X) * (G_inf / pi_g) * (Y_t - Y_tpre - m_inf_t_tpre(X))
+               = ((G_g / pi_g) - r[g,inf](X) * G_inf / pi_g) * (Y_t - Y_tpre - m_inf_t_tpre(X))
+```
+
+### Eq. (3.10) — Influence Function for pair (g', tpre)
+
+```
+IF[g',tpre] = Y_tilde[g',tpre] + (G_g / pi_g) * ATT(g,t)
+```
+
+Note the PLUS sign. The generated outcome has mean = -ATT(g,t) * pi_g, so IF has mean zero.
+
+### Eq. (3.12) — Omega* conditional covariance matrix
+
+The (j,k)-th element of Omega*(X) for pairs j=(g'_j, t'_j) and k=(g'_k, t'_k):
+
+```
+Omega*[j,k](X) = (1/p_g(X)) * Cov(Y_t - Y_1, Y_t - Y_1 | G=g, X)
+               + (1/p_inf(X)) * Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X)
+               - 1{g = g'_j} / p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
+               - 1{g = g'_k} / p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
+               + 1{g'_j = g'_k} / p_{g'_j}(X) * Cov(Y_{t'_j} - Y_1, Y_{t'_k} - Y_1 | G=g'_j, X)
+```
+
+### Eq. (4.3)-(4.4) — Plug-in Estimator
+
+```
+ATT_hat(g,t) = E_n[ w(X_i)' * Y_tilde_hat(X_i) ]
+w(X) = Omega_hat*(X)^{-1} * 1 / (1' * Omega_hat*(X)^{-1} * 1)
+```
+
+### EIF for the estimator
+
+```
+EIF_i = w(X_i)' * IF_hat_i  [i.e., weighted IF across pairs]
+      = w(X_i)' * Y_tilde_hat_i + (G_g_i / pi_g) * ATT_hat(g,t)
+```
+
+Note: This is NOT `w' * gen_out - ATT`. It is `w' * (gen_out + G_g/pi_g * ATT)`.
+The current code `drop(gen_out_mat %*% weights) - att_gt` is WRONG because:
+- It subtracts `att_gt` from ALL units instead of adding `G_g/pi_g * att_gt`
+- The sign is wrong (should be +, not -)
+- The weighting by G_g/pi_g is missing (only treated units get the ATT correction)
 
 ---
 
-## 3. File 2: `R/edid-nocov.R` — Remove Dead gp=Inf Branches (PT-All Only)
+## 2. Bug-by-Bug Analysis and Repair Plan
 
-With the new pair rule, all `gp` values in PT-All pairs are finite. Three `else` branches that handle `gp = Inf` in PT-All context are now dead code. Remove them as specified below. **Do NOT touch the PT-Post branch (lines 47–60) in `compute_omega_star_nocov_edid` or the PT-Post branch (lines 221–227) in `compute_generated_outcomes_nocov_edid` or the PT-Post branch (lines 287–300) in `compute_eif_nocov_edid`.**
+### Bug 1: Generated Outcome Formula (edid-cov-eif.R:27-106)
 
-### 3.1 `compute_omega_star_nocov_edid` — Remove gp=Inf Branch in `delta_gp_cache` Loop
-
-Current code (lines 82–95):
-
+**Current code**: Lines 84-99 compute:
 ```r
-  for (rr in seq_len(nrow(unique_gp_tpre))) {
-    gp_val  <- unique_gp_tpre$gp[rr]
-    tp_val  <- unique_gp_tpre$tpre[rr]
-    key     <- paste0(gp_val, "_", tp_val)
-    if (is.finite(gp_val)) {
-      mask_gp <- panel_obj$cohort_masks[[as.character(gp_val)]]
-      col_pre <- .col(panel_obj, tp_val)
-      delta_gp_cache[[key]] <- ow[mask_gp, col_pre] - ow[mask_gp, col_1]
-    } else {
-      # Never-treated: delta_{inf, tpre, 1} = Y_{tpre} - Y_{period_1}
-      col_pre <- .col(panel_obj, tp_val)
-      delta_gp_cache[[key]] <- ow[mask_inf, col_pre] - ow[mask_inf, col_1]
-    }
-  }
+m_diff <- m_t - m_tp                     # m_{gp,t} - m_{gp,tpre}
+y_diff <- ow[,col_t] - ow[,col_tp]      # Y_t - Y_tpre
+phi_j  <- (Ig/pi_g - Igp_j * r_j) * (y_diff - m_diff)
 ```
 
-Replace with (remove the `if`/`else` wrapper — only the finite branch remains):
-
-```r
-  for (rr in seq_len(nrow(unique_gp_tpre))) {
-    gp_val  <- unique_gp_tpre$gp[rr]
-    tp_val  <- unique_gp_tpre$tpre[rr]
-    key     <- paste0(gp_val, "_", tp_val)
-    mask_gp <- panel_obj$cohort_masks[[as.character(gp_val)]]
-    col_pre <- .col(panel_obj, tp_val)
-    delta_gp_cache[[key]] <- ow[mask_gp, col_pre] - ow[mask_gp, col_1]
-  }
+**Paper Eq. (4.4)**: For a cross-cohort pair (g' != g mapped to Inf):
+```
+Y_tilde = (G_g/pi_g) * (Y_t - Y_1 - m_inf_t_1(X) - m_g'_tpre_1(X))
+        - r[g,inf](X) * (G_inf/pi_g) * (Y_t - Y_tpre - m_inf_t_tpre(X))
+        - r[g,g'](X) * (G_g'/pi_g) * (Y_tpre - Y_1 - m_g'_tpre_1(X))
 ```
 
-Note: `gp_val` is always finite here because the new pair enumeration never includes `Inf` as a comparison cohort in PT-All. No `is.finite()` guard needed.
+**Diagnosis**: The current code computes `(G_g/pi_g - G_gp*r) * (Y_t - Y_tpre - (m_t - m_tpre))`. This is only correct for self-comparison pairs (g'=g), where the third term vanishes and `m_diff = m_inf_t_tpre(X)`. For cross-cohort pairs, the paper has THREE separate terms with different outcome differencing structures (Y_t - Y_1, Y_t - Y_tpre, Y_tpre - Y_1), not a single `(Y_t - Y_tpre)` difference.
 
-### 3.2 `compute_omega_star_nocov_edid` — Simplify Inner Loop `n_gp` Lookups
+**However**: Looking more carefully at Eq. (3.9), the structure for cross-cohort pairs with the current pair enumeration needs careful analysis. The `gp_lookup` remapping to `Inf` means the code treats ALL pairs as self-comparison against never-treated. This is a fundamental design choice that requires re-examination.
 
-In the inner `for (j in seq_len(H))` and `for (k in seq_len(H))` loops, the condition number lookups use:
+**Looking at pair enumeration**: `enumerate_valid_pairs_edid()` returns pairs where `gp` can be ANY treated cohort (including `target_g`). But the current generated-outcome code remaps `gp == g` to `Inf`. For `gp != g`, the code does NOT remap, meaning it should use `r[g,gp]` and `m_{gp,...}`.
 
+**Required fix**: Implement the full three-term formula from Eq. (4.4) for cross-cohort pairs. For self-comparison pairs (gp==g, remapped to Inf), the simplified two-term formula is correct.
+
+**Additional nuisance keys needed**:
+- For cross-cohort pairs: need `m_inf_t_tpre(X)` (never-treated trend), `m_g'_tpre_1(X)` (comparison cohort pretrend), AND `r[g,g'](X)` AND `r[g,inf](X)`
+- Currently only estimating one propensity ratio per gp and one conditional mean per (gp, period)
+
+### Bug 2: EIF Formula (edid-cov-eif.R:243-248)
+
+**Current code**:
 ```r
-    n_gp_j <- if (is.finite(gp_j)) {
-      sum(panel_obj$cohort_masks[[as.character(gp_j)]])
-    } else {
-      n_inf
-    }
+eif <- drop(gen_out_mat %*% weights) - att_gt
+eif <- eif - mean(eif)
 ```
 
-Replace both occurrences (one for `gp_j`, one for `gp_k`) with the direct finite-only form:
-
-```r
-    n_gp_j <- sum(panel_obj$cohort_masks[[as.character(gp_j)]])
+**Paper Eq. (3.10) + Theorem 3.2**: The EIF is:
+```
+EIF_i = sum_j w_j(X_i) * IF_{j,i}
+      = sum_j w_j(X_i) * (Y_tilde_{j,i} + (G_g_i / pi_g) * ATT(g,t))
+      = sum_j w_j(X_i) * Y_tilde_{j,i} + (G_g_i / pi_g) * ATT(g,t)
 ```
 
-```r
-    n_gp_k <- sum(panel_obj$cohort_masks[[as.character(gp_k)]])
-```
+**Required fix**: Replace `- att_gt` with `+ (Ig / pi_g) * att_gt` where `Ig = 1{G_i == g}`.
 
-These lookups are already guarded by the `if (gp_j == gp_k)` check for Term D; the simplification is safe because `gp_j` and `gp_k` are always finite.
+The mechanical centering `eif - mean(eif)` was masking this bug.
 
-### 3.3 `compute_omega_star_nocov_edid` — Remove gp=Inf `gp_j == gp_k` Guard Adjustment
+### Bug 3: Omega* Estimation (edid-cov-eif.R:133-225)
 
-The Term D check `if (gp_j == gp_k)` at line 147 uses plain `==` which works for both finite and Inf. It continues to work correctly for finite values only. No change needed here.
+**Current code**: Residualizes generated outcomes on B-splines, then smooths residual outer products with Nadaraya-Watson kernel.
 
-### 3.4 `compute_generated_outcomes_nocov_edid` — Remove gp=Inf Else Branch
+**Paper Eq. (3.12) + Section 4**: The paper estimates each covariance term `Cov(Y_t - Y_s, Y_t - Y_s' | G=g', X=x)` directly using kernel smoothing on raw residuals from conditional means, NOT on generated-outcome residuals.
 
-Current code (lines 242–248):
+**Diagnosis**: The current approach estimates `Cov(phi_j, phi_k | X)` (covariance of generated outcomes) rather than `Omega*(X)` from Eq. (3.12). These are NOT the same. `Omega*(X)` is defined in terms of outcome change covariances, scaled by propensity scores. The generated outcomes include propensity weights, cohort indicators, and nuisance corrections — their covariance includes many cross-terms that don't appear in `Omega*(X)`.
 
-```r
-    if (is.finite(gp_j)) {
-      mask_gp  <- panel_obj$cohort_masks[[as.character(gp_j)]]
-      term_gp  <- mean(ow[mask_gp, col_pre] - ow[mask_gp, col_1])
-    } else {
-      # gp = Inf: comparison is never-treated baseline change
-      term_gp <- mean(ow[mask_inf, col_pre] - ow[mask_inf, col_1])
-    }
-```
+**Required fix**: Replace with faithful plug-in of Eq. (3.12). Each entry needs specific conditional covariances of outcome changes within specific cohorts, NOT generated-outcome residual covariances.
 
-Replace with:
+### Bug 4: xformla Semantics (edid-data.R:145-159)
 
-```r
-    mask_gp  <- panel_obj$cohort_masks[[as.character(gp_j)]]
-    term_gp  <- mean(ow[mask_gp, col_pre] - ow[mask_gp, col_1])
-```
+**Current code**: Uses `all.vars(xformla)` to extract variable names, then `as.matrix(cov_df)`.
 
-### 3.5 `compute_eif_nocov_edid` — Remove gp=Inf Else Branch
+**Problems**:
+- `all.vars(~I(x1^2))` returns `"x1"`, not the transformed term — so `I(x1^2)` is silently treated as `x1`
+- `all.vars(~x1*x2)` returns `c("x1","x2")` — interaction is lost
+- Factor columns become numeric via `as.matrix()` without proper dummy coding
+- Time-varying covariates: only first-period values used, no check that values are constant
 
-Current code (lines 333–351):
+**Required fix**:
+1. Build one-row-per-unit data frame
+2. Use `model.matrix(xformla, data=unit_df)` to expand formula (handles I(), interactions, factors)
+3. Remove intercept column (handled by the estimator)
+4. Store the expanded numeric matrix
 
-```r
-      # Comparison cohort contribution (subtract)
-      if (is.finite(gp_j)) {
-        mask_gp          <- panel_obj$cohort_masks[[as.character(gp_j)]]
-        pi_gp            <- panel_obj$cohort_fractions[[as.character(gp_j)]]
-        delta_gp_pre_base <- ow[mask_gp, col_pre] - ow[mask_gp, col_base]
-        mean_gp_pre_base  <- mean(delta_gp_pre_base)
-        eif[mask_gp] <- eif[mask_gp] -
-          w_j * (delta_gp_pre_base - mean_gp_pre_base) / pi_gp
-      } else {
-        # gp_j == Inf: the comparison cohort is the never-treated group itself.
-        # The moment has a baseline shift component E[Y_inf(tpre) - Y_inf(1)]
-        # whose EIF contribution is:
-        #   -(1/pi_inf) * demeaned(Y_inf(tpre) - Y_inf(1))
-        # This is separate from the -delta_inf term (Y_inf(t) - Y_inf(tpre))
-        # already accumulated above and must be added explicitly.
-        delta_inf_pre_base <- ow[mask_inf, col_pre] - ow[mask_inf, col_base]
-        mean_inf_pre_base  <- mean(delta_inf_pre_base)
-        eif[mask_inf] <- eif[mask_inf] -
-          w_j * (delta_inf_pre_base - mean_inf_pre_base) / pi_inf
-      }
-```
+### Bug 5: Seed Not Threaded (edid-fit.R:38)
 
-Replace with:
+**Current code**: `fold_id <- build_crossfit_folds_edid(n = panel_obj$n, K = 5L, seed = NULL)`
 
-```r
-      # Comparison cohort contribution (subtract)
-      mask_gp          <- panel_obj$cohort_masks[[as.character(gp_j)]]
-      pi_gp            <- panel_obj$cohort_fractions[[as.character(gp_j)]]
-      delta_gp_pre_base <- ow[mask_gp, col_pre] - ow[mask_gp, col_base]
-      mean_gp_pre_base  <- mean(delta_gp_pre_base)
-      eif[mask_gp] <- eif[mask_gp] -
-        w_j * (delta_gp_pre_base - mean_gp_pre_base) / pi_gp
-```
+The `seed = NULL` is hardcoded. The user's `seed` argument from `edid()` is never passed through.
 
-**Important**: `col_base` is defined as `col_1` (the column index for `period_1`) at line 305 and is unchanged. The EIF formula `delta_gp_pre_base = Y_{gp}(tpre) - Y_{gp}(period_1)` remains correct.
+**Required fix**: Thread `seed` from `edid()` → `fit_edid_cells()` → `build_crossfit_folds_edid()`.
+
+### Bug 6: Missing Validation (edid-validate.R)
+
+**Missing checks**:
+- No NA check on covariate columns referenced by `xformla`
+- No time-invariance check for covariates
+- No rejection of unsupported formula features
+- Factors pass validation but crash later
+
+**Required fix**: Add to `validate_edid_inputs()`:
+1. NA check: `anyNA(data[[v]])` for each covariate variable
+2. Time-invariance check: verify each covariate is constant within unit
+3. Factor handling: either support via model.matrix or reject explicitly
+4. Formula feature support: document which features are supported
 
 ---
 
-## 4. Degenerate Pair Analysis — Omega Entries When `g' == target_g`, `tpre == period_1`
+## 3. Implementation Decisions
 
-When `gp == target_g` and `tpre == period_1`:
+### Factor support: USE model.matrix()
+- `model.matrix(xformla, data=unit_df)[, -1, drop=FALSE]` (drop intercept)
+- This handles factors, I(), interactions, poly() automatically
+- Validate that the result is numeric with no NA/Inf columns
+- Reject formulas that produce zero columns after expansion
 
-- `delta_gp_j = Y_g(period_1) - Y_g(period_1) = 0` (zero vector)
-- In Omega: Term C_j = `Cov(delta_g_t_1, 0) / n_g = 0`; Term D = `Cov(0, ...) = 0` or `Cov(..., 0) = 0`
-- The EIF contribution from the comparison cohort term: `w_j * (0 - 0) / pi_g = 0`
-- The generated outcome: `term_gp = mean(0) = 0`, so `y_hat_j = term_g - term_inf`
+### Omega* estimation: REPLACE with faithful plug-in
+- Cannot prove equivalence of residualized generated-outcome covariance to Eq. (3.12)
+- Implement direct kernel estimation of each covariance term in (3.12)
+- Use same Nadaraya-Watson kernel machinery already in place
+- Accept O(n^2 * H^2) complexity with existing warning
 
-No special case handling is needed. The existing code in `compute_omega_star_nocov_edid` and `compute_eif_nocov_edid` handles the zero vector correctly via the general formula. The `cov_nn_edid(delta_gp_j, ...)` call on a zero vector returns 0 cleanly. No divide-by-zero risk.
-
----
-
-## 5. Unchanged Paths — Explicit Confirmation
-
-These must remain byte-for-byte identical after the edit:
-
-1. **`pt_assumption == "post"` branch in `enumerate_valid_pairs_edid`** (lines 40–48): unchanged.
-2. **`pt_assumption == "post"` branch in `compute_omega_star_nocov_edid`** (lines 47–61): unchanged.
-3. **`pt_assumption == "post"` branch in `compute_generated_outcomes_nocov_edid`** (lines 221–227): unchanged.
-4. **`pt_assumption == "post"` branch in `compute_eif_nocov_edid`** (lines 287–300): unchanged.
-5. **All of `R/edid-data.R`**: unchanged.
-6. **All of `R/edid-utils.R`**: unchanged.
-7. **All of `R/edid-linalg.R`**: unchanged.
-8. **All of `R/edid-fit.R`**: unchanged.
+### Generated outcome: REWRITE for cross-cohort pairs
+- Self-comparison (gp==g): keep current two-term formula (correct after gp→Inf remap)
+- Cross-cohort (gp!=g): implement full three-term Eq. (4.4)
+- Need additional nuisance estimates: `r[g,inf]` for all cells, `m_inf_t_tpre` and `m_g'_tpre_1` as separate conditional means
 
 ---
 
-## 6. Edge Case Handling
+## 4. Required Test Files
 
-### 6.1 Single Treated Cohort
+### test-edid-cov-basic.R
+- Smoke test: `edid(data, ..., xformla = ~x1)` runs without error
+- ATT estimates are finite and non-NA for post-treatment cells
+- SEs are finite and positive
+- `xformla = ~1` routes to no-covariate path (regression test)
 
-If `length(treatment_groups) == 1`, then `g' == target_g` always. The only valid pairs are `{(target_g, s) : s < target_g - anticipation}`. If `target_g - anticipation <= period_1`, no periods satisfy `s < target_g - anticipation`, so `pairs` is empty and the cell is set to NA (existing fallback in `edid-fit.R` line 73–96).
+### test-edid-cov-formula.R
+- `~x1` vs `~x1 + I(x1^2)` produce different results on nonlinear DGP
+- `~x1 * x2` either works or fails with explicit error
+- Factor covariates either work via model.matrix or fail in validation
+- Time-varying covariate rejection
+- NA covariate rejection
 
-If `target_g - anticipation == period_1 + 1` (one period before effective start), then `valid_tpre = {period_1}` — exactly one pair, the degenerate CS DiD moment. This is correct behavior.
+### test-edid-cov-eif.R
+- Construct small example with known nuisances
+- Verify generated outcomes match Eq. (3.9)/(4.4) analytically
+- Verify EIF matches Eq. (3.10) elementwise
+- Include self-comparison and cross-cohort pair cases
+- EIF has mean approximately zero
+- Wrong-sign detection: deliberately flip a sign and check EIF changes
 
-### 6.2 Anticipation > 0
+### test-edid-cov-variance.R
+- Reproducibility: same seed → identical results
+- Fold assignment is deterministic with fixed seed
+- Two independent runs with same seed match exactly
 
-`eff_start <- gp - anticipation`. All tpre conditions use `eff_start` as the upper bound. The self-pair condition `tpre < eff_start` means `tpre < gp - anticipation`. The cross-pair condition `period_1 < tpre < eff_start` means `period_1 < tpre < gp - anticipation`. This correctly restricts comparison cohorts to use only their clean pre-treatment periods.
-
-### 6.3 `control_group = "last_cohort"`
-
-`prepare_edid_panel()` in `edid-data.R` relabels the last finite cohort as `Inf` in `unit_cohorts` and removes it from `treatment_groups` before any estimation. Therefore `enumerate_valid_pairs_edid` receives a `treatment_groups` vector that already excludes the last cohort. No changes needed to `edid-pairs.R` for this case.
-
-### 6.4 Empty Cross-Pairs (`g' != target_g` with no valid tpre)
-
-If `gp != target_g` and `gp - anticipation <= period_1 + 1` (i.e., `eff_start - period_1 <= 1`), there are no valid cross-pair tpre values and the `length(valid_tpre) == 0` guard skips that `gp`. This is correct: cohorts that are treated too early to have interior pre-periods contribute no cross-pair moments.
+### test-edid-cov-validation.R
+- NA in covariates → error
+- Time-varying covariates → error
+- Factor covariates → handled (either works or clean error)
+- Unsupported formula → error with message
 
 ---
 
-## 7. Input Validation — No Changes Needed
+## 5. Simulation Design (benchmark/edid_cov_sim.R)
 
-`enumerate_valid_pairs_edid` performs no input validation beyond the `pt_assumption` branch dispatch and length checks. The existing interface contract (`treatment_groups` is a sorted numeric vector of finite values, `time_periods` is sorted, `period_1 == time_periods[1]`) is preserved.
+### DGP
+- n = {200, 500, 1000, 2000}
+- 3 cohorts: g=3, g=5, never-treated
+- 6 time periods
+- X ~ N(0,1), treatment effect heterogeneous in X
+- Parallel trends satisfied by construction
+- True ATT(g,t) known analytically
 
----
+### Studies
+1. Bias study: per-cell Monte Carlo bias, should decrease with n
+2. Variance calibration: SE/empirical SD ratio, should approach 1
+3. Coverage: per-cell 95% CI coverage, should approach 0.95
+4. Cross-fitting stability: same DGP, different fold seeds
+5. Misspecification stress: one spec correct, other harder
 
-## 8. Summary of All Line-Level Changes
+### Replications
+- 200 replications minimum per design
+- Report: bias, RMSE, mean SE, SE ratio, coverage, CI length
 
-### `R/edid-pairs.R`
-
-| Location | Action |
-|----------|--------|
-| Lines 13–17 (roxygen `@details`) | Replace with new description (Section 2.3) |
-| Lines 50–76 (PT-All block) | Replace entirely with new loop (Section 2.2) |
-
-### `R/edid-nocov.R`
-
-| Function | Location | Action |
-|----------|----------|--------|
-| `compute_omega_star_nocov_edid` | Lines 82–95 (`delta_gp_cache` loop) | Remove `if/else`; keep only finite branch (Section 3.1) |
-| `compute_omega_star_nocov_edid` | Lines 103–107 (`n_gp_j` lookup) | Remove `if/else`; direct lookup (Section 3.2) |
-| `compute_omega_star_nocov_edid` | Lines 119–123 (`n_gp_k` lookup) | Remove `if/else`; direct lookup (Section 3.2) |
-| `compute_generated_outcomes_nocov_edid` | Lines 242–248 (`gp_j` branch) | Remove `if/else`; keep only finite branch (Section 3.4) |
-| `compute_eif_nocov_edid` | Lines 333–351 (comparison cohort branch) | Remove `if/else`; keep only finite branch (Section 3.5) |

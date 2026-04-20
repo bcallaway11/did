@@ -222,7 +222,8 @@ edid <- function(
     alpha         = alp,
     store_eif     = store_eif,
     xformla       = xformla,
-    need_eif      = need_eif_internal
+    need_eif      = need_eif_internal,
+    seed          = seed
   )
 
   cells      <- fit_result$cells

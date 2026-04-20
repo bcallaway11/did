@@ -179,7 +179,7 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 11b. xformla validation
+  # 11b. xformla validation (enhanced: NA, time-invariance, formula)
   # ------------------------------------------------------------------
   if (!is.null(xformla)) {
     if (!inherits(xformla, "formula")) {
@@ -195,12 +195,62 @@ validate_edid_inputs <- function(
           paste(missing_vars, collapse = ", ")
         ))
       }
+
       # Check all covariate columns are numeric or factor
       for (v in rhs_vars) {
         if (!is.numeric(data[[v]]) && !is.factor(data[[v]])) {
           stop(sprintf("Covariate column `%s` must be numeric or factor.", v))
         }
       }
+
+      # NA check: reject any NA in covariate columns
+      for (v in rhs_vars) {
+        if (anyNA(data[[v]])) {
+          stop(sprintf(
+            "Covariate column `%s` contains NA values. ",
+            v),
+            "edid() requires complete covariate data for all units and periods.")
+        }
+      }
+
+      # Time-invariance check: covariates must be constant within unit
+      for (v in rhs_vars) {
+        n_unique_by_unit <- tapply(data[[v]], data[[idname]],
+                                   function(x) length(unique(x)))
+        if (any(n_unique_by_unit > 1L)) {
+          bad_units <- names(n_unique_by_unit)[n_unique_by_unit > 1L]
+          stop(sprintf(
+            "Covariate `%s` is time-varying for %d unit(s) (e.g., unit %s). ",
+            v, length(bad_units), bad_units[1]),
+            "edid() requires all covariates in `xformla` to be time-invariant (constant within unit).")
+        }
+      }
+
+      # Validate that model.matrix() can expand the formula without error
+      # Build a one-row-per-unit test frame
+      test_idx <- match(unique(data[[idname]]), data[[idname]])
+      test_df  <- data[test_idx, , drop = FALSE]
+      tryCatch({
+        mm <- stats::model.matrix(xformla, data = test_df)
+        # Remove intercept if present
+        if ("(Intercept)" %in% colnames(mm)) {
+          mm <- mm[, colnames(mm) != "(Intercept)", drop = FALSE]
+        }
+        if (ncol(mm) == 0L) {
+          stop("`xformla` expands to zero non-intercept columns. Use xformla = NULL for no covariates.")
+        }
+        if (anyNA(mm)) {
+          stop("`xformla` expansion via model.matrix() produces NA values. Check for unsupported formula features.")
+        }
+        if (any(!is.finite(mm))) {
+          stop("`xformla` expansion via model.matrix() produces non-finite values.")
+        }
+      }, error = function(e) {
+        stop(sprintf(
+          "Cannot expand `xformla` via model.matrix(): %s",
+          conditionMessage(e)
+        ))
+      })
     }
   }
 
