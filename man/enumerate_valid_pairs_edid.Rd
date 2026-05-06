@@ -35,7 +35,7 @@ data.frame with columns \code{gp} (comparison cohort) and
 \code{tpre} (pre-period). May have 0 rows.
 }
 \description{
-Constructs the set \eqn{H_{gt}} of valid \code{(g', t_pre)} pairs used to
+Constructs the set \eqn{H_{gt}} of valid \code{(gp, tpre)} pairs used to
 form identifying DiD moments for cohort \code{target_g} at time \code{target_t}.
 }
 \details{
@@ -43,8 +43,14 @@ Under \strong{PT-Post}: returns exactly one pair \code{(Inf, target_g - 1 - anti
 or a 0-row data.frame if that pre-period does not exist in \code{time_periods} or
 equals \code{period_1}.
 
-Under \strong{PT-All}: returns all \code{(gp, tpre)} pairs where \code{gp} ranges
-over all cohorts (including never-treated) and \code{tpre} is a valid pre-period
-strictly less than the effective treatment start of \code{gp}, excluding \code{period_1}.
+Under \strong{PT-All}: iterates over treated cohorts \code{gp} only (the
+never-treated group is the time control inside every moment, not a comparison
+cohort). For \code{gp == target_g}: valid \code{tpre} are all periods strictly
+less than \code{gp - anticipation}, including \code{period_1} (this is the
+degenerate CS DiD moment whose comparison-cohort EIF term is identically zero).
+For \code{gp != target_g}: valid \code{tpre} are periods strictly between
+\code{period_1} and \code{gp - anticipation} (exclusive on both ends).
+Returns a 0-row data.frame if no valid pairs exist (e.g., single cohort with
+only one pre-period equal to \code{period_1}).
 }
 \keyword{internal}

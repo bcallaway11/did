@@ -10,6 +10,7 @@ edid(
   idname,
   tname,
   gname,
+  xformla = NULL,
   covariates = NULL,
   pt_assumption = c("all", "post"),
   alp = 0.05,
@@ -41,6 +42,12 @@ with no missing or non-finite values).}
 first treatment period. Never-treated units should have \code{Inf} or
 \code{0} (the \code{att_gt()} convention). \code{0} is automatically
 converted to \code{Inf} internally.}
+
+\item{xformla}{A one-sided formula specifying covariates to condition on,
+e.g., \code{~ X1 + X2}. Default \code{NULL} (equivalent to \code{~1},
+no covariates). When \code{NULL} or \code{~1}, the efficient no-covariate
+path is used. \strong{Note}: The \code{covariates} argument is deprecated
+and will error if non-NULL; use \code{xformla} instead.}
 
 \item{covariates}{Character vector of covariate column names, or \code{NULL}
 (default). \strong{Currently not implemented}: passing non-NULL triggers an

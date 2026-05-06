@@ -9,7 +9,8 @@ fit_edid_cells(
   pt_assumption,
   alpha,
   store_eif,
-  covariates,
+  xformla = NULL,
+  seed = NULL,
   need_eif = FALSE
 )
 }
@@ -22,7 +23,9 @@ fit_edid_cells(
 
 \item{store_eif}{logical: if TRUE, include EIF vectors in returned cells}
 
-\item{covariates}{NULL (covariate path is a stub)}
+\item{xformla}{one-sided formula or NULL: covariate formula (routed to
+covariate path when non-trivial and \code{panel_obj$covariate_matrix}
+is non-NULL)}
 
 \item{need_eif}{logical: if TRUE, always store EIF regardless of store_eif
 (used internally when \code{n_bootstrap > 0})}

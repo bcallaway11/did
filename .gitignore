@@ -13,6 +13,8 @@ desktop.ini
 /Meta/
 did.Rproj
 ..Rcheck/
+*.Rcheck/
+*.tar.gz
 .claude/
 CLAUDE.md
 .vscode/

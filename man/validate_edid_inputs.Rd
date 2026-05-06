@@ -10,6 +10,7 @@ validate_edid_inputs(
   idname,
   tname,
   gname,
+  xformla = NULL,
   covariates,
   pt_assumption,
   alp,

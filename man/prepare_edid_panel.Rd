@@ -10,6 +10,7 @@ prepare_edid_panel(
   idname,
   tname,
   gname,
+  xformla = NULL,
   covariates = NULL,
   clustervars = NULL,
   control_group = "nevertreated",

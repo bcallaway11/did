@@ -4,15 +4,25 @@
 \alias{as.data.frame.edid_fit}
 \title{Coerce edid_fit to a data.frame}
 \usage{
-\method{as.data.frame}{edid_fit}(x, which = c("att_gt", "overall", "event_study", "group"), ...)
+\method{as.data.frame}{edid_fit}(
+  x,
+  row.names = NULL,
+  optional = FALSE,
+  ...,
+  which = c("att_gt", "overall", "event_study", "group")
+)
 }
 \arguments{
 \item{x}{an \code{edid_fit} object}
 
+\item{row.names}{ignored; included for S3 generic consistency}
+
+\item{optional}{ignored; included for S3 generic consistency}
+
+\item{...}{not used; reserved for \code{which} (see Details)}
+
 \item{which}{character: one of \code{"att_gt"}, \code{"overall"},
 \code{"event_study"}, \code{"group"}}
-
-\item{...}{additional arguments (ignored)}
 }
 \value{
 data.frame

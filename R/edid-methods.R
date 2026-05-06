@@ -260,16 +260,20 @@ vcov.edid_fit <- function(
 #' Coerce edid_fit to a data.frame
 #'
 #' @param x an \code{edid_fit} object
+#' @param row.names ignored; included for S3 generic consistency
+#' @param optional ignored; included for S3 generic consistency
+#' @param ... not used; reserved for \code{which} (see Details)
 #' @param which character: one of \code{"att_gt"}, \code{"overall"},
 #'   \code{"event_study"}, \code{"group"}
-#' @param ... additional arguments (ignored)
 #'
 #' @return data.frame
 #' @export
 as.data.frame.edid_fit <- function(
   x,
-  which = c("att_gt", "overall", "event_study", "group"),
-  ...
+  row.names = NULL,
+  optional = FALSE,
+  ...,
+  which = c("att_gt", "overall", "event_study", "group")
 ) {
   which <- match.arg(which)
   switch(which,

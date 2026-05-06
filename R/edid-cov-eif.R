@@ -9,7 +9,7 @@
 #' Compute doubly-robust generated outcomes for a (g, t) cell
 #'
 #' Returns the n x H matrix of generated outcomes where column j corresponds
-#' to pair j = (g'_j, t_{pre,j}) and row i to unit i.  Implements
+#' to pair j = \eqn{(g'_j, t_{pre,j})} and row i to unit i.  Implements
 #' Eq. (4.4) of Chen, Sant'Anna & Xie (2025).
 #'
 #' For self-comparison pairs (gp == g), the formula reduces to Eq. (3.2):
@@ -30,10 +30,10 @@
 #' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
 #' @param prop_ratios named list of n-vectors keyed by \code{as.character(gp)}:
 #'   cross-fitted propensity ratios. Must include key \code{"Inf"} for
-#'   r_{g,Inf} and keys for each cross-cohort gp.
+#'   \eqn{r_{g,\infty}} and keys for each cross-cohort gp.
 #' @param cond_means named list of n-vectors keyed by
 #'   \code{paste0(gp, "_", period)}: cross-fitted conditional means
-#'   E[Y_period - Y_1 | G=gp, X]. Must include never-treated keys.
+#'   \eqn{E[Y_{period} - Y_1 | G=gp, X]}. Must include never-treated keys.
 #' @param pt_assumption \code{"all"} or \code{"post"}
 #'
 #' @return numeric matrix n x H; entries may be NA if nuisances are NA

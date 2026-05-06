@@ -212,7 +212,7 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   }
 }
 
-#' Estimate the conditional mean E[Y_s - Y_1 | G=g', X]
+#' Estimate the conditional mean \eqn{E[Y_s - Y_1 | G=g', X]}
 #'
 #' Fits an OLS B-spline regression of \code{Y_delta} on \code{B(X)} using only
 #' units with \code{G_train == gp}, then predicts for all test units.
