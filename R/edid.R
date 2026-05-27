@@ -352,6 +352,8 @@ edid <- function(
     n                = panel_obj$n,
     T_periods        = panel_obj$T_periods,
     treatment_groups = panel_obj$treatment_groups,
+    cohort_fractions = panel_obj$cohort_fractions,
+    unit_cohorts     = panel_obj$unit_cohorts,
     anticipation     = panel_obj$anticipation,
     inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
     clustervars      = clustervars,

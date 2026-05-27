@@ -94,14 +94,16 @@ aggte_edid <- function(
            "Re-run edid() with aggregate = \"event_study\" or \"all\".")
     }
 
-    # Convert to flat vectors
-    e_vals  <- vapply(es_list, function(x) x$e,   numeric(1L))
-    att_vec <- vapply(es_list, function(x) x$att, numeric(1L))
-    se_vec  <- vapply(es_list, function(x) x$se,  numeric(1L))
+    # Convert to flat vectors, tracking original es_list indices
+    orig_idx <- seq_along(es_list)
+    e_vals   <- vapply(es_list, function(x) x$e,   numeric(1L))
+    att_vec  <- vapply(es_list, function(x) x$att, numeric(1L))
+    se_vec   <- vapply(es_list, function(x) x$se,  numeric(1L))
 
     # Apply balance_e filter first (symmetric window)
     if (!is.null(balance_e)) {
       keep_bal <- (e_vals >= -balance_e) & (e_vals <= balance_e)
+      orig_idx <- orig_idx[keep_bal]
       e_vals   <- e_vals[keep_bal]
       att_vec  <- att_vec[keep_bal]
       se_vec   <- se_vec[keep_bal]
@@ -109,26 +111,46 @@ aggte_edid <- function(
 
     # Apply min_e / max_e filter
     keep_range <- (e_vals >= min_e) & (e_vals <= max_e)
-    e_vals  <- e_vals[keep_range]
-    att_vec <- att_vec[keep_range]
-    se_vec  <- se_vec[keep_range]
+    orig_idx <- orig_idx[keep_range]
+    e_vals   <- e_vals[keep_range]
+    att_vec  <- att_vec[keep_range]
+    se_vec   <- se_vec[keep_range]
 
     # Optionally drop NAs
     if (na.rm) {
       keep_na <- !is.na(att_vec)
-      e_vals  <- e_vals[keep_na]
-      att_vec <- att_vec[keep_na]
-      se_vec  <- se_vec[keep_na]
+      orig_idx <- orig_idx[keep_na]
+      e_vals   <- e_vals[keep_na]
+      att_vec  <- att_vec[keep_na]
+      se_vec   <- se_vec[keep_na]
     }
 
-    ov_info <- .get_overall(edid_fit_obj)
+    # Dynamic overall: equal-weight average of post-treatment ES(e),
+    # matching did::aggte(type = "dynamic").
+    post_mask <- e_vals >= 0 & is.finite(att_vec)
+    dyn_overall_att <- NA_real_
+    dyn_overall_se  <- NA_real_
+
+    if (any(post_mask)) {
+      dyn_overall_att <- mean(att_vec[post_mask])
+
+      # Use orig_idx to access the correct es_list elements
+      post_orig_idx <- orig_idx[post_mask]
+      post_eifs <- lapply(post_orig_idx, function(ii) es_list[[ii]]$eif_agg)
+      if (!any(vapply(post_eifs, is.null, logical(1L)))) {
+        n_units <- edid_fit_obj$n
+        agg_eif <- Reduce(`+`, post_eifs) / length(post_eifs)
+        dyn_overall_se <- sqrt(sum(agg_eif^2) / n_units^2)
+      }
+    }
+
     out <- list(
       att.egt     = att_vec,
       se.egt      = se_vec,
       egt         = e_vals,
       type        = type,
-      overall.att = ov_info$att,
-      overall.se  = ov_info$se,
+      overall.att = dyn_overall_att,
+      overall.se  = dyn_overall_se,
       alp         = alp,
       call        = mc
     )
@@ -146,25 +168,86 @@ aggte_edid <- function(
            "Re-run edid() with aggregate = \"group\" or \"all\".")
     }
 
-    g_vals  <- vapply(gr_list, function(x) x$group, numeric(1L))
-    att_vec <- vapply(gr_list, function(x) x$att,   numeric(1L))
-    se_vec  <- vapply(gr_list, function(x) x$se,    numeric(1L))
+    orig_idx <- seq_along(gr_list)
+    g_vals   <- vapply(gr_list, function(x) x$group, numeric(1L))
+    att_vec  <- vapply(gr_list, function(x) x$att,   numeric(1L))
+    se_vec   <- vapply(gr_list, function(x) x$se,    numeric(1L))
 
     if (na.rm) {
-      keep_na <- !is.na(att_vec)
-      g_vals  <- g_vals[keep_na]
-      att_vec <- att_vec[keep_na]
-      se_vec  <- se_vec[keep_na]
+      keep_na  <- !is.na(att_vec)
+      orig_idx <- orig_idx[keep_na]
+      g_vals   <- g_vals[keep_na]
+      att_vec  <- att_vec[keep_na]
+      se_vec   <- se_vec[keep_na]
     }
 
-    ov_info <- .get_overall(edid_fit_obj)
+    # Group overall: cohort-share-weighted average of per-group ATTs
+    # with WIF correction for estimated weights, matching
+    # did::aggte(type = "group") in compute.aggte.R lines 300-325.
+    valid_mask <- is.finite(att_vec)
+    grp_overall_att <- NA_real_
+    grp_overall_se  <- NA_real_
+
+    if (any(valid_mask)) {
+      g_valid      <- g_vals[valid_mask]
+      att_valid    <- att_vec[valid_mask]
+      valid_orig   <- orig_idx[valid_mask]
+      n_valid      <- length(g_valid)
+
+      # Cohort-share weights
+      cf <- edid_fit_obj$cohort_fractions
+      if (!is.null(cf)) {
+        pgg <- vapply(g_valid, function(gv) {
+          val <- cf[[as.character(gv)]]
+          if (is.null(val)) 1.0 else val
+        }, numeric(1L))
+      } else {
+        pgg <- rep(1, n_valid)
+      }
+      pg_norm <- pgg / sum(pgg)
+
+      grp_overall_att <- sum(pg_norm * att_valid)
+
+      # SE with WIF correction (matching compute.aggte.R)
+      grp_eifs <- lapply(valid_orig, function(ii) gr_list[[ii]]$eif_agg)
+      has_eifs <- !any(vapply(grp_eifs, is.null, logical(1L)))
+      G_vec <- edid_fit_obj$unit_cohorts
+
+      if (has_eifs && !is.null(G_vec)) {
+        n_units <- edid_fit_obj$n
+        eif_mat <- do.call(cbind, grp_eifs)
+
+        # WIF: influence function of the estimated pi_g weights
+        # Following compute.aggte.R wif() at lines 604-621
+        S <- sum(pgg)
+        wif_mat <- sapply(seq_len(n_valid), function(k) {
+          (1 * (G_vec == g_valid[k]) - pgg[k]) / S
+        })
+        wif_denom <- rowSums(sapply(seq_len(n_valid), function(k) {
+          1 * (G_vec == g_valid[k]) - pgg[k]
+        }))
+        wif_mat <- wif_mat - wif_denom %*% t(pgg / S^2)
+
+        # Overall IF = weighted sum of per-group IFs + WIF * att
+        agg_eif <- drop(eif_mat %*% pg_norm) +
+                   drop(wif_mat %*% att_valid)
+        grp_overall_se <- sqrt(sum(agg_eif^2) / n_units^2)
+      } else if (has_eifs) {
+        # Fallback: no WIF (if unit_cohorts not available)
+        n_units <- edid_fit_obj$n
+        eif_mat <- do.call(cbind, grp_eifs)
+        agg_eif <- drop(eif_mat %*% pg_norm)
+        grp_overall_se <- sqrt(sum(agg_eif^2) / n_units^2)
+      }
+    }
+
     out <- list(
       att.egt     = att_vec,
       se.egt      = se_vec,
       egt         = g_vals,
       type        = type,
-      overall.att = ov_info$att,
-      overall.se  = ov_info$se,
+      overall.att = grp_overall_att,
+      overall.se  = grp_overall_se,
       alp         = alp,
       call        = mc
     )

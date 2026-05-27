@@ -193,9 +193,9 @@ test_that("U9: PT-Post target_g=4, cohorts={4,7}, periods=1:10", {
 })
 
 # ---------------------------------------------------------------------------
-# Scenario U10 — PT-Post: tpre = period_1 -> 0 rows
+# Scenario U10 — PT-Post: tpre = period_1 -> valid (standard 2x2 DiD)
 # ---------------------------------------------------------------------------
-test_that("U10: PT-Post tpre=period_1 returns 0 pairs", {
+test_that("U10: PT-Post tpre=period_1 returns 1 valid pair", {
   result <- enumerate_valid_pairs_edid(
     target_g         = 2L,
     treatment_groups = c(2L),
@@ -205,7 +205,9 @@ test_that("U10: PT-Post tpre=period_1 returns 0 pairs", {
     anticipation     = 0L,
     never_treated_val = Inf
   )
-  expect_equal(nrow(result), 0L)
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$tpre, 1L)
+  expect_equal(result$gp, Inf)
 })
 
 # ---------------------------------------------------------------------------

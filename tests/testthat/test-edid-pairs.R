@@ -34,12 +34,13 @@ test_that("enumerate_valid_pairs_edid() returns 1 pair under PT-Post with antici
     never_treated_val = Inf
   )
   # baseline = g - 1 - anticipation = 3 - 1 - 1 = 1 = period_1
-  # Since period_1 is excluded, should return 0 pairs
-  expect_equal(nrow(pairs), 0L)
+  # When tpre == period_1, the standard 2x2 DiD is still valid
+  expect_equal(nrow(pairs), 1L)
+  expect_equal(pairs$tpre, 1L)
 })
 
-test_that("enumerate_valid_pairs_edid() PT-Post baseline = period_1 returns 0 pairs", {
-  # When g - 1 - anticipation equals period_1, no valid pairs
+test_that("enumerate_valid_pairs_edid() PT-Post baseline = period_1 returns 1 pair", {
+  # When g - 1 - anticipation equals period_1, this is the standard 2x2 DiD
   pairs <- enumerate_valid_pairs_edid(
     target_g         = 2L,
     treatment_groups = c(2L),
@@ -49,8 +50,9 @@ test_that("enumerate_valid_pairs_edid() PT-Post baseline = period_1 returns 0 pa
     anticipation     = 0L,
     never_treated_val = Inf
   )
-  # g - 1 - 0 = 1 = period_1 -> 0 pairs
-  expect_equal(nrow(pairs), 0L)
+  # g - 1 - 0 = 1 = period_1 -> valid pair (Inf, 1)
+  expect_equal(nrow(pairs), 1L)
+  expect_equal(pairs$tpre, 1L)
 })
 
 # ============================================================
@@ -143,8 +145,9 @@ test_that("enumerate_valid_pairs_edid() PT-All has only treated-cohort gp values
 # ============================================================
 # 4.4 Empty pairs cases
 # ============================================================
-test_that("enumerate_valid_pairs_edid() returns 0 rows when target_g is first-ever cohort with period_1 baseline", {
-  # g=2, periods=1:4, period_1=1: PT-Post baseline = g-1-0=1 = period_1, so 0 pairs
+test_that("enumerate_valid_pairs_edid() returns 1 pair when target_g is first-ever cohort with period_1 baseline", {
+  # g=2, periods=1:4, period_1=1: PT-Post baseline = g-1-0=1 = period_1
+  # This is the standard 2x2 DiD with the first period as base — valid
   pairs <- enumerate_valid_pairs_edid(
     target_g         = 2L,
     treatment_groups = c(2L),
@@ -154,10 +157,11 @@ test_that("enumerate_valid_pairs_edid() returns 0 rows when target_g is first-ev
     anticipation     = 0L,
     never_treated_val = Inf
   )
-  expect_equal(nrow(pairs), 0L)
+  expect_equal(nrow(pairs), 1L)
   expect_true(is.data.frame(pairs))
   expect_true("gp" %in% names(pairs))
   expect_true("tpre" %in% names(pairs))
+  expect_equal(pairs$tpre, 1L)
 })
 
 # ============================================================

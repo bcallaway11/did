@@ -46,10 +46,11 @@ enumerate_valid_pairs_edid <- function(
   if (pt_assumption == "post") {
     # -----------------------------------------------------------------------
     # PT-Post: exactly one pair (Inf, g - 1 - anticipation)
+    # When g - 1 - anticipation == period_1, this is the standard 2x2 DiD
+    # with the first available period as base — still a valid moment.
     # -----------------------------------------------------------------------
     tpre_val <- target_g - 1L - anticipation
     if (!tpre_val %in% time_periods) return(empty)
-    if (tpre_val == period_1)         return(empty)
     return(data.frame(gp = never_treated_val, tpre = tpre_val))
   }
 
