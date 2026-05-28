@@ -120,7 +120,7 @@ test_that("run_multiplier_bootstrap_edid() runs without error and returns bootst
   panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
                                tname = "time", gname = "first_treat")
   fit   <- fit_edid_cells(panel, pt_assumption = "all", alpha = 0.05,
-                           store_eif = TRUE, covariates = NULL)
+                           store_eif = TRUE)
   boot_res <- run_multiplier_bootstrap_edid(
     cells           = fit$cells,
     eif_matrix      = fit$eif_matrix,

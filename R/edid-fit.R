@@ -33,9 +33,20 @@ fit_edid_cells <- function(
     identical(deparse(xformla, width.cutoff = 500L), "~1")
   use_cov_path <- !is_trivial_xformla && !is.null(panel_obj$covariate_matrix)
 
-  # Cross-fitting fold assignment (global, reused across all cells)
+  # Nuisance estimation uses the plug-in (no sample-splitting) approach
+  # described in the paper's main text (Sec. 5.2, footnote 601), with
+  # train = test = full sample. Cross-fitting (K>1) is intentionally
+  # disabled in this release: benchmark experiments showed that K=5
+  # cross-fitting substantially inflated the point estimator's variance
+  # at moderate sample sizes (~35% larger mc_sd vs plug-in at n=500),
+  # erasing the efficiency gain over the just-identified DR estimator.
+  # The cross-fitting machinery in estimate_all_* (the K_folds>1 branch)
+  # is preserved for future re-enablement once the calibration of
+  # cross-fitted standard errors is better understood. See
+  # benchmark/edid_cov_fix_verification.R for the supporting evidence.
+  K_use <- 1L
   if (use_cov_path) {
-    fold_id <- build_crossfit_folds_edid(n = panel_obj$n, K = 5L, seed = seed)
+    fold_id <- rep(1L, panel_obj$n)
   } else {
     fold_id <- NULL
   }
@@ -140,7 +151,7 @@ fit_edid_cells <- function(
             g         = g,
             pairs     = pairs_for_nuisance,
             bs_df    = 4L,
-            K_folds  = 5L,
+            K_folds  = K_use,
             fold_id  = fold_id
           ),
           warning = function(w) {
@@ -155,7 +166,7 @@ fit_edid_cells <- function(
           pairs     = pairs_for_nuisance,
           t_val    = t,
           bs_df    = 4L,
-          K_folds  = 5L,
+          K_folds  = K_use,
           fold_id  = fold_id
         )
         inv_propensities <- estimate_all_inverse_propensities(
@@ -163,7 +174,7 @@ fit_edid_cells <- function(
           g         = g,
           pairs     = pairs,
           bs_df     = 4L,
-          K_folds   = 5L,
+          K_folds   = K_use,
           fold_id   = fold_id
         )
       }

@@ -1,7 +1,8 @@
 # edid-cov.R
 # Nuisance estimation functions for the EDiD covariate path.
 # Implements sieve (B-spline) estimation of propensity ratios and conditional
-# means with K-fold cross-fitting.
+# means. The package currently uses plug-in (K=1, no sample splitting)
+# nuisance estimation, matching the paper's main-text proposal.
 
 # ---------------------------------------------------------------------------
 # Fold assignment
@@ -345,8 +346,14 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
     r_full <- numeric(n)
 
     for (ell in seq_len(K_folds)) {
-      test_idx  <- which(fold_id == ell)
-      train_idx <- which(fold_id != ell)
+      if (K_folds == 1L) {
+        # Plug-in: train = test = full sample (paper's main-text proposal)
+        test_idx  <- seq_len(n)
+        train_idx <- seq_len(n)
+      } else {
+        test_idx  <- which(fold_id == ell)
+        train_idx <- which(fold_id != ell)
+      }
       if (length(test_idx) == 0L) next
 
       r_full[test_idx] <- estimate_propensity_ratio_edid(
@@ -394,8 +401,14 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
     s_full <- numeric(n)
 
     for (ell in seq_len(K_folds)) {
-      test_idx  <- which(fold_id == ell)
-      train_idx <- which(fold_id != ell)
+      if (K_folds == 1L) {
+        # Plug-in: train = test = full sample (paper's main-text proposal)
+        test_idx  <- seq_len(n)
+        train_idx <- seq_len(n)
+      } else {
+        test_idx  <- which(fold_id == ell)
+        train_idx <- which(fold_id != ell)
+      }
       if (length(test_idx) == 0L) next
 
       s_full[test_idx] <- estimate_inverse_propensity_edid(
@@ -468,8 +481,14 @@ estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
     m_full  <- numeric(n)
 
     for (ell in seq_len(K_folds)) {
-      test_idx  <- which(fold_id == ell)
-      train_idx <- which(fold_id != ell)
+      if (K_folds == 1L) {
+        # Plug-in: train = test = full sample (paper's main-text proposal)
+        test_idx  <- seq_len(n)
+        train_idx <- seq_len(n)
+      } else {
+        test_idx  <- which(fold_id == ell)
+        train_idx <- which(fold_id != ell)
+      }
       if (length(test_idx) == 0L) next
 
       m_full[test_idx] <- estimate_conditional_mean_edid(

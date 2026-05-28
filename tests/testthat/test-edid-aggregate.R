@@ -7,7 +7,7 @@ fit_one_cohort <- function(seed = 42, n_treat = 30, n_never = 30, n_periods = 5)
   panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
                                tname = "time", gname = "first_treat")
   fit   <- fit_edid_cells(panel, pt_assumption = "all", alpha = 0.05,
-                           store_eif = TRUE, covariates = NULL)
+                           store_eif = TRUE)
   list(fit = fit, panel = panel)
 }
 
@@ -67,7 +67,7 @@ test_that("aggregate_group_edid() returns one entry per treated cohort", {
   panel <- prepare_edid_panel(df, yname = "outcome", idname = "unit",
                                tname = "time", gname = "first_treat")
   fit   <- fit_edid_cells(panel, pt_assumption = "all", alpha = 0.05,
-                           store_eif = TRUE, covariates = NULL)
+                           store_eif = TRUE)
   grp <- aggregate_group_edid(fit$cells, fit$eif_matrix, fit$cell_index, panel, alpha = 0.05)
   expect_equal(length(grp), length(panel$treatment_groups))
   for (entry in grp) {
