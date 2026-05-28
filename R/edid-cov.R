@@ -201,6 +201,55 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   r_hat
 }
 
+#' Estimate the inverse propensity s(X) = 1 / P(G=g'|X)
+#'
+#' Implements the sieve estimator for the inverse propensity from
+#' Chen, Sant'Anna & Xie (2025) Eq. after (4.2). Estimated via
+#' minimising \eqn{E[s(X)^2 G_{g'} - 2 s(X)]}.
+#'
+#' Closed form:
+#' \deqn{\hat\beta = [B_{g'}' B_{g'}]^{-1} \sum_{i=1}^{n} B(X_i)}
+#' Then \eqn{\hat s(X_i) = B(X_i)' \hat\beta}, clipped to [0, Inf).
+#'
+#' @param X_train numeric matrix n_train x d
+#' @param G_train numeric vector n_train: cohort values (Inf for never-treated)
+#' @param X_test  numeric matrix n_test x d
+#' @param gp scalar: cohort whose inverse propensity to estimate
+#' @param bs_df integer: B-spline degrees of freedom (default 4)
+#'
+#' @return numeric vector length n_test: estimated 1/p_{g'}(X) values, >= 0
+#' @keywords internal
+estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
+                                             bs_df = 4L) {
+  n_test <- nrow(X_test)
+
+  mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+  n_gp <- sum(mask_gp)
+
+  if (n_gp < 2L) {
+    warning(sprintf(
+      "estimate_inverse_propensity_edid: fewer than 2 units in g'=%g; returning 1/pi_g'.", gp
+    ))
+    return(rep(length(G_train) / n_gp, n_test))
+  }
+
+  B_train_obj <- build_basis_matrix_edid(X_train, bs_df)
+  B_train     <- unclass(B_train_obj)
+  attr(B_train, "bs_objects") <- NULL
+
+  B_gp       <- B_train[mask_gp, , drop = FALSE]
+  col_sums_all <- colSums(B_train)
+
+  BtB_gp   <- t(B_gp) %*% B_gp
+  beta_hat <- as.vector(compute_pseudoinverse_edid(BtB_gp) %*% col_sums_all)
+
+  B_test <- predict_basis_edid(attr(B_train_obj, "bs_objects"), X_test)
+  s_hat  <- pmax(drop(B_test %*% beta_hat), 0)
+
+  s_hat
+}
+
+
 #' Check for extreme propensity ratios and warn once
 #' @keywords internal
 .check_extreme_ratios_edid <- function(r_vec, g, gp) {
@@ -316,6 +365,54 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
 
   result
 }
+
+#' Estimate inverse propensities 1/p_{g'}(X) for all groups via cross-fitting
+#'
+#' For each group g needed in Omega* (the target group g, the never-treated,
+#' and each comparison cohort g'), performs K-fold cross-fitting to produce
+#' a full-sample n-vector of \eqn{\hat s_{g'}(X_i) = 1/\hat p_{g'}(X_i)}.
+#'
+#' @param panel_obj panel object
+#' @param g scalar: target treatment cohort
+#' @param pairs data.frame with column \code{gp}
+#' @param bs_df integer: B-spline df
+#' @param K_folds integer: number of cross-fitting folds
+#' @param fold_id integer vector length n: pre-generated fold assignments
+#'
+#' @return named list of n-vectors, keyed by \code{as.character(group)}
+#' @keywords internal
+estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
+                                              K_folds, fold_id) {
+  n       <- panel_obj$n
+  X_mat   <- panel_obj$covariate_matrix
+  G_vec   <- panel_obj$unit_cohorts
+  result  <- list()
+
+  groups_needed <- unique(c(g, Inf, pairs$gp[is.finite(pairs$gp)]))
+
+  for (gp in groups_needed) {
+    s_full <- numeric(n)
+
+    for (ell in seq_len(K_folds)) {
+      test_idx  <- which(fold_id == ell)
+      train_idx <- which(fold_id != ell)
+      if (length(test_idx) == 0L) next
+
+      s_full[test_idx] <- estimate_inverse_propensity_edid(
+        X_train = X_mat[train_idx, , drop = FALSE],
+        G_train = G_vec[train_idx],
+        X_test  = X_mat[test_idx,  , drop = FALSE],
+        gp      = gp,
+        bs_df   = bs_df
+      )
+    }
+
+    result[[as.character(gp)]] <- s_full
+  }
+
+  result
+}
+
 
 #' Estimate conditional means for all (g', period) combinations via cross-fitting
 #'

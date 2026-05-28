@@ -143,21 +143,11 @@ compute_generated_outcomes_cov_edid <- function(
       Y_1      <- ow[, col_1]
       Y_tpre   <- ow[, col_tp]
 
-      # Three-term doubly-robust formula.
-      #
-      # The identification formula is:
-      #   ATT(g,t) = E[Y_t-Y_1|G=g] - E[Y_t-Y_tpre|G=Inf] - E[Y_tpre-Y_1|G=g']
-      #
-      # The AIPW augmentation replaces each group-mean term (w*Y) with
-      # (w*(Y - m(X))) + m(X), so the residuals have zero conditional mean under
-      # a correctly specified outcome model and consistency holds under correct
-      # propensity.  For the treated group (term1), the relevant conditional mean
-      # is m_{Inf,t,1}(X) = E[Y_t^0-Y_1^0|X] (counterfactual, by PT).  Adding
-      # m_{g',tpre,1}(X) to term1's subtraction would create a bias of
-      # E[Y_tpre-Y_1|G=g] (≈ tpre-1 for linear trend DGPs) because the
-      # propensity-ratio correction in term3 only cancels the G=g' contribution,
-      # not the G=g contribution.  Hence term1 uses only m_inf_t.
-      term1 <- (Ig / pi_g) * (Y_t - Y_1 - m_inf_t)
+      # Three-term doubly-robust formula matching Eq. (4.4) of the paper:
+      # Y_tilde = (G_g/pi_g)(Y_t - Y_1 - m_{inf,t,t'}(X) - m_{g',t',1}(X))
+      #         - r_{g,inf}(G_inf/pi_g)(Y_t - Y_t' - m_{inf,t,t'}(X))
+      #         - r_{g,g'}(G_{g'}/pi_g)(Y_t' - Y_1 - m_{g',t',1}(X))
+      term1 <- (Ig / pi_g) * (Y_t - Y_1 - m_inf_diff - m_gp_tp)
       term2 <- r_inf * (I_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
       term3 <- r_gp * (I_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
 
@@ -199,6 +189,7 @@ compute_generated_outcomes_cov_edid <- function(
 #' @keywords internal
 compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
                                         prop_ratios, cond_means,
+                                        inv_propensities = NULL,
                                         bw = NULL) {
   X_mat <- panel_obj$covariate_matrix
   n     <- nrow(X_mat)
@@ -253,33 +244,24 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   mask_inf <- panel_obj$never_treated_mask
 
   # -----------------------------------------------------------------------
-  # Approximation note (Omega* scaling terms):
-  # Paper Eq. (3.12) uses conditional propensity scores 1/p_g(X) and
-  # 1/p_inf(X) as scalar pre-factors on each conditional covariance term.
-  # Here we approximate them by their unconditional counterparts 1/pi_g and
-  # 1/pi_inf, where pi_g = n_g/n.
-  #
-  # Justification: under a correctly specified propensity model, the
-  # conditional inverse propensity 1/p_g(X) enters Omega*(X) only as a
-  # scaling of a conditional covariance term.  Replacing it by its
-  # unconditional analogue introduces a bias in Omega* of order
-  # O(Var(1/p_g(X))) relative to its true value.  In moderate-overlap
-  # settings this bias is small.  For severe overlap failures the
-  # approximation can be materially wrong; a warning is issued when extreme
-  # propensity ratios are detected in the nuisance estimation step.
-  #
-  # A fully faithful plug-in would require estimating 1/p_g(X) by
-  # 1/(pi_g * r_{g,inf}(X) / E[r_{g,inf}(X)]) or similar.  That is a
-  # planned enhancement; for the current release this approximation is
-  # retained because it still provides consistent Omega* when p_g(X) is
-  # sufficiently homogeneous across X.
+  # Omega* scaling terms: 1/p_g(X), 1/p_inf(X), 1/p_{g'}(X)
+  # Paper Eq. (3.12) uses conditional propensity scores as scalar
+  # pre-factors on each conditional covariance term.
+  # When inv_propensities is provided (from estimate_all_inverse_propensities),
+  # use the estimated conditional values. Otherwise fall back to unconditional.
   # -----------------------------------------------------------------------
   pi_g   <- panel_obj$cohort_fractions[[as.character(g)]]
   pi_inf <- sum(mask_inf) / n
 
-  # Unconditional propensity approximation
-  inv_pg_unconditional   <- 1 / pi_g
-  inv_pinf_unconditional <- 1 / pi_inf
+  if (!is.null(inv_propensities)) {
+    inv_pg_vec   <- inv_propensities[[as.character(g)]]
+    inv_pinf_vec <- inv_propensities[["Inf"]]
+    if (is.null(inv_pg_vec))   inv_pg_vec   <- rep(1 / pi_g, n)
+    if (is.null(inv_pinf_vec)) inv_pinf_vec <- rep(1 / pi_inf, n)
+  } else {
+    inv_pg_vec   <- rep(1 / pi_g, n)
+    inv_pinf_vec <- rep(1 / pi_inf, n)
+  }
 
   # Helper: kernel-smoothed conditional covariance of (A, B) given G=group at point x_i
   # Returns an n-vector (one value per evaluation point)
@@ -342,26 +324,26 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       Y_t_minus_Ytk <- ow[, col_t] - ow[, col_tk]
       Y_tk_minus_Y1 <- ow[, col_tk] - ow[, col_1]
 
-      # Eq. (3.12) term by term:
+      # Eq. (3.12) term by term, using conditional 1/p_g(X):
       # Term 1: (1/p_g(X)) * Cov(Y_t - Y_1, Y_t - Y_1 | G=g, X)
-      term1 <- inv_pg_unconditional *
+      term1 <- inv_pg_vec *
         kernel_cond_cov(Y_t_minus_Y1, Y_t_minus_Y1, mask_g)
 
       # Term 2: (1/p_inf(X)) * Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X)
-      term2 <- inv_pinf_unconditional *
+      term2 <- inv_pinf_vec *
         kernel_cond_cov(Y_t_minus_Ytj, Y_t_minus_Ytk, mask_inf)
 
       # Term 3: -1{g == g'_j}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
       term3 <- 0
       if (is_self_j) {
-        term3 <- -inv_pg_unconditional *
+        term3 <- -inv_pg_vec *
           kernel_cond_cov(Y_t_minus_Y1, Y_tj_minus_Y1, mask_g)
       }
 
       # Term 4: -1{g == g'_k}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
       term4 <- 0
       if (is_self_k) {
-        term4 <- -inv_pg_unconditional *
+        term4 <- -inv_pg_vec *
           kernel_cond_cov(Y_t_minus_Y1, Y_tk_minus_Y1, mask_g)
       }
 
@@ -370,24 +352,21 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       gp_j_eff <- if (is_self_j) Inf else gp_j
       gp_k_eff <- if (is_self_k) Inf else gp_k
       if (identical(gp_j_eff, gp_k_eff)) {
+        gp_key_jk <- as.character(gp_j_eff)
         if (is.infinite(gp_j_eff)) {
-          # Both use never-treated — already captured in term2's structure
-          # Actually no: term5 uses Cov(Y_{t'_j}-Y_1, Y_{t'_k}-Y_1 | G=Inf, X)
-          # which is different from term2's Cov(Y_t-Y_{t'_j}, Y_t-Y_{t'_k} | G=Inf, X)
-          # For self-pairs where g'_j = g'_k = g (mapped to Inf), the "group" is Inf
-          inv_pgp <- inv_pinf_unconditional
+          inv_pgp_vec <- inv_pinf_vec
           mask_gp_jk <- mask_inf
         } else {
-          pi_gp <- panel_obj$cohort_fractions[[as.character(gp_j)]]
-          if (is.null(pi_gp) || pi_gp < 1e-15) {
-            inv_pgp <- 0
-            mask_gp_jk <- rep(FALSE, n)
+          if (!is.null(inv_propensities) && !is.null(inv_propensities[[gp_key_jk]])) {
+            inv_pgp_vec <- inv_propensities[[gp_key_jk]]
           } else {
-            inv_pgp <- 1 / pi_gp
-            mask_gp_jk <- panel_obj$cohort_masks[[as.character(gp_j)]]
+            pi_gp <- panel_obj$cohort_fractions[[gp_key_jk]]
+            inv_pgp_vec <- if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n)
           }
+          mask_gp_jk <- panel_obj$cohort_masks[[gp_key_jk]]
+          if (is.null(mask_gp_jk)) mask_gp_jk <- rep(FALSE, n)
         }
-        term5 <- inv_pgp *
+        term5 <- inv_pgp_vec *
           kernel_cond_cov(Y_tj_minus_Y1, Y_tk_minus_Y1, mask_gp_jk)
       }
 

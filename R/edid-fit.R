@@ -108,6 +108,7 @@ fit_edid_cells <- function(
       # Covariate nuisance estimates (per cell)
       prop_ratios  <- NULL
       cond_means   <- NULL
+      inv_propensities <- NULL
 
       if (use_cov_path) {
         # Build nuisance estimation pairs.
@@ -157,6 +158,14 @@ fit_edid_cells <- function(
           K_folds  = 5L,
           fold_id  = fold_id
         )
+        inv_propensities <- estimate_all_inverse_propensities(
+          panel_obj = panel_obj,
+          g         = g,
+          pairs     = pairs,
+          bs_df     = 4L,
+          K_folds   = 5L,
+          fold_id   = fold_id
+        )
       }
 
       # Steps 2-6: dispatch on covariate vs. no-covariate path
@@ -172,7 +181,8 @@ fit_edid_cells <- function(
           pt_assumption = pt_assumption
         )
         omega   <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
-                                                prop_ratios, cond_means)
+                                                prop_ratios, cond_means,
+                                                inv_propensities)
         cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
         weights <- compute_efficient_weights_edid(omega)
         # ATT: weighted mean of column means of gen_out_mat
