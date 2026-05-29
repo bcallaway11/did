@@ -419,12 +419,14 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
 #' @return numeric vector length n, mean approximately 0
 #' @keywords internal
 compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
-  # EIF_i = (sum_j w_j * phi_{j,i}) - ATT(g,t)
-  # This has theoretical mean 0 (E[phi_j] = beta_j, sum_j w_j*beta_j = ATT).
-  eif <- drop(gen_out_mat %*% weights) - att_gt
-
-  # Numerical centering: removes any floating-point residual from finite-sample
-  # estimation of nuisances.  Does not change the variance formula.
-  eif <- eif - mean(eif)
-  eif
+  # Correct first-order influence function for the ratio estimator
+  #   ATT_hat = E_n[w' Ytilde] / E_n[G_g]:
+  #     EIF_i = w' Ytilde_i - (G_{g,i} / pi_g) * ATT.
+  # The constant centering (w' Ytilde_i - ATT) omits the first-order influence
+  # of the estimated treated-cohort share pi_hat_g = E_n[G_g]; it inflates the
+  # variance by ATT^2 (1/pi_g - 1) with no asymptotic shrinkage. The mean of
+  # EIF below is 0 by construction (E_n[G_g] = pi_g), so no de-meaning is used.
+  Gg   <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
+  drop(gen_out_mat %*% weights) - (Gg / pi_g) * att_gt
 }
