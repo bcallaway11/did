@@ -148,7 +148,7 @@ predict_basis_edid <- function(bs_obj_list, X_new_mat) {
 #'
 #' Closed form:
 #' \deqn{\hat\beta = [B_{g'}' B_{g'}]^{-1} \sum_{i: G_i = g} B(X_i)}
-#' Then \eqn{\hat r(X_i) = B(X_i)' \hat\beta}, clipped to [0, Inf).
+#' Then \eqn{\hat r(X_i) = B(X_i)' \hat\beta}.
 #'
 #' @param X_train numeric matrix n_train x d
 #' @param G_train numeric vector n_train: cohort values (Inf for never-treated)
@@ -157,7 +157,7 @@ predict_basis_edid <- function(bs_obj_list, X_new_mat) {
 #' @param gp scalar: comparison cohort (may be Inf for never-treated)
 #' @param bs_df integer: B-spline degrees of freedom (default 4)
 #'
-#' @return numeric vector length n_test: estimated r(X) values, >= 0
+#' @return numeric vector length n_test: estimated r(X) values
 #' @keywords internal
 estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
                                            bs_df = 4L) {
@@ -197,7 +197,8 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
 
   # Predict on test data
   B_test <- predict_basis_edid(attr(B_train_obj, "bs_objects"), X_test)
-  r_hat  <- pmax(drop(B_test %*% beta_hat), 0)
+  # r_hat  <- pmax(drop(B_test %*% beta_hat), 0)   # clipping disabled
+  r_hat  <- drop(B_test %*% beta_hat)
 
   r_hat
 }
