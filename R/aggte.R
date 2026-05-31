@@ -33,9 +33,8 @@
 #'  all lengths of exposure are computed.
 #' @param na.rm Logical value if we are to remove missing Values from analyses. Defaults is FALSE.
 #' @param bstrap Boolean for whether or not to compute standard errors using
-#'  the multiplier bootstrap.  If standard errors are clustered, then one
-#'  must set `bstrap=TRUE`. Default is value set in the MP object.  If bstrap is `FALSE`, then analytical
-#'  standard errors are reported.
+#'  the multiplier bootstrap.  Default is value set in the MP object.  If `bstrap=FALSE`, then analytical
+#'  standard errors are reported; these are cluster-robust when a cluster variable was supplied to `att_gt`.
 #' @param biters The number of bootstrap iterations to use.  The default is the value set in the MP object,
 #'  and this is only applicable if `bstrap=TRUE`.
 #'

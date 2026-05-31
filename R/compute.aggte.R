@@ -692,6 +692,15 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
     bout <- mboot(thisinffunc, DIDparams)
     return(bout$se)
   } else {
+    # Analytical cluster-robust SE (no bootstrap): cluster sums of the aggregated influence function,
+    # matching the cluster-sum aggregation of the multiplier bootstrap (CS 2021, Remark 10). Falls back to
+    # the i.i.d. form when no cluster variable is supplied or cluster identifiers are unavailable.
+    cv <- if (!is.null(DIDparams)) DIDparams$cluster_vector else NULL
+    if (!is.null(DIDparams) && length(DIDparams$clustervars) > 0 &&
+        !is.null(cv) && length(cv) == length(thisinffunc)) {
+      S <- rowsum(thisinffunc, cv)
+      return(sqrt(sum(S^2)) / n)
+    }
     return(sqrt(mean((thisinffunc)^2) / n))
   }
 }

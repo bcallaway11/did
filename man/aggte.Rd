@@ -53,9 +53,8 @@ all lengths of exposure are computed.}
 \item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier bootstrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is value set in the MP object.  If bstrap is \code{FALSE}, then analytical
-standard errors are reported.}
+the multiplier bootstrap.  Default is value set in the MP object.  If \code{bstrap=FALSE}, then analytical
+standard errors are reported; these are cluster-robust when a cluster variable was supplied to \code{att_gt}.}
 
 \item{biters}{The number of bootstrap iterations to use.  The default is the value set in the MP object,
 and this is only applicable if \code{bstrap=TRUE}.}

@@ -62,12 +62,17 @@ test_that("att_gt messages about anticipation", {
   )
 })
 
-test_that("att_gt warns on clustered SE without bootstrap", {
-  expect_warning(
-    att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
-           gname = "G", clustervars = "id", bstrap = FALSE),
-    "Clustered standard errors require"
+test_that("att_gt computes clustered SEs without the bootstrap (no 'requires bootstrap' warning)", {
+  # Clustering at the individual level (idname) without the bootstrap returns the unit-level analytical
+  # standard errors -- no "requires bootstrap" warning. A coarser cluster variable yields the analytical
+  # cluster-robust SE (covered in test-cluster-analytic.R).
+  w <- capture_warnings(
+    res <- att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+                  gname = "G", clustervars = "id", bstrap = FALSE)
   )
+  expect_false(any(grepl("Clustered standard errors require", w)))
+  expect_false(any(grepl("could not be computed analytically", w)))
+  expect_true(any(is.finite(res$se)))
 })
 
 # =============================================================================
