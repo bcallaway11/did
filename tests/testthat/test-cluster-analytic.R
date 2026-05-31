@@ -3,12 +3,13 @@
 # same cluster-sum aggregation as the multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10).
 library(testthat)
 
-# panel with cluster-by-time shocks -> genuine within-cluster correlation in the (first-differenced) IF
+# panel in which units within a cluster are dependent: they share a common shock each period (e.g. a
+# state-by-year shock), so the cluster -- not the individual unit -- is the independent sampling unit
 .make_clustered_shocks <- function(seed, G = 50L) {
   set.seed(seed)
   sz <- rep(c(1L, 2L, 4L, 10L), length.out = G); N <- sum(sz); cl <- rep(seq_len(G), times = sz)
   alpha <- rnorm(G, 0, 1)[cl]; nu <- rnorm(N, 0, 1); per <- 1:4
-  eta <- matrix(rnorm(G * 4L, 0, 1.5), G, 4L)                     # cluster-by-time shocks
+  eta <- matrix(rnorm(G * 4L, 0, 1.5), G, 4L)                     # common shock per cluster, per period
   g <- sample(c(2L, 3L, 0L), G, replace = TRUE, prob = c(.34, .33, .33))[cl]  # cluster-level treatment
   d <- data.frame(id = rep(seq_len(N), each = 4L), t = rep(per, N), cl = rep(cl, each = 4L),
                   g = rep(g, each = 4L), a = rep(alpha, each = 4L), nu = rep(nu, each = 4L))
@@ -16,29 +17,33 @@ library(testthat)
   d[order(d$id, d$t), ]
 }
 
-test_that("analytical (no-bootstrap) clustered SE for att_gt equals the cluster-sum CRVE", {
+test_that("analytical (no-bootstrap) clustered SE for att_gt equals the cluster-sum CRVE (faster_mode TRUE and FALSE)", {
   d <- .make_clustered_shocks(404L)
-  res <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
-                control_group = "nevertreated", bstrap = FALSE, clustervars = "cl", base_period = "varying")
-  cv <- res$DIDparams$cluster_vector
-  skip_if_not(!is.null(cv) && length(cv) == nrow(res$inffunc), "cluster_vector not available/aligned")
-  n <- nrow(res$inffunc)
-  S <- rowsum(as.matrix(res$inffunc), cv)            # n_clusters x k cluster sums
-  se_target <- sqrt(colSums(S^2)) / n                 # cluster-sum CRVE per ATT(g,t)
-  ok <- is.finite(res$se) & is.finite(se_target)
-  # analytical => deterministic => exact match (no Monte Carlo tolerance needed)
-  expect_equal(unname(res$se[ok]), unname(se_target[ok]), tolerance = 1e-8)
+  for (fm in c(TRUE, FALSE)) {
+    res <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
+                  control_group = "nevertreated", bstrap = FALSE, clustervars = "cl",
+                  base_period = "varying", faster_mode = fm)
+    cv <- res$DIDparams$cluster_vector
+    # the per-unit cluster vector must be available in BOTH modes (derived from data in slower mode)
+    expect_true(!is.null(cv) && length(cv) == nrow(res$inffunc))
+    n <- nrow(res$inffunc)
+    S <- rowsum(as.matrix(res$inffunc), cv)            # n_clusters x k cluster sums
+    se_target <- sqrt(colSums(S^2)) / n                 # cluster-sum CRVE per ATT(g,t)
+    ok <- is.finite(res$se) & is.finite(se_target)
+    # analytical => deterministic => exact match (no Monte Carlo tolerance needed)
+    expect_equal(unname(res$se[ok]), unname(se_target[ok]), tolerance = 1e-8)
 
-  # and it differs from the i.i.d. SE under within-cluster correlation
-  res_iid <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
-                    control_group = "nevertreated", bstrap = FALSE, base_period = "varying")
-  k <- which(res$group == 2L & res$t == 2L)
-  expect_gt(abs(res$se[k] - res_iid$se[k]) / res_iid$se[k], 0.05)
+    # and it differs from the i.i.d. SE when the units within a cluster are dependent
+    res_iid <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
+                      control_group = "nevertreated", bstrap = FALSE, base_period = "varying", faster_mode = fm)
+    k <- which(res$group == 2L & res$t == 2L)
+    expect_gt(abs(res$se[k] - res_iid$se[k]) / res_iid$se[k], 0.05)
+  }
 })
 
 test_that("analytical cluster SE agrees with the bootstrap cluster SE (multiple DGPs)", {
   skip_on_cran()  # bootstrap-heavy
-  # cluster-by-time shocks; treatment at the cluster level (within = FALSE) or within clusters (TRUE).
+  # units within a cluster share a common shock; treatment at the cluster level (within = FALSE) or within clusters (TRUE).
   mk <- function(seed, within, G = 60L) {
     set.seed(seed); sz <- rep(c(1L, 2L, 4L, 10L), length.out = G); N <- sum(sz); cl <- rep(seq_len(G), times = sz)
     alpha <- rnorm(G, 0, 1)[cl]; nu <- rnorm(N, 0, 1); eta <- matrix(rnorm(G * 4L, 0, 1.5), G, 4L)
@@ -77,7 +82,7 @@ test_that("analytical clustered SE flows through aggte at all levels (simple/gro
     a_cl  <- suppressWarnings(aggte(res_cl,  type = ty, bstrap = FALSE))
     a_iid <- suppressWarnings(aggte(res_iid, type = ty, bstrap = FALSE))
     expect_true(is.finite(a_cl$overall.se) && a_cl$overall.se > 0)
-    # clustered overall SE differs from the i.i.d. one under within-cluster correlation
+    # clustered overall SE differs from the i.i.d. one when units within a cluster are dependent
     expect_gt(abs(a_cl$overall.se - a_iid$overall.se) / a_iid$overall.se, 0.02)
   }
 })

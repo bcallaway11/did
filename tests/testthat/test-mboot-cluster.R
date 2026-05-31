@@ -4,7 +4,7 @@
 # the cluster-sum form that aligns with the (1/n) empirical average defining the estimator.
 library(testthat)
 
-# small staggered panel with within-cluster correlation; bal controls equal vs unequal cluster sizes
+# small staggered panel with units grouped into clusters; bal controls equal vs unequal cluster sizes
 .make_clustered <- function(seed, bal, G = 40L) {
   set.seed(seed)
   sz <- if (bal) rep(4L, G) else rep(c(1L, 2L, 3L, 8L), length.out = G)
@@ -26,6 +26,7 @@ library(testthat)
 }
 
 test_that("clustered mboot SE matches the cluster-sum (Remark 10) for UNBALANCED clusters", {
+  skip_on_cran()  # bootstrap-heavy (biters = 5000)
   d <- .make_clustered(101L, bal = FALSE)
   res <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
                 control_group = "nevertreated", bstrap = TRUE, biters = 5000L,
@@ -41,6 +42,7 @@ test_that("clustered mboot SE matches the cluster-sum (Remark 10) for UNBALANCED
 })
 
 test_that("clustered mboot SE is unchanged for BALANCED clusters (cluster-sum == cluster-mean)", {
+  skip_on_cran()  # bootstrap-heavy (biters = 5000)
   d <- .make_clustered(202L, bal = TRUE)
   res <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
                 control_group = "nevertreated", bstrap = TRUE, biters = 5000L,
