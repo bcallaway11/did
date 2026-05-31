@@ -85,11 +85,15 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   if (length(clustervars)==0) {
     bres <- sqrt(n) * run_multiplier_bootstrap(inf.func, biters, pl, cores)
   } else {
+    # Cluster-robust multiplier bootstrap following Callaway & Sant'Anna (2021, Remark 10): draw
+    # cluster-specific multipliers and apply them to the influence function aggregated to cluster
+    # *sums*, consistent with the (1/n) empirical average that defines the estimator. For
+    # equal-sized clusters this coincides with the previous aggregation; for unbalanced clusters and
+    # repeated cross-sections it keeps the bootstrap aligned with the cluster-robust variance.
     n_clusters <- length(unique(dta[,clustervars]))
     cluster <- unique(dta[,c(idname,clustervars)])[,2]
-    cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
-    cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
-    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_mean_if, biters, pl, cores)
+    cluster_sum_if <- rowsum(inf.func, cluster, reorder=TRUE)
+    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_sum_if, biters, pl, cores)
   }
 
 
@@ -119,7 +123,11 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
   #se <- rep(0, length(ndg.dim))
   se <- rep(NA, length(ndg.dim))
-  se[ndg.dim] <- as.numeric(bSigma) / sqrt(n_clusters)
+  # Standard error from the bootstrap interquartile-range scale. With cluster sums (above) this is the
+  # cluster-robust SE (1/n) * sqrt(sum_c S_c^2); without clustering n_clusters = n and it reduces to the
+  # i.i.d. form bSigma / sqrt(n). (Equivalent to the previous bSigma / sqrt(n_clusters) when clusters are
+  # equal-sized; the change matters only for unbalanced clusters / repeated cross-sections.)
+  se[ndg.dim] <- as.numeric(bSigma) * sqrt(n_clusters) / n
   #se[se==0] <- NA
 
   list(bres = bres, V = V, se = se, crit.val = crit.val)
