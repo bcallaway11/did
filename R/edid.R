@@ -385,9 +385,11 @@ edid <- function(
   }
 
   # ------------------------------------------------------------------
-  # EIF matrix storage (only if user requested it)
+  # EIF matrix storage. edid always retains the influence functions (as att_gt() always returns
+  # $inffunc): aggte_edid()/as_MP_edid() build the did MP from them. 'store_eif' is kept for
+  # backward compatibility but no longer gates storage.
   # ------------------------------------------------------------------
-  eif_export <- if (store_eif) eif_matrix else NULL
+  eif_export <- eif_matrix
 
   # ------------------------------------------------------------------
   # Construct edid_fit S3 object
