@@ -87,9 +87,11 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   } else {
     n_clusters <- length(unique(dta[,clustervars]))
     cluster <- unique(dta[,c(idname,clustervars)])[,2]
-    cluster_n <- aggregate(cluster, by=list(cluster), length)[,2]
-    cluster_mean_if <- rowsum(inf.func, cluster,reorder=TRUE) / cluster_n
-    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_mean_if, biters, pl, cores)
+    # Cluster-robust multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10): aggregate the influence
+    # function to cluster SUMS (not means). For equal-sized clusters this matches the previous cluster-mean
+    # aggregation; for unbalanced clusters and repeated cross-sections it is the correct cluster-sum form.
+    cluster_sum_if <- rowsum(inf.func, cluster, reorder=TRUE)
+    bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_sum_if, biters, pl, cores)
   }
 
 
@@ -119,7 +121,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
   #se <- rep(0, length(ndg.dim))
   se <- rep(NA, length(ndg.dim))
-  se[ndg.dim] <- as.numeric(bSigma) / sqrt(n_clusters)
+  # bSigma is the IQR-scale of bres; with cluster SUMS this is the cluster-robust SE (1/n) sqrt(sum_c S_c^2).
+  # For no clustering n_clusters = n and this reduces to the i.i.d. bSigma / sqrt(n).
+  se[ndg.dim] <- as.numeric(bSigma) * sqrt(n_clusters) / n
   #se[se==0] <- NA
 
   list(bres = bres, V = V, se = se, crit.val = crit.val)
