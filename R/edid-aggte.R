@@ -38,8 +38,10 @@ aggte_edid <- function(
   if (!inherits(edid_fit_obj, "edid_fit")) {
     stop("`edid_fit_obj` must be an object of class `edid_fit` returned by edid().")
   }
+  # bstrap follows how the fit was produced: edid(bstrap = TRUE) -> the aggregations use the did
+  # multiplier bootstrap (simultaneous bands); otherwise analytical.
   a <- aggte(as_MP_edid(edid_fit_obj), type = type, balance_e = balance_e,
-             min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = FALSE)
+             min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = isTRUE(edid_fit_obj$bstrap))
   a$call <- mc
   a
 }

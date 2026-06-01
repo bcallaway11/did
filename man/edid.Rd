@@ -18,7 +18,6 @@ edid(
   control_group = c("nevertreated", "notyettreated"),
   bstrap = FALSE,
   biters = 1000L,
-  bootstrap_weights = c("rademacher", "mammen", "webb"),
   seed = NULL,
   anticipation = 0L,
   aggregate = c("all", "overall", "event_study", "group", "calendar", "none"),
@@ -82,9 +81,6 @@ Default \code{FALSE} (analytical standard errors). When \code{TRUE},
 \item{biters}{Positive integer: number of multiplier bootstrap iterations.
 Default \code{1000L}. Only used when \code{bstrap = TRUE}.}
 
-\item{bootstrap_weights}{Distribution for multiplier weights. One of
-\code{"rademacher"} (default), \code{"mammen"}, or \code{"webb"}.}
-
 \item{seed}{Integer seed for reproducibility of bootstrap draws, or
 \code{NULL} (default, no seed set).}
 
@@ -140,8 +136,9 @@ is requested.}
 \item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
 \eqn{ATT(g,t)}, or \code{NULL} when not requested.}
 \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
-\item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
-\item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
+\item{\code{bstrap}}{Logical: whether bootstrap inference was used. Under \code{bstrap = TRUE} the
+cell SEs and the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} /
+\code{\link[did]{aggte}}).}
 }
 The aggregation slots are standard \code{did::AGGTEobj} objects, so \code{summary}, \code{tidy}, and
 \code{ggdid} work on them directly.

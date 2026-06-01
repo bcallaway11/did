@@ -47,8 +47,6 @@
 #'   \code{biters} bootstrap draws are used.
 #' @param biters Positive integer: number of multiplier bootstrap iterations.
 #'   Default \code{1000L}. Only used when \code{bstrap = TRUE}.
-#' @param bootstrap_weights Distribution for multiplier weights. One of
-#'   \code{"rademacher"} (default), \code{"mammen"}, or \code{"webb"}.
 #' @param seed Integer seed for reproducibility of bootstrap draws, or
 #'   \code{NULL} (default, no seed set).
 #' @param anticipation Non-negative integer: number of anticipation periods.
@@ -98,8 +96,9 @@
 #'     \item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
 #'       \eqn{ATT(g,t)}, or \code{NULL} when not requested.}
 #'     \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
-#'     \item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
-#'     \item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
+#'     \item{\code{bstrap}}{Logical: whether bootstrap inference was used. Under \code{bstrap = TRUE} the
+#'       cell SEs and the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} /
+#'       \code{\link[did]{aggte}}).}
 #'   }
 #'   The aggregation slots are standard \code{did::AGGTEobj} objects, so \code{summary}, \code{tidy}, and
 #'   \code{ggdid} work on them directly.
@@ -163,7 +162,6 @@ edid <- function(
   control_group     = c("nevertreated", "notyettreated"),
   bstrap            = FALSE,
   biters            = 1000L,
-  bootstrap_weights = c("rademacher", "mammen", "webb"),
   seed              = NULL,
   anticipation      = 0L,
   aggregate         = c("all", "overall", "event_study", "group", "calendar", "none"),
@@ -179,7 +177,6 @@ edid <- function(
   # ------------------------------------------------------------------
   pt_assumption     <- match.arg(pt_assumption)
   control_group     <- match.arg(control_group)
-  bootstrap_weights <- match.arg(bootstrap_weights)
   aggregate         <- match.arg(aggregate, several.ok = TRUE)
   # When "all" is present it subsumes the others
   if ("all" %in% aggregate) aggregate <- "all"
@@ -296,69 +293,29 @@ edid <- function(
   overall_res <- event_study_res <- group_res <- calendar_res <- NULL
 
   # ------------------------------------------------------------------
-  # Bootstrap
+  # Bootstrap. The multiplier bootstrap runs through did::mboot on the cell influence functions for the
+  # cell-level SEs + simultaneous critical value; the aggregations bootstrap through aggte_edid() ->
+  # did::aggte(bstrap = TRUE) below (so $overall/$event_study/... carry bootstrap SEs and uniform bands).
+  # Reproducible via `seed`.
   # ------------------------------------------------------------------
-  bootstrap_res <- NULL
-  if (n_bootstrap_internal > 0L) {
-    if (is.null(eif_matrix)) {
-      warning("EIF matrix is NULL; bootstrap cannot be run. ",
-              "This should not happen --- please report this issue.")
-    } else {
-      boot_agg <- if ("all" %in% aggregate || identical(aggregate, "all")) "all" else
-                  paste(intersect(aggregate, c("overall", "event_study", "group")), collapse = ",")
-      bootstrap_res <- run_multiplier_bootstrap_edid(
-        cells             = cells,
-        eif_matrix        = eif_matrix,
-        cell_index        = cell_index,
-        panel_obj         = panel_obj,
-        n_bootstrap       = n_bootstrap_internal,
-        bootstrap_weights = bootstrap_weights,
-        seed              = seed,
-        aggregate         = "all",
-        balance_e         = balance_e,
-        alpha             = alp
-      )
-      class(bootstrap_res) <- c("edid_bootstrap", "list")
-
-      # Overwrite SEs/CIs with bootstrap versions
-      if (do_overall && !is.null(overall_res) && !is.null(bootstrap_res$overall_b)) {
-        bs_ov <- compute_bootstrap_stats_edid(bootstrap_res$overall_b, overall_res$att, alp)
-        overall_res$se       <- bs_ov$se_boot
-        overall_res$ci_lower <- bs_ov$ci_lower
-        overall_res$ci_upper <- bs_ov$ci_upper
-        overall_res$p_value  <- bs_ov$p_value_boot
-        overall_res$t_stat   <- if (!is.na(bs_ov$se_boot) && bs_ov$se_boot > 0) {
-          overall_res$att / bs_ov$se_boot
-        } else NA_real_
-      }
-
-      if (do_event_study && !is.null(event_study_res) &&
-          !is.null(bootstrap_res$event_study_b)) {
-        for (e_nm in names(event_study_res)) {
-          draws <- bootstrap_res$event_study_b[[e_nm]]
-          if (is.null(draws)) next
-          bs_es <- compute_bootstrap_stats_edid(draws, event_study_res[[e_nm]]$att, alp)
-          event_study_res[[e_nm]]$se       <- bs_es$se_boot
-          event_study_res[[e_nm]]$ci_lower <- bs_es$ci_lower
-          event_study_res[[e_nm]]$ci_upper <- bs_es$ci_upper
-          event_study_res[[e_nm]]$p_value  <- bs_es$p_value_boot
-        }
-      }
-
-      if (do_group && !is.null(group_res) && !is.null(bootstrap_res$group_b)) {
-        for (g_nm in names(group_res)) {
-          draws <- bootstrap_res$group_b[[g_nm]]
-          if (is.null(draws)) next
-          bs_gr <- compute_bootstrap_stats_edid(draws, group_res[[g_nm]]$att, alp)
-          group_res[[g_nm]]$se       <- bs_gr$se_boot
-          group_res[[g_nm]]$ci_lower <- bs_gr$ci_lower
-          group_res[[g_nm]]$ci_upper <- bs_gr$ci_upper
-          group_res[[g_nm]]$p_value  <- bs_gr$p_value_boot
-        }
-        # Also update cell-level SEs from bootstrap if we have per-cell draws
-        # (not stored at cell level -- only aggregate-level bootstrap is implemented)
-      }
+  if (bstrap) {
+    if (!is.null(seed)) set.seed(seed)
+    bdp <- list(idname = idname, tname = tname, clustervars = clustervars,
+                biters = as.integer(biters), alp = alp, panel = TRUE, faster_mode = FALSE,
+                true_repeated_cross_sections = FALSE, allow_unbalanced_panel = FALSE)
+    if (!is.null(clustervars)) {
+      # time-invariant cluster data, one row per unit in the influence-function (all_units) order
+      bdp$data <- stats::setNames(
+        data.frame(panel_obj$all_units, min(panel_obj$time_periods), panel_obj$cluster_indices),
+        c(idname, tname, clustervars))
     }
+    bb <- mboot(eif_matrix, bdp, pl = FALSE)
+    ok <- is.finite(bb$se)
+    att_gt_df$se[ok]       <- bb$se[ok]
+    att_gt_df$ci_lower[ok] <- att_gt_df$att[ok] - bb$crit.val * bb$se[ok]
+    att_gt_df$ci_upper[ok] <- att_gt_df$att[ok] + bb$crit.val * bb$se[ok]
+    att_gt_df$t_stat[ok]   <- att_gt_df$att[ok] / bb$se[ok]
+    att_gt_df$p_value[ok]  <- 2 * stats::pnorm(-abs(att_gt_df$t_stat[ok]))
   }
 
   # ------------------------------------------------------------------
@@ -392,16 +349,14 @@ edid <- function(
     cluster_indices  = panel_obj$cluster_indices,  # for cluster-robust re-aggregation in aggte_edid
     xformla          = xformla,
     bstrap           = bstrap,
+    biters           = as.integer(biters),         # used by aggte_edid()/as_MP_edid() for bstrap = TRUE
     cells            = cells,
     att_gt           = att_gt_df,
     overall          = overall_res,
     event_study      = event_study_res,
     group            = group_res,
     calendar         = calendar_res,
-    eif              = eif_export,
-    bootstrap        = bootstrap_res,
-    n_bootstrap      = n_bootstrap_internal,
-    bootstrap_weights = bootstrap_weights
+    eif              = eif_export
   )
 
   class(edid_fit) <- c("edid_fit", "list")

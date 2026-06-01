@@ -170,15 +170,16 @@ test_that("edid() two-cohort: group ATTs are near true values 1.5 and 2.5 (large
 # ============================================================
 # 9.8 Bootstrap integration
 # ============================================================
-test_that("edid() with bstrap=TRUE returns bootstrap field in edid_fit", {
+test_that("edid() with bstrap=TRUE produces bootstrap cell and aggregate SEs", {
   df  <- make_panel_1cohort(seed = 42)
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname         = "first_treat",
               pt_assumption = "post", aggregate = "overall",
-              bstrap        = TRUE, biters = 50L, bootstrap_weights = "rademacher",
-              seed          = 42L)
-  expect_false(is.null(fit$bootstrap))
-  expect_equal(fit$bootstrap$n_bootstrap, 50L)
+              bstrap        = TRUE, biters = 50L, seed = 42L)
+  expect_true(isTRUE(fit$bstrap))
+  # cell SEs via did::mboot; aggregate SE via aggte_edid -> did::aggte(bstrap = TRUE)
+  expect_true(all(is.finite(fit$att_gt$se[!fit$att_gt$is_pre])))
+  expect_true(is.finite(fit$overall$overall.se) && fit$overall$overall.se > 0)
 })
 
 test_that("edid() bootstrap SE differs from analytical SE (not identical)", {
