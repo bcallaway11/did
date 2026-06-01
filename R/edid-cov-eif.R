@@ -477,14 +477,14 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
   wY - (Gg / pi_g) * att_gt
 }
 
-#' Pointwise efficient weights w(X_i) = Omega*(X_i)^{-1} 1 / (1' Omega*(X_i)^{-1} 1)
+#' Pointwise efficient weights w(X_i) = Omega*(X_i)^(-1) 1 / (1' Omega*(X_i)^(-1) 1)
 #'
 #' Per-observation semiparametric-efficient weights from the conditional-covariance array. Each
 #' Omega*(X_i) is regularized by a DIMENSION-AWARE relative eigenvalue floor.
 #' The kernel Omega*(X) is estimated at the uniform Nadaraya-Watson rate rho_n,
 #' whose variance exponent is (5-d)/10 (product Gaussian kernel, per-covariate
-#' bw.nrd0 ~ n^{-1/5}; d = number of covariates). Asymptotic negligibility
-#' requires the floor TOL = f(n) to vanish but DOMINATE rho_n, i.e. TOL = n^{-a}
+#' bw.nrd0 ~ n^(-1/5); d = number of covariates). Asymptotic negligibility
+#' requires the floor TOL = f(n) to vanish but DOMINATE rho_n, i.e. TOL = n^(-a)
 #' with 0 < a < (5-d)/10. We take a = c*(5-min(d,4))/10 with c = 0.7 (strictly
 #' interior to the admissible band for d <= 4; for d >= 5 the band (0,(5-d)/10) is
 #' EMPTY -- d is clamped to 4 giving fallback a = 0.07, where efficiency is no
@@ -492,7 +492,7 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
 #' asymptotically negligible
 #' (estimator stays pointwise-efficient and the plug-in SE is consistent in the
 #' limit) yet stays above the NW eigenvalue noise for finite-sample stability.
-#' Condition number is capped at ~n^{a}. Pure per-unit inversion (no floor) is
+#' Condition number is capped at ~n^(a). Pure per-unit inversion (no floor) is
 #' unstable: a few near-singular Omega*(X_i) produce enormous weights. Degenerate
 #' units fall back to uniform (1/H).
 #'

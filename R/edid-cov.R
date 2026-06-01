@@ -226,7 +226,7 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
 #' @param gp scalar: cohort whose inverse propensity to estimate
 #' @param bs_df integer: B-spline degrees of freedom (default 4)
 #'
-#' @return numeric vector length n_test: estimated 1/p_{g'}(X) values, >= 0
+#' @return numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0
 #' @keywords internal
 estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
                                              bs_df = 4L) {
@@ -386,7 +386,7 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
   result
 }
 
-#' Estimate inverse propensities 1/p_{g'}(X) for all groups via cross-fitting
+#' Estimate inverse propensities 1/p_g'(X) for all groups via cross-fitting
 #'
 #' For each group g needed in Omega* (the target group g, the never-treated,
 #' and each comparison cohort g'), performs K-fold cross-fitting to produce

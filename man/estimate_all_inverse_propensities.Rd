@@ -2,7 +2,7 @@
 % Please edit documentation in R/edid-cov.R
 \name{estimate_all_inverse_propensities}
 \alias{estimate_all_inverse_propensities}
-\title{Estimate inverse propensities 1/p_{g'}(X) for all groups via cross-fitting}
+\title{Estimate inverse propensities 1/p_g'(X) for all groups via cross-fitting}
 \usage{
 estimate_all_inverse_propensities(panel_obj, g, pairs, bs_df, K_folds, fold_id)
 }

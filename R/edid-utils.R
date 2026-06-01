@@ -106,7 +106,7 @@ solve_ols_edid <- function(X, y, weights = NULL) {
   Xw <- X * W
   yw <- y * W
   fit <- tryCatch(
-    .lm.fit(Xw, yw),
+    stats::.lm.fit(Xw, yw),
     error = function(e) NULL
   )
   if (!is.null(fit) && all(is.finite(fit$coefficients))) {

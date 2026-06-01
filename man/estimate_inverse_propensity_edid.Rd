@@ -18,7 +18,7 @@ estimate_inverse_propensity_edid(X_train, G_train, X_test, gp, bs_df = 4L)
 \item{bs_df}{integer: B-spline degrees of freedom (default 4)}
 }
 \value{
-numeric vector length n_test: estimated 1/p_{g'}(X) values, >= 0
+numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0
 }
 \description{
 Implements the sieve estimator for the inverse propensity from
