@@ -298,25 +298,10 @@ edid <- function(
   do_group      <- aggregate %in% c("all", "group")
   do_calendar   <- aggregate %in% c("all", "calendar")
 
-  overall_res    <- NULL
-  event_study_res <- NULL
-  group_res      <- NULL
-  calendar_res   <- NULL
-
-  if (do_overall) {
-    overall_res <- aggregate_overall_edid(cells, eif_matrix, cell_index, panel_obj, alp)
-  }
-  if (do_event_study) {
-    event_study_res <- aggregate_event_study_edid(
-      cells, eif_matrix, cell_index, panel_obj, alp, balance_e
-    )
-  }
-  if (do_group) {
-    group_res <- aggregate_group_edid(cells, eif_matrix, cell_index, panel_obj, alp)
-  }
-  if (do_calendar) {
-    calendar_res <- aggregate_calendar_edid(cells, eif_matrix, cell_index, panel_obj, alp)
-  }
+  # Aggregations are computed below, AFTER the edid_fit object exists, via aggte_edid() -- i.e. through
+  # did::aggte() on the edid MP. So $overall/$event_study/$group/$calendar/$simple are standard
+  # did::AGGTEobj objects and inherit did's print/summary/tidy methods (full att_gt-compatibility).
+  overall_res <- event_study_res <- group_res <- calendar_res <- NULL
 
   # ------------------------------------------------------------------
   # Bootstrap
@@ -430,35 +415,18 @@ edid <- function(
 
   class(edid_fit) <- c("edid_fit", "list")
 
-  # Headline `$overall` = the DYNAMIC event-study average over relative times e >= 0 -- the paper's
-  # main object (ES_avg). The did-"simple" cohort-share aggregate over all post cells is kept as
-  # `$overall_simple`, and `$overall_group` is the cohort-share-weighted group average. Each matches
-  # the corresponding aggte_edid(type=)$overall.att (computed via aggte_edid -- single source of
-  # truth, so the WIF + cluster-robust SE flow through). The per-relative-time `$event_study` and
-  # per-cohort `$group` lists are UNCHANGED. When no event study is computed, `$overall` falls back
-  # to the simple aggregate.
-  edid_fit$overall_simple <- overall_res
-  zq <- stats::qnorm(1 - alp / 2)
-  to_ov <- function(a) {
-    att <- a$overall.att; se <- a$overall.se
-    tstat <- if (is.finite(se) && se > 0) att / se else NA_real_
-    list(att = att, se = se, ci_lower = att - zq * se, ci_upper = att + zq * se,
-         t_stat = tstat,
-         p_value = if (is.finite(tstat)) 2 * stats::pnorm(-abs(tstat)) else NA_real_,
-         type = a$type)
-  }
-  if (do_event_study && !is.null(event_study_res) && length(event_study_res) > 0L) {
-    dyn <- tryCatch(aggte_edid(edid_fit, type = "dynamic", na.rm = TRUE), error = function(e) NULL)
-    if (!is.null(dyn)) edid_fit$overall <- to_ov(dyn)   # headline = dynamic ES_avg (e >= 0)
-  }
-  if (do_group && !is.null(group_res) && length(group_res) > 0L) {
-    grp <- tryCatch(aggte_edid(edid_fit, type = "group"), error = function(e) NULL)
-    if (!is.null(grp)) edid_fit$overall_group <- to_ov(grp)
-  }
-  if (do_calendar && !is.null(calendar_res) && length(calendar_res) > 0L) {
-    cal <- tryCatch(aggte_edid(edid_fit, type = "calendar", na.rm = TRUE), error = function(e) NULL)
-    if (!is.null(cal)) edid_fit$overall_calendar <- to_ov(cal)
-  }
+  # Compute the requested aggregations as did::AGGTEobj objects via aggte_edid() (= did::aggte on the
+  # edid MP), so they inherit did's print/summary/tidy methods (full att_gt-compatibility). The dynamic
+  # AGGTEobj carries BOTH the headline event-study average (overall.att) and the per-relative-time ES(e)
+  # (att.egt / egt); pre-treatment leads are dropped via na.rm. `$overall` is the headline AGGTEobj:
+  # the dynamic event-study average when an event study is requested, else the cohort-share "simple"
+  # aggregate. `$event_study`, `$group`, `$calendar`, `$simple` are the corresponding AGGTEobj objects.
+  .agg <- function(ty) tryCatch(aggte_edid(edid_fit, type = ty, na.rm = TRUE), error = function(e) NULL)
+  if (do_event_study) edid_fit$event_study <- .agg("dynamic")
+  if (do_group)       edid_fit$group       <- .agg("group")
+  if (do_calendar)    edid_fit$calendar    <- .agg("calendar")
+  if (do_overall)     edid_fit$simple      <- .agg("simple")
+  edid_fit$overall <- if (!is.null(edid_fit$event_study)) edid_fit$event_study else edid_fit$simple
 
   edid_fit
 }

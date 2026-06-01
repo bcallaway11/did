@@ -71,7 +71,7 @@ test_that("edid() PT-Post overall ATT close to 2 for ATT=2 DGP (large sample)", 
               aggregate     = "overall",
               bstrap        = FALSE)
   # True ATT = 2; allow generous tolerance for finite samples
-  expect_equal(fit$overall$att, 2, tolerance = 0.4)
+  expect_equal(fit$overall$overall.att, 2, tolerance = 0.4)
 })
 
 test_that("edid() PT-All overall ATT close to 2 for ATT=2 DGP (large sample)", {
@@ -81,7 +81,7 @@ test_that("edid() PT-All overall ATT close to 2 for ATT=2 DGP (large sample)", {
               pt_assumption = "all",
               aggregate     = "overall",
               bstrap        = FALSE)
-  expect_equal(fit$overall$att, 2, tolerance = 0.5)
+  expect_equal(fit$overall$overall.att, 2, tolerance = 0.5)
 })
 
 # ============================================================
@@ -153,7 +153,7 @@ test_that("edid() two-cohort staggered panel produces two groups in group aggreg
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
               pt_assumption = "all", aggregate = "all", bstrap = FALSE)
-  expect_equal(length(fit$group), 2L)
+  expect_equal(length(fit$group$egt), 2L)   # $group is a did::AGGTEobj; egt = the cohorts
 })
 
 test_that("edid() two-cohort: group ATTs are near true values 1.5 and 2.5 (large sample)", {
@@ -162,7 +162,7 @@ test_that("edid() two-cohort: group ATTs are near true values 1.5 and 2.5 (large
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
               pt_assumption = "post", aggregate = "group", bstrap = FALSE)
-  atts <- sapply(fit$group, function(x) x$att)
+  atts <- fit$group$att.egt   # per-cohort overall ATTs from the did::AGGTEobj
   # Group g=3 should be near 1.5; group g=5 near 2.5
   expect_equal(unname(sort(atts)), c(1.5, 2.5), tolerance = 0.6)
 })
@@ -189,8 +189,8 @@ test_that("edid() bootstrap SE differs from analytical SE (not identical)", {
               bstrap        = TRUE, biters = 200L, seed = 42L)
   # Bootstrap SE and analytical SE are related but not identical
   # Both should be finite and positive
-  expect_true(is.finite(fit$overall$se))
-  expect_true(fit$overall$se > 0)
+  expect_true(is.finite(fit$overall$overall.se))
+  expect_true(fit$overall$overall.se > 0)
 })
 
 # ============================================================
@@ -203,8 +203,8 @@ test_that("edid() with clustervars argument produces finite clustered SEs", {
               clustervars   = "cluster_id",
               pt_assumption = "post", aggregate = "overall",
               bstrap        = FALSE)
-  expect_true(is.finite(fit$overall$se))
-  expect_true(fit$overall$se > 0)
+  expect_true(is.finite(fit$overall$overall.se))
+  expect_true(fit$overall$overall.se > 0)
 })
 
 # ============================================================
@@ -281,8 +281,9 @@ test_that("edid() 95% CI contains 2 for large-n ATT=2 DGP", {
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname         = "first_treat",
               pt_assumption = "post", aggregate = "overall", bstrap = FALSE)
-  ci_lo <- fit$overall$ci_lower
-  ci_hi <- fit$overall$ci_upper
+  .z   <- stats::qnorm(1 - fit$alpha / 2)   # AGGTEobj stores att/se; CI = att +/- z*se
+  ci_lo <- fit$overall$overall.att - .z * fit$overall$overall.se
+  ci_hi <- fit$overall$overall.att + .z * fit$overall$overall.se
   expect_true(ci_lo < 2 && ci_hi > 2,
               info = paste("CI:", ci_lo, "-", ci_hi, "does not contain 2"))
 })
@@ -300,5 +301,5 @@ test_that("edid() accepts G=0 for never-treated and auto-converts to Inf", {
   fit_inf <- edid(df, yname = "outcome", idname = "unit", tname = "time",
                   gname = "first_treat",
                   pt_assumption = "post", aggregate = "overall", bstrap = FALSE)
-  expect_equal(fit_0$overall$att, fit_inf$overall$att, tolerance = 1e-10)
+  expect_equal(fit_0$overall$overall.att, fit_inf$overall$overall.att, tolerance = 1e-10)
 })

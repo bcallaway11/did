@@ -26,8 +26,8 @@ test_that("xformla=NULL and xformla=~1 produce bit-for-bit identical results", {
   fit0   <- edid(df, "y", "id", "t", "g")
   fit1   <- edid(df, "y", "id", "t", "g", xformla = ~1)
 
-  expect_equal(fit0$overall$att,    fit1$overall$att,    tolerance = 1e-12)
-  expect_equal(fit0$overall$se,     fit1$overall$se,     tolerance = 1e-12)
+  expect_equal(fit0$overall$overall.att,    fit1$overall$overall.att,    tolerance = 1e-12)
+  expect_equal(fit0$overall$overall.se,     fit1$overall$overall.se,     tolerance = 1e-12)
   expect_equal(fit0$att_gt$att,     fit1$att_gt$att,     tolerance = 1e-12)
   expect_equal(fit0$att_gt$se,      fit1$att_gt$se,      tolerance = 1e-12)
 })
@@ -58,10 +58,10 @@ test_that("covariate path returns edid_fit with all required slots", {
   expect_true(all(c("group", "time", "att", "se", "ci_lower", "ci_upper") %in%
                     names(fit$att_gt)))
   expect_true(!is.null(fit$overall))
-  expect_true(is.numeric(fit$overall$att))
-  expect_true(is.finite(fit$overall$att))
-  expect_true(is.numeric(fit$overall$se))
-  expect_true(fit$overall$se > 0)
+  expect_true(is.numeric(fit$overall$overall.att))
+  expect_true(is.finite(fit$overall$overall.att))
+  expect_true(is.numeric(fit$overall$overall.se))
+  expect_true(fit$overall$overall.se > 0)
 })
 
 # ============================================================
@@ -88,7 +88,7 @@ test_that("covariate path runs without error on 2D covariate formula", {
   df$x2 <- rep(rnorm(nrow(df) / 6), each = 6)
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2, seed = 1L)
   expect_s3_class(fit, "edid_fit")
-  expect_true(is.finite(fit$overall$att))
+  expect_true(is.finite(fit$overall$overall.att))
 })
 
 # ============================================================
@@ -114,7 +114,7 @@ test_that("xformla with I(x1^2) runs and differs from ~x1 on nonlinear DGP", {
   # Both should run; they should not be identical (different model matrix)
   expect_s3_class(fit_lin,  "edid_fit")
   expect_s3_class(fit_quad, "edid_fit")
-  expect_false(isTRUE(all.equal(fit_lin$overall$att, fit_quad$overall$att,
+  expect_false(isTRUE(all.equal(fit_lin$overall$overall.att, fit_quad$overall$overall.att,
                                  tolerance = 1e-6)))
 })
 
@@ -131,5 +131,5 @@ test_that("factor covariate is accepted and produces finite results", {
 
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1 + fac, seed = 1L)
   expect_s3_class(fit, "edid_fit")
-  expect_true(is.finite(fit$overall$att))
+  expect_true(is.finite(fit$overall$overall.att))
 })

@@ -1,14 +1,28 @@
 # edid-methods.R
-# S3 methods for the edid_fit class.
+# S3 methods for the edid_fit class. The aggregations ($overall/$event_study/$group/$calendar/$simple)
+# are did::AGGTEobj objects (built via aggte_edid -> did::aggte), so these methods read AGGTEobj fields
+# (overall.att/overall.se, att.egt/se.egt/egt) and the per-element influence functions in $inf.function.
+
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+# Pull the per-element (n x K) and overall (n) influence functions out of a did::AGGTEobj, regardless of
+# aggregation type (compute.aggte names them dynamic./selective./calendar.inf.func.* and simple.att).
+.edid_agg_if <- function(a) {
+  if (is.null(a)) return(list(egt = NULL, overall = NULL))
+  inf <- a$inf.function
+  list(
+    egt     = inf$dynamic.inf.func.e %||% inf$selective.inf.func.g %||% inf$calendar.inf.func.t,
+    overall = inf$dynamic.inf.func %||% inf$selective.inf.func %||% inf$calendar.inf.func %||% inf$simple.att
+  )
+}
 
 #' Print method for edid_fit objects
 #'
-#' Displays the ATT(g,t) table in the same style as \code{print.MP} /
-#' \code{summary.MP}, followed by footer metadata.
+#' Displays the ATT(g,t) table in the same style as \code{print.MP} / \code{summary.MP}, followed by
+#' footer metadata.
 #'
 #' @param x an \code{edid_fit} object
 #' @param ... additional arguments (currently ignored)
-#'
 #' @return \code{x} invisibly
 #' @export
 print.edid_fit <- function(x, ...) {
@@ -20,7 +34,6 @@ print.edid_fit <- function(x, ...) {
   cat("Group-Time Average Treatment Effects:\n")
 
   alp <- x$alpha
-  # CI label: pointwise for analytical; simult if bootstrap
   cband_text1a <- paste0(100 * (1 - alp), "% ")
   cband_text1b <- ifelse(isTRUE(x$bstrap), "Simult. ", "Pointwise ")
   cband_text1  <- paste0("[", cband_text1a, cband_text1b)
@@ -29,23 +42,13 @@ print.edid_fit <- function(x, ...) {
   if (!is.null(att_df) && nrow(att_df) > 0L) {
     ci_lower <- att_df$ci_lower
     ci_upper <- att_df$ci_upper
-
     sig <- (ci_upper < 0) | (ci_lower > 0)
     sig[is.na(sig)] <- FALSE
     sig_text <- ifelse(sig, "*", "")
-
-    out <- cbind.data.frame(
-      att_df$group,
-      att_df$time,
-      att_df$att,
-      att_df$se,
-      ci_lower,
-      ci_upper
-    )
+    out <- cbind.data.frame(att_df$group, att_df$time, att_df$att, att_df$se, ci_lower, ci_upper)
     out <- round(out, 4)
     out <- cbind.data.frame(out, sig_text)
-    colnames(out) <- c("Group", "Time", "ATT(g,t)", "Std. Error",
-                       cband_text1, "Conf. Band]", "")
+    colnames(out) <- c("Group", "Time", "ATT(g,t)", "Std. Error", cband_text1, "Conf. Band]", "")
     print(out, row.names = FALSE)
   } else {
     cat("  (no cells)\n")
@@ -55,78 +58,39 @@ print.edid_fit <- function(x, ...) {
   cat("Signif. codes: `*' confidence band does not cover 0")
   cat("\n\n")
 
-  # Control group footer
   cg <- x$control_group
-  cg_text <- if (cg == "nevertreated")   "Never Treated"    else
-             if (cg == "notyettreated") "Not Yet Treated"  else cg
-  cat("Control Group:  ")
-  cat(cg_text)
-  cat(",  ")
-  cat("Anticipation Periods:  ")
-  cat(x$anticipation)
-  cat("\n")
-
+  cg_text <- if (cg == "nevertreated") "Never Treated" else
+             if (cg == "notyettreated") "Not Yet Treated" else cg
+  cat("Control Group:  "); cat(cg_text); cat(",  ")
+  cat("Anticipation Periods:  "); cat(x$anticipation); cat("\n")
   cat("Estimation Method:  Efficient DiD (Chen, Sant'Anna & Xie 2025)\n")
-
   pt_text <- if (x$pt_assumption == "all") "PT-All" else "PT-Post"
-  cat("PT Assumption:  ")
-  cat(pt_text)
-  cat("\n")
-
+  cat("PT Assumption:  "); cat(pt_text); cat("\n")
   invisible(x)
 }
 
 #' Summary method for edid_fit objects
 #'
-#' Prints a structured summary of the EDiD estimation results including
-#' the ATT(g,t) table (in MP style) plus aggregated overall, event-study,
-#' and group estimates.
+#' Prints the ATT(g,t) table (MP style) followed by the requested aggregations, each a
+#' \code{did::AGGTEobj} printed with did's own \code{print.AGGTEobj}.
 #'
 #' @param object an \code{edid_fit} object
 #' @param ... additional arguments (currently ignored)
-#'
 #' @return \code{object} invisibly
 #' @export
 summary.edid_fit <- function(object, ...) {
-  # First, print the ATT(g,t) table in MP format
   print.edid_fit(object, ...)
-
-  # Overall ATT
-  if (!is.null(object$overall)) {
-    cat("\n--- Overall ATT ---\n")
-    ov <- object$overall
-    cat(sprintf("  ATT = %.4f  SE = %s  CI = [%s, %s]  p = %s\n",
-                ov$att,
-                .fmt_or_na(ov$se),
-                .fmt_or_na(ov$ci_lower),
-                .fmt_or_na(ov$ci_upper),
-                .fmt_or_na(ov$p_value)))
+  ov <- object$overall
+  if (!is.null(ov)) {
+    cat(sprintf("\nOverall ATT (%s):  %s  (SE %s)\n", ov$type %||% "overall",
+                .fmt_or_na(ov$overall.att), .fmt_or_na(ov$overall.se)))
   }
-
-  # Event-study
-  if (!is.null(object$event_study) && length(object$event_study) > 0L) {
-    cat("\n--- Event-Study ATT(e) ---\n")
-    for (es in object$event_study) {
-      cat(sprintf("  e = %3g: ATT = %.4f  SE = %s  p = %s\n",
-                  es$e,
-                  es$att,
-                  .fmt_or_na(es$se),
-                  .fmt_or_na(es$p_value)))
+  for (nm in c("event_study", "group", "calendar")) {
+    a <- object[[nm]]
+    if (!is.null(a) && inherits(a, "AGGTEobj")) {
+      cat(sprintf("\n--- %s ---\n", nm)); print(a)
     }
   }
-
-  # Group
-  if (!is.null(object$group) && length(object$group) > 0L) {
-    cat("\n--- Group ATT(g) ---\n")
-    for (gr in object$group) {
-      cat(sprintf("  g = %g: ATT = %.4f  SE = %s  p = %s\n",
-                  gr$group,
-                  gr$att,
-                  .fmt_or_na(gr$se),
-                  .fmt_or_na(gr$p_value)))
-    }
-  }
-
   cat("\n")
   invisible(object)
 }
@@ -139,148 +103,80 @@ summary.edid_fit <- function(object, ...) {
 #' Extract ATT coefficients from an edid_fit object
 #'
 #' @param object an \code{edid_fit} object
-#' @param which character: one of \code{"att_gt"}, \code{"overall"},
-#'   \code{"event_study"}, \code{"group"}
+#' @param which character: one of \code{"att_gt"}, \code{"overall"}, \code{"event_study"}, \code{"group"}
 #' @param ... additional arguments (ignored)
-#'
 #' @return named numeric vector of ATT estimates
 #' @export
-coef.edid_fit <- function(
-  object,
-  which = c("att_gt", "overall", "event_study", "group"),
-  ...
-) {
+coef.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", "group"), ...) {
   which <- match.arg(which)
   switch(which,
     att_gt = {
-      df  <- object$att_gt
-      nms <- paste0("ATT(", df$group, ",", df$time, ")")
-      stats::setNames(df$att, nms)
+      df <- object$att_gt
+      stats::setNames(df$att, paste0("ATT(", df$group, ",", df$time, ")"))
     },
-    overall = {
-      c(overall = object$overall$att)
-    },
+    overall = c(overall = object$overall$overall.att),
     event_study = {
-      vals <- vapply(object$event_study, function(x) x$att, numeric(1L))
-      es   <- object$event_study
-      nms  <- vapply(es, function(x) paste0("e=", x$e), character(1L))
-      stats::setNames(vals, nms)
+      a <- object$event_study
+      if (is.null(a)) return(numeric(0L))
+      stats::setNames(a$att.egt, paste0("e=", a$egt))
     },
     group = {
-      vals <- vapply(object$group, function(x) x$att, numeric(1L))
-      nms  <- vapply(object$group, function(x) paste0("g=", x$group), character(1L))
-      stats::setNames(vals, nms)
+      a <- object$group
+      if (is.null(a)) return(numeric(0L))
+      stats::setNames(a$att.egt, paste0("g=", a$egt))
     }
   )
 }
 
 #' Extract variance-covariance matrix from an edid_fit object
 #'
-#' Returns the IID asymptotic covariance: the outer product of the (per-unit)
-#' aggregated influence-function vectors, scaled by \eqn{1/n^2}.
-#'
-#' @note This currently returns the IID covariance regardless of how \code{object}
-#'   was fit. When \code{clustervars} or \code{bstrap = TRUE} was used, the SEs
-#'   reported by \code{summary()} apply a cluster-robust / bootstrap adjustment that
-#'   \code{vcov()} does not yet mirror, so the two can differ in those cases.
-#'   Cluster- and bootstrap-aware \code{vcov} is a planned addition.
+#' For \code{which = "att_gt"} returns the cluster-robust (or i.i.d.) covariance of the cell-level
+#' ATT(g,t)'s from the stored influence functions. For the aggregations it returns the covariance implied
+#' by the corresponding \code{did::AGGTEobj}'s aggregate influence functions (cluster-robust when
+#' \code{clustervars} was set).
 #'
 #' @param object an \code{edid_fit} object
-#' @param which character: one of \code{"att_gt"}, \code{"overall"},
-#'   \code{"event_study"}, \code{"group"}
+#' @param which character: one of \code{"att_gt"}, \code{"overall"}, \code{"event_study"}, \code{"group"}
 #' @param ... additional arguments (ignored)
-#'
 #' @return square numeric matrix
 #' @export
-vcov.edid_fit <- function(
-  object,
-  which = c("att_gt", "overall", "event_study", "group"),
-  ...
-) {
+vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", "group"), ...) {
   which <- match.arg(which)
-  n     <- object$n
-  ci    <- object$cluster_indices   # NULL unless clustervars was set; aligned with the per-unit EIFs
+  n  <- object$n
+  ci <- object$cluster_indices
 
-  # Cross-product of two per-unit EIF vectors: cluster-robust (sum within clusters first, with the
-  # (G/(G-1)) finite-cluster factor) when ci is non-NULL, IID otherwise. This is the SAME estimator as
-  # safe_inference_edid(), so diag(vcov(.)) reproduces the SE^2 that summary() reports -- including when
-  # the clustering level is coarser than the unit id and bstrap = FALSE.
-  .cross <- function(ej, ek) {
-    if (is.null(ci)) return(sum(ej * ek) / n^2)
+  # cluster-robust (or i.i.d.) covariance of the columns of an n x K influence-function matrix
+  .cross_mat <- function(M) {
+    M <- as.matrix(M)
+    if (is.null(ci)) return(crossprod(M) / n^2)
     G <- length(unique(ci))
-    if (G <= 1L) return(NA_real_)
-    (G / (G - 1)) * sum(drop(rowsum(ej, ci)) * drop(rowsum(ek, ci))) / n^2
+    if (G <= 1L) return(matrix(NA_real_, ncol(M), ncol(M)))
+    CS <- rowsum(M, ci)
+    (G / (G - 1)) * crossprod(CS) / n^2
+  }
+
+  if (which == "att_gt") {
+    df  <- object$att_gt
+    nms <- paste0("ATT(", df$group, ",", df$time, ")")
+    if (!is.null(object$eif)) {
+      v <- .cross_mat(object$eif); dimnames(v) <- list(nms, nms); return(v)
+    }
+    v <- diag(df$se^2, nrow = nrow(df)); dimnames(v) <- list(nms, nms); return(v)
   }
 
   if (which == "overall") {
-    eif_v <- object$overall$eif_agg
-    if (is.null(eif_v)) return(matrix(NA_real_, 1L, 1L))
-    return(matrix(.cross(eif_v, eif_v), nrow = 1L, ncol = 1L,
+    g <- .edid_agg_if(object$overall)
+    if (is.null(g$overall)) return(matrix(NA_real_, 1L, 1L))
+    return(matrix(.cross_mat(matrix(g$overall, ncol = 1L)), 1L, 1L,
                   dimnames = list("overall", "overall")))
   }
 
-  if (which == "event_study") {
-    es_list <- object$event_study
-    if (is.null(es_list) || length(es_list) == 0L) return(matrix(NA_real_, 0L, 0L))
-    nms  <- vapply(es_list, function(x) paste0("e=", x$e), character(1L))
-    K    <- length(es_list)
-    vcv  <- matrix(NA_real_, K, K, dimnames = list(nms, nms))
-    for (j in seq_len(K)) {
-      eif_j <- es_list[[j]]$eif_agg
-      if (is.null(eif_j)) next
-      for (k in seq_len(K)) {
-        eif_k <- es_list[[k]]$eif_agg
-        if (is.null(eif_k)) next
-        vcv[j, k] <- .cross(eif_j, eif_k)
-      }
-    }
-    return(vcv)
-  }
-
-  if (which == "group") {
-    gr_list <- object$group
-    if (is.null(gr_list) || length(gr_list) == 0L) return(matrix(NA_real_, 0L, 0L))
-    nms  <- vapply(gr_list, function(x) paste0("g=", x$group), character(1L))
-    K    <- length(gr_list)
-    vcv  <- matrix(NA_real_, K, K, dimnames = list(nms, nms))
-    for (j in seq_len(K)) {
-      eif_j <- gr_list[[j]]$eif_agg
-      if (is.null(eif_j)) next
-      for (k in seq_len(K)) {
-        eif_k <- gr_list[[k]]$eif_agg
-        if (is.null(eif_k)) next
-        vcv[j, k] <- .cross(eif_j, eif_k)
-      }
-    }
-    return(vcv)
-  }
-
-  # att_gt: cluster-robust crossproduct of the cell-level EIF matrix (n x K) when available.
-  if (!is.null(object$eif)) {
-    eif_mat <- object$eif
-    df  <- object$att_gt
-    nms <- paste0("ATT(", df$group, ",", df$time, ")")
-    if (is.null(ci)) {
-      vcv <- crossprod(eif_mat) / n^2
-    } else {
-      G  <- length(unique(ci))
-      vcv <- if (G <= 1L) {
-        matrix(NA_real_, ncol(eif_mat), ncol(eif_mat))
-      } else {
-        CS <- rowsum(eif_mat, ci)                 # G x K cluster sums
-        (G / (G - 1)) * crossprod(CS) / n^2
-      }
-    }
-    dimnames(vcv) <- list(nms, nms)
-    return(vcv)
-  }
-  # Fallback: diagonal from stored SEs (which already carry the cluster-robust adjustment).
-  df  <- object$att_gt
-  nms <- paste0("ATT(", df$group, ",", df$time, ")")
-  K   <- nrow(df)
-  vcv <- diag(df$se^2, nrow = K)
-  dimnames(vcv) <- list(nms, nms)
-  vcv
+  a   <- if (which == "event_study") object$event_study else object$group
+  g   <- .edid_agg_if(a)
+  if (is.null(a) || is.null(g$egt)) return(matrix(NA_real_, 0L, 0L))
+  pre <- if (which == "event_study") "e=" else "g="
+  nms <- paste0(pre, a$egt)
+  v   <- .cross_mat(g$egt); dimnames(v) <- list(nms, nms); v
 }
 
 #' Coerce edid_fit to a data.frame
@@ -288,63 +184,37 @@ vcov.edid_fit <- function(
 #' @param x an \code{edid_fit} object
 #' @param row.names ignored; included for S3 generic consistency
 #' @param optional ignored; included for S3 generic consistency
-#' @param ... not used; reserved for \code{which} (see Details)
-#' @param which character: one of \code{"att_gt"}, \code{"overall"},
-#'   \code{"event_study"}, \code{"group"}
-#'
+#' @param ... not used
+#' @param which character: one of \code{"att_gt"}, \code{"overall"}, \code{"event_study"}, \code{"group"}
 #' @return data.frame
 #' @export
-as.data.frame.edid_fit <- function(
-  x,
-  row.names = NULL,
-  optional = FALSE,
-  ...,
-  which = c("att_gt", "overall", "event_study", "group")
-) {
+as.data.frame.edid_fit <- function(x, row.names = NULL, optional = FALSE, ...,
+                                    which = c("att_gt", "overall", "event_study", "group")) {
   which <- match.arg(which)
+  z <- stats::qnorm(1 - x$alpha / 2)
   switch(which,
-    att_gt = {
-      x$att_gt
-    },
+    att_gt = x$att_gt,
     overall = {
-      ov <- x$overall
-      data.frame(
-        att      = ov$att,
-        se       = ov$se,
-        ci_lower = ov$ci_lower,
-        ci_upper = ov$ci_upper,
-        t_stat   = ov$t_stat,
-        p_value  = ov$p_value,
-        stringsAsFactors = FALSE
-      )
+      a <- x$overall
+      data.frame(att = a$overall.att, se = a$overall.se,
+                 ci_lower = a$overall.att - z * a$overall.se,
+                 ci_upper = a$overall.att + z * a$overall.se, stringsAsFactors = FALSE)
     },
     event_study = {
-      es_list <- x$event_study
-      if (is.null(es_list) || length(es_list) == 0L) {
-        return(data.frame(e = numeric(0L), att = numeric(0L), se = numeric(0L),
-                          ci_lower = numeric(0L), ci_upper = numeric(0L),
-                          p_value = numeric(0L)))
-      }
-      do.call(rbind, lapply(es_list, function(es) {
-        data.frame(e = es$e, att = es$att, se = es$se,
-                   ci_lower = es$ci_lower, ci_upper = es$ci_upper,
-                   t_stat = es$t_stat, p_value = es$p_value,
-                   stringsAsFactors = FALSE)
-      }))
+      a <- x$event_study
+      if (is.null(a)) return(data.frame(e = numeric(0L), att = numeric(0L), se = numeric(0L),
+                                        ci_lower = numeric(0L), ci_upper = numeric(0L)))
+      data.frame(e = a$egt, att = a$att.egt, se = a$se.egt,
+                 ci_lower = a$att.egt - z * a$se.egt, ci_upper = a$att.egt + z * a$se.egt,
+                 stringsAsFactors = FALSE)
     },
     group = {
-      gr_list <- x$group
-      if (is.null(gr_list) || length(gr_list) == 0L) {
-        return(data.frame(group = numeric(0L), att = numeric(0L), se = numeric(0L),
-                          ci_lower = numeric(0L), ci_upper = numeric(0L),
-                          p_value = numeric(0L)))
-      }
-      do.call(rbind, lapply(gr_list, function(gr) {
-        data.frame(group = gr$group, att = gr$att, se = gr$se,
-                   ci_lower = gr$ci_lower, ci_upper = gr$ci_upper,
-                   t_stat = gr$t_stat, p_value = gr$p_value,
-                   stringsAsFactors = FALSE)
-      }))
+      a <- x$group
+      if (is.null(a)) return(data.frame(group = numeric(0L), att = numeric(0L), se = numeric(0L),
+                                        ci_lower = numeric(0L), ci_upper = numeric(0L)))
+      data.frame(group = a$egt, att = a$att.egt, se = a$se.egt,
+                 ci_lower = a$att.egt - z * a$se.egt, ci_upper = a$att.egt + z * a$se.egt,
+                 stringsAsFactors = FALSE)
     }
   )
 }

@@ -85,7 +85,7 @@ test_that("all four weight schemes recover a homogeneous ATT", {
   for (m in c("efficient", "averaged", "gmm", "uniform")) {
     fit <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1,
                                  control_group = "nevertreated", weights = m, aggregate = "overall"))
-    expect_lt(abs(fit$overall_simple$att - 1), 0.12)
+    expect_lt(abs(fit$simple$overall.att - 1), 0.12)
   }
 })
 
@@ -93,12 +93,12 @@ test_that("all four weight schemes recover a homogeneous ATT", {
 test_that("$overall is the dynamic headline and the type overalls match aggte_edid", {
   df  <- pf_panel(n = 1500, seed = 5, dynamics = TRUE)
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated", aggregate = "all")
-  expect_equal(fit$overall$att,          aggte_edid(fit, type = "dynamic",  na.rm = TRUE)$overall.att, tolerance = 1e-8)
-  expect_equal(fit$overall_simple$att,   aggte_edid(fit, type = "simple")$overall.att,                 tolerance = 1e-8)
-  expect_equal(fit$overall_group$att,    aggte_edid(fit, type = "group")$overall.att,                  tolerance = 1e-8)
-  expect_equal(fit$overall_calendar$att, aggte_edid(fit, type = "calendar", na.rm = TRUE)$overall.att,  tolerance = 1e-8)
+  expect_equal(fit$overall$overall.att,          aggte_edid(fit, type = "dynamic",  na.rm = TRUE)$overall.att, tolerance = 1e-8)
+  expect_equal(fit$simple$overall.att,   aggte_edid(fit, type = "simple")$overall.att,                 tolerance = 1e-8)
+  expect_equal(fit$group$overall.att,    aggte_edid(fit, type = "group")$overall.att,                  tolerance = 1e-8)
+  expect_equal(fit$calendar$overall.att, aggte_edid(fit, type = "calendar", na.rm = TRUE)$overall.att,  tolerance = 1e-8)
   # with genuine dynamics the dynamic headline differs from the simple aggregate
-  expect_gt(abs(fit$overall$att - fit$overall_simple$att), 1e-3)
+  expect_gt(abs(fit$overall$overall.att - fit$simple$overall.att), 1e-3)
 })
 
 # --- All four aggregation types run and return a finite overall --------------
@@ -116,14 +116,13 @@ test_that("calendar ATT(t) equals the cohort-share-weighted average of ATT(g,t) 
   df  <- pf_panel(n = 2500, seed = 11, dynamics = TRUE)
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated", aggregate = "all")
   pi  <- fit$cohort_fractions
-  for (t_chr in names(fit$calendar)) {
-    t_val <- as.numeric(t_chr)
+  for (t_val in fit$calendar$egt) {           # $calendar is a did::AGGTEobj; egt = calendar periods
     rows  <- fit$att_gt[fit$att_gt$time == t_val & fit$att_gt$group <= t_val &
                           is.finite(fit$att_gt$group) & is.finite(fit$att_gt$att), ]
     if (nrow(rows) == 0L) next
     pg    <- vapply(rows$group, function(g) pi[[as.character(g)]], numeric(1L))
     manual <- sum((pg / sum(pg)) * rows$att)
-    expect_equal(fit$calendar[[t_chr]]$att, manual, tolerance = 1e-6)
+    expect_equal(fit$calendar$att.egt[match(t_val, fit$calendar$egt)], manual, tolerance = 1e-6)
   }
 })
 
@@ -139,7 +138,7 @@ test_that("aggregated overall SE includes the cohort-share WIF under cohort hete
     data.frame(id = 1:n, t = k, y = mu + 0.3 * k + base_att(g) * tr + rnorm(n, sd = 0.7), g = g)
   }))
   fit <- edid(df, "y", "id", "t", "g", control_group = "nevertreated", aggregate = "overall", store_eif = TRUE)
-  se_wif <- fit$overall_simple$se
+  se_wif <- fit$simple$overall.se
   # Direct-EIF-only SE: re-aggregate the post cells with cohort-share weights, NO WIF term.
   ci   <- fit$cells; idx <- fit$att_gt
   post <- which(!idx$is_pre & is.finite(idx$att))
@@ -155,7 +154,7 @@ test_that("edid is deterministic with bstrap = FALSE", {
   df <- pf_panel(n = 1000, seed = 8, het = TRUE)
   a  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated", aggregate = "all")
   b  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated", aggregate = "all")
-  expect_equal(a$overall$att, b$overall$att, tolerance = 1e-12)
+  expect_equal(a$overall$overall.att, b$overall$overall.att, tolerance = 1e-12)
   expect_equal(a$att_gt$att,  b$att_gt$att,  tolerance = 1e-12)
 })
 
@@ -176,7 +175,7 @@ test_that("efficient weights collapse to non-efficient schemes only via document
   # no-covariate path: efficient/averaged/gmm coincide (no X variation); uniform differs.
   df <- pf_panel(n = 1500, seed = 12, het = TRUE)
   ov <- function(m) suppressWarnings(edid(df, "y", "id", "t", "g", control_group = "nevertreated",
-                                          weights = m, aggregate = "overall"))$overall_simple$att
+                                          weights = m, aggregate = "overall"))$simple$overall.att
   expect_equal(ov("efficient"), ov("averaged"), tolerance = 1e-8)
   expect_equal(ov("efficient"), ov("gmm"),      tolerance = 1e-8)
   expect_false(isTRUE(all.equal(ov("efficient"), ov("uniform"))))
