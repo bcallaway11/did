@@ -11,7 +11,8 @@ fit_edid_cells(
   store_eif,
   xformla = NULL,
   seed = NULL,
-  need_eif = FALSE
+  need_eif = FALSE,
+  weight_method = c("efficient", "averaged", "gmm", "uniform")
 )
 }
 \arguments{

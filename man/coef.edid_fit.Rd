@@ -9,8 +9,7 @@
 \arguments{
 \item{object}{an \code{edid_fit} object}
 
-\item{which}{character: one of \code{"att_gt"}, \code{"overall"},
-\code{"event_study"}, \code{"group"}}
+\item{which}{character: one of \code{"att_gt"}, \code{"overall"}, \code{"event_study"}, \code{"group"}}
 
 \item{...}{additional arguments (ignored)}
 }

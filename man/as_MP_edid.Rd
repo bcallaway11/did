@@ -7,7 +7,7 @@
 as_MP_edid(fit, bstrap = NULL, biters = 1000L, clustervars = NULL)
 }
 \arguments{
-\item{fit}{an \code{edid_fit} object produced with \code{store_eif = TRUE}.}
+\item{fit}{an \code{edid_fit} object returned by \code{\link{edid}}.}
 
 \item{bstrap, biters, clustervars}{optional overrides; default to the fit's settings. Clustered or
 bootstrap inference in \code{aggte()} then follows the did conventions.}
@@ -18,5 +18,5 @@ a \code{did::MP} object (\code{group}, \code{t}, \code{att}, \code{inffunc}, \co
 \description{
 Constructs the same \code{MP} object that \code{att_gt()} returns, populated with edid's
 group-time estimates and their influence functions, so that \code{did::aggte()} (and the rest of the
-did ecosystem) can aggregate edid output unchanged. Requires \code{edid(..., store_eif = TRUE)}.
+did ecosystem) can aggregate edid output unchanged. edid() always stores the influence functions.
 }

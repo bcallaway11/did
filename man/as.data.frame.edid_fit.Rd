@@ -19,10 +19,9 @@
 
 \item{optional}{ignored; included for S3 generic consistency}
 
-\item{...}{not used; reserved for \code{which} (see Details)}
+\item{...}{not used}
 
-\item{which}{character: one of \code{"att_gt"}, \code{"overall"},
-\code{"event_study"}, \code{"group"}}
+\item{which}{character: one of \code{"att_gt"}, \code{"overall"}, \code{"event_study"}, \code{"group"}}
 }
 \value{
 data.frame

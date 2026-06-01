@@ -9,8 +9,7 @@
 \arguments{
 \item{object}{an \code{edid_fit} object}
 
-\item{which}{character: one of \code{"att_gt"}, \code{"overall"},
-\code{"event_study"}, \code{"group"}}
+\item{which}{character: one of \code{"att_gt"}, \code{"overall"}, \code{"event_study"}, \code{"group"}}
 
 \item{...}{additional arguments (ignored)}
 }
@@ -18,7 +17,8 @@
 square numeric matrix
 }
 \description{
-Returns the outer product of aggregated EIF vectors, scaled by \eqn{1/n^2}.
-When bootstrap inference is used, returns a diagonal matrix of bootstrap
-variance estimates.
+For \code{which = "att_gt"} returns the cluster-robust (or i.i.d.) covariance of the cell-level
+ATT(g,t)'s from the stored influence functions. For the aggregations it returns the covariance implied
+by the corresponding \code{did::AGGTEobj}'s aggregate influence functions (cluster-robust when
+\code{clustervars} was set).
 }

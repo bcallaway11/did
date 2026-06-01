@@ -15,6 +15,6 @@
 \code{x} invisibly
 }
 \description{
-Displays the ATT(g,t) table in the same style as \code{print.MP} /
-\code{summary.MP}, followed by footer metadata.
+Displays the ATT(g,t) table in the same style as \code{print.MP} / \code{summary.MP}, followed by
+footer metadata.
 }

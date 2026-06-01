@@ -45,13 +45,15 @@ Eq. (4.4) of Chen, Sant'Anna & Xie (2025).
 For self-comparison pairs (gp == g), the formula reduces to Eq. (3.2):
 \deqn{\tilde{Y} = (G_g/\pi_g - r_{g,\infty} G_\infty/\pi_g)(Y_t - Y_{tpre} - m_{\infty,t,tpre})}
 
-For cross-cohort pairs (gp != g), the three-term doubly-robust formula applies:
-\deqn{\tilde{Y} = (G_g/\pi_g)(Y_t - Y_1 - m_{\infty,t,1})
-       - r_{g,\infty} (G_\infty/\pi_g)(Y_t - Y_{tpre} - m_{\infty,t,tpre})
-       - r_{g,g'} (G_{g'}/\pi_g)(Y_{tpre} - Y_1 - m_{g',tpre,1})}
-Note: term1 uses only \eqn{m_{\infty,t,1}}, not \eqn{m_{g',tpre,1}}.  Adding
-\eqn{m_{g',tpre,1}} to term1 would bias the estimator by
-\eqn{E[Y_{tpre}-Y_1|G=g]}, since the propensity-ratio correction in term3
-accounts for G=g' units only, not G=g units.
+For cross-cohort pairs (gp != g), the doubly-robust generated outcome of
+Eq. (4.4) applies:
+\deqn{\tilde{Y} = (G_g/\pi_g)\,(Y_t - Y_1 - m_{\infty,t,tpre} - m_{g',tpre,1})
+       - \frac{p_g}{p_\infty}\,\frac{G_\infty}{\pi_g}\,(Y_t - Y_{tpre} - m_{\infty,t,tpre})
+       - \frac{p_g}{p_{g'}}\,\frac{G_{g'}}{\pi_g}\,(Y_{tpre} - Y_1 - m_{g',tpre,1}),}
+where \eqn{m_{\infty,t,tpre} = m_{\infty,t,1} - m_{\infty,tpre,1}}. The
+treated-cohort (G=g) term subtracts \emph{both} conditional-mean adjustments,
+\eqn{m_{\infty,t,tpre}} and \eqn{m_{g',tpre,1}}: this is what makes the moment
+doubly robust, identifying \eqn{ATT(g,t)} when either the outcome models or
+the propensity ratios (but not necessarily both) are correctly specified.
 }
 \keyword{internal}

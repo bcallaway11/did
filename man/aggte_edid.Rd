@@ -14,43 +14,29 @@ aggte_edid(
 )
 }
 \arguments{
-\item{edid_fit_obj}{An \code{edid_fit} object returned by \code{edid()}.}
+\item{edid_fit_obj}{An \code{edid_fit} object returned by \code{\link{edid}}.}
 
-\item{type}{Character scalar: aggregation type. One of
-\code{"simple"} (overall ATT), \code{"dynamic"} (event-study),
-\code{"group"} (cohort-level ATT), or \code{"calendar"} (not implemented).}
+\item{type}{Character scalar, mirroring \code{did::aggte()}: \code{"simple"} (cohort-share-weighted
+average over post-treatment cells), \code{"dynamic"} (event-study: average of \eqn{ES(e)} over
+\eqn{e \ge 0}), \code{"group"} (cohort-level overalls), or \code{"calendar"} (calendar-period overalls).}
 
-\item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, restricts the
-dynamic aggregation to relative times in
-\eqn{[-\text{balance\_e}, \text{balance\_e}]}.}
+\item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, restricts the dynamic aggregation to
+relative times in \eqn{[-\text{balance\_e}, \text{balance\_e}]}.}
 
-\item{min_e}{Numeric: minimum relative time to include in dynamic output.
-Default \code{-Inf}.}
+\item{min_e, max_e}{Numeric: minimum/maximum relative time to include in dynamic output.}
 
-\item{max_e}{Numeric: maximum relative time to include in dynamic output.
-Default \code{Inf}.}
-
-\item{na.rm}{Logical: whether to remove NA ATT entries before aggregating.
-Default \code{FALSE}.}
+\item{na.rm}{Logical: drop \code{NA} ATT entries before aggregating. Default \code{FALSE}.}
 }
 \value{
-An S3 object of class \code{c("AGGTEobj_edid", "list")} with fields
-matching \code{AGGTEobj} where possible:
-\describe{
-\item{\code{att.egt}}{Vector of ATT estimates for each index.}
-\item{\code{se.egt}}{Vector of standard errors.}
-\item{\code{egt}}{Vector of indices (relative time, group, etc.).}
-\item{\code{type}}{The aggregation type string.}
-\item{\code{overall.att}}{Scalar overall ATT.}
-\item{\code{overall.se}}{Scalar overall SE.}
-\item{\code{alp}}{Significance level used.}
-\item{\code{call}}{The matched call.}
-}
+A \code{did::AGGTEobj} (as returned by \code{\link[did]{aggte}}), so the did \code{print},
+\code{summary}, and \code{tidy} methods apply.
 }
 \description{
-Provides the same user-facing interface as \code{\link[did]{aggte}} but
-accepts an \code{edid_fit} object produced by \code{\link{edid}}.
+Aggregates the group-time ATT(g,t) estimates from an \code{edid_fit} object using the same interface
+and definitions as \code{\link[did]{aggte}}. Internally it builds a \code{did::MP} object from the
+edid estimates and their influence functions (\code{\link{as_MP_edid}}) and calls
+\code{did::aggte()}, so the result is a standard \code{did::AGGTEobj}.
 }
 \seealso{
-\code{\link{edid}}, \code{\link[did]{aggte}}
+\code{\link{edid}}, \code{\link{as_MP_edid}}, \code{\link[did]{aggte}}
 }

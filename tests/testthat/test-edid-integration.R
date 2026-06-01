@@ -115,7 +115,7 @@ test_that("vcov.edid_fit() returns a numeric matrix", {
   df  <- make_panel_1cohort(seed = 7, n_treat = 40, n_never = 40)
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
-              aggregate = "all", store_eif = TRUE)
+              aggregate = "all")
   V <- vcov(fit, which = "att_gt")
   expect_true(is.matrix(V))
   expect_true(is.numeric(V))
@@ -126,14 +126,14 @@ test_that("vcov.edid_fit() is cluster-robust and matches the reported cluster SE
   # time-invariant clusters coarser than the unit id (2 units per cluster) => within-cluster correlation
   df$cluster_id <- ceiling(df$unit / 2L)
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time", gname = "first_treat",
-              clustervars = "cluster_id", aggregate = "all", store_eif = TRUE)
+              clustervars = "cluster_id", aggregate = "all")
   # diag(cluster-robust vcov) reproduces the reported cluster-robust cell SEs
   # (NB: vcov(., "overall") for the dynamic headline is a separate matter -- to_ov does not store eif_agg.)
   V <- vcov(fit, which = "att_gt")
   expect_equal(unname(sqrt(diag(V))), fit$att_gt$se, tolerance = 1e-8)
   # the cluster-robust vcov genuinely differs from the naive IID outer product (the branch is exercised)
   fit_iid <- edid(df, yname = "outcome", idname = "unit", tname = "time", gname = "first_treat",
-                  aggregate = "all", store_eif = TRUE)
+                  aggregate = "all")
   expect_false(isTRUE(all.equal(diag(V), diag(vcov(fit_iid, which = "att_gt")))))
 })
 
@@ -233,13 +233,13 @@ test_that("edid() errors with clear message when survey_design is supplied", {
 })
 
 # ============================================================
-# 9.12 store_eif = TRUE stores the EIF matrix
+# 9.12 edid() always stores the EIF matrix
 # ============================================================
-test_that("edid() with store_eif=TRUE returns eif matrix of correct dimensions", {
+test_that("edid() returns an eif matrix of correct dimensions", {
   df  <- make_panel_1cohort(n_treat = 20, n_never = 20, n_periods = 4, seed = 42)
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
-              store_eif = TRUE, aggregate = "all")
+              aggregate = "all")
   expect_false(is.null(fit$eif))
   # eif should be n x n_non_na_cells matrix
   expect_equal(nrow(fit$eif), fit$n)

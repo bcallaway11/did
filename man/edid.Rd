@@ -21,10 +21,10 @@ edid(
   bootstrap_weights = c("rademacher", "mammen", "webb"),
   seed = NULL,
   anticipation = 0L,
-  aggregate = c("all", "overall", "event_study", "group", "none"),
+  aggregate = c("all", "overall", "event_study", "group", "calendar", "none"),
   balance_e = NULL,
   survey_design = NULL,
-  store_eif = FALSE
+  weights = c("efficient", "averaged", "gmm", "uniform")
 )
 }
 \arguments{
@@ -94,7 +94,12 @@ Default \code{0L}. The effective treatment start for cohort \eqn{g} is
 
 \item{aggregate}{Which aggregations to compute. One or more of
 \code{"all"} (default), \code{"overall"}, \code{"event_study"},
-\code{"group"}, or \code{"none"}.}
+\code{"group"}, \code{"calendar"}, or \code{"none"}. \code{"event_study"}
+reports the cohort-share-weighted event-study parameters \eqn{ES(e)};
+\code{"group"} averages \eqn{ATT(g,t)} within each cohort; \code{"calendar"}
+averages \eqn{ATT(g,t)} across the cohorts treated by each calendar period;
+\code{"overall"} returns the simple cohort-share aggregate over all
+post-treatment cells. \code{"all"} computes every aggregation.}
 
 \item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, restricts the
 event-study aggregation to relative times in
@@ -103,9 +108,19 @@ event-study aggregation to relative times in
 \item{survey_design}{Always \code{NULL}. Survey designs are not yet
 implemented; passing a non-NULL value triggers an error.}
 
-\item{store_eif}{Logical: if \code{TRUE}, store the full \eqn{n \times K}
-EIF matrix in \code{edid_fit$eif}. Default \code{FALSE}. The EIF is
-always computed internally when \code{bstrap = TRUE}.}
+\item{weights}{How the per-pair generated-outcome moments are combined in the
+covariate path. \code{"efficient"} (default) uses the semiparametric-efficient
+pointwise weights \eqn{w(X_i)=\Omega^*(X_i)^{-1}\mathbf 1/(\mathbf 1'\Omega^*(X_i)^{-1}\mathbf 1)},
+estimated by kernel and stabilized by two finite-sample regularizations: data-driven shrinkage of
+\eqn{\hat\Omega^*(X_i)} toward the pooled \eqn{\bar\Omega^*} (intensity \eqn{\hat\lambda\to0}) and a
+relative eigenvalue floor that vanishes with the sample size. Both are asymptotically inactive, so this
+feasible estimator is asymptotically equivalent to the efficient estimator and attains the efficiency
+bound in the limit (it is not exactly bound-attaining in finite samples).
+The constant-weight alternatives remain consistent for \eqn{ATT(g,t)} (any weights summing to one
+identify the estimand, with no rate condition on the weights) but do not attain the bound:
+\code{"averaged"} inverts the covariate-averaged conditional covariance \eqn{\bar\Omega^*};
+\code{"gmm"} inverts the unconditional moment covariance \eqn{\hat S}; \code{"uniform"} assigns
+equal weight \eqn{1/H} to the \eqn{H} non-collinear moments.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:
@@ -113,13 +128,23 @@ An object of class \code{edid_fit} (a list) with elements:
 \item{\code{call}}{The matched call.}
 \item{\code{att_gt}}{data.frame of cell-level estimates (group, time,
 att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
-\item{\code{overall}}{List: overall ATT with SE and CI.}
-\item{\code{event_study}}{List of per-relative-time ATTs.}
-\item{\code{group}}{List of per-cohort ATTs.}
-\item{\code{eif}}{EIF matrix or \code{NULL}.}
+\item{\code{overall}}{A \code{did::AGGTEobj}: the HEADLINE aggregation -- the dynamic event-study
+average over relative times \eqn{e \ge 0} (the paper's main object) when an event study is
+requested, otherwise the cohort-share "simple" aggregate.}
+\item{\code{simple}}{A \code{did::AGGTEobj} for the cohort-share-weighted average over all
+post-treatment cells (\code{= aggte_edid(type = "simple")}); present when \code{overall}/\code{all}
+is requested.}
+\item{\code{event_study}}{A \code{did::AGGTEobj} for the event study \eqn{ES(e)}: per relative time
+(\code{att.egt}/\code{egt}) plus the dynamic overall.}
+\item{\code{group}}{A \code{did::AGGTEobj} for the per-cohort overall ATTs.}
+\item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
+\eqn{ATT(g,t)}, or \code{NULL} when not requested.}
+\item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
 \item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
 \item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
 }
+The aggregation slots are standard \code{did::AGGTEobj} objects, so \code{summary}, \code{tidy}, and
+\code{ggdid} work on them directly.
 }
 \description{
 Estimates group-time average treatment effects \eqn{ATT(g, t)} for staggered
@@ -168,6 +193,8 @@ head(fit$att_gt)
 
 }
 \references{
-Chen, L., Sant'Anna, P. H. C., & Xie, Y. (2025).
-\emph{Efficient Difference-in-Differences}. Working paper.
+Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025).
+\emph{Efficient Difference-in-Differences and Event Study Estimators}.
+Working paper.
 }
+\keyword{models}

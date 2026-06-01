@@ -67,9 +67,6 @@
 #'   \eqn{[-\text{balance\_e}, \text{balance\_e}]}.
 #' @param survey_design Always \code{NULL}. Survey designs are not yet
 #'   implemented; passing a non-NULL value triggers an error.
-#' @param store_eif Logical: if \code{TRUE}, store the full \eqn{n \times K}
-#'   EIF matrix in \code{edid_fit$eif}. Default \code{FALSE}. The EIF is
-#'   always computed internally when \code{bstrap = TRUE}.
 #' @param weights How the per-pair generated-outcome moments are combined in the
 #'   covariate path. \code{"efficient"} (default) uses the semiparametric-efficient
 #'   pointwise weights \eqn{w(X_i)=\Omega^*(X_i)^{-1}\mathbf 1/(\mathbf 1'\Omega^*(X_i)^{-1}\mathbf 1)},
@@ -89,27 +86,23 @@
 #'     \item{\code{call}}{The matched call.}
 #'     \item{\code{att_gt}}{data.frame of cell-level estimates (group, time,
 #'       att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
-#'     \item{\code{overall}}{List: the HEADLINE overall ATT, with SE and CI. By default this is the
-#'       DYNAMIC event-study average over relative times \eqn{e \ge 0} (the paper's main object,
-#'       \code{= aggte_edid(type = "dynamic")$overall.att}); it falls back to the simple aggregate
-#'       when no event study is computed.}
-#'     \item{\code{overall_simple}}{List: the did-"simple" overall ATT (cohort-share-weighted average
-#'       over all post cells). Equals \code{aggte_edid(type = "simple")$overall.att}.}
-#'     \item{\code{overall_group}}{List: the cohort-share-weighted group overall ATT. Present when
-#'       \code{group} is computed. Equals \code{aggte_edid(type = "group")$overall.att}.}
-#'     \item{\code{overall_calendar}}{List: the calendar-time overall ATT (equal-weight average over
-#'       post-treatment calendar periods), with SE and CI. Present when \code{calendar} is computed.
-#'       Equals \code{aggte_edid(type = "calendar")$overall.att}.}
-#'     \item{\code{event_study}}{List of per-relative-time event-study estimates \eqn{ES(e)}, one per
-#'       event time \eqn{e}.}
-#'     \item{\code{group}}{List of per-cohort overall ATTs (within-cohort averages of \eqn{ATT(g,t)}).}
-#'     \item{\code{calendar}}{List of per-calendar-period averages of \eqn{ATT(g,t)} across the cohorts
-#'       treated by that period, or \code{NULL} when not requested.}
-#'     \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix, or \code{NULL} when
-#'       \code{store_eif = FALSE}.}
+#'     \item{\code{overall}}{A \code{did::AGGTEobj}: the HEADLINE aggregation -- the dynamic event-study
+#'       average over relative times \eqn{e \ge 0} (the paper's main object) when an event study is
+#'       requested, otherwise the cohort-share "simple" aggregate.}
+#'     \item{\code{simple}}{A \code{did::AGGTEobj} for the cohort-share-weighted average over all
+#'       post-treatment cells (\code{= aggte_edid(type = "simple")}); present when \code{overall}/\code{all}
+#'       is requested.}
+#'     \item{\code{event_study}}{A \code{did::AGGTEobj} for the event study \eqn{ES(e)}: per relative time
+#'       (\code{att.egt}/\code{egt}) plus the dynamic overall.}
+#'     \item{\code{group}}{A \code{did::AGGTEobj} for the per-cohort overall ATTs.}
+#'     \item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
+#'       \eqn{ATT(g,t)}, or \code{NULL} when not requested.}
+#'     \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
 #'     \item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
 #'     \item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
 #'   }
+#'   The aggregation slots are standard \code{did::AGGTEobj} objects, so \code{summary}, \code{tidy}, and
+#'   \code{ggdid} work on them directly.
 #'
 #' @references Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025).
 #'   \emph{Efficient Difference-in-Differences and Event Study Estimators}.
@@ -176,7 +169,6 @@ edid <- function(
   aggregate         = c("all", "overall", "event_study", "group", "calendar", "none"),
   balance_e         = NULL,
   survey_design     = NULL,
-  store_eif         = FALSE,
   weights           = c("efficient", "averaged", "gmm", "uniform")
 ) {
   weight_method <- match.arg(weights)
@@ -262,7 +254,7 @@ edid <- function(
     panel_obj     = panel_obj,
     pt_assumption = pt_assumption,
     alpha         = alp,
-    store_eif     = store_eif,
+    store_eif     = TRUE,                # edid always retains the EIF (used by the aggregations)
     xformla       = xformla,
     need_eif      = need_eif_internal,
     seed          = seed,
@@ -371,8 +363,7 @@ edid <- function(
 
   # ------------------------------------------------------------------
   # EIF matrix storage. edid always retains the influence functions (as att_gt() always returns
-  # $inffunc): aggte_edid()/as_MP_edid() build the did MP from them. 'store_eif' is kept for
-  # backward compatibility but no longer gates storage.
+  # $inffunc): aggte_edid()/as_MP_edid() build the did MP from them.
   # ------------------------------------------------------------------
   eif_export <- eif_matrix
 

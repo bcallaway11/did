@@ -6,9 +6,9 @@
 #'
 #' Constructs the same \code{MP} object that \code{att_gt()} returns, populated with edid's
 #' group-time estimates and their influence functions, so that \code{did::aggte()} (and the rest of the
-#' did ecosystem) can aggregate edid output unchanged. Requires \code{edid(..., store_eif = TRUE)}.
+#' did ecosystem) can aggregate edid output unchanged. edid() always stores the influence functions.
 #'
-#' @param fit an \code{edid_fit} object produced with \code{store_eif = TRUE}.
+#' @param fit an \code{edid_fit} object returned by \code{\link{edid}}.
 #' @param bstrap,biters,clustervars optional overrides; default to the fit's settings. Clustered or
 #'   bootstrap inference in \code{aggte()} then follows the did conventions.
 #' @return a \code{did::MP} object (\code{group}, \code{t}, \code{att}, \code{inffunc}, \code{DIDparams}, ...).
@@ -16,7 +16,7 @@
 as_MP_edid <- function(fit, bstrap = NULL, biters = 1000L, clustervars = NULL) {
   if (!inherits(fit, "edid_fit")) stop("as_MP_edid() expects an 'edid_fit' object.")
   if (is.null(fit$eif)) {
-    stop("as_MP_edid() requires the influence functions: refit with edid(..., store_eif = TRUE).")
+    stop("as_MP_edid(): the fit does not contain influence functions ($eif); edid() stores them by default.")
   }
   agt <- fit$att_gt
   n   <- fit$n

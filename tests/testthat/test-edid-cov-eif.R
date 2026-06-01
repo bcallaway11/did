@@ -27,7 +27,7 @@ make_simple_panel <- function(n = 120, seed = 1) {
 test_that("covariate-path EIF has near-zero mean for each cell", {
   df  <- make_simple_panel(n = 120, seed = 10)
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1,
-               store_eif = TRUE, seed = 1L)
+               seed = 1L)
   # eif_matrix is n x n_cells
   eif_mat <- fit$eif
   if (!is.null(eif_mat)) {
@@ -47,7 +47,7 @@ test_that("reported SE matches manual EIF plug-in formula for valid-inference ce
   # gives a finite (possibly 0) value. We compare only cells with finite reported SE.
   df  <- make_simple_panel(n = 120, seed = 20)
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1,
-               store_eif = TRUE, aggregate = "none", seed = 1L)
+               aggregate = "none", seed = 1L)
   eif_mat <- fit$eif
   if (!is.null(eif_mat)) {
     n            <- fit$n

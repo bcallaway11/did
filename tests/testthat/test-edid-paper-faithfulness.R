@@ -74,7 +74,7 @@ test_that("covariate-path Omega* equals the no-covariate Omega* on constant cova
 # --- EIF is the ratio-estimator influence function (IF-g / IF-general) -------
 test_that("covariate-path EIF is mean-zero and uses the ratio centering w'Ytilde - (G_g/pi_g)ATT", {
   df  <- pf_panel(n = 1200, seed = 7)
-  fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1, store_eif = TRUE, aggregate = "none")
+  fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1, aggregate = "none")
   cm  <- colMeans(fit$eif, na.rm = TRUE)
   expect_true(all(abs(cm) < 1e-8))                                 # EIF mean-zero by construction
 })
@@ -137,7 +137,7 @@ test_that("aggregated overall SE includes the cohort-share WIF under cohort hete
     tr <- as.numeric(is.finite(g) & k >= g)
     data.frame(id = 1:n, t = k, y = mu + 0.3 * k + base_att(g) * tr + rnorm(n, sd = 0.7), g = g)
   }))
-  fit <- edid(df, "y", "id", "t", "g", control_group = "nevertreated", aggregate = "overall", store_eif = TRUE)
+  fit <- edid(df, "y", "id", "t", "g", control_group = "nevertreated", aggregate = "overall")
   se_wif <- fit$simple$overall.se
   # Direct-EIF-only SE: re-aggregate the post cells with cohort-share weights, NO WIF term.
   ci   <- fit$cells; idx <- fit$att_gt

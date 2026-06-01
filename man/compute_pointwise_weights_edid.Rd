@@ -16,7 +16,7 @@ compute_pointwise_weights_edid(omega_array, d = 1L)
 numeric matrix n x H, each row summing to 1
 }
 \description{
-Per-observation GLS weights from the conditional-covariance array. Each
+Per-observation semiparametric-efficient weights from the conditional-covariance array. Each
 Omega*(X_i) is regularized by a DIMENSION-AWARE relative eigenvalue floor.
 The kernel Omega*(X) is estimated at the uniform Nadaraya-Watson rate rho_n,
 whose variance exponent is (5-d)/10 (product Gaussian kernel, per-covariate

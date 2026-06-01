@@ -11,7 +11,9 @@ compute_omega_star_cov_edid(
   pairs,
   prop_ratios,
   cond_means,
-  bw = NULL
+  inv_propensities = NULL,
+  bw = NULL,
+  return_pointwise = FALSE
 )
 }
 \arguments{

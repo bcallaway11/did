@@ -15,7 +15,6 @@
 \code{object} invisibly
 }
 \description{
-Prints a structured summary of the EDiD estimation results including
-the ATT(g,t) table (in MP style) plus aggregated overall, event-study,
-and group estimates.
+Prints the ATT(g,t) table (MP style) followed by the requested aggregations, each a
+\code{did::AGGTEobj} printed with did's own \code{print.AGGTEobj}.
 }

@@ -7,11 +7,12 @@
 compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
 }
 \arguments{
-\item{panel_obj}{panel object (needs n)}
+\item{panel_obj}{panel object (needs cohort_masks, cohort_fractions)}
 
 \item{gen_out_mat}{numeric matrix n x H (generated outcomes)}
 
-\item{weights}{numeric vector length H summing to 1}
+\item{weights}{either a length-H vector (constant weights) or an n x H matrix
+of per-observation pointwise weights \eqn{w(X_i)}}
 
 \item{att_gt}{scalar point estimate (= sum_j w_j * colMeans(gen_out_mat))}
 
@@ -21,23 +22,14 @@ compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
 numeric vector length n, mean approximately 0
 }
 \description{
-The efficient GMM estimator is
-\deqn{\hat\beta_{g,t} = \sum_j w_j \cdot \frac{1}{n}\sum_i \tilde{Y}_{j,i}}
-where \eqn{\tilde{Y}_{j,i}} is the doubly-robust generated outcome for pair j
-and \eqn{w_j} are the fixed efficient weights.  By the delta method, its
-influence function is
-\deqn{EIF_i = \sum_j w_j \cdot (\tilde{Y}_{j,i} - \beta_j)
-            = \left(\sum_j w_j \tilde{Y}_{j,i}\right) - ATT(g,t)}
-(using \eqn{\sum_j w_j \beta_j = ATT(g,t)}).
-}
-\details{
-Statistical note: an alternative form \eqn{EIF_i = \sum_j w_j \tilde{Y}_{j,i}
-+ (G_{g,i}/\pi_g) \cdot ATT(g,t)} that appears in some semiparametric
-efficiency calculations adds a term whose mean is \eqn{ATT(g,t)} (since
-\eqn{E[G_{g,i}/\pi_g] = 1}).  After centring, this equals
-\eqn{(correct\,EIF) + (G_{g,i}/\pi_g - 1) \cdot ATT(g,t)}, inflating the
-variance by \eqn{ATT^2 \cdot Var(G_{g,i}/\pi_g - 1) > 0} whenever
-\eqn{ATT \ne 0}.  The correct expression for the SE formula
-\eqn{SE = \sqrt{\sum_i EIF_i^2 / n^2}} is the one below.
+The estimator is the ratio \eqn{\widehat{ATT}_{g,t} = \mathbb{E}_n[w' \tilde{Y}] /
+\mathbb{E}_n[G_g]} (the \eqn{G_g/\pi_g} factors inside \eqn{\tilde{Y}} make it a
+ratio in \eqn{\widehat\pi_g}). Its first-order influence function is
+\deqn{EIF_i = w(X_i)' \tilde{Y}_i - \frac{G_{g,i}}{\pi_g} ATT(g,t),}
+i.e. the centering is \eqn{-(G_{g,i}/\pi_g)\,ATT}, NOT the constant \eqn{-ATT}.
+The constant centering omits the first-order contribution of the estimated
+treated-cohort share \eqn{\widehat\pi_g = \mathbb{E}_n[G_g]} and inflates the
+variance by \eqn{ATT^2 (1/\pi_g - 1)} with no asymptotic shrinkage. The
+standard error is \eqn{\widehat{SE} = \sqrt{\sum_i EIF_i^2}/n}.
 }
 \keyword{internal}

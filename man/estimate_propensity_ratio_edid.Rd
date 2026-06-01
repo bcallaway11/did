@@ -20,7 +20,7 @@ estimate_propensity_ratio_edid(X_train, G_train, X_test, g, gp, bs_df = 4L)
 \item{bs_df}{integer: B-spline degrees of freedom (default 4)}
 }
 \value{
-numeric vector length n_test: estimated r(X) values, >= 0
+numeric vector length n_test: estimated r(X) values
 }
 \description{
 Implements the sieve (B-spline) estimator for the propensity ratio from
@@ -30,6 +30,6 @@ OLS minimising \eqn{E[r(X)^2 G_{g'} - 2 r(X) G_g]}.
 \details{
 Closed form:
 \deqn{\hat\beta = [B_{g'}' B_{g'}]^{-1} \sum_{i: G_i = g} B(X_i)}
-Then \eqn{\hat r(X_i) = B(X_i)' \hat\beta}, clipped to [0, Inf).
+Then \eqn{\hat r(X_i) = B(X_i)' \hat\beta}.
 }
 \keyword{internal}
