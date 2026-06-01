@@ -402,6 +402,12 @@ edid <- function(
     treatment_groups = panel_obj$treatment_groups,
     cohort_fractions = panel_obj$cohort_fractions,
     unit_cohorts     = panel_obj$unit_cohorts,
+    all_units        = panel_obj$all_units,        # metadata for did-compatible MP construction (as_MP_edid)
+    idname           = idname,
+    tname            = tname,
+    gname            = gname,
+    time_periods     = panel_obj$time_periods,
+    panel            = TRUE,
     anticipation     = panel_obj$anticipation,
     inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
     clustervars      = clustervars,

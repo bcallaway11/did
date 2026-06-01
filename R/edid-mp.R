@@ -1,0 +1,58 @@
+# did-compatible MP construction for edid.
+# Lets the did aggregation/inference ecosystem (aggte, tidy, ggdid, summary) operate on edid output,
+# so edid does not need its own parallel aggregation. Builds a did::MP object from an edid fit.
+
+#' Build a \code{did::MP} object from an \code{edid} fit
+#'
+#' Constructs the same \code{MP} object that \code{att_gt()} returns, populated with edid's
+#' group-time estimates and their influence functions, so that \code{did::aggte()} (and the rest of the
+#' did ecosystem) can aggregate edid output unchanged. Requires \code{edid(..., store_eif = TRUE)}.
+#'
+#' @param fit an \code{edid_fit} object produced with \code{store_eif = TRUE}.
+#' @param bstrap,biters,clustervars optional overrides; default to the fit's settings. Clustered or
+#'   bootstrap inference in \code{aggte()} then follows the did conventions.
+#' @return a \code{did::MP} object (\code{group}, \code{t}, \code{att}, \code{inffunc}, \code{DIDparams}, ...).
+#' @export
+as_MP_edid <- function(fit, bstrap = NULL, biters = 1000L, clustervars = NULL) {
+  if (!inherits(fit, "edid_fit")) stop("as_MP_edid() expects an 'edid_fit' object.")
+  if (is.null(fit$eif)) {
+    stop("as_MP_edid() requires the influence functions: refit with edid(..., store_eif = TRUE).")
+  }
+  agt <- fit$att_gt
+  n   <- fit$n
+  inffunc <- as.matrix(fit$eif)
+  if (nrow(inffunc) != n || ncol(inffunc) != nrow(agt)) {
+    stop(sprintf("as_MP_edid(): eif is %dx%d but expected %dx%d (n x n_cells).",
+                 nrow(inffunc), ncol(inffunc), n, nrow(agt)))
+  }
+
+  # Time-invariant per-unit data sufficient for compute.aggte()'s group-probability weights:
+  # one row per unit at the first period, with never-treated coded 0 (att_gt convention) and unit
+  # sampling weight .w = 1 (edid does not use sampling weights).
+  g_unit <- fit$unit_cohorts
+  g_unit[!is.finite(g_unit)] <- 0
+  period_1 <- min(fit$time_periods)
+  tinv <- data.frame(fit$all_units, period_1, g_unit, 1)
+  names(tinv) <- c(fit$idname, fit$tname, fit$gname, ".w")
+
+  glist <- sort(fit$treatment_groups[is.finite(fit$treatment_groups) & fit$treatment_groups != 0])
+  if (is.null(bstrap))      bstrap      <- isTRUE(fit$bstrap)
+  if (is.null(clustervars)) clustervars <- fit$clustervars
+
+  dp <- list(
+    yname = NULL, tname = fit$tname, idname = fit$idname, gname = fit$gname,
+    data = tinv, panel = TRUE, faster_mode = FALSE,
+    tlist = sort(fit$time_periods), glist = glist,
+    bstrap = bstrap, biters = biters, alp = fit$alpha, cband = FALSE,
+    clustervars = clustervars, cluster_vector = fit$cluster_indices, n = n
+  )
+
+  mp <- list(
+    group = agt$group, t = agt$time, att = agt$att,
+    V_analytical = NULL, se = agt$se, c = stats::qnorm(1 - fit$alpha / 2),
+    inffunc = inffunc, n = n, W = NULL, Wpval = NULL,
+    aggte = NULL, alp = fit$alpha, DIDparams = dp
+  )
+  class(mp) <- "MP"
+  mp
+}
