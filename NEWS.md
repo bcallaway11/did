@@ -1,5 +1,11 @@
 # did 2.3.1.904
 
+  * The cluster-robust multiplier bootstrap (`mboot`) now follows Callaway & Sant'Anna (2021), Remark 10: it draws one multiplier per cluster and aggregates the influence function to cluster sums. For equal-sized clusters the standard errors are identical to before; for unbalanced clusters and repeated cross sections it uses the appropriate cluster-sum aggregation. All clustering input checks (numeric `clustervars`, at most one cluster dimension beyond `idname`, and cluster-variable time-invariance) are preserved
+
+  * Clustered standard errors are now available **without** the bootstrap. With `clustervars` set and `bstrap = FALSE`, `att_gt()` and `aggte()` report cluster-robust standard errors computed analytically from the cluster sums of the influence function (the same cluster-sum aggregation as the bootstrap), at every aggregation level (group-time, simple, group, dynamic, calendar). The pre-test Wald statistic is also reported under clustering in this case
+
+  * Clustered inference (bootstrap and analytical) is supported for panel data, unbalanced panels, and repeated cross sections, whether or not `idname` is supplied, and gives identical standard errors under `faster_mode = TRUE` and `faster_mode = FALSE`. For repeated cross sections without an `idname`, the internal observation id is used to align the cluster identifiers with the influence function
+
   * Fixed bug where `faster_mode = TRUE` and `faster_mode = FALSE` produced different ATT estimates when sampling weights (`weightsname`) vary across time. The fast path was always using first-period weights; it now correctly uses the same period's weights as the slow path
 
   * New `fix_weights` argument in `att_gt()` gives users explicit control over how time-varying sampling weights are resolved in each 2x2 DiD comparison. Options: `NULL` (default, preserves existing behavior), `"varying"` (per-observation weights using RC estimators), `"base_period"` (fix at g-1 for all cells), `"first_period"` (fix at first period). See `?att_gt` for details
