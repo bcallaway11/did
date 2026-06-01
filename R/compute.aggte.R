@@ -681,17 +681,27 @@ get_agg_inf_func <- function(att, inffunc1, whichones, weights.agg, wif = NULL) 
 getSE <- function(thisinffunc, DIDparams = NULL) {
   alp <- .05
   bstrap <- FALSE
+  n <- length(thisinffunc)
   if (!is.null(DIDparams)) {
     bstrap <- DIDparams$bstrap
     alp <- DIDparams$alp
     cband <- DIDparams$cband
-    n <- length(thisinffunc)
   }
 
   if (bstrap) {
     bout <- mboot(thisinffunc, DIDparams)
     return(bout$se)
   } else {
+    # Analytical cluster-robust SE (no bootstrap): cluster sums of the aggregated influence function,
+    # matching the cluster-sum aggregation of the multiplier bootstrap (CS 2021, Remark 10). Falls back to
+    # the i.i.d. form when there is no cluster variable beyond idname or cluster identifiers are unavailable.
+    # dp$cluster_vector is set by att_gt() for both faster_mode = TRUE and FALSE.
+    cv <- if (!is.null(DIDparams)) DIDparams$cluster_vector else NULL
+    extra_cl <- if (!is.null(DIDparams)) DIDparams$clustervars[!(DIDparams$clustervars %in% c(DIDparams$idname, ""))] else character(0)
+    if (length(extra_cl) > 0 && !is.null(cv) && length(cv) == length(thisinffunc)) {
+      S <- rowsum(thisinffunc, cv)
+      return(sqrt(sum(S^2)) / n)
+    }
     return(sqrt(mean((thisinffunc)^2) / n))
   }
 }

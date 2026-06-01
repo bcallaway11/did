@@ -66,17 +66,17 @@
 #'  }
 #' @param alp the significance level, default is 0.05
 #' @param bstrap Boolean for whether or not to compute standard errors using
-#'  the multiplier bootstrap.  If standard errors are clustered, then one
-#'  must set `bstrap=TRUE`. Default is `TRUE` (in addition, cband
+#'  the multiplier bootstrap.  Default is `TRUE` (in addition, cband
 #'  is also by default `TRUE` indicating that uniform confidence bands
-#'  will be returned.  If bstrap is `FALSE`, then analytical
-#'  standard errors are reported.
+#'  will be returned).  If `bstrap=FALSE`, analytical standard errors are
+#'  reported; these are cluster-robust when `clustervars` is supplied.
 #' @param biters The number of bootstrap iterations to use.  The default is 1000,
 #'  and this is only applicable if `bstrap=TRUE`.
 #' @param clustervars A vector of variables names to cluster on.  At most, there
 #'  can be two variables (otherwise will throw an error) and one of these
 #'  must be the same as idname which allows for clustering at the individual
-#'  level. By default, we cluster at individual level (when `bstrap=TRUE`).
+#'  level. Clustered standard errors are available with the multiplier bootstrap
+#'  (`bstrap=TRUE`) or analytically (`bstrap=FALSE`).
 #' @param cband Boolean for whether or not to compute a uniform confidence
 #'  band that covers all of the group-time average treatment effects
 #'  with fixed probability `1-alp`.  In order to compute uniform confidence
@@ -415,25 +415,47 @@ att_gt <- function(yname,
 
 
   # analytical standard errors
-  # estimate variance
-  # this is analogous to cluster robust standard errors that
-  # are clustered at the unit level
-
-  # note to self: this def. won't work with unbalanced panel,
-  # same with clustered standard errors
-  # but it is always ignored b/c bstrap has to be true in that case
+  # estimate variance. The i.i.d. form is clustered at the unit level; with a coarser cluster variable
+  # the variance is formed from cluster sums instead (the cluster_analytic branch below).
   n <- ifelse(faster_mode, dp$id_count, dp$n)
-  V <- Matrix::t(inffunc) %*% inffunc / (n)
+  # Analytical variance of the ATT(g,t)'s. With a cluster variable (beyond idname) and no bootstrap, use
+  # the cluster-robust form -- the cluster sums of the influence function -- mirroring the cluster-sum
+  # aggregation of the multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10). It is kept on the same
+  # 1/n scaling as the i.i.d. V so that se = sqrt(diag(V)/n) and the Wald statistic n * b' V^{-1} b stay
+  # valid for either form.
+  # cluster variables beyond the unit id; clustering on the unit id alone is just the unit-level (i.i.d.)
+  # SE. Use the *internal* unit id dp$idname -- the user's idname for panels, and ".rowid" for repeated
+  # cross-sections / unbalanced panels (where the user may omit idname), mirroring how mboot() identifies units.
+  unit_id <- dp$idname
+  extra_clustervars <- clustervars[!(clustervars %in% c(unit_id, idname, ""))]
+  # Per-unit cluster identifiers aligned with the rows of inffunc. faster_mode supplies dp$cluster_vector;
+  # in slower mode derive it from the data exactly as mboot() does -- one row per cross-sectional unit,
+  # keyed on the internal unit id -- and store it back, so the analytical clustered SE and aggte()
+  # downstream work for faster_mode TRUE and FALSE (including repeated cross-sections with idname omitted).
+  if (is.null(dp$cluster_vector) && length(extra_clustervars) > 0 && !is.null(dp$data) && !is.null(unit_id)) {
+    cdat <- as.data.frame(dp$data)
+    if (all(c(unit_id, extra_clustervars[1L]) %in% names(cdat))) {
+      dp$cluster_vector <- as.vector(unique(cdat[, c(unit_id, extra_clustervars[1L])])[, 2L])
+    }
+  }
+  cluster_vec <- dp$cluster_vector
+  cluster_analytic <- (length(extra_clustervars) > 0) && !bstrap &&
+    !is.null(cluster_vec) && length(cluster_vec) == nrow(inffunc)
+  if (cluster_analytic) {
+    Sc <- rowsum(as.matrix(inffunc), cluster_vec)   # n_clusters x k cluster sums
+    V  <- Matrix::Matrix(crossprod(Sc) / n)
+  } else {
+    V <- Matrix::t(inffunc) %*% inffunc / (n)
+  }
   se <- sqrt(Matrix::diag(V) / n)
 
   # Zero standard error replaced by NA
   se[se <= sqrt(.Machine$double.eps) * 10] <- NA
 
-  # if clustering along another dimension...we require using the
-  # bootstrap (in principle, could come up with an analytical standard
-  # errors here though)
-  if ((length(clustervars) > 0) & !bstrap) {
-    warning("Clustered standard errors require the bootstrap (bstrap = TRUE). Because bstrap = FALSE, the reported standard errors do NOT account for clustering.")
+  # If a cluster variable beyond idname is requested without the bootstrap but the cluster-robust variance
+  # could not be formed (e.g. cluster identifiers unavailable), fall back to i.i.d. and let the user know.
+  if ((length(extra_clustervars) > 0) & !bstrap & !cluster_analytic) {
+    warning("Clustered standard errors could not be computed analytically; the reported standard errors do NOT account for clustering. Set bstrap = TRUE for the cluster-robust multiplier bootstrap.")
   }
 
   # Identify entries of main diagonal V that are zero or NA
@@ -458,20 +480,16 @@ att_gt <- function(yname,
   # compute Wald pre-test
   #-----------------------------------------------------------------------------
 
-  # Determine whether the analytical V is a valid basis for the Wald pre-test.
-  # V = t(inffunc) %*% inffunc / n is valid for balanced panels, unbalanced
-  # panels (influence functions are aggregated to the unit level), and repeated
-  # cross-sections (CLT applies per independent observation).
-  #
-  # It is invalid when an extra cluster variable (beyond idname) is specified:
-  # the analytical V ignores between-cluster correlation, making the Wald stat
-  # anti-conservative.  In that case we skip the test and message the user to
-  # rely on bootstrap confidence intervals instead.
-
-  extra_clustervars <- clustervars[!(clustervars %in% c(idname, ""))]
+  # Determine whether the variance matrix V is a valid basis for the Wald pre-test. The i.i.d. form
+  # V = t(inffunc) %*% inffunc / n is valid for balanced panels, unbalanced panels (influence functions
+  # are aggregated to the unit level), and repeated cross-sections (CLT applies per independent
+  # observation). When a cluster variable beyond idname is specified and V is built from cluster sums
+  # (cluster_analytic, above), V is cluster-robust and the Wald test remains valid. It is only skipped
+  # when an extra cluster variable is present but V is the i.i.d. form (e.g. bstrap = TRUE), since then
+  # V ignores between-cluster correlation; in that case we rely on the bootstrap confidence bands.
 
   wald_invalid <- NULL
-  if (length(extra_clustervars) > 0) {
+  if (length(extra_clustervars) > 0 && !cluster_analytic) {
     wald_invalid <- paste0(
       "The Wald pre-test is not reported when clustering beyond the unit level ",
       "(clustervars = '", paste(extra_clustervars, collapse = "', '"), "') ",

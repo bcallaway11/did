@@ -1,4 +1,10 @@
-# did 2.3.1.904
+# did 2.3.1.906
+
+  * The cluster-robust multiplier bootstrap (`mboot`) now follows Callaway & Sant'Anna (2021), Remark 10: it draws one multiplier per cluster and aggregates the influence function to cluster sums. For equal-sized clusters the standard errors are identical to before; for unbalanced clusters and repeated cross sections it uses the appropriate cluster-sum aggregation. All clustering input checks (numeric `clustervars`, at most one cluster dimension beyond `idname`, and cluster-variable time-invariance) are preserved
+
+  * Clustered standard errors are now available **without** the bootstrap. With `clustervars` set and `bstrap = FALSE`, `att_gt()` and `aggte()` report cluster-robust standard errors computed analytically from the cluster sums of the influence function (the same cluster-sum aggregation as the bootstrap), at every aggregation level (group-time, simple, group, dynamic, calendar). The pre-test Wald statistic is also reported under clustering in this case
+
+  * Clustered inference (bootstrap and analytical) is supported for panel data, unbalanced panels, and repeated cross sections, whether or not `idname` is supplied, and gives identical standard errors under `faster_mode = TRUE` and `faster_mode = FALSE`. For repeated cross sections without an `idname`, the internal observation id is used to align the cluster identifiers with the influence function
 
   * Added `edid()`: efficient DiD estimator (Chen, Sant'Anna & Xie 2025) supporting PT-All and PT-Post parallel trends assumptions, analytical EIF-based standard errors (iid and cluster-robust), multiplier bootstrap inference (Rademacher, Mammen, Webb), and overall/event-study/group aggregation with WIF correction.
 

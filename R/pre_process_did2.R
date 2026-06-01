@@ -75,8 +75,10 @@ validate_args <- function(args, data){
       stop("You can only provide 1 cluster variable additionally to the one provided in idname. Please check your arguments.")
     }
 
-    # Check that cluster variables do not vary over time within each unit
-    if (length(args$clustervars) > 0) {
+    # Check that cluster variables do not vary over time within each unit. For true repeated cross-sections
+    # the user may omit idname (an internal ".rowid" is created later, one observation per row), so there is
+    # no within-unit time variation to check and idname is not yet available here -- skip the check then.
+    if (length(args$clustervars) > 0 && !is.null(args$idname)) {
       # Efficiently check for time-varying cluster variables
       clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = get(args$idname), .SDcols = args$clustervars]
       # If any cluster variable varies over time within any unit, stop execution
