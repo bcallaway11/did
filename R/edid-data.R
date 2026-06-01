@@ -88,8 +88,13 @@ prepare_edid_panel <- function(
     last_g         <- max(finite_cohorts)
     # Relabel last cohort as Inf (never-treated for estimation purposes)
     unit_cohorts[unit_cohorts == last_g] <- Inf
-    # Trim time periods >= last_g
-    keep_times  <- time_periods[time_periods < last_g]
+    # Trim periods at/after which the relabeled last cohort is no longer a clean control. With
+    # anticipation a > 0 the last cohort begins anticipating at last_g - a, so it is a valid
+    # (non-anticipating) control only for periods strictly before last_g - a (not merely < last_g).
+    # Keeping periods in [last_g - a, last_g) would use anticipating units as controls and bias the
+    # affected cells. With a = 0 this reduces to the original `< last_g`.
+    eff_last_g  <- last_g - anticipation
+    keep_times  <- time_periods[time_periods < eff_last_g]
     keep_cols   <- as.character(keep_times)
     outcome_wide <- outcome_wide[, keep_cols, drop = FALSE]
     time_periods <- keep_times

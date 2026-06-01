@@ -4,7 +4,15 @@
 \alias{estimate_all_propensity_ratios}
 \title{Estimate propensity ratios for all comparison cohorts via cross-fitting}
 \usage{
-estimate_all_propensity_ratios(panel_obj, g, pairs, bs_df, K_folds, fold_id)
+estimate_all_propensity_ratios(
+  panel_obj,
+  g,
+  pairs,
+  bs_df,
+  K_folds,
+  fold_id,
+  return_aux = FALSE
+)
 }
 \arguments{
 \item{panel_obj}{panel object with \code{covariate_matrix} and

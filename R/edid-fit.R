@@ -26,7 +26,8 @@
 #' @keywords internal
 fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
-  need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform")
+  need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform"),
+  correct_first_step = FALSE
 ) {
   weight_method <- match.arg(weight_method)
   # Determine if covariate path is active
@@ -77,6 +78,18 @@ fit_edid_cells <- function(
     fold_id <- rep(1L, panel_obj$n)
   } else {
     fold_id <- NULL
+  }
+
+  # The ACH (Ackerberg, Chen & Hahn 2012) first-step correction requires the plug-in
+  # (train = test = full sample) M-estimator pieces; it is derived for K = 1. Guard
+  # defensively in case cross-fitting is ever enabled upstream.
+  if (isTRUE(correct_first_step)) {
+    if (!use_cov_path) {
+      warning("correct_first_step has no effect without covariates (no first-step nuisances).", call. = FALSE)
+      correct_first_step <- FALSE
+    } else if (K_use > 1L) {
+      stop("correct_first_step = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
+    }
   }
 
   tgroups   <- panel_obj$treatment_groups
@@ -180,7 +193,8 @@ fit_edid_cells <- function(
             pairs     = pairs_for_nuisance,
             bs_df    = 4L,
             K_folds  = K_use,
-            fold_id  = fold_id
+            fold_id  = fold_id,
+            return_aux = correct_first_step
           ),
           warning = function(w) {
             if (grepl("Extreme propensity ratios", conditionMessage(w), fixed = TRUE)) {
@@ -195,8 +209,15 @@ fit_edid_cells <- function(
           t_val    = t,
           bs_df    = 4L,
           K_folds  = K_use,
-          fold_id  = fold_id
+          fold_id  = fold_id,
+          return_aux = correct_first_step
         )
+        # Split predictions from the ACH aux pieces (the *_aux return path wraps both).
+        r_aux <- NULL; m_aux <- NULL
+        if (isTRUE(correct_first_step)) {
+          r_aux <- prop_ratios$aux; prop_ratios <- prop_ratios$predictions
+          m_aux <- cond_means$aux;  cond_means  <- cond_means$predictions
+        }
         inv_propensities <- estimate_all_inverse_propensities(
           panel_obj = panel_obj,
           g         = g,
@@ -243,6 +264,9 @@ fit_edid_cells <- function(
               "before calling, or inspect cell (%s,%s)."), g, t, g, t), call. = FALSE)
           att_gt   <- mean(wY_i, na.rm = TRUE)                               # E_n[w(X_i)' Ytilde_i]
           eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, W_pw, att_gt, g)
+          if (isTRUE(correct_first_step))                                    # ACH first-step correction (W frozen)
+            eif_gt <- eif_gt - compute_ach_correction_cov_edid(
+              panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
           # Diagnostic only (default off): per-component cross-unit SD of the pointwise weights
           # quantifies how much Omega*(X) shape-varies; ~0 => weights ~constant => efficient ~ averaged.
@@ -266,6 +290,9 @@ fit_edid_cells <- function(
             compute_efficient_weights_edid(omega))   # "averaged"
           att_gt   <- sum(weights * colMeans(gen_out_mat, na.rm = TRUE))
           eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
+          if (isTRUE(correct_first_step))                                    # ACH first-step correction (w frozen)
+            eif_gt <- eif_gt - compute_ach_correction_cov_edid(
+              panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption)
         }
       } else {
         # --- No-covariate path ---

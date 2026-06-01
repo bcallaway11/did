@@ -10,7 +10,8 @@ estimate_conditional_mean_edid(
   G_train,
   X_test,
   gp,
-  bs_df = 4L
+  bs_df = 4L,
+  return_aux = FALSE
 )
 }
 \arguments{

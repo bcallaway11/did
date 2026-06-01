@@ -4,7 +4,15 @@
 \alias{estimate_propensity_ratio_edid}
 \title{Estimate the propensity ratio r(X) = P(G=g|X) / P(G=g'|X)}
 \usage{
-estimate_propensity_ratio_edid(X_train, G_train, X_test, g, gp, bs_df = 4L)
+estimate_propensity_ratio_edid(
+  X_train,
+  G_train,
+  X_test,
+  g,
+  gp,
+  bs_df = 4L,
+  return_aux = FALSE
+)
 }
 \arguments{
 \item{X_train}{numeric matrix n_train x d}

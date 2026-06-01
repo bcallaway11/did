@@ -70,8 +70,15 @@ compute_generated_outcomes_cov_edid <- function(
     tpre_j  <- pairs$tpre[j]
     col_tp  <- panel_obj$period_to_col[[as.character(tpre_j)]]
 
-    # Determine if this is a self-comparison pair
-    is_self <- is.finite(gp_j) && gp_j == g
+    # Determine if this is a self-comparison / two-period DiD pair.
+    # Under PT-Post the single moment pair is (gp = Inf, tpre = g-1-anticipation): it is the
+    # two-period DiD (treated vs never-treated) on Y_t - Y_tpre, i.e. the SAME structure as a
+    # self-comparison pair (Eq 3.2), NOT the three-term cross-cohort formula. Route it to the
+    # self/two-period branch so the base period is tpre (= g-1), not period_1. (Without this the
+    # cross branch algebraically collapses to the PT-All moment (Y_t - Y_1 - m_{Inf,t,1}) for later
+    # cohorts g >= 3, biasing PT-Post; g = 2 coincides since g-1 = period_1. H = 1 here, so the
+    # pointwise weight is trivially 1 and Omega needs no PT-Post special case.)
+    is_self <- (is.finite(gp_j) && gp_j == g) || identical(pt_assumption, "post")
 
     if (is_self) {
       # -----------------------------------------------------------------
@@ -481,6 +488,60 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
   # w' Ytilde_i : constant weights (length-H vector) or pointwise weights (n x H matrix)
   wY   <- if (is.matrix(weights)) rowSums(gen_out_mat * weights) else drop(gen_out_mat %*% weights)
   wY - (Gg / pi_g) * att_gt
+}
+
+#' ACH (Ackerberg, Chen & Hahn 2012) first-step nuisance-estimation correction
+#'
+#' Returns the length-n vector to SUBTRACT from the plug-in EIF so the influence function
+#' accounts for estimation of the first-step sieve nuisances entering the generated outcomes
+#' --- the conditional means \eqn{m} and propensity ratios \eqn{r}. The corrected EIF is
+#' \eqn{\psi_i - \sum_k [\,\text{score}_k \, H_k^{-1} \Gamma_k\,]_i}, where
+#' \eqn{\Gamma_k = \partial E_n[w'\tilde Y]/\partial\theta_k} is the pathwise derivative of the
+#' UNCENTERED weighted moment (the centered \eqn{\psi} is mean-zero, so its derivative is the
+#' wrong, ~0 object). \eqn{\Gamma_k} is computed numerically by perturbing the fitted prediction
+#' along each basis direction and recomputing \eqn{\tilde Y}, with the WEIGHTS HELD FIXED so the
+#' \eqn{\Omega}/weight-estimation channel is not re-introduced or double-counted (production keeps
+#' \eqn{\Omega} fixed). This is a practical (numerical) form of the ACH two-step variance estimator;
+#' \eqn{\tilde Y} is linear in each prediction, so the finite difference is exact up to roundoff.
+#' Valid for the plug-in (K = 1, train = test = full) regime; \code{fit_edid_cells} enforces this.
+#'
+#' @param panel_obj,g,t,pairs,pt_assumption as in \code{compute_generated_outcomes_cov_edid}
+#' @param prop_ratios,cond_means named lists of fitted nuisance prediction vectors
+#' @param weights frozen weights: length-H vector or n x H matrix (NOT recomputed here)
+#' @param m_aux,r_aux named lists (keyed as \code{cond_means}/\code{prop_ratios}) of per-nuisance
+#'   pieces \code{list(B_test, score_mat, H_inv, is_fallback)} from the \code{return_aux} path
+#' @param eps_rel relative finite-difference step
+#' @return numeric vector length n (the term to subtract from the plug-in EIF)
+#' @keywords internal
+compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
+                                            cond_means, weights, m_aux, r_aux,
+                                            pt_assumption = "all", eps_rel = 1e-6) {
+  wmoment <- function(pr, cm) {
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption)
+    if (is.matrix(weights)) rowSums(go * weights) else drop(go %*% weights)
+  }
+  m0         <- mean(wmoment(prop_ratios, cond_means))   # uncentered moment at theta_hat
+  n          <- panel_obj$n
+  correction <- numeric(n)
+
+  # one nuisance key: numerical Gamma along each basis column, then score %*% (H_inv %*% Gamma)
+  add_term <- function(correction, a, base, recompute) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) return(correction)
+    B   <- a$B_test; p <- ncol(B)
+    eps <- eps_rel * (1 + max(abs(base)))
+    Gamma <- vapply(seq_len(p), function(j) (mean(recompute(base + eps * B[, j])) - m0) / eps, numeric(1))
+    correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+
+  for (key in names(r_aux)) {                            # propensity ratios r_{g,gp}
+    correction <- add_term(correction, r_aux[[key]], prop_ratios[[key]],
+                           function(newp) { pr <- prop_ratios; pr[[key]] <- newp; wmoment(pr, cond_means) })
+  }
+  for (key in names(m_aux)) {                            # conditional means m_{gp,period,1}
+    correction <- add_term(correction, m_aux[[key]], cond_means[[key]],
+                           function(newp) { cm <- cond_means; cm[[key]] <- newp; wmoment(prop_ratios, cm) })
+  }
+  correction
 }
 
 #' Pointwise efficient weights w(X_i) = Omega*(X_i)^(-1) 1 / (1' Omega*(X_i)^(-1) 1)

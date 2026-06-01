@@ -162,7 +162,7 @@ predict_basis_edid <- function(bs_obj_list, X_new_mat) {
 #' @return numeric vector length n_test: estimated r(X) values
 #' @keywords internal
 estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
-                                           bs_df = 4L) {
+                                           bs_df = 4L, return_aux = FALSE) {
   n_test <- nrow(X_test)
 
   # Masks for g and g' units in training data
@@ -176,13 +176,15 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
     warning(sprintf(
       "estimate_propensity_ratio_edid: fewer than 2 units in g'=%g training fold; returning 0.", gp
     ))
-    return(rep(0, n_test))
+    fb <- rep(0, n_test)
+    return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
   }
   if (n_g < 1L) {
     warning(sprintf(
       "estimate_propensity_ratio_edid: 0 units in g=%g training fold; returning 0.", g
     ))
-    return(rep(0, n_test))
+    fb <- rep(0, n_test)
+    return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
   }
 
   # Build basis on training data
@@ -207,7 +209,19 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   # check_condition_edid().
   r_hat <- drop(B_test %*% beta_hat)
 
-  r_hat
+  if (!return_aux) return(r_hat)
+
+  # ACH (Ackerberg, Chen & Hahn 2012) first-step pieces. The estimating equation is
+  #   sum_i [ G_{gp,i} B_i (B_i'beta) - G_{g,i} B_i ] = 0,
+  # so the per-unit M-estimator score is s_i = B_i (G_{gp,i} r_i - G_{g,i}) and the
+  # Hessian H = (B_gp'B_gp)/n, i.e. H^{-1} = n * pinv(B_gp'B_gp) (same pseudoinverse used
+  # for beta_hat, so the score columns sum to ~0 and the EIF stays mean-zero). Valid only
+  # for the plug-in (K=1, train=test=full) regime fit_edid_cells enforces with this flag.
+  mask_gp_t <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+  mask_g_t  <- (G_train == g)
+  score_mat <- B_test * (mask_gp_t * r_hat - mask_g_t)   # n x p (row i scaled by G_gp,i r_i - G_g,i)
+  H_inv     <- n_test * compute_pseudoinverse_edid(BtB_gp)
+  list(pred = r_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
 }
 
 #' Estimate the inverse propensity s(X) = 1 / P(G=g'|X)
@@ -290,7 +304,7 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
 #' @return numeric vector length n_test
 #' @keywords internal
 estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
-                                           X_test, gp, bs_df = 4L) {
+                                           X_test, gp, bs_df = 4L, return_aux = FALSE) {
   n_test  <- nrow(X_test)
 
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
@@ -301,7 +315,8 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
     warning(sprintf(
       "estimate_conditional_mean_edid: fewer than 2 units in g'=%g training fold; using constant.", gp
     ))
-    return(rep(fallback_val, n_test))
+    fb <- rep(fallback_val, n_test)
+    return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
   }
 
   X_gp    <- X_train[mask_gp, , drop = FALSE]
@@ -317,14 +332,31 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
     # Fewer obs than basis columns: use simpler 1-column basis (intercept only)
     fit <- list(coef = mean(y_gp))
     m_hat <- rep(mean(y_gp), n_test)
-    return(m_hat)
+    return(if (return_aux) list(pred = m_hat, is_fallback = TRUE) else m_hat)
   }
 
   fit   <- solve_ols_edid(B_gp_train, y_gp)
   B_test <- predict_basis_edid(attr(B_gp_train_obj, "bs_objects"), X_test)
   m_hat <- drop(B_test %*% fit$coef)
 
-  m_hat
+  if (!return_aux) return(m_hat)
+
+  # ACH (Ackerberg, Chen & Hahn 2012) first-step pieces for the within-cohort OLS
+  #   sum_{i: G=gp} B_i (Y_delta_i - B_i'beta) = 0.
+  # SIGN: the OLS estimating moment B*resid has Jacobian E[d s/d beta'] = -E[G_gp BB'] (NEGATIVE),
+  # so the first-step influence function of beta_hat is +H^{-1} s and the two-step correction must be
+  # ADDED. The correction helper uses a uniform "psi - score %*% (H_inv %*% Gamma)" (subtract)
+  # convention -- correct for the propensity RATIO, whose moment B*(G_gp r - G_g) has the OPPOSITE
+  # (positive) Jacobian +E[G_gp BB']. To make the shared subtract convention correct for this OLS
+  # channel too, the score carries a leading MINUS: score = -B*resid. (Validated: the corrected EIF
+  # then matches the numerical two-step IF, cor = +1; with +B*resid it is exactly negated, cor = -1.)
+  # Hessian H = (B_gp'B_gp)/n => H^{-1} = n * pinv(B_gp'B_gp), FULL-sample n (the score is zero
+  # off-cohort, so the M-estimator average is over n, not n_gp); same pseudoinverse as beta. Plug-in only.
+  resid_full           <- numeric(n_test)
+  resid_full[mask_gp]  <- fit$residuals
+  score_mat <- -B_test * resid_full                      # n x p (leading minus: see SIGN note above)
+  H_inv     <- n_test * compute_pseudoinverse_edid(crossprod(B_gp_train))
+  list(pred = m_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
 }
 
 # ---------------------------------------------------------------------------
@@ -347,11 +379,12 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
 #' @return named list of n-vectors, keyed by \code{as.character(gp)}
 #' @keywords internal
 estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
-                                           K_folds, fold_id) {
+                                           K_folds, fold_id, return_aux = FALSE) {
   n       <- panel_obj$n
   X_mat   <- panel_obj$covariate_matrix
   G_vec   <- panel_obj$unit_cohorts
   result  <- list()
+  aux     <- list()
 
   unique_gps <- unique(pairs$gp)
 
@@ -369,21 +402,28 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
       }
       if (length(test_idx) == 0L) next
 
-      r_full[test_idx] <- estimate_propensity_ratio_edid(
+      out_gp <- estimate_propensity_ratio_edid(
         X_train = X_mat[train_idx, , drop = FALSE],
         G_train = G_vec[train_idx],
         X_test  = X_mat[test_idx,  , drop = FALSE],
         g       = g,
         gp      = gp,
-        bs_df   = bs_df
+        bs_df   = bs_df,
+        return_aux = return_aux
       )
+      if (return_aux) {
+        r_full[test_idx] <- out_gp$pred              # aux only requested with K=1 (single fold)
+        aux[[as.character(gp)]] <- out_gp
+      } else {
+        r_full[test_idx] <- out_gp
+      }
     }
 
     .check_extreme_ratios_edid(r_full, g, gp)
     result[[as.character(gp)]] <- r_full
   }
 
-  result
+  if (return_aux) list(predictions = result, aux = aux) else result
 }
 
 #' Estimate inverse propensities 1/p_g'(X) for all groups via cross-fitting
@@ -457,13 +497,14 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
 #' @return named list of n-vectors, keyed by \code{paste0(gp, "_", period)}
 #' @keywords internal
 estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
-                                           K_folds, fold_id) {
+                                           K_folds, fold_id, return_aux = FALSE) {
   n           <- panel_obj$n
   X_mat       <- panel_obj$covariate_matrix
   G_vec       <- panel_obj$unit_cohorts
   ow          <- panel_obj$outcome_wide
   t1_col      <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
   result      <- list()
+  aux         <- list()
 
   # Collect unique (gp, period) combinations needed
   # We need m_{gp, t_val, 1}(X) and m_{gp, tpre, 1}(X) for each pair
@@ -504,18 +545,25 @@ estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
       }
       if (length(test_idx) == 0L) next
 
-      m_full[test_idx] <- estimate_conditional_mean_edid(
+      out_m <- estimate_conditional_mean_edid(
         X_train       = X_mat[train_idx, , drop = FALSE],
         Y_delta_train = Y_delta[train_idx],
         G_train       = G_vec[train_idx],
         X_test        = X_mat[test_idx, , drop = FALSE],
         gp            = gp,
-        bs_df         = bs_df
+        bs_df         = bs_df,
+        return_aux    = return_aux
       )
+      if (return_aux) {
+        m_full[test_idx] <- out_m$pred               # aux only requested with K=1 (single fold)
+        aux[[key]] <- out_m
+      } else {
+        m_full[test_idx] <- out_m
+      }
     }
 
     result[[key]] <- m_full
   }
 
-  result
+  if (return_aux) list(predictions = result, aux = aux) else result
 }

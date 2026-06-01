@@ -78,6 +78,23 @@
 #'   \code{"averaged"} inverts the covariate-averaged conditional covariance \eqn{\bar\Omega^*};
 #'   \code{"gmm"} inverts the unconditional moment covariance \eqn{\hat S}; \code{"uniform"} assigns
 #'   equal weight \eqn{1/H} to the \eqn{H} non-collinear moments.
+#' @param correct_first_step Logical (default \code{FALSE}). If \code{TRUE}, the influence function
+#'   is augmented with the first-step nuisance-estimation correction of Ackerberg, Chen and Hahn (2012)
+#'   for the sieve nuisances (conditional means and propensity ratios) entering the doubly-robust moment.
+#'   The influence-function moments are Neyman orthogonal, so this correction is asymptotically negligible
+#'   under correct specification (it leaves the variance bound unchanged in the limit); it provides
+#'   finite-sample robustness when a first-step nuisance is misspecified, where the doubly-robust point
+#'   estimate remains consistent. It is a practical (numerical-derivative) form of the two-step variance
+#'   estimator and is supported only for the default plug-in nuisances (covariate path).
+#'   \strong{Scope:} the correction is for the sieve nuisances (m, r) that enter the generated outcome,
+#'   computed with the estimated efficient weights held FIXED. It does \emph{not} correct the
+#'   weight-estimation channel (the kernel \eqn{\Omega^*}, its Ledoit-Wolf shrinkage, and the eigenvalue
+#'   floor that map to \eqn{w(X)}); that channel is asymptotically negligible separately but is not part of
+#'   this correction. With the rich default sieve the correction is empirically small; its value is
+#'   robustness when a nuisance is genuinely misspecified.
+#'
+#' @references Ackerberg, D., Chen, X., and Hahn, J. (2012). A Practical Asymptotic Variance Estimator
+#'   for Two-Step Semiparametric Estimators. \emph{Review of Economics and Statistics}, 94(2), 481-498.
 #'
 #' @return An object of class \code{edid_fit} (a list) with elements:
 #'   \describe{
@@ -167,7 +184,8 @@ edid <- function(
   aggregate         = c("all", "overall", "event_study", "group", "calendar", "none"),
   balance_e         = NULL,
   survey_design     = NULL,
-  weights           = c("efficient", "averaged", "gmm", "uniform")
+  weights           = c("efficient", "averaged", "gmm", "uniform"),
+  correct_first_step = FALSE
 ) {
   weight_method <- match.arg(weights)
   mc <- match.call()
@@ -255,7 +273,8 @@ edid <- function(
     xformla       = xformla,
     need_eif      = need_eif_internal,
     seed          = seed,
-    weight_method = weight_method
+    weight_method = weight_method,
+    correct_first_step = isTRUE(correct_first_step)
   )
 
   cells      <- fit_result$cells
@@ -345,6 +364,7 @@ edid <- function(
     panel            = TRUE,
     anticipation     = panel_obj$anticipation,
     inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
+    correct_first_step = isTRUE(correct_first_step),
     clustervars      = clustervars,
     cluster_indices  = panel_obj$cluster_indices,  # for cluster-robust re-aggregation in aggte_edid
     xformla          = xformla,

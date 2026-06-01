@@ -1,3 +1,7 @@
+# did 2.3.1.907
+
+  * `edid()` gains an opt-in `correct_first_step` argument (default `FALSE`). When `TRUE`, the influence function is augmented with the first-step nuisance-estimation correction of Ackerberg, Chen & Hahn (2012) for the sieve nuisances (conditional means and propensity ratios) entering the doubly-robust moment. The correction is asymptotically negligible under correct specification (the EIF moments are Neyman orthogonal) and provides finite-sample robustness when a first-step nuisance is misspecified; it propagates automatically to the event-study and overall aggregations. Default behavior is unchanged.
+
 # did 2.3.1.906
 
   * The cluster-robust multiplier bootstrap (`mboot`) now follows Callaway & Sant'Anna (2021), Remark 10: it draws one multiplier per cluster and aggregates the influence function to cluster sums. For equal-sized clusters the standard errors are identical to before; for unbalanced clusters and repeated cross sections it uses the appropriate cluster-sum aggregation. All clustering input checks (numeric `clustervars`, at most one cluster dimension beyond `idname`, and cluster-variable time-invariance) are preserved

@@ -10,7 +10,8 @@ estimate_all_conditional_means(
   t_val,
   bs_df,
   K_folds,
-  fold_id
+  fold_id,
+  return_aux = FALSE
 )
 }
 \arguments{
