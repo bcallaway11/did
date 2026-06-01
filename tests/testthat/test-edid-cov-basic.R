@@ -108,8 +108,12 @@ test_that("xformla with I(x1^2) runs and differs from ~x1 on nonlinear DGP", {
   y <- 0.5 * times + x1^2 + as.numeric(times >= g) + rnorm(n * T, sd = 0.5)
   df <- data.frame(id = ids, t = times, y = y, g = g, x1 = x1)
 
-  fit_lin  <- edid(df, "y", "id", "t", "g", xformla = ~ x1,       seed = 1L)
-  fit_quad <- edid(df, "y", "id", "t", "g", xformla = ~ x1 + I(x1^2), seed = 1L)
+  # This small-n nonlinear DGP deliberately stresses overlap, so the quadratic
+  # fit can trip the (legitimate) extreme-propensity-ratio diagnostic. Whether it
+  # crosses the threshold is seed/platform-dependent, so suppress rather than
+  # assert it -- the test's purpose is that both fits run and differ.
+  fit_lin  <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1,            seed = 1L))
+  fit_quad <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + I(x1^2), seed = 1L))
 
   # Both should run; they should not be identical (different model matrix)
   expect_s3_class(fit_lin,  "edid_fit")

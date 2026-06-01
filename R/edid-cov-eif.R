@@ -175,8 +175,9 @@ compute_generated_outcomes_cov_edid <- function(
 #' kernel smoothing of outcome change covariances within specific cohorts,
 #' scaled by propensity scores.
 #'
-#' \strong{Computational complexity}: O(n^2 * H^2). Emits a warning for
-#' n > 1000.
+#' \strong{Computational complexity}: O(n^2 * H^2). For large n (> 5000) an
+#' informational message is emitted in interactive sessions; silence it with
+#' \code{options(edid.quiet = TRUE)}.
 #'
 #' @param panel_obj panel object (needs \code{covariate_matrix}, \code{outcome_wide},
 #'   \code{cohort_masks}, \code{never_treated_mask})
@@ -200,9 +201,14 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   H     <- nrow(pairs)
   ow    <- panel_obj$outcome_wide
 
-  if (n > 1000L) {
-    warning(sprintf(
-      "compute_omega_star_cov_edid: n=%d > 1000; O(n^2) kernel loop may be slow.", n
+  # Performance note (not a correctness condition): the kernel loop is
+  # O(n^2 * H^2), which is only a concern for large n. Surface it as an
+  # informational message in interactive sessions, silenceable via
+  # options(edid.quiet = TRUE); never as a warning (n in the thousands is
+  # ordinary for DiD and does not indicate anything wrong with the results).
+  if (n > 5000L && interactive() && !isTRUE(getOption("edid.quiet"))) {
+    message(sprintf(
+      "compute_omega_star_cov_edid: n=%d; the O(n^2) kernel loop may be slow.", n
     ))
   }
 

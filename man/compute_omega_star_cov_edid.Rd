@@ -44,7 +44,8 @@ Each (j,k)-th element of Omega*(X) is estimated using Nadaraya-Watson
 kernel smoothing of outcome change covariances within specific cohorts,
 scaled by propensity scores.
 
-\strong{Computational complexity}: O(n^2 * H^2). Emits a warning for
-n > 1000.
+\strong{Computational complexity}: O(n^2 * H^2). For large n (> 5000) an
+informational message is emitted in interactive sessions; silence it with
+\code{options(edid.quiet = TRUE)}.
 }
 \keyword{internal}
