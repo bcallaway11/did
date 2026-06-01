@@ -159,8 +159,9 @@ compute_efficient_weights_edid <- function(omega_star) {
   ones_H  <- rep(1, H)
   unif    <- ones_H / H
 
-  # Degenerate: all zeros -> uniform
-  if (all(omega_star == 0)) return(unif)
+  # Degenerate: all zeros, or any non-finite entry (e.g. gmm cov() with NA moments
+  # or a near-singular cell) -> uniform fallback instead of erroring in svd/eigen.
+  if (all(omega_star == 0) || any(!is.finite(omega_star))) return(unif)
 
   # Check condition number
   kappa <- check_condition_edid(omega_star)

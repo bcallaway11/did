@@ -36,7 +36,9 @@ build_crossfit_folds_edid <- function(n, K = 5L, seed = NULL) {
     }, add = TRUE)
     set.seed(seed)
   }
-  sample(seq_len(K), n, replace = TRUE)
+  # Balanced folds: a shuffled round-robin so fold sizes differ by at most one (sampling with
+  # replacement could leave a fold empty). Reduces to all-ones at K=1.
+  sample(rep_len(seq_len(K), n))
 }
 
 # ---------------------------------------------------------------------------
@@ -195,10 +197,15 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   BtB_gp   <- t(B_gp) %*% B_gp
   beta_hat <- as.vector(compute_pseudoinverse_edid(BtB_gp) %*% col_sums_g)
 
-  # Predict on test data
+  # Evaluate the fitted sieve basis on the evaluation sample.
   B_test <- predict_basis_edid(attr(B_train_obj, "bs_objects"), X_test)
-  # r_hat  <- pmax(drop(B_test %*% beta_hat), 0)   # clipping disabled
-  r_hat  <- drop(B_test %*% beta_hat)
+
+  # Predict the propensity ratio. The sieve estimate is left unconstrained (no truncation at
+  # zero and no link function): truncating would break the linear first-order condition that
+  # delivers Neyman orthogonality, so we keep the raw projection. Under good overlap the estimate
+  # is positive; large or negative values arise only under weak overlap and are flagged by
+  # check_condition_edid().
+  r_hat <- drop(B_test %*% beta_hat)
 
   r_hat
 }
@@ -228,6 +235,11 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
   n_gp <- sum(mask_gp)
 
+  if (n_gp == 0L) {
+    stop(sprintf(paste0(
+      "estimate_inverse_propensity_edid: 0 units in comparison cohort g'=%g; cannot estimate ",
+      "1/p_{g'}(X) (the fallback would divide by zero). Check the comparison group / control_group."), gp))
+  }
   if (n_gp < 2L) {
     warning(sprintf(
       "estimate_inverse_propensity_edid: fewer than 2 units in g'=%g; returning 1/pi_g'.", gp

@@ -36,6 +36,7 @@ safe_inference_edid <- function(eif, cluster_indices = NULL, alpha = 0.05,
     se <- compute_eif_se_edid(eif, n)
   } else {
     G            <- length(unique(cluster_indices))
+    if (G <= 1L) return(na_result)                       # cluster-robust SE undefined with < 2 clusters
     cluster_sums <- drop(rowsum(eif, cluster_indices))
     se           <- sqrt((G / (G - 1)) * sum(cluster_sums^2) / (length(eif)^2))
   }

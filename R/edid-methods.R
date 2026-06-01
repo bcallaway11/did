@@ -176,9 +176,14 @@ coef.edid_fit <- function(
 
 #' Extract variance-covariance matrix from an edid_fit object
 #'
-#' Returns the outer product of aggregated EIF vectors, scaled by \eqn{1/n^2}.
-#' When bootstrap inference is used, returns a diagonal matrix of bootstrap
-#' variance estimates.
+#' Returns the IID asymptotic covariance: the outer product of the (per-unit)
+#' aggregated influence-function vectors, scaled by \eqn{1/n^2}.
+#'
+#' @note This currently returns the IID covariance regardless of how \code{object}
+#'   was fit. When \code{clustervars} or \code{bstrap = TRUE} was used, the SEs
+#'   reported by \code{summary()} apply a cluster-robust / bootstrap adjustment that
+#'   \code{vcov()} does not yet mirror, so the two can differ in those cases.
+#'   Cluster- and bootstrap-aware \code{vcov} is a planned addition.
 #'
 #' @param object an \code{edid_fit} object
 #' @param which character: one of \code{"att_gt"}, \code{"overall"},
@@ -194,11 +199,23 @@ vcov.edid_fit <- function(
 ) {
   which <- match.arg(which)
   n     <- object$n
+  ci    <- object$cluster_indices   # NULL unless clustervars was set; aligned with the per-unit EIFs
+
+  # Cross-product of two per-unit EIF vectors: cluster-robust (sum within clusters first, with the
+  # (G/(G-1)) finite-cluster factor) when ci is non-NULL, IID otherwise. This is the SAME estimator as
+  # safe_inference_edid(), so diag(vcov(.)) reproduces the SE^2 that summary() reports -- including when
+  # the clustering level is coarser than the unit id and bstrap = FALSE.
+  .cross <- function(ej, ek) {
+    if (is.null(ci)) return(sum(ej * ek) / n^2)
+    G <- length(unique(ci))
+    if (G <= 1L) return(NA_real_)
+    (G / (G - 1)) * sum(drop(rowsum(ej, ci)) * drop(rowsum(ek, ci))) / n^2
+  }
 
   if (which == "overall") {
     eif_v <- object$overall$eif_agg
     if (is.null(eif_v)) return(matrix(NA_real_, 1L, 1L))
-    return(matrix(sum(eif_v^2) / n^2, nrow = 1L, ncol = 1L,
+    return(matrix(.cross(eif_v, eif_v), nrow = 1L, ncol = 1L,
                   dimnames = list("overall", "overall")))
   }
 
@@ -214,7 +231,7 @@ vcov.edid_fit <- function(
       for (k in seq_len(K)) {
         eif_k <- es_list[[k]]$eif_agg
         if (is.null(eif_k)) next
-        vcv[j, k] <- sum(eif_j * eif_k) / n^2
+        vcv[j, k] <- .cross(eif_j, eif_k)
       }
     }
     return(vcv)
@@ -232,23 +249,32 @@ vcov.edid_fit <- function(
       for (k in seq_len(K)) {
         eif_k <- gr_list[[k]]$eif_agg
         if (is.null(eif_k)) next
-        vcv[j, k] <- sum(eif_j * eif_k) / n^2
+        vcv[j, k] <- .cross(eif_j, eif_k)
       }
     }
     return(vcv)
   }
 
-  # att_gt: use cell-level EIFs from eif_matrix if available
+  # att_gt: cluster-robust crossproduct of the cell-level EIF matrix (n x K) when available.
   if (!is.null(object$eif)) {
     eif_mat <- object$eif
-    K   <- ncol(eif_mat)
-    vcv <- (t(eif_mat) %*% eif_mat) / n^2
     df  <- object$att_gt
     nms <- paste0("ATT(", df$group, ",", df$time, ")")
+    if (is.null(ci)) {
+      vcv <- crossprod(eif_mat) / n^2
+    } else {
+      G  <- length(unique(ci))
+      vcv <- if (G <= 1L) {
+        matrix(NA_real_, ncol(eif_mat), ncol(eif_mat))
+      } else {
+        CS <- rowsum(eif_mat, ci)                 # G x K cluster sums
+        (G / (G - 1)) * crossprod(CS) / n^2
+      }
+    }
     dimnames(vcv) <- list(nms, nms)
     return(vcv)
   }
-  # Fallback: diagonal from stored SEs
+  # Fallback: diagonal from stored SEs (which already carry the cluster-robust adjustment).
   df  <- object$att_gt
   nms <- paste0("ATT(", df$group, ",", df$time, ")")
   K   <- nrow(df)

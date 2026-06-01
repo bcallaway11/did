@@ -15,14 +15,16 @@
 #' For self-comparison pairs (gp == g), the formula reduces to Eq. (3.2):
 #' \deqn{\tilde{Y} = (G_g/\pi_g - r_{g,\infty} G_\infty/\pi_g)(Y_t - Y_{tpre} - m_{\infty,t,tpre})}
 #'
-#' For cross-cohort pairs (gp != g), the three-term doubly-robust formula applies:
-#' \deqn{\tilde{Y} = (G_g/\pi_g)(Y_t - Y_1 - m_{\infty,t,1})
-#'        - r_{g,\infty} (G_\infty/\pi_g)(Y_t - Y_{tpre} - m_{\infty,t,tpre})
-#'        - r_{g,g'} (G_{g'}/\pi_g)(Y_{tpre} - Y_1 - m_{g',tpre,1})}
-#' Note: term1 uses only \eqn{m_{\infty,t,1}}, not \eqn{m_{g',tpre,1}}.  Adding
-#' \eqn{m_{g',tpre,1}} to term1 would bias the estimator by
-#' \eqn{E[Y_{tpre}-Y_1|G=g]}, since the propensity-ratio correction in term3
-#' accounts for G=g' units only, not G=g units.
+#' For cross-cohort pairs (gp != g), the doubly-robust generated outcome of
+#' Eq. (4.4) applies:
+#' \deqn{\tilde{Y} = (G_g/\pi_g)\,(Y_t - Y_1 - m_{\infty,t,tpre} - m_{g',tpre,1})
+#'        - \frac{p_g}{p_\infty}\,\frac{G_\infty}{\pi_g}\,(Y_t - Y_{tpre} - m_{\infty,t,tpre})
+#'        - \frac{p_g}{p_{g'}}\,\frac{G_{g'}}{\pi_g}\,(Y_{tpre} - Y_1 - m_{g',tpre,1}),}
+#' where \eqn{m_{\infty,t,tpre} = m_{\infty,t,1} - m_{\infty,tpre,1}}. The
+#' treated-cohort (G=g) term subtracts \emph{both} conditional-mean adjustments,
+#' \eqn{m_{\infty,t,tpre}} and \eqn{m_{g',tpre,1}}: this is what makes the moment
+#' doubly robust, identifying \eqn{ATT(g,t)} when either the outcome models or
+#' the propensity ratios (but not necessarily both) are correctly specified.
 #'
 #' @param panel_obj panel object from \code{prepare_edid_panel()}
 #' @param g scalar: treatment cohort
@@ -190,7 +192,8 @@ compute_generated_outcomes_cov_edid <- function(
 compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
                                         prop_ratios, cond_means,
                                         inv_propensities = NULL,
-                                        bw = NULL) {
+                                        bw = NULL,
+                                        return_pointwise = FALSE) {
   X_mat <- panel_obj$covariate_matrix
   n     <- nrow(X_mat)
   d     <- ncol(X_mat)
@@ -266,10 +269,13 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   # Helper: kernel-smoothed conditional covariance of (A, B) given G=group at point x_i
   # Returns an n-vector (one value per evaluation point)
   kernel_cond_cov <- function(A, B, group_mask) {
-    # For each evaluation point i, compute:
-    #   sum_{ell in group} K(x_i, x_ell) * (A_ell - mu_A(x_i)) * (B_ell - mu_B(x_i))
-    #   / sum_{ell in group} K(x_i, x_ell)
-    # Where mu_A(x_i) = sum_{ell in group} K * A_ell / sum K
+    # Kernel-weighted conditional covariance over the group, for every evaluation point i:
+    #   Cov_K(A,B | X_i) = E_K[AB | X_i] - E_K[A | X_i] E_K[B | X_i],   E_K[. | X_i] = (K_i .)/(K_i 1).
+    # This weighted-sums form uses only matrix-VECTOR products, so it is algebraically identical to the
+    # two-pass residual form  sum_ell K (A_ell-mu_A_i)(B_ell-mu_B_i)/sum_ell K  but never materializes the
+    # n x n_group residual matrices (the memory/time bottleneck at large n). A and B are centered by their
+    # group means first -- covariance is shift-invariant, so this is exact, and keeping the products small
+    # avoids the catastrophic cancellation that the naive E_K[AB]-E_K[A]E_K[B] would suffer near zero cov.
     idx <- which(group_mask)
     if (length(idx) < 2L) return(rep(0, n))
 
@@ -277,20 +283,13 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     K_sums  <- rowSums(K_group)
     K_sums[K_sums < 1e-15] <- NA_real_
 
-    A_group <- A[idx]
-    B_group <- B[idx]
+    A_c <- A[idx] - mean(A[idx])           # center (shift-invariant) for numerical stability
+    B_c <- B[idx] - mean(B[idx])
 
-    # Kernel-weighted means
-    mu_A <- drop(K_group %*% A_group) / K_sums
-    mu_B <- drop(K_group %*% B_group) / K_sums
-
-    # Kernel-weighted covariance
-    # sum_ell K[i,ell] * (A_ell - mu_A_i) * (B_ell - mu_B_i) / sum_ell K[i,ell]
-    resid_A <- sweep(matrix(A_group, nrow = n, ncol = length(idx), byrow = TRUE),
-                     1, mu_A, "-")
-    resid_B <- sweep(matrix(B_group, nrow = n, ncol = length(idx), byrow = TRUE),
-                     1, mu_B, "-")
-    cov_vals <- rowSums(K_group * resid_A * resid_B) / K_sums
+    mu_A  <- drop(K_group %*% A_c) / K_sums          # E_K[A - Abar | X_i]
+    mu_B  <- drop(K_group %*% B_c) / K_sums          # E_K[B - Bbar | X_i]
+    mu_AB <- drop(K_group %*% (A_c * B_c)) / K_sums  # E_K[(A-Abar)(B-Bbar) | X_i]
+    cov_vals <- mu_AB - mu_A * mu_B                  # = Cov_K(A,B | X_i)
     cov_vals[is.na(cov_vals)] <- 0
     cov_vals
   }
@@ -300,6 +299,9 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   # then averaging over units
   # -----------------------------------------------------------------------
   Omega_hat <- matrix(0, nrow = H, ncol = H)
+  # Per-unit Omega*(X_i) array (n x H x H), built only when requested (paper's
+  # pointwise efficient weights use Omega*(X_i)^{-1} per observation).
+  Omega_array <- if (return_pointwise) array(0, dim = c(n, H, H)) else NULL
 
   # Precompute outcome changes we'll need repeatedly
   Y_t_minus_Y1 <- ow[, col_t] - ow[, col_1]
@@ -348,9 +350,15 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       }
 
       # Term 5: 1{g'_j == g'_k}/p_{g'_j}(X) * Cov(Y_{t'_j}-Y_1, Y_{t'_k}-Y_1 | G=g'_j, X)
+      # g'_j is the TRUE comparison-cohort label (= g for self-pairs). Conditioning must be on
+      # G=g'_j with prefactor 1/p_{g'_j}, exactly as printed in Eq (3.12) and as the no-covariate
+      # path does (edid-nocov.R term_d at gp_j==gp_k). Do NOT remap self-pairs to G=Inf: that
+      # conditions term5 on the never-treated pre-period covariance instead of the treated
+      # cohort's own, corrupting Omega* (and the efficient weights, e.g. negative weights) whenever
+      # the cohorts have different pre-period covariance.
       term5 <- 0
-      gp_j_eff <- if (is_self_j) Inf else gp_j
-      gp_k_eff <- if (is_self_k) Inf else gp_k
+      gp_j_eff <- gp_j
+      gp_k_eff <- gp_k
       if (identical(gp_j_eff, gp_k_eff)) {
         gp_key_jk <- as.character(gp_j_eff)
         if (is.infinite(gp_j_eff)) {
@@ -370,15 +378,58 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
           kernel_cond_cov(Y_tj_minus_Y1, Y_tk_minus_Y1, mask_gp_jk)
       }
 
-      # Average Omega*[j,k](X) over all units
-      omega_jk <- mean(term1 + term2 + term3 + term4 + term5)
+      # Per-unit Omega*[j,k](X_i), then its average over units.
+      omega_jk_i <- term1 + term2 + term3 + term4 + term5
+      omega_jk   <- mean(omega_jk_i)
 
       Omega_hat[j, k] <- omega_jk
       if (k != j) Omega_hat[k, j] <- omega_jk
+      if (return_pointwise) {
+        Omega_array[, j, k] <- omega_jk_i
+        if (k != j) Omega_array[, k, j] <- omega_jk_i
+      }
     }
   }
 
-  # Ensure positive semi-definiteness via eigenvalue floor
+  # Per-unit array path: shrink each pointwise Omega*(X_i) toward the pooled Omega-bar
+  # (= Omega_hat) before returning; stabilization/inversion is done downstream by
+  # compute_pointwise_weights_edid().
+  #
+  # Why shrink. The pointwise estimator must estimate an H x H conditional covariance LOCALLY
+  # (kernel), which is far noisier than the single pooled Omega-bar used by the constant-weight
+  # ("averaged") scheme. When Omega*(X) varies little in X (the common case under good overlap),
+  # that extra noise inflates the variance of the efficient estimator BELOW the efficiency the
+  # bound promises -- it can do worse than "averaged" in finite samples. Shrinking toward Omega-bar
+  # with a data-driven intensity lambda removes that noise: lambda -> 1 (revert to the stable pooled
+  # weight) when the across-unit spread of Omega*(X_i) is mostly sampling noise, and lambda -> 0
+  # (keep the pointwise weights) when the spread reflects genuine shape variation. Because the
+  # kernel estimate sharpens as n grows, lambda -> 0 asymptotically and the estimator coincides with
+  # the paper's pointwise-efficient estimator in the limit (the shrinkage is an asymptotically
+  # negligible finite-sample regularization, like the eigenvalue floor). Ledoit-Wolf-style rule:
+  # lambda = (within-unit sampling variance) / (across-unit variance of Omega*(X_i)), capped to [0,1].
+  if (return_pointwise) {
+    Hh      <- dim(Omega_array)[2]
+    lam_opt <- suppressWarnings(as.numeric(getOption("edid_shrink_lambda", NA_real_)))  # NA = data-driven; 0 disables
+    if (length(lam_opt) == 1L && is.finite(lam_opt)) {
+      lam <- min(1, max(0, lam_opt))
+    } else {
+      ksum      <- rowSums(K_mat); ksq <- rowSums(K_mat^2)        # Kish effective local sample size
+      m_eff     <- stats::median(ksum^2 / pmax(ksq, .Machine$double.eps))
+      shape_var <- mean(apply(Omega_array, c(2, 3), stats::var))  # across-unit spread (signal + noise)
+      dg        <- diag(Omega_hat)
+      samp_var  <- mean(outer(dg, dg) + Omega_hat^2) / max(m_eff, 1)  # within-unit kernel sampling noise
+      lam       <- min(1, max(0, samp_var / max(shape_var, .Machine$double.eps)))
+    }
+    if (isTRUE(getOption("edid_diag_lambda")))
+      options(edid_lambda_acc = c(getOption("edid_lambda_acc", numeric(0)), lam))  # diagnostic accumulator
+    if (lam > 0)
+      for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
+        Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
+    attr(Omega_array, "shrink_lambda") <- lam
+    return(Omega_array)
+  }
+
+  # Ensure positive semi-definiteness via eigenvalue floor (averaged matrix)
   eig <- eigen(Omega_hat, symmetric = TRUE)
   eig$values <- pmax(eig$values, 1e-12)
   Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
@@ -392,27 +443,20 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
 
 #' Compute the efficient influence function for a cell with covariates
 #'
-#' The efficient GMM estimator is
-#' \deqn{\hat\beta_{g,t} = \sum_j w_j \cdot \frac{1}{n}\sum_i \tilde{Y}_{j,i}}
-#' where \eqn{\tilde{Y}_{j,i}} is the doubly-robust generated outcome for pair j
-#' and \eqn{w_j} are the fixed efficient weights.  By the delta method, its
-#' influence function is
-#' \deqn{EIF_i = \sum_j w_j \cdot (\tilde{Y}_{j,i} - \beta_j)
-#'             = \left(\sum_j w_j \tilde{Y}_{j,i}\right) - ATT(g,t)}
-#' (using \eqn{\sum_j w_j \beta_j = ATT(g,t)}).
+#' The estimator is the ratio \eqn{\widehat{ATT}_{g,t} = \mathbb{E}_n[w' \tilde{Y}] /
+#' \mathbb{E}_n[G_g]} (the \eqn{G_g/\pi_g} factors inside \eqn{\tilde{Y}} make it a
+#' ratio in \eqn{\widehat\pi_g}). Its first-order influence function is
+#' \deqn{EIF_i = w(X_i)' \tilde{Y}_i - \frac{G_{g,i}}{\pi_g} ATT(g,t),}
+#' i.e. the centering is \eqn{-(G_{g,i}/\pi_g)\,ATT}, NOT the constant \eqn{-ATT}.
+#' The constant centering omits the first-order contribution of the estimated
+#' treated-cohort share \eqn{\widehat\pi_g = \mathbb{E}_n[G_g]} and inflates the
+#' variance by \eqn{ATT^2 (1/\pi_g - 1)} with no asymptotic shrinkage. The
+#' standard error is \eqn{\widehat{SE} = \sqrt{\sum_i EIF_i^2}/n}.
 #'
-#' Statistical note: an alternative form \eqn{EIF_i = \sum_j w_j \tilde{Y}_{j,i}
-#' + (G_{g,i}/\pi_g) \cdot ATT(g,t)} that appears in some semiparametric
-#' efficiency calculations adds a term whose mean is \eqn{ATT(g,t)} (since
-#' \eqn{E[G_{g,i}/\pi_g] = 1}).  After centring, this equals
-#' \eqn{(correct\,EIF) + (G_{g,i}/\pi_g - 1) \cdot ATT(g,t)}, inflating the
-#' variance by \eqn{ATT^2 \cdot Var(G_{g,i}/\pi_g - 1) > 0} whenever
-#' \eqn{ATT \ne 0}.  The correct expression for the SE formula
-#' \eqn{SE = \sqrt{\sum_i EIF_i^2 / n^2}} is the one below.
-#'
-#' @param panel_obj panel object (needs n)
+#' @param panel_obj panel object (needs cohort_masks, cohort_fractions)
 #' @param gen_out_mat numeric matrix n x H (generated outcomes)
-#' @param weights numeric vector length H summing to 1
+#' @param weights either a length-H vector (constant weights) or an n x H matrix
+#'   of per-observation pointwise weights \eqn{w(X_i)}
 #' @param att_gt scalar point estimate (= sum_j w_j * colMeans(gen_out_mat))
 #' @param g scalar: target treatment cohort (unused; kept for API compatibility)
 #'
@@ -428,5 +472,61 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
   # EIF below is 0 by construction (E_n[G_g] = pi_g), so no de-meaning is used.
   Gg   <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
   pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
-  drop(gen_out_mat %*% weights) - (Gg / pi_g) * att_gt
+  # w' Ytilde_i : constant weights (length-H vector) or pointwise weights (n x H matrix)
+  wY   <- if (is.matrix(weights)) rowSums(gen_out_mat * weights) else drop(gen_out_mat %*% weights)
+  wY - (Gg / pi_g) * att_gt
+}
+
+#' Pointwise efficient weights w(X_i) = Omega*(X_i)^{-1} 1 / (1' Omega*(X_i)^{-1} 1)
+#'
+#' Per-observation semiparametric-efficient weights from the conditional-covariance array. Each
+#' Omega*(X_i) is regularized by a DIMENSION-AWARE relative eigenvalue floor.
+#' The kernel Omega*(X) is estimated at the uniform Nadaraya-Watson rate rho_n,
+#' whose variance exponent is (5-d)/10 (product Gaussian kernel, per-covariate
+#' bw.nrd0 ~ n^{-1/5}; d = number of covariates). Asymptotic negligibility
+#' requires the floor TOL = f(n) to vanish but DOMINATE rho_n, i.e. TOL = n^{-a}
+#' with 0 < a < (5-d)/10. We take a = c*(5-min(d,4))/10 with c = 0.7 (strictly
+#' interior to the admissible band for d <= 4; for d >= 5 the band (0,(5-d)/10) is
+#' EMPTY -- d is clamped to 4 giving fallback a = 0.07, where efficiency is no
+#' longer claimed, see the d >= 5 warning in fit_edid_cells): the floor is
+#' asymptotically negligible
+#' (estimator stays pointwise-efficient and the plug-in SE is consistent in the
+#' limit) yet stays above the NW eigenvalue noise for finite-sample stability.
+#' Condition number is capped at ~n^{a}. Pure per-unit inversion (no floor) is
+#' unstable: a few near-singular Omega*(X_i) produce enormous weights. Degenerate
+#' units fall back to uniform (1/H).
+#'
+#' @param omega_array numeric array n x H x H of per-unit Omega*(X_i), from
+#'   \code{compute_omega_star_cov_edid(..., return_pointwise = TRUE)}
+#' @param d integer, number of covariates entering the kernel (sets the floor rate)
+#' @return numeric matrix n x H, each row summing to 1
+#' @keywords internal
+compute_pointwise_weights_edid <- function(omega_array, d = 1L) {
+  n   <- dim(omega_array)[1]
+  H   <- dim(omega_array)[2]
+  one <- rep(1, H)
+  W   <- matrix(NA_real_, n, H)
+  # Dimension-aware floor exponent a = c*(5-d)/10, c = 0.7. clamp d to <=4 so a>0
+  # (the band (0,(5-d)/10) is empty for d>=5, where the NW conditional covariance
+  # is not uniformly consistent; a=0.07 is a conservative fallback there).
+  a_floor <- 0.7 * (5 - min(as.integer(d), 4L)) / 10
+  tol     <- n^(-a_floor)
+  # Diagnostic override (default behavior unchanged): getOption("edid_eig_tol") sets the
+  # relative eigenvalue floor directly (condition-number cap = 1/tol). Used to study how
+  # regularization strength affects pointwise efficiency; NA/unset keeps the rate above.
+  tol_ov <- suppressWarnings(as.numeric(getOption("edid_eig_tol", NA_real_)))
+  if (length(tol_ov) == 1L && is.finite(tol_ov) && tol_ov > 0) tol <- tol_ov
+  for (i in seq_len(n)) {
+    Mi <- omega_array[i, , ]
+    Mi <- 0.5 * (Mi + t(Mi))
+    e  <- eigen(Mi, symmetric = TRUE)
+    mx <- max(e$values)
+    if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }
+    ev_floored <- pmax(e$values, mx * tol)
+    Minv <- e$vectors %*% diag(1 / ev_floored, H) %*% t(e$vectors)
+    v    <- drop(Minv %*% one)
+    den  <- sum(v)
+    W[i, ] <- if (is.finite(den) && abs(den) > 1e-12) v / den else one / H
+  }
+  W
 }

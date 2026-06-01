@@ -7,9 +7,11 @@
 #' accepts an \code{edid_fit} object produced by \code{\link{edid}}.
 #'
 #' @param edid_fit_obj An \code{edid_fit} object returned by \code{edid()}.
-#' @param type Character scalar: aggregation type. One of
-#'   \code{"simple"} (overall ATT), \code{"dynamic"} (event-study),
-#'   \code{"group"} (cohort-level ATT), or \code{"calendar"} (not implemented).
+#' @param type Character scalar: aggregation type, mirroring \code{did::aggte()}. One of
+#'   \code{"simple"} (cohort-share-weighted average over all post-treatment cells),
+#'   \code{"dynamic"} (event-study: average of \eqn{ES(e)} over \eqn{e \ge 0}),
+#'   \code{"group"} (cohort-level overall ATTs), or \code{"calendar"} (equal-weight average over
+#'   post-treatment calendar periods).
 #' @param balance_e Integer or \code{NULL}: if not \code{NULL}, restricts the
 #'   dynamic aggregation to relative times in
 #'   \eqn{[-\text{balance\_e}, \text{balance\_e}]}.
@@ -52,17 +54,59 @@ aggte_edid <- function(
 
   alp <- edid_fit_obj$alpha
 
-  # Helper: extract overall ATT + SE from the edid_fit object
+  # Helper: extract the "simple" overall ATT + SE from the edid_fit object. The headline
+  # edid()$overall is the dynamic (event-study) average, so the simple cohort-share aggregate is
+  # stored in $overall_simple; fall back to $overall when only the simple aggregate was computed.
   .get_overall <- function(obj) {
-    ov  <- obj$overall
+    ov  <- if (!is.null(obj$overall_simple)) obj$overall_simple else obj$overall
     att <- if (!is.null(ov)) ov$att else NA_real_
     se  <- if (!is.null(ov)) ov$se  else NA_real_
     list(att = att, se = se)
   }
 
+  # ------------------------------------------------------------------
+  # calendar: per-calendar-time effects + equal-weight overall (e>=0 post periods)
+  # ------------------------------------------------------------------
   if (type == "calendar") {
-    stop("aggte_edid() does not support type = \"calendar\". ",
-         "edid() does not compute calendar-time treatment effects.")
+    cal_list <- edid_fit_obj$calendar
+    if (is.null(cal_list) || length(cal_list) == 0L) {
+      stop("No calendar results in edid_fit_obj. ",
+           "Re-run edid() with aggregate = \"calendar\" or \"all\".")
+    }
+    orig_idx <- seq_along(cal_list)
+    t_vals   <- vapply(cal_list, function(x) x$time, numeric(1L))
+    att_vec  <- vapply(cal_list, function(x) x$att,  numeric(1L))
+    se_vec   <- vapply(cal_list, function(x) x$se,   numeric(1L))
+    if (na.rm) {
+      keep <- !is.na(att_vec)
+      orig_idx <- orig_idx[keep]; t_vals <- t_vals[keep]
+      att_vec  <- att_vec[keep];  se_vec <- se_vec[keep]
+    }
+    # Calendar overall: equal-weight average over post calendar periods (matching
+    # did::aggte(type = "calendar")), with cluster-robust SE from the averaged per-period EIFs.
+    fin <- is.finite(att_vec)
+    cal_overall_att <- NA_real_; cal_overall_se <- NA_real_
+    if (any(fin)) {
+      cal_overall_att <- mean(att_vec[fin])
+      eifs <- lapply(orig_idx[fin], function(ii) cal_list[[ii]]$eif_agg)
+      if (!any(vapply(eifs, is.null, logical(1L)))) {
+        agg_eif <- Reduce(`+`, eifs) / length(eifs)
+        cal_overall_se <- safe_inference_edid(agg_eif, edid_fit_obj$cluster_indices,
+                                              alp, cal_overall_att)$se
+      }
+    }
+    out <- list(
+      att.egt     = att_vec,
+      se.egt      = se_vec,
+      egt         = t_vals,
+      type        = type,
+      overall.att = cal_overall_att,
+      overall.se  = cal_overall_se,
+      alp         = alp,
+      call        = mc
+    )
+    class(out) <- c("AGGTEobj_edid", "list")
+    return(out)
   }
 
   # ------------------------------------------------------------------
@@ -140,7 +184,10 @@ aggte_edid <- function(
       if (!any(vapply(post_eifs, is.null, logical(1L)))) {
         n_units <- edid_fit_obj$n
         agg_eif <- Reduce(`+`, post_eifs) / length(post_eifs)
-        dyn_overall_se <- sqrt(sum(agg_eif^2) / n_units^2)
+        # cluster-robust (matches the internal aggregate_*_edid path); reduces to the
+        # i.i.d. sqrt(sum(eif^2)/n^2) when cluster_indices is NULL.
+        dyn_overall_se <- safe_inference_edid(agg_eif, edid_fit_obj$cluster_indices,
+                                              edid_fit_obj$alpha, dyn_overall_att)$se
       }
     }
 
@@ -231,13 +278,15 @@ aggte_edid <- function(
         # Overall IF = weighted sum of per-group IFs + WIF * att
         agg_eif <- drop(eif_mat %*% pg_norm) +
                    drop(wif_mat %*% att_valid)
-        grp_overall_se <- sqrt(sum(agg_eif^2) / n_units^2)
+        grp_overall_se <- safe_inference_edid(agg_eif, edid_fit_obj$cluster_indices,
+                                              edid_fit_obj$alpha, grp_overall_att)$se
       } else if (has_eifs) {
         # Fallback: no WIF (if unit_cohorts not available)
         n_units <- edid_fit_obj$n
         eif_mat <- do.call(cbind, grp_eifs)
         agg_eif <- drop(eif_mat %*% pg_norm)
-        grp_overall_se <- sqrt(sum(agg_eif^2) / n_units^2)
+        grp_overall_se <- safe_inference_edid(agg_eif, edid_fit_obj$cluster_indices,
+                                              edid_fit_obj$alpha, grp_overall_att)$se
       }
     }
 

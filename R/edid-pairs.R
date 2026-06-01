@@ -45,13 +45,16 @@ enumerate_valid_pairs_edid <- function(
 
   if (pt_assumption == "post") {
     # -----------------------------------------------------------------------
-    # PT-Post: exactly one pair (Inf, g - 1 - anticipation)
-    # When g - 1 - anticipation == period_1, this is the standard 2x2 DiD
-    # with the first available period as base — still a valid moment.
+    # PT-Post: exactly one pair (Inf, baseline), baseline = the last observed period at or before
+    # g-1-anticipation (the most recent clean pre-treatment period). Under unit spacing this is
+    # g-1-anticipation; under irregular spacing it is the previous observed period rather than dropping
+    # the cohort. When baseline == period_1 this is the standard 2x2 DiD.
+    # Exact for anticipation = 0 (the current target). For anticipation > 0 with irregularly spaced
+    # periods, the value-arithmetic onset g-1-anticipation only approximates the positional baseline.
     # -----------------------------------------------------------------------
-    tpre_val <- target_g - 1L - anticipation
-    if (!tpre_val %in% time_periods) return(empty)
-    return(data.frame(gp = never_treated_val, tpre = tpre_val))
+    pre_periods <- time_periods[time_periods <= target_g - 1L - anticipation]
+    if (!length(pre_periods)) return(empty)
+    return(data.frame(gp = never_treated_val, tpre = max(pre_periods)))
   }
 
   # -------------------------------------------------------------------------

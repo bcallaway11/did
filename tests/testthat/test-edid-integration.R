@@ -121,6 +121,22 @@ test_that("vcov.edid_fit() returns a numeric matrix", {
   expect_true(is.numeric(V))
 })
 
+test_that("vcov.edid_fit() is cluster-robust and matches the reported cluster SEs", {
+  df <- make_panel_1cohort(seed = 11, n_treat = 40, n_never = 40)
+  # time-invariant clusters coarser than the unit id (2 units per cluster) => within-cluster correlation
+  df$cluster_id <- ceiling(df$unit / 2L)
+  fit <- edid(df, yname = "outcome", idname = "unit", tname = "time", gname = "first_treat",
+              clustervars = "cluster_id", aggregate = "all", store_eif = TRUE)
+  # diag(cluster-robust vcov) reproduces the reported cluster-robust cell SEs
+  # (NB: vcov(., "overall") for the dynamic headline is a separate matter -- to_ov does not store eif_agg.)
+  V <- vcov(fit, which = "att_gt")
+  expect_equal(unname(sqrt(diag(V))), fit$att_gt$se, tolerance = 1e-8)
+  # the cluster-robust vcov genuinely differs from the naive IID outer product (the branch is exercised)
+  fit_iid <- edid(df, yname = "outcome", idname = "unit", tname = "time", gname = "first_treat",
+                  aggregate = "all", store_eif = TRUE)
+  expect_false(isTRUE(all.equal(diag(V), diag(vcov(fit_iid, which = "att_gt")))))
+})
+
 test_that("as.data.frame.edid_fit() returns a data.frame", {
   df  <- make_panel_1cohort(seed = 8)
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",

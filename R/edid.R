@@ -56,7 +56,12 @@
 #'   \eqn{g - \text{anticipation}}.
 #' @param aggregate Which aggregations to compute. One or more of
 #'   \code{"all"} (default), \code{"overall"}, \code{"event_study"},
-#'   \code{"group"}, or \code{"none"}.
+#'   \code{"group"}, \code{"calendar"}, or \code{"none"}. \code{"event_study"}
+#'   reports the cohort-share-weighted event-study parameters \eqn{ES(e)};
+#'   \code{"group"} averages \eqn{ATT(g,t)} within each cohort; \code{"calendar"}
+#'   averages \eqn{ATT(g,t)} across the cohorts treated by each calendar period;
+#'   \code{"overall"} returns the simple cohort-share aggregate over all
+#'   post-treatment cells. \code{"all"} computes every aggregation.
 #' @param balance_e Integer or \code{NULL}: if not \code{NULL}, restricts the
 #'   event-study aggregation to relative times in
 #'   \eqn{[-\text{balance\_e}, \text{balance\_e}]}.
@@ -65,22 +70,52 @@
 #' @param store_eif Logical: if \code{TRUE}, store the full \eqn{n \times K}
 #'   EIF matrix in \code{edid_fit$eif}. Default \code{FALSE}. The EIF is
 #'   always computed internally when \code{bstrap = TRUE}.
+#' @param weights How the per-pair generated-outcome moments are combined in the
+#'   covariate path. \code{"efficient"} (default) uses the semiparametric-efficient
+#'   pointwise weights \eqn{w(X_i)=\Omega^*(X_i)^{-1}\mathbf 1/(\mathbf 1'\Omega^*(X_i)^{-1}\mathbf 1)},
+#'   estimated by kernel and stabilized by two finite-sample regularizations: data-driven shrinkage of
+#'   \eqn{\hat\Omega^*(X_i)} toward the pooled \eqn{\bar\Omega^*} (intensity \eqn{\hat\lambda\to0}) and a
+#'   relative eigenvalue floor that vanishes with the sample size. Both are asymptotically inactive, so this
+#'   feasible estimator is asymptotically equivalent to the efficient estimator and attains the efficiency
+#'   bound in the limit (it is not exactly bound-attaining in finite samples).
+#'   The constant-weight alternatives remain consistent for \eqn{ATT(g,t)} (any weights summing to one
+#'   identify the estimand, with no rate condition on the weights) but do not attain the bound:
+#'   \code{"averaged"} inverts the covariate-averaged conditional covariance \eqn{\bar\Omega^*};
+#'   \code{"gmm"} inverts the unconditional moment covariance \eqn{\hat S}; \code{"uniform"} assigns
+#'   equal weight \eqn{1/H} to the \eqn{H} non-collinear moments.
 #'
 #' @return An object of class \code{edid_fit} (a list) with elements:
 #'   \describe{
 #'     \item{\code{call}}{The matched call.}
 #'     \item{\code{att_gt}}{data.frame of cell-level estimates (group, time,
 #'       att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
-#'     \item{\code{overall}}{List: overall ATT with SE and CI.}
-#'     \item{\code{event_study}}{List of per-relative-time ATTs.}
-#'     \item{\code{group}}{List of per-cohort ATTs.}
-#'     \item{\code{eif}}{EIF matrix or \code{NULL}.}
+#'     \item{\code{overall}}{List: the HEADLINE overall ATT, with SE and CI. By default this is the
+#'       DYNAMIC event-study average over relative times \eqn{e \ge 0} (the paper's main object,
+#'       \code{= aggte_edid(type = "dynamic")$overall.att}); it falls back to the simple aggregate
+#'       when no event study is computed.}
+#'     \item{\code{overall_simple}}{List: the did-"simple" overall ATT (cohort-share-weighted average
+#'       over all post cells). Equals \code{aggte_edid(type = "simple")$overall.att}.}
+#'     \item{\code{overall_group}}{List: the cohort-share-weighted group overall ATT. Present when
+#'       \code{group} is computed. Equals \code{aggte_edid(type = "group")$overall.att}.}
+#'     \item{\code{overall_calendar}}{List: the calendar-time overall ATT (equal-weight average over
+#'       post-treatment calendar periods), with SE and CI. Present when \code{calendar} is computed.
+#'       Equals \code{aggte_edid(type = "calendar")$overall.att}.}
+#'     \item{\code{event_study}}{List of per-relative-time event-study estimates \eqn{ES(e)}, one per
+#'       event time \eqn{e}.}
+#'     \item{\code{group}}{List of per-cohort overall ATTs (within-cohort averages of \eqn{ATT(g,t)}).}
+#'     \item{\code{calendar}}{List of per-calendar-period averages of \eqn{ATT(g,t)} across the cohorts
+#'       treated by that period, or \code{NULL} when not requested.}
+#'     \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix, or \code{NULL} when
+#'       \code{store_eif = FALSE}.}
 #'     \item{\code{bootstrap}}{Bootstrap results or \code{NULL}.}
 #'     \item{\code{bstrap}}{Logical: whether bootstrap inference was used.}
 #'   }
 #'
-#' @references Chen, L., Sant'Anna, P. H. C., & Xie, Y. (2025).
-#'   \emph{Efficient Difference-in-Differences}. Working paper.
+#' @references Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025).
+#'   \emph{Efficient Difference-in-Differences and Event Study Estimators}.
+#'   Working paper.
+#'
+#' @keywords models
 #'
 #' @examples
 #' # Simulate a simple balanced panel with staggered adoption
@@ -138,11 +173,13 @@ edid <- function(
   bootstrap_weights = c("rademacher", "mammen", "webb"),
   seed              = NULL,
   anticipation      = 0L,
-  aggregate         = c("all", "overall", "event_study", "group", "none"),
+  aggregate         = c("all", "overall", "event_study", "group", "calendar", "none"),
   balance_e         = NULL,
   survey_design     = NULL,
-  store_eif         = FALSE
+  store_eif         = FALSE,
+  weights           = c("efficient", "averaged", "gmm", "uniform")
 ) {
+  weight_method <- match.arg(weights)
   mc <- match.call()
 
   # ------------------------------------------------------------------
@@ -166,9 +203,14 @@ edid <- function(
   # Accept G=0 (att_gt convention) or G=Inf (edid native) for never-treated
   # Convert 0 -> Inf internally, matching att_gt's internal transformation
   data <- as.data.frame(data)
-  zero_nt <- is.finite(data[[gname]]) & data[[gname]] == 0
-  if (any(zero_nt)) {
-    data[[gname]] <- ifelse(zero_nt, Inf, data[[gname]])
+  # Only the numeric att_gt convention uses G=0 for never-treated. Guard with
+  # is.numeric so a factor/character gname is NOT silently coerced to integer codes
+  # here (which would relabel cohorts); it reaches validate_edid_inputs and errors.
+  if (is.numeric(data[[gname]])) {
+    zero_nt <- is.finite(data[[gname]]) & data[[gname]] == 0
+    if (any(zero_nt)) {
+      data[[gname]] <- ifelse(zero_nt, Inf, data[[gname]])
+    }
   }
 
   # ------------------------------------------------------------------
@@ -223,7 +265,8 @@ edid <- function(
     store_eif     = store_eif,
     xformla       = xformla,
     need_eif      = need_eif_internal,
-    seed          = seed
+    seed          = seed,
+    weight_method = weight_method
   )
 
   cells      <- fit_result$cells
@@ -253,10 +296,12 @@ edid <- function(
   do_overall    <- aggregate %in% c("all", "overall")
   do_event_study <- aggregate %in% c("all", "event_study")
   do_group      <- aggregate %in% c("all", "group")
+  do_calendar   <- aggregate %in% c("all", "calendar")
 
   overall_res    <- NULL
   event_study_res <- NULL
   group_res      <- NULL
+  calendar_res   <- NULL
 
   if (do_overall) {
     overall_res <- aggregate_overall_edid(cells, eif_matrix, cell_index, panel_obj, alp)
@@ -268,6 +313,9 @@ edid <- function(
   }
   if (do_group) {
     group_res <- aggregate_group_edid(cells, eif_matrix, cell_index, panel_obj, alp)
+  }
+  if (do_calendar) {
+    calendar_res <- aggregate_calendar_edid(cells, eif_matrix, cell_index, panel_obj, alp)
   }
 
   # ------------------------------------------------------------------
@@ -357,6 +405,7 @@ edid <- function(
     anticipation     = panel_obj$anticipation,
     inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
     clustervars      = clustervars,
+    cluster_indices  = panel_obj$cluster_indices,  # for cluster-robust re-aggregation in aggte_edid
     xformla          = xformla,
     bstrap           = bstrap,
     cells            = cells,
@@ -364,6 +413,7 @@ edid <- function(
     overall          = overall_res,
     event_study      = event_study_res,
     group            = group_res,
+    calendar         = calendar_res,
     eif              = eif_export,
     bootstrap        = bootstrap_res,
     n_bootstrap      = n_bootstrap_internal,
@@ -371,5 +421,36 @@ edid <- function(
   )
 
   class(edid_fit) <- c("edid_fit", "list")
+
+  # Headline `$overall` = the DYNAMIC event-study average over relative times e >= 0 -- the paper's
+  # main object (ES_avg). The did-"simple" cohort-share aggregate over all post cells is kept as
+  # `$overall_simple`, and `$overall_group` is the cohort-share-weighted group average. Each matches
+  # the corresponding aggte_edid(type=)$overall.att (computed via aggte_edid -- single source of
+  # truth, so the WIF + cluster-robust SE flow through). The per-relative-time `$event_study` and
+  # per-cohort `$group` lists are UNCHANGED. When no event study is computed, `$overall` falls back
+  # to the simple aggregate.
+  edid_fit$overall_simple <- overall_res
+  zq <- stats::qnorm(1 - alp / 2)
+  to_ov <- function(a) {
+    att <- a$overall.att; se <- a$overall.se
+    tstat <- if (is.finite(se) && se > 0) att / se else NA_real_
+    list(att = att, se = se, ci_lower = att - zq * se, ci_upper = att + zq * se,
+         t_stat = tstat,
+         p_value = if (is.finite(tstat)) 2 * stats::pnorm(-abs(tstat)) else NA_real_,
+         type = a$type)
+  }
+  if (do_event_study && !is.null(event_study_res) && length(event_study_res) > 0L) {
+    dyn <- tryCatch(aggte_edid(edid_fit, type = "dynamic", na.rm = TRUE), error = function(e) NULL)
+    if (!is.null(dyn)) edid_fit$overall <- to_ov(dyn)   # headline = dynamic ES_avg (e >= 0)
+  }
+  if (do_group && !is.null(group_res) && length(group_res) > 0L) {
+    grp <- tryCatch(aggte_edid(edid_fit, type = "group"), error = function(e) NULL)
+    if (!is.null(grp)) edid_fit$overall_group <- to_ov(grp)
+  }
+  if (do_calendar && !is.null(calendar_res) && length(calendar_res) > 0L) {
+    cal <- tryCatch(aggte_edid(edid_fit, type = "calendar", na.rm = TRUE), error = function(e) NULL)
+    if (!is.null(cal)) edid_fit$overall_calendar <- to_ov(cal)
+  }
+
   edid_fit
 }

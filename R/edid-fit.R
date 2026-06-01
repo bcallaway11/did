@@ -26,24 +26,52 @@
 #' @keywords internal
 fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
-  need_eif = FALSE
+  need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform")
 ) {
+  weight_method <- match.arg(weight_method)
   # Determine if covariate path is active
   is_trivial_xformla <- is.null(xformla) ||
     identical(deparse(xformla, width.cutoff = 500L), "~1")
   use_cov_path <- !is_trivial_xformla && !is.null(panel_obj$covariate_matrix)
 
-  # Nuisance estimation uses the plug-in (no sample-splitting) approach
-  # described in the paper's main text (Sec. 5.2, footnote 601), with
-  # train = test = full sample. Cross-fitting (K>1) is intentionally
-  # disabled in this release: benchmark experiments showed that K=5
-  # cross-fitting substantially inflated the point estimator's variance
-  # at moderate sample sizes (~35% larger mc_sd vs plug-in at n=500),
-  # erasing the efficiency gain over the just-identified DR estimator.
-  # The cross-fitting machinery in estimate_all_* (the K_folds>1 branch)
-  # is preserved for future re-enablement once the calibration of
-  # cross-fitted standard errors is better understood. See
-  # benchmark/edid_cov_fix_verification.R for the supporting evidence.
+  # Curse of dimensionality guard for the pointwise efficient weights. The kernel
+  # Omega*(X) is consistent only while its local effective sample size n * prod(h_k) ~
+  # n^{(5-d)/5} grows, i.e. d < 5. At d >= 5 the admissible floor band (0, (5-d)/10) is
+  # empty, Omega_hat*(X) is not consistent, and the regularized weights collapse toward
+  # uniform (the estimator stays CONSISTENT via the valid DR moments, but is no longer
+  # semiparametrically efficient). Recommend the constant-weight schemes, whose pooled
+  # Omega-bar is sqrt(n)-consistent with no curse of dimensionality.
+  if (weight_method == "efficient" && use_cov_path) {
+    d_cov <- ncol(panel_obj$covariate_matrix)
+    if (d_cov >= 5L) {
+      warning(sprintf(paste0(
+        "weights='efficient' with %d continuous covariates: the pointwise kernel ",
+        "Omega*(X) is not consistently estimable (curse of dimensionality; admissible ",
+        "floor band is empty for d>=5), so the efficient weights collapse toward uniform ",
+        "and the efficiency guarantee is lost (ATT stays consistent). Use ",
+        "weights='averaged' (sqrt(n)-consistent, no curse) or condition on a low-",
+        "dimensional index (e.g. the propensity score)."), d_cov), call. = FALSE)
+    }
+  }
+
+  # The "gmm" scheme inverts the unconditional covariance of the generated outcomes, which is
+  # estimated from the same data as the moments. This induces a finite-sample two-step bias of
+  # order O(1/n) that can be sizeable with strong treatment effects, many moments, or small
+  # cohorts. Asymptotically it coincides with "averaged" and is never more efficient, so the
+  # constant-weight default "averaged" (or the asymptotically efficient "efficient") is preferred.
+  if (weight_method == "gmm") {
+    warning(paste0(
+      "weights = 'gmm' inverts the unconditional moment covariance and carries a finite-sample ",
+      "O(1/n) bias that can be large under strong effects, many periods, or small cohorts; it is ",
+      "asymptotically equal to 'averaged' but never more efficient. Prefer 'averaged' or 'efficient'."),
+      call. = FALSE)
+  }
+
+  # Nuisance functions are estimated by plug-in (train = test = full sample), as in the paper's
+  # remark that the efficient-influence-function moments are Neyman orthogonal, so the first-step
+  # nuisance estimates do not affect the first-order asymptotic variance. Cross-fitting (K > 1) is
+  # not used: the estimated weights and nuisances are already first-order negligible, while
+  # sample-splitting can inflate the finite-sample variance of the just-identified DR estimator.
   K_use <- 1L
   if (use_cov_path) {
     fold_id <- rep(1L, panel_obj$n)
@@ -191,21 +219,64 @@ fit_edid_cells <- function(
           cond_means    = cond_means,
           pt_assumption = pt_assumption
         )
-        omega   <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
-                                                prop_ratios, cond_means,
-                                                inv_propensities)
-        cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
-        weights <- compute_efficient_weights_edid(omega)
-        # ATT: weighted mean of column means of gen_out_mat
-        col_means <- colMeans(gen_out_mat, na.rm = TRUE)
-        att_gt    <- sum(weights * col_means)
-        eif_gt    <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
+        if (isTRUE(getOption("edid_store_genout"))) {            # diagnostic: expose per-cell generated outcomes
+          acc <- getOption("edid_genout_acc", list()); acc[[paste0(g, "_", t)]] <- gen_out_mat
+          options(edid_genout_acc = acc)
+        }
+        if (weight_method == "efficient") {
+          # Paper's pointwise efficient weights w(X_i)=Omega*(X_i)^{-1}1/(1'Omega*(X_i)^{-1}1),
+          # with a dimension-aware eigenvalue-floor regularization (a=0.7*(5-d)/10) that is
+          # asymptotically negligible yet dominates the NW estimation noise for stability.
+          omega_arr <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
+                                                   prop_ratios, cond_means,
+                                                   inv_propensities, return_pointwise = TRUE)
+          W_pw     <- compute_pointwise_weights_edid(omega_arr,
+                                                     d = ncol(panel_obj$covariate_matrix))  # n x H
+          cond_num <- tryCatch(check_condition_edid(apply(omega_arr, c(2, 3), mean)),
+                               error = function(e) NA_real_)
+          wY_i     <- rowSums(gen_out_mat * W_pw)
+          if (anyNA(wY_i))                                                    # NA would split the support:
+            stop(sprintf(paste0("edid cell (%s,%s): NA in weighted generated outcomes (typically a ",
+              "non-invertible local covariance or a missing covariate prediction). The point estimate ",
+              "would use complete cases while the EIF spans all units, breaking the empirical mean-zero ",
+              "identity and invalidating the SE. edid requires complete cases: drop incomplete units ",
+              "before calling, or inspect cell (%s,%s)."), g, t, g, t), call. = FALSE)
+          att_gt   <- mean(wY_i, na.rm = TRUE)                               # E_n[w(X_i)' Ytilde_i]
+          eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, W_pw, att_gt, g)
+          weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
+          # Diagnostic only (default off): per-component cross-unit SD of the pointwise weights
+          # quantifies how much Omega*(X) shape-varies; ~0 => weights ~constant => efficient ~ averaged.
+          if (isTRUE(getOption("edid_diag_wpw")))
+            message(sprintf("WPWDIAG %d_%d wsd=[%s] meanw=[%s] maxw=%.3f",
+              g, t, paste(round(apply(W_pw, 2, stats::sd, na.rm = TRUE), 4), collapse = ","),
+              paste(round(colMeans(W_pw, na.rm = TRUE), 3), collapse = ","), max(abs(W_pw), na.rm = TRUE)))
+        } else {
+          # Constant-weight schemes (valid but not pointwise-efficient):
+          #   averaged = invert kernel Omega-bar; gmm = invert unconditional S_hat; uniform = 1/H.
+          omega    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
+                                                  prop_ratios, cond_means,
+                                                  inv_propensities)
+          cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
+          H_local  <- nrow(omega)
+          weights  <- switch(weight_method,
+            uniform = rep(1 / H_local, H_local),
+            # pairwise.complete.obs so a single NA moment does not NA-poison the whole
+            # covariance (compute_efficient_weights_edid then guards any residual non-finite).
+            gmm     = compute_efficient_weights_edid(stats::cov(gen_out_mat, use = "pairwise.complete.obs")),
+            compute_efficient_weights_edid(omega))   # "averaged"
+          att_gt   <- sum(weights * colMeans(gen_out_mat, na.rm = TRUE))
+          eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
+        }
       } else {
         # --- No-covariate path ---
         y_hat    <- compute_generated_outcomes_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
         omega    <- compute_omega_star_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
         cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
-        weights  <- compute_efficient_weights_edid(omega)
+        # Honor weight_method: with no covariates there is no X-variation, so efficient,
+        # averaged, and gmm all invert the same unconditional Omega* and coincide; only
+        # uniform differs. (Previously this path silently ignored weight_method.)
+        H_local  <- length(y_hat)
+        weights  <- if (weight_method == "uniform") rep(1 / H_local, H_local) else compute_efficient_weights_edid(omega)
         att_gt   <- sum(weights * y_hat)
         eif_gt   <- compute_eif_nocov_edid(g, t, pairs, weights, panel_obj, att_gt, pt_assumption)
       }
@@ -265,6 +336,24 @@ fit_edid_cells <- function(
     is_pre  = ci_is_pre,
     stringsAsFactors = FALSE
   )
+
+  # Diagnostic: if every post-treatment cell is NA (no admissible pairs), warn instead
+  # of silently returning NA. A common cause under pt_assumption='post' is a
+  # non-consecutive/irregular time grid where the literal pre-period (g-1-anticipation)
+  # is unobserved, so every (g,t) cell yields zero pairs.
+  post_idx <- which(!ci_is_pre)
+  if (length(post_idx)) {
+    post_atts <- vapply(post_idx, function(k) {
+      a <- cells[[ci_cell_id[k]]]$att; if (is.null(a)) NA_real_ else a
+    }, numeric(1L))
+    if (all(!is.finite(post_atts))) {
+      warning(sprintf(paste0(
+        "All post-treatment ATT(g,t) cells are NA (no admissible pairs). Under ",
+        "pt_assumption='%s' the comparison base period is the period immediately before ",
+        "treatment; on a non-consecutive/irregular time grid that period may be ",
+        "unobserved. Check time spacing and anticipation."), pt_assumption), call. = FALSE)
+    }
+  }
 
   list(
     cells      = cells,

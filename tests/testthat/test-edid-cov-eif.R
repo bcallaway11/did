@@ -101,12 +101,16 @@ test_that("compute_eif_cov_edid formula: weighted_phi minus att_gt, then centere
   # Compute EIF via the function
   eif_fn <- did:::compute_eif_cov_edid(panel_obj, gen_out, weights, att_gt, g)
 
-  # Compute EIF directly: (gen_out %*% weights) - att_gt, centered
-  eif_ref <- drop(gen_out %*% weights) - att_gt
-  eif_ref <- eif_ref - mean(eif_ref)
+  # Correct EIF is the ratio-estimator influence function (fixes the prior over-coverage):
+  #   EIF_i = w' phi_i - (G_{g,i} / pi_g) * att_gt    (mean-zero in sample; no de-meaning).
+  # The old constant centering (w' phi - att_gt) omitted the influence of the estimated
+  # treated-cohort share pi_hat_g and inflated the variance by att^2 (1/pi_g - 1).
+  Gg      <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  pi_g    <- panel_obj$cohort_fractions[[as.character(g)]]
+  eif_ref <- drop(gen_out %*% weights) - (Gg / pi_g) * att_gt
 
   expect_equal(eif_fn, eif_ref, tolerance = 1e-10,
-               info = "compute_eif_cov_edid must implement (w^T phi) - att_gt centered")
+               info = "compute_eif_cov_edid must implement w^T phi - (G_g/pi_g) att_gt (ratio-estimator IF)")
 })
 
 # ============================================================
@@ -228,4 +232,43 @@ test_that("mean generated outcome (weighted) approximates ATT for post-treatment
     expect_true(abs(cell_att - 1.0) < 0.5,
                 info = paste("ATT(3,3) =", round(cell_att, 3), "; expected ~1.0"))
   }
+})
+
+# ============================================================
+# Regression: covariate-path Omega* self-pair term5 must condition on G=g (Eq 3.12),
+# NOT on G=Inf. The bug (self-pairs remapped to Inf) corrupted Omega* and the efficient
+# weights (even negative weights) under cohort-specific pre-period heteroskedasticity with
+# >=3 pre-periods. Fix: term5 conditions on the true cohort label g'_j (=g for self-pairs),
+# matching the no-covariate path. On near-constant X the cov-path must match the no-cov path.
+# ============================================================
+test_that("cov-path Omega* self-pair term5 conditions on G=g (matches no-cov; no negative weights)", {
+  set.seed(101); n <- 6000L; TP <- 5L; g_cohort <- 4L
+  x1 <- rnorm(n, sd = 0.02)                                  # near-constant -> cond cov = uncond
+  G  <- ifelse(runif(n) < 0.5, Inf, g_cohort); mu <- rnorm(n)
+  sdc <- ifelse(is.finite(G), 1.6, 0.5); rhoc <- ifelse(is.finite(G), 0.7, 0.2)  # cohort heterosk.
+  eps <- matrix(0, n, TP); eps[, 1] <- rnorm(n, sd = sdc)
+  for (k in 2:TP) eps[, k] <- rhoc * eps[, k - 1] + sqrt(1 - rhoc^2) * rnorm(n, sd = sdc)
+  rows <- lapply(1:TP, function(k) {
+    tr <- as.numeric(is.finite(G) & k >= G)
+    data.frame(id = 1:n, t = k, y = mu + 0.3 * k + 1.0 * tr + eps[, k], g = G, x1 = x1)
+  })
+  df <- do.call(rbind, rows)
+  panel <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
+  g <- g_cohort; t <- 4L
+  pairs <- did:::enumerate_valid_pairs_edid(g, panel$treatment_groups, panel$time_periods,
+                                            panel$period_1, "all", panel$anticipation)
+  expect_gte(nrow(pairs), 3L)                                # >=3 pre-periods -> self-pairs at t' != 1
+  fold_id <- did:::build_crossfit_folds_edid(panel$n, 5L, seed = 1L)
+  pn <- pairs; pn$gp[is.finite(pn$gp) & pn$gp == g] <- Inf   # nuisances use G_inf comparison (paper text)
+  prop_r <- did:::estimate_all_propensity_ratios(panel, g, pn, 4L, 5L, fold_id)
+  cond_m <- did:::estimate_all_conditional_means(panel, pn, t, 4L, 5L, fold_id)
+  Om_cov   <- did:::compute_omega_star_cov_edid(panel, g, t, pairs, prop_r, cond_m)
+  Om_nocov <- did:::compute_omega_star_nocov_edid(g, t, pairs, panel, "all")
+  w_cov   <- did:::compute_efficient_weights_edid(Om_cov)
+  w_nocov <- did:::compute_efficient_weights_edid(Om_nocov)
+  expect_true(all(w_cov > -1e-6),
+              info = paste("cov-path efficient weights must be non-negative; got",
+                           paste(round(w_cov, 3), collapse = ", ")))
+  expect_equal(w_cov, w_nocov, tolerance = 0.05,
+               info = "cov-path and no-cov Omega* must give matching efficient weights")
 })

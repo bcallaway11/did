@@ -93,6 +93,9 @@ validate_edid_inputs <- function(
   if (anyNA(t_col)) {
     stop(sprintf("Column `%s` (tname) contains NA values.", tname))
   }
+  if (!all(is.finite(t_col))) {
+    stop(sprintf("Column `%s` (tname) contains non-finite values (Inf/-Inf/NaN); time periods must be finite.", tname))
+  }
 
   # ------------------------------------------------------------------
   # 5. gname column is numeric; no NA
@@ -104,6 +107,10 @@ validate_edid_inputs <- function(
   if (anyNA(ft_col)) {
     stop(sprintf("Column `%s` (gname) contains NA values. ", gname),
          "Use Inf to denote never-treated units.")
+  }
+  if (!any(is.finite(ft_col))) {
+    stop(sprintf(paste0("Column `%s` (gname) has no finite (treated) cohort: every unit is never-treated ",
+         "(Inf). edid() needs at least one treated cohort to estimate ATT(g,t)."), gname))
   }
 
   # ------------------------------------------------------------------

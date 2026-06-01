@@ -211,20 +211,23 @@ test_that("U10: PT-Post tpre=period_1 returns 1 valid pair", {
 })
 
 # ---------------------------------------------------------------------------
-# Scenario U11 — PT-Post: tpre not in time_periods -> 0 rows
+# Scenario U11 — PT-Post: g-1-anticipation not observed -> baseline = last observed pre-period
 # ---------------------------------------------------------------------------
-test_that("U11: PT-Post tpre not in time_periods returns 0 pairs", {
+test_that("U11: PT-Post irregular spacing uses the last observed pre-period as baseline", {
   result <- enumerate_valid_pairs_edid(
     target_g         = 5L,
     treatment_groups = c(5L),
-    time_periods     = c(1L, 3L, 5L, 7L, 9L),   # even periods missing
+    time_periods     = c(1L, 3L, 5L, 7L, 9L),   # even periods missing; g-1 = 4 not observed
     period_1         = 1L,
     pt_assumption    = "post",
     anticipation     = 0L,
     never_treated_val = Inf
   )
-  # tpre_val = 5 - 1 - 0 = 4; 4 NOT in time_periods
-  expect_equal(nrow(result), 0L)
+  # g-1-anticipation = 4 is not an observed period; baseline = last observed period <= 4 = 3
+  # (exact for anticipation = 0). The cohort is estimated, not dropped.
+  expect_equal(nrow(result), 1L)
+  expect_equal(result$gp, Inf)
+  expect_equal(result$tpre, 3L)
 })
 
 # ===========================================================================
