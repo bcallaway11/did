@@ -58,8 +58,9 @@ test_that("analytical cluster SE agrees with the bootstrap cluster SE (multiple 
     d <- mk(11L, within)
     ra <- att_gt(yname="y", tname="t", idname="id", gname="g", data=d, control_group="nevertreated",
                  bstrap=FALSE, clustervars="cl", base_period="varying")
+    set.seed(11L)
     rb <- att_gt(yname="y", tname="t", idname="id", gname="g", data=d, control_group="nevertreated",
-                 bstrap=TRUE, biters=3000L, clustervars="cl", pl=FALSE, cband=FALSE, base_period="varying", seed=11L)
+                 bstrap=TRUE, biters=3000L, clustervars="cl", pl=FALSE, cband=FALSE, base_period="varying")
     k <- which(ra$group == 2L & ra$t == 2L)
     # the reported bootstrap SE (IQR scale) is within a few percent of the analytical at this G
     expect_lt(abs(rb$se[k] - ra$se[k]) / ra$se[k], 0.15)
@@ -68,6 +69,62 @@ test_that("analytical cluster SE agrees with the bootstrap cluster SE (multiple 
     set.seed(11L); bo <- mboot(as.matrix(ra$inffunc)[, k, drop = FALSE], dp)
     sd_se <- sd(as.numeric(bo$bres)) * sqrt(length(unique(dp$cluster_vector))) / nrow(ra$inffunc)
     expect_lt(abs(sd_se - ra$se[k]) / ra$se[k], 0.06)
+  }
+})
+
+# true repeated cross-sections: a fresh cross-section is drawn each period within each cluster, the cluster
+# shares a common per-period shock, and treatment is assigned at the cluster level. The cluster -- not the
+# (non-existent) panel unit -- is the independent sampling unit.
+.make_rcs <- function(seed, G = 60L, per_cell = 6L) {
+  set.seed(seed); per <- 1:4
+  gC <- sample(c(2L, 3L, 0L), G, replace = TRUE, prob = c(.34, .33, .33)); aC <- rnorm(G, 0, 1)
+  eta <- matrix(rnorm(G * 4L, 0, 1.5), G, 4L); rows <- list(); k <- 0L
+  for (cl in seq_len(G)) for (tt in per) {
+    y <- aC[cl] + 0.3 * tt + eta[cl, tt] + (gC[cl] != 0L & tt >= gC[cl]) + rnorm(per_cell)
+    k <- k + 1L; rows[[k]] <- data.frame(t = tt, cl = cl, g = gC[cl], y = y)
+  }
+  do.call(rbind, rows)[sample(G * 4L * per_cell), ]   # shuffle so row order is non-trivial
+}
+
+test_that("analytical clustered SE for repeated cross-sections (idname omitted/provided, faster_mode TRUE/FALSE)", {
+  d    <- .make_rcs(909L)
+  d_id <- d; d_id$uid <- seq_len(nrow(d_id))
+  se_om <- list()
+  for (fm in c(TRUE, FALSE)) {
+    # idname OMITTED: pre_process_did() creates an internal .rowid; clustering must still aggregate to
+    # cluster sums via that internal id (the function argument idname is NULL here).
+    r_om <- att_gt(yname = "y", tname = "t", gname = "g", data = d, control_group = "nevertreated",
+                   bstrap = FALSE, clustervars = "cl", panel = FALSE, base_period = "varying", faster_mode = fm)
+    # idname PROVIDED (a per-row observation id)
+    r_id <- att_gt(yname = "y", tname = "t", idname = "uid", gname = "g", data = d_id,
+                   control_group = "nevertreated", bstrap = FALSE, clustervars = "cl",
+                   panel = FALSE, base_period = "varying", faster_mode = fm)
+    for (r in list(r_om, r_id)) {
+      cv <- r$DIDparams$cluster_vector
+      expect_true(!is.null(cv) && length(cv) == nrow(r$inffunc))   # must be present and aligned
+      n <- nrow(r$inffunc); S <- rowsum(as.matrix(r$inffunc), cv)
+      se_target <- sqrt(colSums(S^2)) / n                          # cluster-sum CRVE per ATT(g,t)
+      ok <- is.finite(r$se) & is.finite(se_target)
+      expect_equal(unname(r$se[ok]), unname(se_target[ok]), tolerance = 1e-8)
+    }
+    se_om[[as.character(fm)]] <- r_om$se[which(r_om$group == 2L & r_om$t == 2L)]
+  }
+  # the two code paths derive the cluster vector independently, yet must give the same analytical SE
+  expect_equal(unname(se_om[["TRUE"]]), unname(se_om[["FALSE"]]), tolerance = 1e-6)
+})
+
+test_that("clustered bootstrap and analytical SE agree for repeated cross-sections (idname omitted)", {
+  skip_on_cran()  # bootstrap-heavy
+  d <- .make_rcs(910L)
+  for (fm in c(TRUE, FALSE)) {
+    ra <- att_gt(yname = "y", tname = "t", gname = "g", data = d, control_group = "nevertreated",
+                 bstrap = FALSE, clustervars = "cl", panel = FALSE, base_period = "varying", faster_mode = fm)
+    rb <- att_gt(yname = "y", tname = "t", gname = "g", data = d, control_group = "nevertreated",
+                 bstrap = TRUE, biters = 5000L, clustervars = "cl", pl = FALSE, cband = FALSE,
+                 panel = FALSE, base_period = "varying", faster_mode = fm)
+    k <- which(ra$group == 2L & ra$t == 2L)
+    expect_true(is.finite(rb$se[k]))
+    expect_lt(abs(rb$se[k] - ra$se[k]) / ra$se[k], 0.12)
   }
 })
 

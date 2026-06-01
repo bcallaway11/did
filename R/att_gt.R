@@ -423,16 +423,19 @@ att_gt <- function(yname,
   # aggregation of the multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10). It is kept on the same
   # 1/n scaling as the i.i.d. V so that se = sqrt(diag(V)/n) and the Wald statistic n * b' V^{-1} b stay
   # valid for either form.
-  # cluster variables beyond idname; clustering on idname alone is just the unit-level (i.i.d.) SE
-  extra_clustervars <- clustervars[!(clustervars %in% c(idname, ""))]
+  # cluster variables beyond the unit id; clustering on the unit id alone is just the unit-level (i.i.d.)
+  # SE. Use the *internal* unit id dp$idname -- the user's idname for panels, and ".rowid" for repeated
+  # cross-sections / unbalanced panels (where the user may omit idname), mirroring how mboot() identifies units.
+  unit_id <- dp$idname
+  extra_clustervars <- clustervars[!(clustervars %in% c(unit_id, idname, ""))]
   # Per-unit cluster identifiers aligned with the rows of inffunc. faster_mode supplies dp$cluster_vector;
-  # in slower mode derive it from the data exactly as mboot() does (one row per cross-sectional unit) and
-  # store it back, so the analytical clustered SE -- and aggte() downstream -- work for faster_mode TRUE/FALSE.
-  if (is.null(dp$cluster_vector) && length(extra_clustervars) > 0 && !is.null(dp$data)) {
+  # in slower mode derive it from the data exactly as mboot() does -- one row per cross-sectional unit,
+  # keyed on the internal unit id -- and store it back, so the analytical clustered SE and aggte()
+  # downstream work for faster_mode TRUE and FALSE (including repeated cross-sections with idname omitted).
+  if (is.null(dp$cluster_vector) && length(extra_clustervars) > 0 && !is.null(dp$data) && !is.null(unit_id)) {
     cdat <- as.data.frame(dp$data)
-    if (all(c(idname, extra_clustervars) %in% names(cdat))) {
-      if (isTRUE(dp$panel)) cdat <- cdat[cdat[[tname]] == sort(unique(cdat[[tname]]))[1L], ]
-      dp$cluster_vector <- as.vector(unique(cdat[, c(idname, extra_clustervars)])[, extra_clustervars[1L]])
+    if (all(c(unit_id, extra_clustervars[1L]) %in% names(cdat))) {
+      dp$cluster_vector <- as.vector(unique(cdat[, c(unit_id, extra_clustervars[1L])])[, 2L])
     }
   }
   cluster_vec <- dp$cluster_vector
