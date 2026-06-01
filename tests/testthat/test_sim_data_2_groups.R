@@ -59,7 +59,7 @@ test_that("att_gt works with 2 groups", {
   data$g <- as.numeric(data$g)
 
   # Run regression with never-treated and varying base period
-  csdid_nt_varying <- did::att_gt(yname = "y",
+  csdid_nt_varying <- att_gt(yname = "y",
                           idname = "id",
                           gname = "g",
                           tname = "t",
@@ -74,7 +74,7 @@ test_that("att_gt works with 2 groups", {
   )
 
   # Run regression with never-treated and universal base period
-  csdid_nt_universal <- did::att_gt(yname = "y",
+  csdid_nt_universal <- att_gt(yname = "y",
                                   idname = "id",
                                   gname = "g",
                                   tname = "t",
@@ -88,7 +88,7 @@ test_that("att_gt works with 2 groups", {
                                   base_period = "varying"
   )
   # Run regression with not-yet-treated and varying base period
-  csdid_nyt_varying <- did::att_gt(yname = "y",
+  csdid_nyt_varying <- att_gt(yname = "y",
                                   idname = "id",
                                   gname = "g",
                                   tname = "t",
@@ -103,7 +103,7 @@ test_that("att_gt works with 2 groups", {
   )
 
   # Run regression with not-yet-treated and universal base period
-  csdid_nyt_universal <- did::att_gt(yname = "y",
+  csdid_nyt_universal <- att_gt(yname = "y",
                                     idname = "id",
                                     gname = "g",
                                     tname = "t",

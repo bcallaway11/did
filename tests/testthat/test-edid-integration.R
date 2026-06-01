@@ -153,7 +153,7 @@ test_that("edid() two-cohort staggered panel produces two groups in group aggreg
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
               pt_assumption = "all", aggregate = "all", bstrap = FALSE)
-  expect_equal(length(fit$group$egt), 2L)   # $group is a did::AGGTEobj; egt = the cohorts
+  expect_equal(length(fit$group$egt), 2L)   # $group is a AGGTEobj; egt = the cohorts
 })
 
 test_that("edid() two-cohort: group ATTs are near true values 1.5 and 2.5 (large sample)", {
@@ -162,7 +162,7 @@ test_that("edid() two-cohort: group ATTs are near true values 1.5 and 2.5 (large
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
               pt_assumption = "post", aggregate = "group", bstrap = FALSE)
-  atts <- fit$group$att.egt   # per-cohort overall ATTs from the did::AGGTEobj
+  atts <- fit$group$att.egt   # per-cohort overall ATTs from the AGGTEobj
   # Group g=3 should be near 1.5; group g=5 near 2.5
   expect_equal(unname(sort(atts)), c(1.5, 2.5), tolerance = 0.6)
 })
@@ -177,7 +177,7 @@ test_that("edid() with bstrap=TRUE produces bootstrap cell and aggregate SEs", {
               pt_assumption = "post", aggregate = "overall",
               bstrap        = TRUE, biters = 50L, seed = 42L)
   expect_true(isTRUE(fit$bstrap))
-  # cell SEs via did::mboot; aggregate SE via aggte_edid -> did::aggte(bstrap = TRUE)
+  # cell SEs via mboot; aggregate SE via aggte_edid -> aggte(bstrap = TRUE)
   expect_true(all(is.finite(fit$att_gt$se[!fit$att_gt$is_pre])))
   expect_true(is.finite(fit$overall$overall.se) && fit$overall$overall.se > 0)
 })

@@ -4,8 +4,8 @@
 
 # Shared setup: generate MP and AGGTEobj results
 set.seed(20260401)
-sp <- did::reset.sim()
-data_gl <- did::build_sim_dataset(sp)
+sp <- reset.sim()
+data_gl <- build_sim_dataset(sp)
 
 mp_slow <- suppressWarnings(suppressMessages(
   att_gt(yname = "Y", xformla = ~X, data = data_gl, tname = "period",

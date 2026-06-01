@@ -35,13 +35,13 @@ test_that("xformla=NULL and xformla=~1 produce bit-for-bit identical results", {
 # Confirm the ~1 path truly skips covariate estimation (covariate_matrix is NULL)
 test_that("xformla=~1 routes to no-covariate path (covariate_matrix is NULL)", {
   df     <- make_panel_cov(seed = 11)
-  panel0 <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~1)
+  panel0 <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~1)
   expect_null(panel0$covariate_matrix)
 })
 
 test_that("xformla=NULL routes to no-covariate path (covariate_matrix is NULL)", {
   df     <- make_panel_cov(seed = 12)
-  panel0 <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = NULL)
+  panel0 <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = NULL)
   expect_null(panel0$covariate_matrix)
 })
 

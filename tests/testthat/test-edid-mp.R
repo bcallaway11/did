@@ -1,4 +1,4 @@
-# did-compatible MP construction: as_MP_edid() lets did::aggte() aggregate edid output unchanged.
+# did-compatible MP construction: as_MP_edid() lets aggte() aggregate edid output unchanged.
 library(testthat)
 
 .mk_edid_panel <- function(seed, n = 400L, Tn = 4L) {
@@ -13,7 +13,7 @@ library(testthat)
   do.call(rbind, rows)
 }
 
-test_that("as_MP_edid() builds a did MP and did::aggte aggregates edid cells (all types)", {
+test_that("as_MP_edid() builds a did MP and aggte aggregates edid cells (all types)", {
   d <- .mk_edid_panel(101L)
   fit <- edid(yname = "y", tname = "tt", idname = "id", gname = "g", data = d,
               aggregate = "none")

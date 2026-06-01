@@ -39,7 +39,7 @@ pf_panel <- function(n = 1500, seed = 1, het = FALSE, attscale = 1,
 test_that("efficient weights solve the GLS problem: sum to 1, equal Omega^{-1}1/(1'Omega^{-1}1), minimal variance", {
   set.seed(20260529); H <- 4L
   A  <- matrix(rnorm(H * H), H, H); Om <- crossprod(A) + diag(H)   # random SPD Omega*
-  w  <- did:::compute_efficient_weights_edid(Om); one <- rep(1, H)
+  w  <- compute_efficient_weights_edid(Om); one <- rep(1, H)
   expect_equal(sum(w), 1, tolerance = 1e-8)                        # weights sum to one
   expect_equal(unname(w), as.numeric(solve(Om, one) / sum(solve(Om, one))), tolerance = 1e-8)
   v_eff  <- as.numeric(t(w) %*% Om %*% w)
@@ -59,15 +59,15 @@ test_that("covariate-path Omega* equals the no-covariate Omega* on constant cova
     tr <- as.numeric(is.finite(g) & k >= g)
     data.frame(id = 1:n, t = k, y = mu + 0.3 * k + 1.0 * tr + eps[, k], g = g, x1 = x1)
   }))
-  panel <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
-  pairs <- did:::enumerate_valid_pairs_edid(4L, panel$treatment_groups, panel$time_periods,
+  panel <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
+  pairs <- enumerate_valid_pairs_edid(4L, panel$treatment_groups, panel$time_periods,
                                             panel$period_1, "all", panel$anticipation)
-  fid   <- did:::build_crossfit_folds_edid(panel$n, 5L, seed = 1L)
+  fid   <- build_crossfit_folds_edid(panel$n, 5L, seed = 1L)
   pn    <- pairs; pn$gp[is.finite(pn$gp) & pn$gp == 4L] <- Inf
-  pr    <- did:::estimate_all_propensity_ratios(panel, 4L, pn, 4L, 5L, fid)
-  cm    <- did:::estimate_all_conditional_means(panel, pn, 4L, 4L, 5L, fid)
-  w_cov   <- did:::compute_efficient_weights_edid(did:::compute_omega_star_cov_edid(panel, 4L, 4L, pairs, pr, cm))
-  w_nocov <- did:::compute_efficient_weights_edid(did:::compute_omega_star_nocov_edid(4L, 4L, pairs, panel, "all"))
+  pr    <- estimate_all_propensity_ratios(panel, 4L, pn, 4L, 5L, fid)
+  cm    <- estimate_all_conditional_means(panel, pn, 4L, 4L, 5L, fid)
+  w_cov   <- compute_efficient_weights_edid(compute_omega_star_cov_edid(panel, 4L, 4L, pairs, pr, cm))
+  w_nocov <- compute_efficient_weights_edid(compute_omega_star_nocov_edid(4L, 4L, pairs, panel, "all"))
   expect_equal(w_cov, w_nocov, tolerance = 0.05)                   # match up to NW kernel error
 })
 
@@ -116,7 +116,7 @@ test_that("calendar ATT(t) equals the cohort-share-weighted average of ATT(g,t) 
   df  <- pf_panel(n = 2500, seed = 11, dynamics = TRUE)
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated", aggregate = "all")
   pi  <- fit$cohort_fractions
-  for (t_val in fit$calendar$egt) {           # $calendar is a did::AGGTEobj; egt = calendar periods
+  for (t_val in fit$calendar$egt) {           # $calendar is a AGGTEobj; egt = calendar periods
     rows  <- fit$att_gt[fit$att_gt$time == t_val & fit$att_gt$group <= t_val &
                           is.finite(fit$att_gt$group) & is.finite(fit$att_gt$att), ]
     if (nrow(rows) == 0L) next
@@ -128,7 +128,7 @@ test_that("calendar ATT(t) equals the cohort-share-weighted average of ATT(g,t) 
 
 # --- WIF: the simple-overall SE carries the cohort-share weight-estimation
 #     variance, so it strictly exceeds the no-WIF (direct-EIF-only) SE under
-#     cohort-ATT heterogeneity (Theorem 'efficiency' aggregation; did::wif). ---
+#     cohort-ATT heterogeneity (Theorem 'efficiency' aggregation; wif). ---
 test_that("aggregated overall SE includes the cohort-share WIF under cohort heterogeneity", {
   set.seed(13); n <- 2500L; TP <- 6L
   u <- runif(n); g <- ifelse(u < .25, Inf, ifelse(u < .5, 3, ifelse(u < .75, 4, 5))); mu <- rnorm(n)

@@ -75,31 +75,31 @@ test_that("compute_eif_cov_edid formula: weighted_phi minus att_gt, then centere
   df <- make_simple_panel(n = 120, seed = 30)
   devtools::load_all(quiet = TRUE)
 
-  panel_obj <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
+  panel_obj <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
   g <- 3; t <- 3
-  pairs <- did:::enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
+  pairs <- enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
                                              panel_obj$time_periods,
                                              panel_obj$period_1, "post",
                                              panel_obj$anticipation)
-  fold_id <- did:::build_crossfit_folds_edid(panel_obj$n, 5L, seed = 1L)
+  fold_id <- build_crossfit_folds_edid(panel_obj$n, 5L, seed = 1L)
 
   # Build nuisances
   pairs_for_nuis <- pairs
   pairs_for_nuis$gp[is.finite(pairs_for_nuis$gp) & pairs_for_nuis$gp == g] <- Inf
-  prop_r  <- did:::estimate_all_propensity_ratios(panel_obj, g, pairs_for_nuis,
+  prop_r  <- estimate_all_propensity_ratios(panel_obj, g, pairs_for_nuis,
                                                    4L, 5L, fold_id)
-  cond_m  <- did:::estimate_all_conditional_means(panel_obj, pairs_for_nuis, t,
+  cond_m  <- estimate_all_conditional_means(panel_obj, pairs_for_nuis, t,
                                                    4L, 5L, fold_id)
 
-  gen_out <- did:::compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs,
+  gen_out <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs,
                                                         prop_r, cond_m, "post")
   H       <- ncol(gen_out)
-  omega   <- did:::compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_r, cond_m)
-  weights <- did:::compute_efficient_weights_edid(omega)
+  omega   <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_r, cond_m)
+  weights <- compute_efficient_weights_edid(omega)
   att_gt  <- sum(weights * colMeans(gen_out, na.rm = TRUE))
 
   # Compute EIF via the function
-  eif_fn <- did:::compute_eif_cov_edid(panel_obj, gen_out, weights, att_gt, g)
+  eif_fn <- compute_eif_cov_edid(panel_obj, gen_out, weights, att_gt, g)
 
   # Correct EIF is the ratio-estimator influence function (fixes the prior over-coverage):
   #   EIF_i = w' phi_i - (G_{g,i} / pi_g) * att_gt    (mean-zero in sample; no de-meaning).
@@ -122,28 +122,28 @@ test_that("compute_eif_cov_edid formula: weighted_phi minus att_gt, then centere
 
 test_that("wrong-sign EIF produces materially different SE", {
   df  <- make_simple_panel(n = 120, seed = 40)
-  panel_obj <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
+  panel_obj <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
   g <- 3; t <- 3
-  pairs <- did:::enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
+  pairs <- enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
                                              panel_obj$time_periods,
                                              panel_obj$period_1, "post",
                                              panel_obj$anticipation)
-  fold_id <- did:::build_crossfit_folds_edid(panel_obj$n, 5L, seed = 1L)
+  fold_id <- build_crossfit_folds_edid(panel_obj$n, 5L, seed = 1L)
   pairs_nuis <- pairs
   pairs_nuis$gp[is.finite(pairs_nuis$gp) & pairs_nuis$gp == g] <- Inf
-  prop_r <- did:::estimate_all_propensity_ratios(panel_obj, g, pairs_nuis,
+  prop_r <- estimate_all_propensity_ratios(panel_obj, g, pairs_nuis,
                                                   4L, 5L, fold_id)
-  cond_m <- did:::estimate_all_conditional_means(panel_obj, pairs_nuis, t,
+  cond_m <- estimate_all_conditional_means(panel_obj, pairs_nuis, t,
                                                   4L, 5L, fold_id)
-  gen_out <- did:::compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs,
+  gen_out <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs,
                                                         prop_r, cond_m, "post")
-  omega   <- did:::compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_r, cond_m)
-  weights <- did:::compute_efficient_weights_edid(omega)
+  omega   <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_r, cond_m)
+  weights <- compute_efficient_weights_edid(omega)
   att_gt  <- sum(weights * colMeans(gen_out, na.rm = TRUE))
   n       <- panel_obj$n
 
   # Correct EIF
-  eif_correct <- did:::compute_eif_cov_edid(panel_obj, gen_out, weights, att_gt, g)
+  eif_correct <- compute_eif_cov_edid(panel_obj, gen_out, weights, att_gt, g)
   se_correct  <- sqrt(sum(eif_correct^2) / n^2)
 
   # Wrong EIF: adds (Ig/pi_g) * att_gt extra term (old bug)
@@ -181,23 +181,23 @@ test_that("generated outcome for self-comparison pair: zero for non-g/non-inf un
   y        <- 0.5 * times + x1 + as.numeric(times >= g_vec) + rnorm(n_units * T, sd = 0.4)
   df2      <- data.frame(id = ids, t = times, y = y, g = g_vec, x1 = x1)
 
-  panel_obj <- did:::prepare_edid_panel(df2, "y", "id", "t", "g", xformla = ~ x1)
+  panel_obj <- prepare_edid_panel(df2, "y", "id", "t", "g", xformla = ~ x1)
   g    <- 3; t <- 3
   # Use PT-Post pair: single self-comparison pair (gp=g, tpre=g-1)
-  pairs <- did:::enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
+  pairs <- enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
                                              panel_obj$time_periods,
                                              panel_obj$period_1, "post",
                                              panel_obj$anticipation)
   # Self-comparison pair: gp == g; the code remaps to Inf
-  fold_id    <- did:::build_crossfit_folds_edid(panel_obj$n, 5L, seed = 1L)
+  fold_id    <- build_crossfit_folds_edid(panel_obj$n, 5L, seed = 1L)
   pairs_nuis <- pairs
   pairs_nuis$gp[is.finite(pairs_nuis$gp) & pairs_nuis$gp == g] <- Inf
-  prop_r <- did:::estimate_all_propensity_ratios(panel_obj, g, pairs_nuis,
+  prop_r <- estimate_all_propensity_ratios(panel_obj, g, pairs_nuis,
                                                   4L, 5L, fold_id)
-  cond_m <- did:::estimate_all_conditional_means(panel_obj, pairs_nuis, t,
+  cond_m <- estimate_all_conditional_means(panel_obj, pairs_nuis, t,
                                                   4L, 5L, fold_id)
 
-  gen_out <- did:::compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs,
+  gen_out <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs,
                                                         prop_r, cond_m, "post")
   # Cohort 5 units are neither G=g nor G=Inf, so their phi should be ~0
   mask_g5   <- (panel_obj$unit_cohorts == 5)
@@ -253,19 +253,19 @@ test_that("cov-path Omega* self-pair term5 conditions on G=g (matches no-cov; no
     data.frame(id = 1:n, t = k, y = mu + 0.3 * k + 1.0 * tr + eps[, k], g = G, x1 = x1)
   })
   df <- do.call(rbind, rows)
-  panel <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
+  panel <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
   g <- g_cohort; t <- 4L
-  pairs <- did:::enumerate_valid_pairs_edid(g, panel$treatment_groups, panel$time_periods,
+  pairs <- enumerate_valid_pairs_edid(g, panel$treatment_groups, panel$time_periods,
                                             panel$period_1, "all", panel$anticipation)
   expect_gte(nrow(pairs), 3L)                                # >=3 pre-periods -> self-pairs at t' != 1
-  fold_id <- did:::build_crossfit_folds_edid(panel$n, 5L, seed = 1L)
+  fold_id <- build_crossfit_folds_edid(panel$n, 5L, seed = 1L)
   pn <- pairs; pn$gp[is.finite(pn$gp) & pn$gp == g] <- Inf   # nuisances use G_inf comparison (paper text)
-  prop_r <- did:::estimate_all_propensity_ratios(panel, g, pn, 4L, 5L, fold_id)
-  cond_m <- did:::estimate_all_conditional_means(panel, pn, t, 4L, 5L, fold_id)
-  Om_cov   <- did:::compute_omega_star_cov_edid(panel, g, t, pairs, prop_r, cond_m)
-  Om_nocov <- did:::compute_omega_star_nocov_edid(g, t, pairs, panel, "all")
-  w_cov   <- did:::compute_efficient_weights_edid(Om_cov)
-  w_nocov <- did:::compute_efficient_weights_edid(Om_nocov)
+  prop_r <- estimate_all_propensity_ratios(panel, g, pn, 4L, 5L, fold_id)
+  cond_m <- estimate_all_conditional_means(panel, pn, t, 4L, 5L, fold_id)
+  Om_cov   <- compute_omega_star_cov_edid(panel, g, t, pairs, prop_r, cond_m)
+  Om_nocov <- compute_omega_star_nocov_edid(g, t, pairs, panel, "all")
+  w_cov   <- compute_efficient_weights_edid(Om_cov)
+  w_nocov <- compute_efficient_weights_edid(Om_nocov)
   expect_true(all(w_cov > -1e-6),
               info = paste("cov-path efficient weights must be non-negative; got",
                            paste(round(w_cov, 3), collapse = ", ")))

@@ -72,8 +72,8 @@ test_that("NA in covariate late period for one unit is rejected", {
 
 test_that("covariate_matrix uses model.matrix() and handles I() correctly", {
   df <- make_panel_2cov(seed = 30)
-  p0 <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
-  p1 <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1 + I(x1^2))
+  p0 <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
+  p1 <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1 + I(x1^2))
 
   n_units <- length(unique(df$id))
   expect_equal(nrow(p0$covariate_matrix), n_units)
@@ -89,7 +89,7 @@ test_that("covariate_matrix uses model.matrix() and handles I() correctly", {
 
 test_that("interaction in xformla produces expected number of columns", {
   df <- make_panel_2cov(seed = 31)
-  p  <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1 * x2)
+  p  <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1 * x2)
   n_units <- length(unique(df$id))
   expect_equal(nrow(p$covariate_matrix), n_units)
   # x1, x2, x1:x2 = 3 columns
@@ -105,7 +105,7 @@ test_that("factor covariate is accepted and covariate_matrix has dummy columns",
   fac_unit <- factor(rep(c("A", "B", "C"), each = nrow(df) / 6 / 3 + 1))[1:(nrow(df) / 6)]
   df$fac   <- rep(fac_unit, each = 6)
 
-  p <- did:::prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1 + fac)
+  p <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1 + fac)
   # model.matrix with factor "fac" (3 levels) and x1 produces 3 columns
   # (x1, facB, facC) with treatment contrast; intercept is removed
   n_units <- length(unique(df$id))
@@ -119,9 +119,9 @@ test_that("factor covariate is accepted and covariate_matrix has dummy columns",
 
 test_that("xformla=~x1+x2+x1:x2 and xformla=~x1*x2 produce identical covariate matrices", {
   df <- make_panel_2cov(seed = 50)
-  p1 <- did:::prepare_edid_panel(df, "y", "id", "t", "g",
+  p1 <- prepare_edid_panel(df, "y", "id", "t", "g",
                                   xformla = ~ x1 + x2 + x1:x2)
-  p2 <- did:::prepare_edid_panel(df, "y", "id", "t", "g",
+  p2 <- prepare_edid_panel(df, "y", "id", "t", "g",
                                   xformla = ~ x1 * x2)
   expect_equal(p1$covariate_matrix, p2$covariate_matrix, tolerance = 1e-10)
 })
@@ -144,13 +144,13 @@ test_that("different seeds produce different fold assignments (probabilistically
   # With n=90 units and K=5 folds, different seeds should almost always give
   # different fold vectors.
   set.seed(999)
-  folds1 <- did:::build_crossfit_folds_edid(90L, 5L, seed = 1L)
-  folds2 <- did:::build_crossfit_folds_edid(90L, 5L, seed = 2L)
+  folds1 <- build_crossfit_folds_edid(90L, 5L, seed = 1L)
+  folds2 <- build_crossfit_folds_edid(90L, 5L, seed = 2L)
   expect_false(identical(folds1, folds2))
 })
 
 test_that("same seed always produces same fold assignments", {
-  folds1 <- did:::build_crossfit_folds_edid(90L, 5L, seed = 77L)
-  folds2 <- did:::build_crossfit_folds_edid(90L, 5L, seed = 77L)
+  folds1 <- build_crossfit_folds_edid(90L, 5L, seed = 77L)
+  folds2 <- build_crossfit_folds_edid(90L, 5L, seed = 77L)
   expect_identical(folds1, folds2)
 })
