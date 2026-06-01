@@ -32,7 +32,7 @@ test_that("clustered mboot SE matches the cluster-sum (Remark 10) for UNBALANCED
                 control_group = "nevertreated", bstrap = TRUE, biters = 5000L,
                 clustervars = "cl", pl = FALSE, cband = FALSE, base_period = "varying")
   tg <- .cluster_targets(res)
-  skip_if_not(tg$ok, "cluster_vector not aligned with influence function")
+  expect_true(tg$ok)  # cluster_vector must be present and aligned with the influence-function rows
   # cluster-sum and cluster-mean genuinely differ when clusters are unbalanced
   expect_gt(abs(tg$sum - tg$mean) / tg$mean, 0.05)
   # reported SE tracks the cluster-SUM target (within bootstrap Monte Carlo tolerance) ...
@@ -48,7 +48,7 @@ test_that("clustered mboot SE is unchanged for BALANCED clusters (cluster-sum ==
                 control_group = "nevertreated", bstrap = TRUE, biters = 5000L,
                 clustervars = "cl", pl = FALSE, cband = FALSE, base_period = "varying")
   tg <- .cluster_targets(res)
-  skip_if_not(tg$ok, "cluster_vector not aligned with influence function")
+  expect_true(tg$ok)  # cluster_vector must be present and aligned with the influence-function rows
   expect_equal(tg$sum, tg$mean, tolerance = 1e-8)            # identical targets when balanced
   expect_equal(unname(res$se[tg$k]), tg$sum, tolerance = 0.08)
 })

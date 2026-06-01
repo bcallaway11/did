@@ -77,7 +77,7 @@ test_that("analytical clustered SE flows through aggte at all levels (simple/gro
                     control_group = "nevertreated", bstrap = FALSE, clustervars = "cl", base_period = "varying")
   res_iid <- att_gt(yname = "y", tname = "t", idname = "id", gname = "g", data = d,
                     control_group = "nevertreated", bstrap = FALSE, base_period = "varying")
-  skip_if_not(!is.null(res_cl$DIDparams$cluster_vector), "cluster_vector not available")
+  expect_true(!is.null(res_cl$DIDparams$cluster_vector))  # required for clustered SEs to propagate through aggte()
   for (ty in c("simple", "group", "dynamic")) {
     a_cl  <- suppressWarnings(aggte(res_cl,  type = ty, bstrap = FALSE))
     a_iid <- suppressWarnings(aggte(res_iid, type = ty, bstrap = FALSE))
