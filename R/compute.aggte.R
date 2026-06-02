@@ -43,6 +43,36 @@ compute.aggte <- function(MP,
   if (is.null(clustervars)) {
     clustervars <- dp$clustervars
   }
+
+  # Aggregation-level clustering reuses the per-unit cluster information that att_gt() stored when
+  # clustervars was supplied to it. If clustering is requested here (inherited from the att_gt object or
+  # via an aggte-level clustervars override) but that information is unavailable -- because the cluster
+  # variable was not passed to att_gt() (so neither the cluster column nor cluster_vector were retained),
+  # or because an override names a different variable than att_gt clustered on -- it cannot be honored.
+  # Warn and fall back to non-clustered standard errors, instead of silently returning the i.i.d. SE
+  # (analytic path) or erroring in mboot() (bootstrap path). To make this a hard error instead, replace
+  # warning() with stop() below.
+  extra_cl_req <- clustervars[!(clustervars %in% c(idname, ""))]
+  if (length(extra_cl_req) > 0) {
+    cv <- dp$cluster_vector
+    can_cluster <- !is.null(cv) && length(cv) == nrow(inffunc1) &&
+      identical(extra_cl_req, dp$cluster_vector_var)
+    if (!can_cluster) {
+      warning(paste0(
+        "Clustered standard errors were requested in aggte() (clustervars = '",
+        paste(extra_cl_req, collapse = "', '"), "'), but the cluster information needed is not available ",
+        "in this att_gt object",
+        if (!is.null(dp$cluster_vector_var)) {
+          paste0(" (att_gt() clustered on '", paste(dp$cluster_vector_var, collapse = "', '"),
+                 "', and aggte() cannot switch to a different cluster variable)")
+        } else {
+          " (clustervars was not supplied to att_gt(), so aggte() cannot introduce clustering)"
+        },
+        ". Reporting standard errors that do NOT account for clustering; re-run att_gt() with ",
+        "clustervars = '", paste(extra_cl_req, collapse = "', '"), "' for clustered inference."))
+      clustervars <- NULL
+    }
+  }
   if (is.null(bstrap)) {
     bstrap <- dp$bstrap
   }
@@ -139,8 +169,13 @@ compute.aggte <- function(MP,
       dta <- data[data[, tname] == tlist[1], ]
     }
   } else {
-    # aggregate data
-    dta <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean)[, -1])
+    # Aggregate to one row per unit. aggregate() returns rows sorted by idname, but the influence
+    # function (inffunc1) is in the data's *first-appearance* unit order -- which differs from sorted for
+    # unbalanced panels under faster_mode. Restore that order so the estimated-weight influence term (wif)
+    # is added to the matching units in get_agg_inf_func(); otherwise wif lands on the wrong units and the
+    # aggregated standard error is wrong (the point estimate is unaffected because wif is mean-zero).
+    dta_agg <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean))
+    dta <- dta_agg[match(unique(data[, idname]), dta_agg[, 1L]), -1L, drop = FALSE]
   }
 
   #-----------------------------------------------------------------------------
