@@ -1,6 +1,6 @@
 # did 2.3.1.907
 
-  * `edid()` gains an opt-in `correct_first_step` argument (default `FALSE`). When `TRUE`, the influence function is augmented with the first-step nuisance-estimation correction of Ackerberg, Chen & Hahn (2012) for the sieve nuisances (conditional means and propensity ratios) entering the doubly-robust moment. The correction is asymptotically negligible under correct specification (the EIF moments are Neyman orthogonal) and provides finite-sample robustness when a first-step nuisance is misspecified; it propagates automatically to the event-study and overall aggregations. Default behavior is unchanged.
+  * `edid()` gains an opt-in `estimation_effect` argument (default `FALSE`). When `TRUE`, the influence function is augmented with the first-step nuisance-estimation correction of Ackerberg, Chen & Hahn (2012) for the sieve nuisances (conditional means and propensity ratios) entering the doubly-robust moment. The correction is asymptotically negligible under correct specification (the EIF moments are Neyman orthogonal) and provides finite-sample robustness when a first-step nuisance is misspecified; it propagates automatically to the event-study and overall aggregations. Default behavior is unchanged.
 
 # did 2.3.1.906
 

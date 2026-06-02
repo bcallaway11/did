@@ -24,7 +24,7 @@ edid(
   balance_e = NULL,
   survey_design = NULL,
   weights = c("efficient", "averaged", "gmm", "uniform"),
-  correct_first_step = FALSE
+  estimation_effect = FALSE
 )
 }
 \arguments{
@@ -119,7 +119,7 @@ identify the estimand, with no rate condition on the weights) but do not attain 
 \code{"gmm"} inverts the unconditional moment covariance \eqn{\hat S}; \code{"uniform"} assigns
 equal weight \eqn{1/H} to the \eqn{H} non-collinear moments.}
 
-\item{correct_first_step}{Logical (default \code{FALSE}). If \code{TRUE}, the influence function
+\item{estimation_effect}{Logical (default \code{FALSE}). If \code{TRUE}, the influence function
 is augmented with the first-step nuisance-estimation correction of Ackerberg, Chen and Hahn (2012)
 for the sieve nuisances (conditional means and propensity ratios) entering the doubly-robust moment.
 The influence-function moments are Neyman orthogonal, so this correction is asymptotically negligible
