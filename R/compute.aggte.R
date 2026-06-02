@@ -139,8 +139,13 @@ compute.aggte <- function(MP,
       dta <- data[data[, tname] == tlist[1], ]
     }
   } else {
-    # aggregate data
-    dta <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean)[, -1])
+    # Aggregate to one row per unit. aggregate() returns rows sorted by idname, but the influence
+    # function (inffunc1) is in the data's *first-appearance* unit order -- which differs from sorted for
+    # unbalanced panels under faster_mode. Restore that order so the estimated-weight influence term (wif)
+    # is added to the matching units in get_agg_inf_func(); otherwise wif lands on the wrong units and the
+    # aggregated standard error is wrong (the point estimate is unaffected because wif is mean-zero).
+    dta_agg <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean))
+    dta <- dta_agg[match(unique(data[, idname]), dta_agg[, 1L]), -1L, drop = FALSE]
   }
 
   #-----------------------------------------------------------------------------

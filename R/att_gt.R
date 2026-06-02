@@ -428,14 +428,21 @@ att_gt <- function(yname,
   # cross-sections / unbalanced panels (where the user may omit idname), mirroring how mboot() identifies units.
   unit_id <- dp$idname
   extra_clustervars <- clustervars[!(clustervars %in% c(unit_id, idname, ""))]
-  # Per-unit cluster identifiers aligned with the rows of inffunc. faster_mode supplies dp$cluster_vector;
-  # in slower mode derive it from the data exactly as mboot() does -- one row per cross-sectional unit,
-  # keyed on the internal unit id -- and store it back, so the analytical clustered SE and aggte()
-  # downstream work for faster_mode TRUE and FALSE (including repeated cross-sections with idname omitted).
-  if (is.null(dp$cluster_vector) && length(extra_clustervars) > 0 && !is.null(dp$data) && !is.null(unit_id)) {
+  # Per-unit cluster identifiers aligned with the rows of inffunc. faster_mode supplies dp$cluster_vector,
+  # but for unbalanced panels (internally panel = FALSE, so the time-invariant data keeps every
+  # observation) that vector is observation-length rather than unit-length and no longer aligns with the
+  # unit-level influence function. Derive the vector from the data exactly as mboot() does -- one row per
+  # cross-sectional unit, keyed on the internal unit id -- and store it back whenever it is missing OR does
+  # not align with inffunc. This keeps the analytical clustered SE and aggte() working for faster_mode TRUE
+  # and FALSE and for balanced and unbalanced panels; repeated cross sections (where the per-observation
+  # vector already has one row per unit and aligns) fall through unchanged.
+  if (length(extra_clustervars) > 0 && !is.null(dp$data) && !is.null(unit_id) &&
+      (is.null(dp$cluster_vector) || length(dp$cluster_vector) != nrow(inffunc))) {
     cdat <- as.data.frame(dp$data)
     if (all(c(unit_id, extra_clustervars[1L]) %in% names(cdat))) {
-      dp$cluster_vector <- as.vector(unique(cdat[, c(unit_id, extra_clustervars[1L])])[, 2L])
+      rebuilt_cv <- as.vector(unique(cdat[, c(unit_id, extra_clustervars[1L])])[, 2L])
+      # only adopt the rebuilt vector if it lines up with the influence-function rows
+      if (length(rebuilt_cv) == nrow(inffunc)) dp$cluster_vector <- rebuilt_cv
     }
   }
   cluster_vec <- dp$cluster_vector
