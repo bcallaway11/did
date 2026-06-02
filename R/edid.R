@@ -47,7 +47,26 @@
 #'   \code{biters} bootstrap draws are used.
 #' @param biters Positive integer: number of multiplier bootstrap iterations.
 #'   Default \code{1000L}. Only used when \code{bstrap = TRUE}.
-#' @param seed Integer seed for reproducibility of bootstrap draws, or
+#' @param cband Logical: whether to report simultaneous (uniform) confidence bands across the cells and the
+#'   event-study / group coefficients. Default \code{TRUE}; \code{FALSE} gives pointwise bands.
+#' @param cband_method Character: how the simultaneous critical value is computed. \code{"analytic"}
+#'   (default) is the Montiel Olea & Plagborg-Moller sup-t critical value from the analytic, cluster-robust
+#'   coefficient covariance -- no bootstrap needed, and the only method compatible with \code{higher_order}.
+#'   \code{"multiplier"} uses the did multiplier bootstrap (\code{\link[did]{mboot}}) when
+#'   \code{bstrap = TRUE} and reproduces the prior behavior exactly. With very few clusters or very small
+#'   samples the multiplier bootstrap can be the safer choice.
+#' @param higher_order Logical (default \code{FALSE}). If \code{TRUE}, adds the higher-order ("Wick")
+#'   nuisance-estimation variance refinement: the degenerate second-order U-statistic contribution from
+#'   estimating the first-step sieve nuisances (\eqn{m}, \eqn{r}) is added to the analytic coefficient
+#'   covariance, so BOTH the reported cell standard errors (\eqn{\sqrt{\mathrm{diag}(\Sigma_1 +
+#'   \Sigma_{quad})}}) and the sup-t critical value come from the same higher-order-aware covariance.
+#'   Because \eqn{\Sigma_{quad}} is positive semi-definite, the cell SEs are never below the plug-in SEs.
+#'   The refinement requires the analytic sup-t path (a degenerate-U term cannot be carried by the
+#'   multiplier bootstrap, so \code{cband_method = "multiplier"} is coerced to \code{"analytic"} with a
+#'   warning) and a covariate formula (with no covariates the nuisances have no first-step coefficients and
+#'   the term is exactly zero, so \code{xformla = NULL} errors). It is asymptotically negligible under
+#'   correct specification; its value is finite-sample honesty in covariate-rich designs.
+#' @param seed Integer seed for reproducibility of the bootstrap draws / the analytic sup-t simulation, or
 #'   \code{NULL} (default, no seed set).
 #' @param anticipation Non-negative integer: number of anticipation periods.
 #'   Default \code{0L}. The effective treatment start for cohort \eqn{g} is
@@ -185,10 +204,39 @@ edid <- function(
   balance_e         = NULL,
   survey_design     = NULL,
   weights           = c("efficient", "averaged", "gmm", "uniform"),
-  estimation_effect = FALSE
+  estimation_effect = FALSE,
+  cband             = TRUE,
+  cband_method      = c("analytic", "multiplier"),
+  higher_order      = FALSE
 ) {
   weight_method <- match.arg(weights)
+  cband_method  <- match.arg(cband_method)
+  higher_order  <- isTRUE(higher_order)
   mc <- match.call()
+
+  # ------------------------------------------------------------------
+  # Higher-order ("Wick") variance refinement: validation / coercion
+  # ------------------------------------------------------------------
+  # The refinement puts the degenerate second-order U-statistic nuisance-estimation variance INTO the
+  # coefficient covariance that the analytic sup-t crit and SEs read from. It is gated to the analytic
+  # cband for two structural reasons:
+  #   (1) the multiplier bootstrap resamples the (first-order) influence functions and cannot carry a
+  #       degenerate-U higher-order term, so it is coerced to the analytic path (with a warning);
+  #   (2) it needs the first-step sieve coefficients -- with no covariates the nuisances are unconditional
+  #       means with no coefficients and Sigma_quad is identically zero, so xformla is required (error).
+  if (higher_order) {
+    if (cband_method != "analytic") {
+      warning("higher_order = TRUE requires cband_method = 'analytic' (the multiplier bootstrap cannot ",
+              "carry the degenerate-U higher-order term); coercing cband_method to 'analytic'.",
+              call. = FALSE)
+      cband_method <- "analytic"
+    }
+    if (is.null(xformla) || identical(deparse(xformla, width.cutoff = 500L), "~1")) {
+      stop("higher_order = TRUE requires a covariate formula (xformla): with no covariates the sieve ",
+           "nuisances are unconditional means with no first-step coefficients, so the higher-order ",
+           "variance is exactly zero. Supply xformla, or use higher_order = FALSE.", call. = FALSE)
+    }
+  }
 
   # ------------------------------------------------------------------
   # Argument matching
@@ -274,7 +322,8 @@ edid <- function(
     need_eif      = need_eif_internal,
     seed          = seed,
     weight_method = weight_method,
-    estimation_effect = isTRUE(estimation_effect)
+    estimation_effect = isTRUE(estimation_effect),
+    higher_order  = higher_order
   )
 
   cells      <- fit_result$cells
@@ -317,7 +366,9 @@ edid <- function(
   # did::aggte(bstrap = TRUE) below (so $overall/$event_study/... carry bootstrap SEs and uniform bands).
   # Reproducible via `seed`.
   # ------------------------------------------------------------------
-  if (bstrap) {
+  # Multiplier-bootstrap cell SEs + simultaneous critical value (cband_method = "multiplier", the legacy
+  # path). Untouched so cband_method = "multiplier" reproduces the previous behavior exactly.
+  if (bstrap && cband_method == "multiplier") {
     if (!is.null(seed)) set.seed(seed)
     bdp <- list(idname = idname, tname = tname, clustervars = clustervars,
                 biters = as.integer(biters), alp = alp, panel = TRUE, faster_mode = FALSE,
@@ -335,6 +386,29 @@ edid <- function(
     att_gt_df$ci_upper[ok] <- att_gt_df$att[ok] + bb$crit.val * bb$se[ok]
     att_gt_df$t_stat[ok]   <- att_gt_df$att[ok] / bb$se[ok]
     att_gt_df$p_value[ok]  <- 2 * stats::pnorm(-abs(att_gt_df$t_stat[ok]))
+  }
+
+  # Analytic simultaneous (sup-t) uniform bands for the cell ATT(g,t) vector (cband_method = "analytic",
+  # the default). Montiel Olea-Plagborg-Moller critical value from the cluster-robust analytic covariance
+  # of the EIFs -- no bootstrap needed. sqrt(diag(Sigma)) equals safe_inference_edid()'s SE, so the
+  # reported SEs are unchanged; only the band crit changes (pointwise z when cband = FALSE).
+  if (cband_method == "analytic" && !is.null(eif_matrix)) {
+    ok <- is.finite(att_gt_df$se) & att_gt_df$se > 0
+    if (any(ok)) {
+      Sig <- cluster_cov_edid(eif_matrix[, ok, drop = FALSE], panel_obj$cluster_indices, panel_obj$n)
+      # Higher-order refinement: add the degenerate-U "Wick" covariance Sigma_quad to the first-order
+      # Sigma1 so BOTH the reported SE (sqrt(diag(Sigma_HO))) and the sup-t crit come from the SAME
+      # higher-order-aware covariance (no first-order-vs-higher-order splice). Sigma_quad >= 0 on the
+      # diagonal, so the inflated SE is never below the plug-in SE.
+      if (isTRUE(higher_order)) {
+        Sigma_quad <- sigma_quad_edid(cells[ok], panel_obj$cluster_indices, panel_obj$n)
+        Sig <- Sig + Sigma_quad
+      }
+      bnd <- analytic_bands_edid(att_gt_df$att[ok], Sig, alp = alp, cband = isTRUE(cband), seed = seed)
+      att_gt_df$se[ok]       <- bnd$se
+      att_gt_df$ci_lower[ok] <- bnd$ci_lower
+      att_gt_df$ci_upper[ok] <- bnd$ci_upper
+    }
   }
 
   # ------------------------------------------------------------------
@@ -369,6 +443,10 @@ edid <- function(
     cluster_indices  = panel_obj$cluster_indices,  # for cluster-robust re-aggregation in aggte_edid
     xformla          = xformla,
     bstrap           = bstrap,
+    cband            = isTRUE(cband),
+    cband_method     = cband_method,               # "analytic" (default) or "multiplier"; used by aggte_edid()
+    higher_order     = higher_order,               # opt-in higher-order ("Wick") variance refinement
+    seed             = seed,                        # for reproducible analytic sup-t crit in the aggregations
     biters           = as.integer(biters),         # used by aggte_edid()/as_MP_edid() for bstrap = TRUE
     cells            = cells,
     att_gt           = att_gt_df,

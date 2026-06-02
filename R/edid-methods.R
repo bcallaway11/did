@@ -35,7 +35,8 @@ print.edid_fit <- function(x, ...) {
 
   alp <- x$alpha
   cband_text1a <- paste0(100 * (1 - alp), "% ")
-  cband_text1b <- ifelse(isTRUE(x$bstrap), "Simult. ", "Pointwise ")
+  simult <- isTRUE(x$bstrap) || (identical(x$cband_method, "analytic") && isTRUE(x$cband))
+  cband_text1b <- ifelse(simult, "Simult. ", "Pointwise ")
   cband_text1  <- paste0("[", cband_text1a, cband_text1b)
 
   att_df <- x$att_gt

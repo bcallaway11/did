@@ -544,6 +544,94 @@ compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
   correction
 }
 
+#' Enumerate a cell's non-fallback sieve-nuisance blocks for the higher-order Hessian
+#'
+#' Returns the ordered list of nuisance blocks (propensity ratios first, then conditional means,
+#' each in the order of \code{r_aux} / \code{m_aux}) that carry first-step coefficient pieces. Each
+#' block is \code{list(key, is_prop, B, p, score_mat, H_inv)} with \code{B = a$B_test} the sieve
+#' basis (n x p) and \code{p = ncol(B)}. Fallback blocks (\code{is_fallback}, or missing \code{B_test})
+#' are dropped: they have no estimated coefficients, so contribute no higher-order variance. This is the
+#' production analogue of the prototype's \code{infos} list; the block order fixes the stacked-coefficient
+#' indexing used by \code{compute_cell_hessian_edid} and \code{sigma_quad_edid}.
+#'
+#' @param m_aux,r_aux named lists of per-nuisance ACH pieces (\code{list(B_test, score_mat, H_inv,
+#'   is_fallback)}) from the \code{return_aux} path; same keying as \code{cond_means} / \code{prop_ratios}.
+#' @return list of blocks (possibly empty if all nuisances are fallbacks).
+#' @keywords internal
+edid_nuisance_blocks <- function(m_aux, r_aux) {
+  blocks <- list()
+  add <- function(a, key, is_prop) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) return(NULL)
+    list(key = key, is_prop = is_prop, B = a$B_test, p = ncol(a$B_test),
+         score_mat = a$score_mat, H_inv = a$H_inv)
+  }
+  for (key in names(r_aux)) { b <- add(r_aux[[key]], key, TRUE);  if (!is.null(b)) blocks[[length(blocks) + 1L]] <- b }
+  for (key in names(m_aux)) { b <- add(m_aux[[key]], key, FALSE); if (!is.null(b)) blocks[[length(blocks) + 1L]] <- b }
+  blocks
+}
+
+#' Cell Hessian of att(theta) in the stacked sieve coefficients (higher-order "Wick" path)
+#'
+#' Returns the P x P Hessian (P = total stacked nuisance coefficients across this cell's non-fallback
+#' nuisance blocks) of
+#' \deqn{att(\theta) = \mathbb{E}_n\big[\,\mathrm{rowSums}(W \odot \tilde Y(\theta))\,\big],\quad
+#'        \tilde Y(\theta) = \texttt{compute\_generated\_outcomes\_cov\_edid}(\dots,\ \text{predictions} = B\theta_{block}),}
+#' with the efficient weights \eqn{W} held FIXED. Because the doubly-robust generated outcome is linear in
+#' each prediction, \eqn{att(\theta)} is EXACTLY QUADRATIC in \eqn{\theta}, so the Hessian is constant and
+#' the central second differences are exact up to roundoff. Perturbing coefficient \eqn{i} of block \eqn{k}
+#' by \eqn{\epsilon} equals perturbing that block's prediction by \eqn{\epsilon\,B_k[,i]} (same identity the
+#' ACH correction's \code{add_term} uses), so we never need the fitted coefficient vector itself. Mirrors the
+#' prototype \code{exp10_vroute_supt.R::Hess_k} / \code{analytical_se_edid.R} \code{grad_hess} exactly
+#' (\code{eps = 1e-4}, symmetric second-difference cross-partials).
+#'
+#' @param panel_obj,g,t,pairs,prop_ratios,cond_means,pt_assumption as in
+#'   \code{compute_generated_outcomes_cov_edid}.
+#' @param W frozen weights: length-H vector or n x H matrix (NOT recomputed here).
+#' @param m_aux,r_aux named lists of ACH first-step pieces (see \code{edid_nuisance_blocks}).
+#' @param eps finite-difference step (coefficient units). Default 1e-4 (matches the prototype).
+#' @return list with \code{H} (P x P numerical Hessian) and \code{blocks} (the ordered nuisance blocks
+#'   used, from \code{edid_nuisance_blocks}); \code{H} is a 0 x 0 matrix when there are no estimated blocks.
+#' @keywords internal
+compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
+                                      cond_means, W, m_aux, r_aux,
+                                      pt_assumption = "all", eps = 1e-4) {
+  blocks <- edid_nuisance_blocks(m_aux, r_aux)
+  if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
+
+  ps     <- vapply(blocks, function(b) b$p, 1L)
+  starts <- cumsum(c(0L, ps[-length(ps)]))                 # 0-based stacked-coef offset of each block
+  P      <- sum(ps)
+
+  # att as a function of a stacked-coefficient PERTURBATION delta (delta = 0 at theta_hat). Each block's
+  # prediction is shifted by B_k %*% delta_block, then the generated outcomes are recomputed (W frozen).
+  att_fun <- function(delta) {
+    pr <- prop_ratios; cm <- cond_means
+    for (k in seq_along(blocks)) {
+      dk <- delta[starts[k] + seq_len(ps[k])]
+      if (all(dk == 0)) next
+      shift <- as.vector(blocks[[k]]$B %*% dk)
+      if (blocks[[k]]$is_prop) pr[[blocks[[k]]$key]] <- pr[[blocks[[k]]$key]] + shift
+      else                     cm[[blocks[[k]]$key]] <- cm[[blocks[[k]]$key]] + shift
+    }
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption)
+    mean(if (is.matrix(W)) rowSums(go * W) else drop(go %*% W))
+  }
+
+  z0 <- numeric(P); f0 <- att_fun(z0)
+  fp <- numeric(P); fm <- numeric(P); Hm <- matrix(0, P, P)
+  for (i in seq_len(P)) {                                   # diagonal second differences
+    e <- numeric(P); e[i] <- eps
+    fp[i] <- att_fun(e); fm[i] <- att_fun(-e)
+    Hm[i, i] <- (fp[i] - 2 * f0 + fm[i]) / (eps^2)
+  }
+  for (i in seq_len(P)) for (j in seq_len(P)[-seq_len(i)]) {  # symmetric cross-partials
+    ei <- numeric(P); ei[i] <- eps; ej <- numeric(P); ej[j] <- eps
+    Hm[i, j] <- (att_fun(ei + ej) - fp[i] - fp[j] + 2 * f0 - fm[i] - fm[j] + att_fun(-ei - ej)) / (2 * eps^2)
+    Hm[j, i] <- Hm[i, j]
+  }
+  list(H = Hm, blocks = blocks)
+}
+
 #' Pointwise efficient weights w(X_i) = Omega*(X_i)^(-1) 1 / (1' Omega*(X_i)^(-1) 1)
 #'
 #' Per-observation semiparametric-efficient weights from the conditional-covariance array. Each

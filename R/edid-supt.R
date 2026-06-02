@@ -1,0 +1,174 @@
+# edid-supt.R
+# Analytic simultaneous (sup-t) uniform confidence bands for edid.
+#
+# The uniform-band critical value is the equicoordinate (1 - alpha) quantile of max_k |Z_k|, with
+# Z ~ N(0, corr(Sigma)) (Montiel Olea & Plagborg-Moller 2019). It is a pure function of the coefficient
+# covariance matrix Sigma, which lets edid produce uniform bands WITHOUT a bootstrap and -- the reason
+# this path exists -- lets the higher-order ("Wick") variance refinement enter through Sigma even though
+# it is a degenerate second-order U-statistic and so cannot be carried by the IF-based multiplier
+# bootstrap (`mboot`). The crit is computed by a fast base-R Monte Carlo (eigen square-root of the
+# correlation matrix + a vectorized row-max); pure `stats`, no new package dependency.
+
+#' Cluster-robust covariance of the columns of an influence-function matrix
+#'
+#' Sigma1_{jk} = (1/n^2) sum_i IF_{ij} IF_{ik} (i.i.d.), or the cluster-summed sandwich with the
+#' G/(G-1) finite-cluster correction when \code{cluster_indices} is supplied. This is the analytic
+#' first-order coefficient covariance; \code{sqrt(diag(.))} reproduces \code{safe_inference_edid()}'s SE.
+#'
+#' @param M n x K influence-function matrix.
+#' @param cluster_indices length-n cluster id vector (1..G), or NULL for i.i.d.
+#' @param n number of units (sample size).
+#' @return K x K covariance matrix.
+#' @keywords internal
+cluster_cov_edid <- function(M, cluster_indices, n) {
+  M <- as.matrix(M)
+  if (is.null(cluster_indices)) return(crossprod(M) / n^2)
+  G <- length(unique(cluster_indices))
+  if (G <= 1L) return(matrix(NA_real_, ncol(M), ncol(M)))
+  CS <- rowsum(M, cluster_indices)
+  (G / (G - 1)) * crossprod(CS) / n^2
+}
+
+#' Analytic sup-t critical value from a coefficient covariance matrix
+#'
+#' Returns `c` such that the simultaneous band `theta_hat_k +/- c * se_k` (se_k = sqrt(diag(Sigma))) has
+#' joint coverage `1 - alp`, i.e. the `(1 - alp)` quantile of `max_k |Z_k|`, `Z ~ N(0, corr(Sigma))`. Never
+#' returns below the pointwise `qnorm(1 - alp/2)`. With < 2 non-degenerate coordinates it returns the
+#' pointwise value.
+#'
+#' @param Sigma K x K coefficient covariance matrix.
+#' @param alp significance level (two-sided simultaneous coverage 1 - alp). Default 0.05.
+#' @param B number of Monte Carlo draws. Default 1e5.
+#' @param seed optional integer for reproducibility (restores the RNG state on exit).
+#' @return scalar critical value (>= qnorm(1 - alp/2)).
+#' @keywords internal
+supt_crit_edid <- function(Sigma, alp = 0.05, B = 1e5L, seed = NULL) {
+  pointwise <- stats::qnorm(1 - alp / 2)
+  Sigma <- as.matrix(Sigma)
+  d  <- sqrt(diag(Sigma)); ok <- is.finite(d) & d > 0; p <- sum(ok)
+  if (p < 2L) return(pointwise)
+  R <- Sigma[ok, ok, drop = FALSE] / tcrossprod(d[ok])
+  R <- (R + t(R)) / 2                                        # symmetrize away roundoff
+  e <- eigen(R, symmetric = TRUE)
+  U <- sqrt(pmax(e$values, 0)) * t(e$vectors)                # R = U'U (PSD-safe square root)
+  if (!is.null(seed)) {                                      # reproducible; restore caller's RNG state
+    if (exists(".Random.seed", envir = .GlobalEnv)) {
+      old_seed <- get(".Random.seed", envir = .GlobalEnv)
+      on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
+    } else {
+      on.exit(if (exists(".Random.seed", envir = .GlobalEnv)) rm(".Random.seed", envir = .GlobalEnv), add = TRUE)
+    }
+    set.seed(as.integer(seed))
+  }
+  Z <- matrix(stats::rnorm(B * p), B, p) %*% U               # B x p ~ N(0, R)
+  m <- abs(Z[, 1L]); for (j in seq_len(p)[-1]) m <- pmax(m, abs(Z[, j]))   # vectorized row-max |Z|
+  crit <- as.numeric(stats::quantile(m, 1 - alp, names = FALSE))
+  max(crit, pointwise)
+}
+
+#' Higher-order ("Wick") covariance Sigma_quad of the cell ATT(g,t) vector
+#'
+#' Returns the K x K matrix \eqn{\Sigma_{quad}} whose \eqn{(k,j)} entry is the degenerate second-order
+#' U-statistic ("Isserlis/Wick") covariance contributed by first-step sieve-nuisance estimation,
+#' \deqn{\Sigma_{quad,kj} = \tfrac12\,\mathrm{tr}(H_k V H_j V),}
+#' where \eqn{V} is the JOINT stacked-coefficient covariance across all cells' nuisance blocks and
+#' \eqn{H_k} is cell \eqn{k}'s Hessian of \eqn{att} in those coefficients, embedded block-sparse in the
+#' joint coefficient space (cell \eqn{k}'s \eqn{att} depends only on its own block, so off-diagonal cross-cell
+#' entries come for free from \eqn{V}'s off-diagonal blocks -- the covariance of the two cells' scores over
+#' their common units). \eqn{V} is the HC2-leverage-corrected, cluster-robust sandwich
+#' \eqn{H^{-1}_{blk}\,(\sum_c S_c'S_c)\,H^{-1}_{blk}/n^2} with the \eqn{G/(G-1)} finite-cluster factor, the
+#' stacked scores \eqn{S} corrected by \eqn{1/\sqrt{1-h}} (leverage \eqn{h} capped at 0.5). Adding
+#' \eqn{\Sigma_{quad}} to the first-order \code{cluster_cov_edid()} covariance gives the higher-order-aware
+#' Sigma the sup-t crit and SEs are read from. Mirrors the validated prototype
+#' \code{exp10_vroute_supt.R::make_Sigma} exactly. Cells without an estimated Hessian (no covariates /
+#' fallback nuisances; \code{ho$H = NULL} or 0 x 0) contribute zero rows and columns.
+#'
+#' @param cells list of \code{edid_cell_result} objects; each higher-order cell carries
+#'   \code{$ho$blocks} (ordered nuisance blocks with \code{B}, \code{score_mat}, \code{H_inv}, \code{p}) and
+#'   \code{$ho$H} (its P_k x P_k Hessian). Order must match the cell order of the ATT(g,t) vector.
+#' @param cluster_indices length-n cluster id vector (1..G), or NULL for i.i.d.
+#' @param n number of units (sample size).
+#' @return K x K \eqn{\Sigma_{quad}} matrix (PSD up to roundoff).
+#' @keywords internal
+sigma_quad_edid <- function(cells, cluster_indices, n) {
+  K <- length(cells)
+  Sigma_quad <- matrix(0, K, K)
+
+  # Per-cell stacked-coefficient dimension; cells with no estimated blocks get P_k = 0.
+  Pk <- vapply(cells, function(cc) {
+    h <- cc$ho
+    if (is.null(h) || is.null(h$blocks) || length(h$blocks) == 0L) return(0L)
+    sum(vapply(h$blocks, function(b) b$p, 1L))
+  }, integer(1L))
+  P_tot <- sum(Pk)
+  if (P_tot == 0L) return(Sigma_quad)                       # no covariate cell -> Sigma_quad = 0
+
+  cstart <- cumsum(c(0L, Pk[-K]))                            # 0-based joint-coef offset of each cell
+
+  # HC2 leverage-corrected stacked scores S_all (n x P_tot) and block-diagonal H^{-1} (P_tot x P_tot).
+  S_all    <- matrix(0, n, P_tot)
+  Hinv_blk <- matrix(0, P_tot, P_tot)
+  for (k in seq_len(K)) {
+    if (Pk[k] == 0L) next
+    blocks <- cells[[k]]$ho$blocks
+    o2 <- 0L
+    for (b in blocks) {
+      # leverage h = diag(B (B'B)^{-1} B') = diag(B (H_inv/n) B'); in-sample (score nonzero) units only.
+      h  <- rowSums((b$B %*% (b$H_inv / n)) * b$B)
+      nz <- rowSums(b$score_mat^2) > 0
+      h  <- ifelse(nz, pmin(pmax(h, 0), 0.5), 0)             # cap at 0.5 (HC blow-up guard)
+      jj <- cstart[k] + o2 + seq_len(b$p)
+      S_all[, jj]    <- b$score_mat / sqrt(1 - h)            # HC2 correction
+      Hinv_blk[jj, jj] <- b$H_inv
+      o2 <- o2 + b$p
+    }
+  }
+
+  # Cluster-robust joint coefficient covariance V (G/(G-1) finite-cluster correction).
+  if (is.null(cluster_indices)) {
+    Ssum  <- S_all
+    cfac  <- 1
+  } else {
+    Ssum  <- rowsum(S_all, cluster_indices)
+    G     <- length(unique(cluster_indices))
+    cfac  <- if (G > 1L) G / (G - 1) else 1
+  }
+  V <- cfac * Hinv_blk %*% crossprod(Ssum) %*% Hinv_blk / (n^2)
+
+  # Embed each cell's Hessian block-sparse in the joint space, precompute H_k V, then 0.5 tr(H_k V H_j V).
+  HV <- vector("list", K)
+  for (k in seq_len(K)) {
+    if (Pk[k] == 0L) next
+    Hbig <- matrix(0, P_tot, P_tot)
+    idx  <- cstart[k] + seq_len(Pk[k])
+    Hbig[idx, idx] <- cells[[k]]$ho$H
+    HV[[k]] <- Hbig %*% V
+  }
+  for (k in seq_len(K)) {
+    if (is.null(HV[[k]])) next
+    for (j in k:K) {
+      if (is.null(HV[[j]])) next
+      val <- 0.5 * sum(HV[[k]] * t(HV[[j]]))                 # 0.5 tr(H_k V H_j V)
+      Sigma_quad[k, j] <- val
+      Sigma_quad[j, k] <- val
+    }
+  }
+  Sigma_quad
+}
+
+#' Analytic simultaneous bands for a vector of estimates from its covariance
+#'
+#' Helper that turns a covariance matrix into (se, crit, lower, upper). When \code{cband = FALSE} the crit
+#' is the pointwise \code{qnorm(1 - alp/2)} (no simulation).
+#'
+#' @param att numeric vector of estimates.
+#' @param Sigma covariance matrix of \code{att} (same order); \code{sqrt(diag)} gives the SEs.
+#' @param alp significance level. @param cband logical: simultaneous (TRUE) vs pointwise (FALSE).
+#' @param seed optional integer for the sup-t simulation.
+#' @return list(se, crit, ci_lower, ci_upper).
+#' @keywords internal
+analytic_bands_edid <- function(att, Sigma, alp = 0.05, cband = TRUE, seed = NULL) {
+  se   <- sqrt(diag(as.matrix(Sigma)))
+  crit <- if (isTRUE(cband)) supt_crit_edid(Sigma, alp = alp, seed = seed) else stats::qnorm(1 - alp / 2)
+  list(se = se, crit = crit, ci_lower = att - crit * se, ci_upper = att + crit * se)
+}

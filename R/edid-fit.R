@@ -27,9 +27,10 @@
 fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
   need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform"),
-  estimation_effect = FALSE
+  estimation_effect = FALSE, higher_order = FALSE
 ) {
   weight_method <- match.arg(weight_method)
+  higher_order  <- isTRUE(higher_order)
   # Determine if covariate path is active
   is_trivial_xformla <- is.null(xformla) ||
     identical(deparse(xformla, width.cutoff = 500L), "~1")
@@ -92,6 +93,24 @@ fit_edid_cells <- function(
     }
   }
 
+  # The higher-order ("Wick") variance refinement reuses the SAME plug-in first-step M-estimator pieces
+  # (the per-nuisance B / score / H_inv that feed the joint coefficient covariance V and the per-cell
+  # Hessian). It is meaningful only on the covariate path -- with no covariates the nuisances are
+  # unconditional means with no sieve coefficients, so the higher-order term is exactly zero -- and, like
+  # the ACH correction, is derived for K = 1. edid() enforces the covariate-path requirement (stops on
+  # xformla = NULL); guard defensively here too.
+  if (higher_order) {
+    if (!use_cov_path) {
+      warning("higher_order has no effect without covariates (no first-step sieve nuisances).", call. = FALSE)
+      higher_order <- FALSE
+    } else if (K_use > 1L) {
+      stop("higher_order = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
+    }
+  }
+  # The first-step aux pieces (B / score / H_inv) are needed whenever EITHER the ACH correction OR the
+  # higher-order refinement is requested.
+  want_aux <- isTRUE(estimation_effect) || higher_order
+
   tgroups   <- panel_obj$treatment_groups
   tperiods  <- panel_obj$time_periods
   period_1  <- panel_obj$period_1
@@ -147,7 +166,8 @@ fit_edid_cells <- function(
           condition_num   = NA_real_,
           is_pre          = is_pre,
           inference_valid = FALSE,
-          eif             = NULL
+          eif             = NULL,
+          ho              = NULL
         )
         ci_group[cell_id]   <- g
         ci_time[cell_id]    <- t
@@ -161,6 +181,7 @@ fit_edid_cells <- function(
       prop_ratios  <- NULL
       cond_means   <- NULL
       inv_propensities <- NULL
+      ho_cell      <- NULL   # higher-order per-cell pieces (nuisance blocks + Hessian), set on cov path
 
       if (use_cov_path) {
         # Build nuisance estimation pairs.
@@ -194,7 +215,7 @@ fit_edid_cells <- function(
             bs_df    = 4L,
             K_folds  = K_use,
             fold_id  = fold_id,
-            return_aux = estimation_effect
+            return_aux = want_aux
           ),
           warning = function(w) {
             if (grepl("Extreme propensity ratios", conditionMessage(w), fixed = TRUE)) {
@@ -210,11 +231,12 @@ fit_edid_cells <- function(
           bs_df    = 4L,
           K_folds  = K_use,
           fold_id  = fold_id,
-          return_aux = estimation_effect
+          return_aux = want_aux
         )
-        # Split predictions from the ACH aux pieces (the *_aux return path wraps both).
+        # Split predictions from the first-step aux pieces (the *_aux return path wraps both). Requested by
+        # the ACH correction (estimation_effect) and/or the higher-order refinement (higher_order).
         r_aux <- NULL; m_aux <- NULL
-        if (isTRUE(estimation_effect)) {
+        if (want_aux) {
           r_aux <- prop_ratios$aux; prop_ratios <- prop_ratios$predictions
           m_aux <- cond_means$aux;  cond_means  <- cond_means$predictions
         }
@@ -267,6 +289,9 @@ fit_edid_cells <- function(
           if (isTRUE(estimation_effect))                                    # ACH first-step correction (W frozen)
             eif_gt <- eif_gt - compute_ach_correction_cov_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption)
+          if (higher_order)                                                  # per-cell Hessian (W = W_pw frozen)
+            ho_cell <- compute_cell_hessian_edid(
+              panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
           # Diagnostic only (default off): per-component cross-unit SD of the pointwise weights
           # quantifies how much Omega*(X) shape-varies; ~0 => weights ~constant => efficient ~ averaged.
@@ -292,6 +317,9 @@ fit_edid_cells <- function(
           eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
           if (isTRUE(estimation_effect))                                    # ACH first-step correction (w frozen)
             eif_gt <- eif_gt - compute_ach_correction_cov_edid(
+              panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption)
+          if (higher_order)                                                  # per-cell Hessian (w frozen)
+            ho_cell <- compute_cell_hessian_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption)
         }
       } else {
@@ -327,7 +355,8 @@ fit_edid_cells <- function(
         condition_num   = cond_num,
         is_pre          = is_pre,
         inference_valid = inf_res$inference_valid,
-        eif             = eif_store
+        eif             = eif_store,
+        ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )
 
       ci_group[cell_id]   <- g

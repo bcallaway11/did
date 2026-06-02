@@ -24,7 +24,10 @@ edid(
   balance_e = NULL,
   survey_design = NULL,
   weights = c("efficient", "averaged", "gmm", "uniform"),
-  estimation_effect = FALSE
+  estimation_effect = FALSE,
+  cband = TRUE,
+  cband_method = c("analytic", "multiplier"),
+  higher_order = FALSE
 )
 }
 \arguments{
@@ -82,7 +85,7 @@ Default \code{FALSE} (analytical standard errors). When \code{TRUE},
 \item{biters}{Positive integer: number of multiplier bootstrap iterations.
 Default \code{1000L}. Only used when \code{bstrap = TRUE}.}
 
-\item{seed}{Integer seed for reproducibility of bootstrap draws, or
+\item{seed}{Integer seed for reproducibility of the bootstrap draws / the analytic sup-t simulation, or
 \code{NULL} (default, no seed set).}
 
 \item{anticipation}{Non-negative integer: number of anticipation periods.
@@ -133,6 +136,28 @@ weight-estimation channel (the kernel \eqn{\Omega^*}, its Ledoit-Wolf shrinkage,
 floor that map to \eqn{w(X)}); that channel is asymptotically negligible separately but is not part of
 this correction. With the rich default sieve the correction is empirically small; its value is
 robustness when a nuisance is genuinely misspecified.}
+
+\item{cband}{Logical: whether to report simultaneous (uniform) confidence bands across the cells and the
+event-study / group coefficients. Default \code{TRUE}; \code{FALSE} gives pointwise bands.}
+
+\item{cband_method}{Character: how the simultaneous critical value is computed. \code{"analytic"}
+(default) is the Montiel Olea & Plagborg-Moller sup-t critical value from the analytic, cluster-robust
+coefficient covariance -- no bootstrap needed, and the only method compatible with \code{higher_order}.
+\code{"multiplier"} uses the did multiplier bootstrap (\code{\link[did]{mboot}}) when
+\code{bstrap = TRUE} and reproduces the prior behavior exactly. With very few clusters or very small
+samples the multiplier bootstrap can be the safer choice.}
+
+\item{higher_order}{Logical (default \code{FALSE}). If \code{TRUE}, adds the higher-order ("Wick")
+nuisance-estimation variance refinement: the degenerate second-order U-statistic contribution from
+estimating the first-step sieve nuisances (\eqn{m}, \eqn{r}) is added to the analytic coefficient
+covariance, so BOTH the reported cell standard errors (\eqn{\sqrt{\mathrm{diag}(\Sigma_1 +
+\Sigma_{quad})}}) and the sup-t critical value come from the same higher-order-aware covariance.
+Because \eqn{\Sigma_{quad}} is positive semi-definite, the cell SEs are never below the plug-in SEs.
+The refinement requires the analytic sup-t path (a degenerate-U term cannot be carried by the
+multiplier bootstrap, so \code{cband_method = "multiplier"} is coerced to \code{"analytic"} with a
+warning) and a covariate formula (with no covariates the nuisances have no first-step coefficients and
+the term is exactly zero, so \code{xformla = NULL} errors). It is asymptotically negligible under
+correct specification; its value is finite-sample honesty in covariate-rich designs.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:

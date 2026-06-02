@@ -38,10 +38,72 @@ aggte_edid <- function(
   if (!inherits(edid_fit_obj, "edid_fit")) {
     stop("`edid_fit_obj` must be an object of class `edid_fit` returned by edid().")
   }
-  # bstrap follows how the fit was produced: edid(bstrap = TRUE) -> the aggregations use the did
-  # multiplier bootstrap (simultaneous bands); otherwise analytical.
+  # Inference path follows how the fit was produced:
+  #  - cband_method = "analytic" (default): aggregate analytically (bstrap = FALSE), then replace the
+  #    simultaneous critical value with the MOPM sup-t crit from the cluster-robust covariance of the
+  #    aggregate influence functions (no bootstrap; the only path that can carry the higher-order term).
+  #  - cband_method = "multiplier": the did multiplier bootstrap (legacy) when edid(bstrap = TRUE).
+  use_analytic <- identical(edid_fit_obj$cband_method, "analytic")
   a <- aggte(as_MP_edid(edid_fit_obj), type = type, balance_e = balance_e,
-             min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = isTRUE(edid_fit_obj$bstrap))
+             min_e = min_e, max_e = max_e, na.rm = na.rm,
+             bstrap = (!use_analytic && isTRUE(edid_fit_obj$bstrap)))
+  if (use_analytic) {
+    # Closure that replays THIS aggregation on an att(g,t) vector perturbed at one cell, returning the
+    # aggregate per-element att.egt. The aggregation weights do not depend on the att VALUES, so finite-
+    # differencing this map recovers the constant cell -> aggregate linear map A (used by the higher-order
+    # Wick refinement to map Sigma_quad to aggregate scale). Same aggregation arguments as the call above.
+    reaggregate <- function(att_vec) {
+      f2 <- edid_fit_obj
+      f2$att_gt$att <- att_vec
+      aa <- aggte(as_MP_edid(f2), type = type, balance_e = balance_e,
+                  min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = FALSE)
+      aa$att.egt
+    }
+    a <- .edid_analytic_cband_agg(a, edid_fit_obj, reaggregate)
+  }
   a$call <- mc
   a
+}
+
+# Replace a did::AGGTEobj's simultaneous critical value (crit.val.egt) with the analytic MOPM sup-t crit
+# computed from the cluster-robust covariance of the aggregate per-element influence functions. SEs are
+# left untouched (already analytic from aggte(bstrap = FALSE)); only the uniform-band crit changes. Simple
+# (single overall) aggregations have no per-element vector, so nothing changes there. When the fit carries
+# the higher-order ("Wick") refinement, the aggregate covariance becomes Sigma1_agg + A Sigma_quad A',
+# with A the (finite-difference-recovered) cell -> aggregate linear map; the crit then matches the SEs that
+# the cell-level path inflated, keeping the aggregate band higher-order-aware too.
+.edid_analytic_cband_agg <- function(a, fit, reaggregate = NULL) {
+  g <- .edid_agg_if(a)
+  if (!is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) >= 1L) {
+    Sig <- cluster_cov_edid(g$egt, fit$cluster_indices, fit$n)
+    if (isTRUE(fit$higher_order) && !is.null(reaggregate) && !is.null(fit$cells)) {
+      Sigma_quad <- sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
+      A <- .edid_recover_agg_map(a, fit, reaggregate)      # n_agg x K, constant cell -> aggregate weights
+      if (!is.null(A)) Sig <- Sig + A %*% Sigma_quad %*% t(A)
+    }
+    if (isTRUE(fit$cband)) {
+      a$crit.val.egt <- supt_crit_edid(Sig, alp = fit$alpha %||% 0.05, seed = fit$seed)
+    }
+  }
+  a
+}
+
+# Recover the constant cell -> aggregate linear map A (n_agg x K) by finite-differencing the aggregation:
+# perturb each cell's att(g,t) by eps, re-aggregate, and read (att.egt(perturbed) - att.egt) / eps as that
+# cell's column. The aggregation weights do not depend on the att values, so A is exact (the map is linear);
+# NA / non-finite columns (NA cells, or cells the aggregation drops) are set to 0. Returns NULL if the
+# baseline aggregate egt is unavailable.
+.edid_recover_agg_map <- function(a, fit, reaggregate, eps = 1e-4) {
+  base <- a$att.egt
+  if (is.null(base) || !length(base)) return(NULL)
+  att0 <- fit$att_gt$att
+  K    <- length(att0)
+  A    <- matrix(0, length(base), K)
+  for (k in seq_len(K)) {
+    if (!is.finite(att0[k])) next                          # NA cell: contributes nothing to any aggregate
+    att_p <- att0; att_p[k] <- att0[k] + eps
+    col <- tryCatch((reaggregate(att_p) - base) / eps, error = function(e) NULL)
+    if (!is.null(col) && length(col) == length(base) && all(is.finite(col))) A[, k] <- col
+  }
+  A
 }
