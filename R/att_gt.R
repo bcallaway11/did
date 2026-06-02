@@ -446,6 +446,12 @@ att_gt <- function(yname,
     }
   }
   cluster_vec <- dp$cluster_vector
+  # Record which variable cluster_vec represents (when it is valid), so aggte() can tell whether an
+  # inherited or overridden clustervars can be honored from this object -- and refuse to silently cluster
+  # on the wrong variable.
+  if (length(extra_clustervars) > 0 && !is.null(cluster_vec) && length(cluster_vec) == nrow(inffunc)) {
+    dp$cluster_vector_var <- extra_clustervars[1L]
+  }
   cluster_analytic <- (length(extra_clustervars) > 0) && !bstrap &&
     !is.null(cluster_vec) && length(cluster_vec) == nrow(inffunc)
   if (cluster_analytic) {
