@@ -173,34 +173,64 @@ compute_generated_outcomes_cov_edid <- function(
 # Conditional Omega* (H x H) via Nadaraya-Watson kernel
 # ---------------------------------------------------------------------------
 
+#' Cell-invariant Nadaraya-Watson kernel weights (bandwidths + n x n weight matrix)
+#'
+#' The NW bandwidths and the n x n kernel weight matrix K depend ONLY on the full covariate matrix, so they are
+#' identical across every (g,t) cell. Built once and reused (see \code{fit_edid_cells}) instead of rebuilt per cell.
+#' @param X_mat n x d numeric covariate matrix.
+#' @param bw optional length-d bandwidth vector; computed via \code{stats::bw.nrd0} per column when NULL.
+#' @return list with \code{bw} (length-d bandwidths) and \code{K} (n x n product-Gaussian kernel weight matrix).
+#' @keywords internal
+build_kernel_weights_edid <- function(X_mat, bw = NULL) {
+  X_mat <- as.matrix(X_mat); n <- nrow(X_mat); d <- ncol(X_mat)
+  if (is.null(bw)) {
+    bw <- numeric(d)
+    for (k in seq_len(d)) {
+      h_k <- tryCatch(stats::bw.nrd0(X_mat[, k]), error = function(e) 0)
+      if (!is.finite(h_k) || h_k < .Machine$double.eps) {
+        warning(sprintf("compute_omega_star_cov_edid: bandwidth for covariate %d is 0 or NA; using h=1.", k))
+        h_k <- 1
+      }
+      bw[k] <- h_k
+    }
+  }
+  K_mat <- matrix(1, nrow = n, ncol = n)
+  for (k in seq_len(d)) {
+    diff_k <- outer(X_mat[, k], X_mat[, k], "-")
+    K_mat  <- K_mat * stats::dnorm(diff_k / bw[k]) / bw[k]
+  }
+  list(bw = bw, K = K_mat)
+}
+
 #' Compute the averaged conditional covariance matrix Omega*(X)
 #'
-#' Estimates \eqn{\Omega^* = n^{-1} \sum_i \hat\Omega^*(X_i)} using a faithful
-#' plug-in of Eq. (3.12) from Chen, Sant'Anna & Xie (2025).
+#' Estimates \eqn{\Omega^* = n^{-1} \sum_i \hat\Omega^*(X_i)} using a faithful plug-in of Eq. (3.12) from
+#' Chen, Sant'Anna & Xie (2025). Each (j,k)-th element of Omega*(X) is estimated using Nadaraya-Watson kernel
+#' smoothing of outcome-change covariances within specific cohorts, scaled by propensity scores.
 #'
-#' Each (j,k)-th element of Omega*(X) is estimated using Nadaraya-Watson
-#' kernel smoothing of outcome change covariances within specific cohorts,
-#' scaled by propensity scores.
+#' \strong{Computational complexity}: O(n^2 * H^2). The cell-invariant kernel weight matrix is built once by
+#' \code{fit_edid_cells} and passed via \code{K_mat}; a standalone call builds it internally.
 #'
-#' \strong{Computational complexity}: O(n^2 * H^2). For large n (> 5000) an
-#' informational message is emitted in interactive sessions; silence it with
-#' \code{options(edid.quiet = TRUE)}.
-#'
-#' @param panel_obj panel object (needs \code{covariate_matrix}, \code{outcome_wide},
-#'   \code{cohort_masks}, \code{never_treated_mask})
+#' @param panel_obj panel object (needs \code{covariate_matrix}, \code{outcome_wide}, \code{cohort_masks},
+#'   \code{never_treated_mask})
 #' @param g scalar: target treatment cohort
 #' @param t scalar: target time period
 #' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
 #' @param prop_ratios named list of n-vectors: cross-fitted propensity ratios
 #' @param cond_means named list of n-vectors: cross-fitted conditional means
+#' @param inv_propensities named list of n-vectors of conditional inverse propensities, or NULL
 #' @param bw numeric vector length d or NULL (auto from \code{bw.nrd0})
+#' @param K_mat optional precomputed n x n kernel weight matrix (cell-invariant); built internally when NULL
+#' @param return_pointwise logical: also return the per-unit Omega*(X_i) array (for pointwise efficient weights)
 #'
-#' @return numeric matrix H x H (positive semi-definite)
+#' @return numeric matrix H x H (positive semi-definite), or a list with the per-unit array when
+#'   \code{return_pointwise = TRUE}
 #' @keywords internal
 compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
                                         prop_ratios, cond_means,
                                         inv_propensities = NULL,
                                         bw = NULL,
+                                        K_mat = NULL,
                                         return_pointwise = FALSE) {
   X_mat <- panel_obj$covariate_matrix
   n     <- nrow(X_mat)
@@ -220,29 +250,14 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   }
 
   # -----------------------------------------------------------------------
-  # Step 1: Bandwidths
+  # Steps 1-2: bandwidths + the n x n kernel weight matrix K_mat[i, ell]. Both are CELL-INVARIANT (they depend
+  # only on the full covariate matrix), so fit_edid_cells builds them ONCE and passes K_mat in; only a standalone
+  # call (K_mat = NULL) builds them here. Byte-identical values either way -- this just hoists the O(d*n^2) build.
   # -----------------------------------------------------------------------
-  if (is.null(bw)) {
-    bw <- numeric(d)
-    for (k in seq_len(d)) {
-      h_k <- tryCatch(stats::bw.nrd0(X_mat[, k]), error = function(e) 0)
-      if (!is.finite(h_k) || h_k < .Machine$double.eps) {
-        warning(sprintf(
-          "compute_omega_star_cov_edid: bandwidth for covariate %d is 0 or NA; using h=1.", k
-        ))
-        h_k <- 1
-      }
-      bw[k] <- h_k
-    }
-  }
-
-  # -----------------------------------------------------------------------
-  # Step 2: Build kernel weight matrix K_mat[i, ell] (n x n)
-  # -----------------------------------------------------------------------
-  K_mat <- matrix(1, nrow = n, ncol = n)
-  for (k in seq_len(d)) {
-    diff_k <- outer(X_mat[, k], X_mat[, k], "-")
-    K_mat  <- K_mat * stats::dnorm(diff_k / bw[k]) / bw[k]
+  if (is.null(K_mat)) {
+    kk    <- build_kernel_weights_edid(X_mat, bw)
+    bw    <- kk$bw
+    K_mat <- kk$K
   }
 
   # -----------------------------------------------------------------------
@@ -279,30 +294,37 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     inv_pinf_vec <- rep(1 / pi_inf, n)
   }
 
-  # Helper: kernel-smoothed conditional covariance of (A, B) given G=group at point x_i
-  # Returns an n-vector (one value per evaluation point)
-  kernel_cond_cov <- function(A, B, group_mask) {
-    # Kernel-weighted conditional covariance over the group, for every evaluation point i:
-    #   Cov_K(A,B | X_i) = E_K[AB | X_i] - E_K[A | X_i] E_K[B | X_i],   E_K[. | X_i] = (K_i .)/(K_i 1).
-    # This weighted-sums form uses only matrix-VECTOR products, so it is algebraically identical to the
-    # two-pass residual form  sum_ell K (A_ell-mu_A_i)(B_ell-mu_B_i)/sum_ell K  but never materializes the
-    # n x n_group residual matrices (the memory/time bottleneck at large n). A and B are centered by their
-    # group means first -- covariance is shift-invariant, so this is exact, and keeping the products small
-    # avoids the catastrophic cancellation that the naive E_K[AB]-E_K[A]E_K[B] would suffer near zero cov.
+  # Kernel conditional covariance Cov_K(A,B | X_i) = E_K[AB|X_i] - E_K[A|X_i] E_K[B|X_i], with E_K[.|X_i]=(K_i .)/(K_i 1).
+  # The cell-INVARIANT kernel pieces (K_group = K_mat[,idx], K_sums = rowSums) depend ONLY on the group mask, so
+  # precompute them ONCE per distinct mask (get_kp, memoized in kpiece) instead of re-slicing + re-summing inside
+  # the O(H^2) (j,k) loop. kernel_cond_cov_kp() centers (A,B) by their group means (shift-invariant -> exact, avoids
+  # catastrophic cancellation) and BATCHES the three weighted sums into ONE matrix product (one dgemm). Algebraically
+  # identical to the per-call weighted-sums form; never materializes the n x n_group residual matrices.
+  kpiece <- new.env(parent = emptyenv())
+  get_kp <- function(group_mask, key) {
+    if (exists(key, envir = kpiece, inherits = FALSE)) return(get(key, envir = kpiece))
     idx <- which(group_mask)
-    if (length(idx) < 2L) return(rep(0, n))
-
-    K_group <- K_mat[, idx, drop = FALSE]  # n x n_group
-    K_sums  <- rowSums(K_group)
-    K_sums[K_sums < 1e-15] <- NA_real_
-
+    if (length(idx) < 2L) {
+      kp <- list(ok = FALSE)
+    } else {
+      Kg <- K_mat[, idx, drop = FALSE]; Ks <- rowSums(Kg); Ks[Ks < 1e-15] <- NA_real_
+      kp <- list(ok = TRUE, idx = idx, Kg = Kg, Ks = Ks)
+    }
+    assign(key, kp, envir = kpiece)
+    kp
+  }
+  kernel_cond_cov_kp <- function(A, B, kp) {
+    if (!isTRUE(kp$ok)) return(rep(0, n))
+    idx <- kp$idx
     A_c <- A[idx] - mean(A[idx])           # center (shift-invariant) for numerical stability
     B_c <- B[idx] - mean(B[idx])
-
-    mu_A  <- drop(K_group %*% A_c) / K_sums          # E_K[A - Abar | X_i]
-    mu_B  <- drop(K_group %*% B_c) / K_sums          # E_K[B - Bbar | X_i]
-    mu_AB <- drop(K_group %*% (A_c * B_c)) / K_sums  # E_K[(A-Abar)(B-Bbar) | X_i]
-    cov_vals <- mu_AB - mu_A * mu_B                  # = Cov_K(A,B | X_i)
+    # EXACT original arithmetic (three separate matrix-vector products, same accumulation order): a single dgemm
+    # over cbind(A_c,B_c,A_c*B_c) reorders the BLAS summation and the kernel-Omega inversion amplifies that into a
+    # ~1e-3 shift in the validated output, so we keep the three dgemv. The win is the cached Kg/Ks (not rebuilt per (j,k)).
+    mu_A  <- drop(kp$Kg %*% A_c) / kp$Ks              # E_K[A - Abar | X_i]
+    mu_B  <- drop(kp$Kg %*% B_c) / kp$Ks              # E_K[B - Bbar | X_i]
+    mu_AB <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks      # E_K[(A-Abar)(B-Bbar) | X_i]
+    cov_vals <- mu_AB - mu_A * mu_B
     cov_vals[is.na(cov_vals)] <- 0
     cov_vals
   }
@@ -318,6 +340,13 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
 
   # Precompute outcome changes we'll need repeatedly
   Y_t_minus_Y1 <- ow[, col_t] - ow[, col_1]
+
+  # Cell-fixed kernel pieces (the target cohort g and never-treated masks recur in every (j,k) term), and the
+  # CELL-CONSTANT Term 1 of Eq. (3.12): Cov_K(Y_t-Y_1, Y_t-Y_1 | G=g) depends on neither j nor k, so compute it
+  # ONCE here instead of H^2 times in the double loop below. Identical value.
+  kp_g   <- get_kp(mask_g,   as.character(g))
+  kp_inf <- get_kp(mask_inf, "Inf")
+  term1_const <- inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_t_minus_Y1, kp_g)
 
   for (j in seq_len(H)) {
     gp_j   <- pairs$gp[j]
@@ -340,26 +369,25 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       Y_tk_minus_Y1 <- ow[, col_tk] - ow[, col_1]
 
       # Eq. (3.12) term by term, using conditional 1/p_g(X):
-      # Term 1: (1/p_g(X)) * Cov(Y_t - Y_1, Y_t - Y_1 | G=g, X)
-      term1 <- inv_pg_vec *
-        kernel_cond_cov(Y_t_minus_Y1, Y_t_minus_Y1, mask_g)
+      # Term 1: cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), hoisted above the loops.
+      term1 <- term1_const
 
       # Term 2: (1/p_inf(X)) * Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X)
       term2 <- inv_pinf_vec *
-        kernel_cond_cov(Y_t_minus_Ytj, Y_t_minus_Ytk, mask_inf)
+        kernel_cond_cov_kp(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf)
 
       # Term 3: -1{g == g'_j}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
       term3 <- 0
       if (is_self_j) {
         term3 <- -inv_pg_vec *
-          kernel_cond_cov(Y_t_minus_Y1, Y_tj_minus_Y1, mask_g)
+          kernel_cond_cov_kp(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g)
       }
 
       # Term 4: -1{g == g'_k}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
       term4 <- 0
       if (is_self_k) {
         term4 <- -inv_pg_vec *
-          kernel_cond_cov(Y_t_minus_Y1, Y_tk_minus_Y1, mask_g)
+          kernel_cond_cov_kp(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g)
       }
 
       # Term 5: 1{g'_j == g'_k}/p_{g'_j}(X) * Cov(Y_{t'_j}-Y_1, Y_{t'_k}-Y_1 | G=g'_j, X)
@@ -388,7 +416,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
           if (is.null(mask_gp_jk)) mask_gp_jk <- rep(FALSE, n)
         }
         term5 <- inv_pgp_vec *
-          kernel_cond_cov(Y_tj_minus_Y1, Y_tk_minus_Y1, mask_gp_jk)
+          kernel_cond_cov_kp(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk))
       }
 
       # Per-unit Omega*[j,k](X_i), then its average over units.

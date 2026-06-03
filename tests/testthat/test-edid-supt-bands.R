@@ -66,6 +66,34 @@ test_that("cband_method = 'multiplier' preserves the legacy bootstrap path; bstr
   expect_true(all(fm1$att_gt$ci_lower[ok1] < fm1$att_gt$ci_upper[ok1]))
 })
 
+test_that("bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest", {
+  data(mpdta, package = "did")
+  base <- list(data = mpdta, yname = "lemp", idname = "countyreal", tname = "year",
+               gname = "first.treat", xformla = ~lpop)
+  f_def <- do.call(edid, base)                                          # default: analytic, no bootstrap
+  expect_identical(f_def$cband_method, "analytic")
+  expect_identical(f_def$inference_type, "analytical")
+  f_bs <- do.call(edid, c(base, list(bstrap = TRUE, biters = 199L, seed = 1L)))   # legacy contract restored
+  expect_identical(f_bs$cband_method, "multiplier")
+  expect_identical(f_bs$inference_type, "bootstrap")
+  expect_false(isTRUE(all.equal(f_bs$att_gt$se, f_def$att_gt$se)))      # the bootstrap actually ran
+  f_an <- do.call(edid, c(base, list(bstrap = TRUE, cband_method = "analytic")))  # explicit analytic wins
+  expect_identical(f_an$cband_method, "analytic")
+  expect_identical(f_an$inference_type, "analytical")                  # not misreported as bootstrap
+  f_ho <- do.call(edid, c(base, list(bstrap = TRUE, higher_order = TRUE)))        # higher_order forces analytic
+  expect_identical(f_ho$cband_method, "analytic")
+  expect_identical(f_ho$inference_type, "analytical")
+})
+
+test_that("default analytic cband (seed = NULL) does not perturb the caller's RNG stream", {
+  data(mpdta, package = "did")
+  set.seed(123); a <- runif(1L)
+  set.seed(123); invisible(edid(mpdta, yname = "lemp", idname = "countyreal", tname = "year",
+                                gname = "first.treat", xformla = ~lpop))
+  b <- runif(1L)
+  expect_equal(a, b)
+})
+
 test_that("analytic bands are cluster-robust and the aggregations carry the analytic sup-t crit", {
   data(mpdta, package = "did")
   set.seed(2); mpdta$clu <- as.integer(factor(mpdta$countyreal)) %% 30L

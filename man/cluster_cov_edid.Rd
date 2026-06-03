@@ -17,7 +17,7 @@ cluster_cov_edid(M, cluster_indices, n)
 K x K covariance matrix.
 }
 \description{
-Sigma1_{jk} = (1/n^2) sum_i IF_{ij} IF_{ik} (i.i.d.), or the cluster-summed sandwich with the
+\eqn{\Sigma_{1,jk} = n^{-2}\sum_i \mathrm{IF}_{ij}\,\mathrm{IF}_{ik}} (i.i.d.), or the cluster-summed sandwich with the
 G/(G-1) finite-cluster correction when \code{cluster_indices} is supplied. This is the analytic
 first-order coefficient covariance; \code{sqrt(diag(.))} reproduces \code{safe_inference_edid()}'s SE.
 }

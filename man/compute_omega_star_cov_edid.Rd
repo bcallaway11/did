@@ -13,12 +13,13 @@ compute_omega_star_cov_edid(
   cond_means,
   inv_propensities = NULL,
   bw = NULL,
+  K_mat = NULL,
   return_pointwise = FALSE
 )
 }
 \arguments{
-\item{panel_obj}{panel object (needs \code{covariate_matrix}, \code{outcome_wide},
-\code{cohort_masks}, \code{never_treated_mask})}
+\item{panel_obj}{panel object (needs \code{covariate_matrix}, \code{outcome_wide}, \code{cohort_masks},
+\code{never_treated_mask})}
 
 \item{g}{scalar: target treatment cohort}
 
@@ -30,22 +31,25 @@ compute_omega_star_cov_edid(
 
 \item{cond_means}{named list of n-vectors: cross-fitted conditional means}
 
+\item{inv_propensities}{named list of n-vectors of conditional inverse propensities, or NULL}
+
 \item{bw}{numeric vector length d or NULL (auto from \code{bw.nrd0})}
+
+\item{K_mat}{optional precomputed n x n kernel weight matrix (cell-invariant); built internally when NULL}
+
+\item{return_pointwise}{logical: also return the per-unit Omega*(X_i) array (for pointwise efficient weights)}
 }
 \value{
-numeric matrix H x H (positive semi-definite)
+numeric matrix H x H (positive semi-definite), or a list with the per-unit array when
+\code{return_pointwise = TRUE}
 }
 \description{
-Estimates \eqn{\Omega^* = n^{-1} \sum_i \hat\Omega^*(X_i)} using a faithful
-plug-in of Eq. (3.12) from Chen, Sant'Anna & Xie (2025).
+Estimates \eqn{\Omega^* = n^{-1} \sum_i \hat\Omega^*(X_i)} using a faithful plug-in of Eq. (3.12) from
+Chen, Sant'Anna & Xie (2025). Each (j,k)-th element of Omega*(X) is estimated using Nadaraya-Watson kernel
+smoothing of outcome-change covariances within specific cohorts, scaled by propensity scores.
 }
 \details{
-Each (j,k)-th element of Omega*(X) is estimated using Nadaraya-Watson
-kernel smoothing of outcome change covariances within specific cohorts,
-scaled by propensity scores.
-
-\strong{Computational complexity}: O(n^2 * H^2). For large n (> 5000) an
-informational message is emitted in interactive sessions; silence it with
-\code{options(edid.quiet = TRUE)}.
+\strong{Computational complexity}: O(n^2 * H^2). The cell-invariant kernel weight matrix is built once by
+\code{fit_edid_cells} and passed via \code{K_mat}; a standalone call builds it internally.
 }
 \keyword{internal}

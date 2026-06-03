@@ -177,9 +177,11 @@ is requested.}
 \item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
 \eqn{ATT(g,t)}, or \code{NULL} when not requested.}
 \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
-\item{\code{bstrap}}{Logical: whether bootstrap inference was used. Under \code{bstrap = TRUE} the
-cell SEs and the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} /
-\code{\link[did]{aggte}}).}
+\item{\code{bstrap}}{Logical: whether the multiplier bootstrap was requested. \code{bstrap = TRUE}
+with \code{cband_method} left at its default selects the multiplier bootstrap, so the cell SEs and
+the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} / \code{\link[did]{aggte}});
+under an explicit \code{cband_method = "analytic"} (or \code{higher_order = TRUE}) inference is
+analytic regardless of \code{bstrap}.}
 }
 The aggregation slots are standard \code{did::AGGTEobj} objects, so \code{summary}, \code{tidy}, and
 \code{ggdid} work on them directly.

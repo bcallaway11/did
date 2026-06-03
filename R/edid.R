@@ -132,9 +132,11 @@
 #'     \item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
 #'       \eqn{ATT(g,t)}, or \code{NULL} when not requested.}
 #'     \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
-#'     \item{\code{bstrap}}{Logical: whether bootstrap inference was used. Under \code{bstrap = TRUE} the
-#'       cell SEs and the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} /
-#'       \code{\link[did]{aggte}}).}
+#'     \item{\code{bstrap}}{Logical: whether the multiplier bootstrap was requested. \code{bstrap = TRUE}
+#'       with \code{cband_method} left at its default selects the multiplier bootstrap, so the cell SEs and
+#'       the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} / \code{\link[did]{aggte}});
+#'       under an explicit \code{cband_method = "analytic"} (or \code{higher_order = TRUE}) inference is
+#'       analytic regardless of \code{bstrap}.}
 #'   }
 #'   The aggregation slots are standard \code{did::AGGTEobj} objects, so \code{summary}, \code{tidy}, and
 #'   \code{ggdid} work on them directly.
@@ -210,6 +212,7 @@ edid <- function(
   higher_order      = FALSE
 ) {
   weight_method <- match.arg(weights)
+  cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
   cband_method  <- match.arg(cband_method)
   higher_order  <- isTRUE(higher_order)
   mc <- match.call()
@@ -236,6 +239,18 @@ edid <- function(
            "nuisances are unconditional means with no first-step coefficients, so the higher-order ",
            "variance is exactly zero. Supply xformla, or use higher_order = FALSE.", call. = FALSE)
     }
+  }
+
+  # ------------------------------------------------------------------
+  # Backward-compatible bootstrap entry point
+  # ------------------------------------------------------------------
+  # bstrap = TRUE is the legacy switch for the multiplier bootstrap. Under the new default
+  # cband_method = "analytic" a bare bstrap = TRUE would otherwise be silently ignored (no bootstrap runs
+  # at the cell OR aggregation level). So when the user requests bstrap = TRUE WITHOUT explicitly choosing a
+  # cband_method -- and is not in the higher_order path, which requires the analytic covariance -- select the
+  # multiplier bootstrap, as the bstrap documentation promises. An explicit cband_method always wins.
+  if (isTRUE(bstrap) && !cband_method_explicit && !higher_order) {
+    cband_method <- "multiplier"
   }
 
   # ------------------------------------------------------------------
@@ -437,7 +452,7 @@ edid <- function(
     time_periods     = panel_obj$time_periods,
     panel            = TRUE,
     anticipation     = panel_obj$anticipation,
-    inference_type   = if (n_bootstrap_internal > 0L) "bootstrap" else "analytical",
+    inference_type   = if (n_bootstrap_internal > 0L && cband_method == "multiplier") "bootstrap" else "analytical",
     estimation_effect = isTRUE(estimation_effect),
     clustervars      = clustervars,
     cluster_indices  = panel_obj$cluster_indices,  # for cluster-robust re-aggregation in aggte_edid

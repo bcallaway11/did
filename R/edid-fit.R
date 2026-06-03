@@ -135,6 +135,16 @@ fit_edid_cells <- function(
   cell_id <- 0L
   n_extreme_ratio_instances <- 0L  # accumulate extreme-ratio warnings; emit once at end
 
+  # Hoist the CELL-INVARIANT Nadaraya-Watson kernel: the n x n weight matrix K and the bandwidths depend only on
+  # the full covariate matrix, so they are identical for every (g,t) cell. Build ONCE and reuse, instead of
+  # rebuilding (an O(d*n^2) outer/dnorm + an n x n allocation) inside compute_omega_star_cov_edid on every cell --
+  # the dominant cost of the covariate path. Numerically identical; only the covariate path needs it.
+  kern_bw <- NULL; kern_K <- NULL
+  if (use_cov_path) {
+    kk_full <- build_kernel_weights_edid(panel_obj$covariate_matrix)
+    kern_bw <- kk_full$bw; kern_K <- kk_full$K
+  }
+
   for (g in tgroups) {
     for (t in iter_periods) {
       cell_id <- cell_id + 1L
@@ -272,7 +282,8 @@ fit_edid_cells <- function(
           # asymptotically negligible yet dominates the NW estimation noise for stability.
           omega_arr <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
                                                    prop_ratios, cond_means,
-                                                   inv_propensities, return_pointwise = TRUE)
+                                                   inv_propensities, bw = kern_bw, K_mat = kern_K,
+                                                   return_pointwise = TRUE)
           W_pw     <- compute_pointwise_weights_edid(omega_arr,
                                                      d = ncol(panel_obj$covariate_matrix))  # n x H
           cond_num <- tryCatch(check_condition_edid(apply(omega_arr, c(2, 3), mean)),
@@ -304,7 +315,7 @@ fit_edid_cells <- function(
           #   averaged = invert kernel Omega-bar; gmm = invert unconditional S_hat; uniform = 1/H.
           omega    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
                                                   prop_ratios, cond_means,
-                                                  inv_propensities)
+                                                  inv_propensities, bw = kern_bw, K_mat = kern_K)
           cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
           H_local  <- nrow(omega)
           weights  <- switch(weight_method,
@@ -339,8 +350,9 @@ fit_edid_cells <- function(
       # Step 7: SE and inference
       inf_res <- safe_inference_edid(eif_gt, panel_obj$cluster_indices, alpha, att_gt)
 
-      # Step 8: store
-      eif_store <- if (keep_eif) eif_gt else NULL
+      # Step 8: store. The per-cell EIF is intentionally NOT kept on the cell list: it is stored once in eif_list
+      # -> eif_matrix -> fit$eif (the only place ever read, by as_MP_edid/aggregation), so a per-cell copy would
+      # just hold the n x n_cells influence functions a second time. eif_gt still flows into eif_list below.
       cells[[cell_id]] <- list(
         group           = g,
         time            = t,
@@ -355,7 +367,6 @@ fit_edid_cells <- function(
         condition_num   = cond_num,
         is_pre          = is_pre,
         inference_valid = inf_res$inference_valid,
-        eif             = eif_store,
         ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )
 

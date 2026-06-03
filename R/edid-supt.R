@@ -11,7 +11,7 @@
 
 #' Cluster-robust covariance of the columns of an influence-function matrix
 #'
-#' Sigma1_{jk} = (1/n^2) sum_i IF_{ij} IF_{ik} (i.i.d.), or the cluster-summed sandwich with the
+#' \eqn{\Sigma_{1,jk} = n^{-2}\sum_i \mathrm{IF}_{ij}\,\mathrm{IF}_{ik}} (i.i.d.), or the cluster-summed sandwich with the
 #' G/(G-1) finite-cluster correction when \code{cluster_indices} is supplied. This is the analytic
 #' first-order coefficient covariance; \code{sqrt(diag(.))} reproduces \code{safe_inference_edid()}'s SE.
 #'
@@ -51,15 +51,15 @@ supt_crit_edid <- function(Sigma, alp = 0.05, B = 1e5L, seed = NULL) {
   R <- (R + t(R)) / 2                                        # symmetrize away roundoff
   e <- eigen(R, symmetric = TRUE)
   U <- sqrt(pmax(e$values, 0)) * t(e$vectors)                # R = U'U (PSD-safe square root)
-  if (!is.null(seed)) {                                      # reproducible; restore caller's RNG state
-    if (exists(".Random.seed", envir = .GlobalEnv)) {
-      old_seed <- get(".Random.seed", envir = .GlobalEnv)
-      on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
-    } else {
-      on.exit(if (exists(".Random.seed", envir = .GlobalEnv)) rm(".Random.seed", envir = .GlobalEnv), add = TRUE)
-    }
-    set.seed(as.integer(seed))
+  # ALWAYS restore the caller's RNG state: the B x p rnorm draws below must not perturb the user's stream.
+  # The analytic cband is the DEFAULT, so a bare edid() call would otherwise silently advance .Random.seed.
+  if (exists(".Random.seed", envir = .GlobalEnv)) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
+  } else {
+    on.exit(if (exists(".Random.seed", envir = .GlobalEnv)) rm(".Random.seed", envir = .GlobalEnv), add = TRUE)
   }
+  if (!is.null(seed)) set.seed(as.integer(seed))             # reproducible when a seed is supplied
   Z <- matrix(stats::rnorm(B * p), B, p) %*% U               # B x p ~ N(0, R)
   m <- abs(Z[, 1L]); for (j in seq_len(p)[-1]) m <- pmax(m, abs(Z[, j]))   # vectorized row-max |Z|
   crit <- as.numeric(stats::quantile(m, 1 - alp, names = FALSE))
