@@ -79,7 +79,23 @@ aggte_edid <- function(
     if (isTRUE(fit$higher_order) && !is.null(reaggregate) && !is.null(fit$cells)) {
       Sigma_quad <- sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
       A <- .edid_recover_agg_map(a, fit, reaggregate)      # n_agg x K, constant cell -> aggregate weights
-      if (!is.null(A)) Sig <- Sig + A %*% Sigma_quad %*% t(A)
+      if (!is.null(A)) {
+        Sig <- Sig + A %*% Sigma_quad %*% t(A)
+        # Make the aggregate SEs higher-order-aware too (not just the sup-t crit): the cell SEs already include
+        # diag(Sigma_quad), so the event-study SEs must include diag(A Sigma_quad A') for cell/aggregate consistency
+        # and honest pointwise coverage. sqrt(diag(cluster_cov_edid(g$egt))) == the analytic se.egt exactly, so this
+        # only ADDS the higher-order term (non-higher_order path byte-identical).
+        sd_ho <- sqrt(pmax(diag(Sig), 0))
+        if (length(sd_ho) == length(a$se.egt)) a$se.egt <- sd_ho
+        # The overall summary SE too: the overall IF is an EXACT linear combo of the per-element IFs (overall = mean
+        # of the dynamic effects), so recover the weights w (overall = egt %*% w) and report sqrt(w' Sig w), which
+        # adds the higher-order term while reproducing the Sigma1 overall.se exactly when Sigma_quad = 0.
+        if (!is.null(g$overall) && !is.null(a$overall.se) && is.matrix(g$egt) && ncol(g$egt) == nrow(Sig)) {
+          w <- tryCatch(drop(solve(crossprod(g$egt), crossprod(g$egt, g$overall))), error = function(e) NULL)
+          if (!is.null(w) && length(w) == nrow(Sig))
+            a$overall.se <- sqrt(max(drop(crossprod(w, Sig %*% w)), 0))
+        }
+      }
     }
     if (isTRUE(fit$cband)) {
       a$crit.val.egt <- supt_crit_edid(Sig, alp = fit$alpha %||% 0.05, seed = fit$seed)
