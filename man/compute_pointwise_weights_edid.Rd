@@ -4,7 +4,7 @@
 \alias{compute_pointwise_weights_edid}
 \title{Pointwise efficient weights w(X_i) = Omega*(X_i)^(-1) 1 / (1' Omega*(X_i)^(-1) 1)}
 \usage{
-compute_pointwise_weights_edid(omega_array, d = 1L)
+compute_pointwise_weights_edid(omega_array, d = 1L, gen_out_mat = NULL)
 }
 \arguments{
 \item{omega_array}{numeric array n x H x H of per-unit Omega*(X_i), from

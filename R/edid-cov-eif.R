@@ -428,23 +428,23 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       term1 <- term1_const
 
       # Term 2: (1/p_inf(X)) * Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X)
-      term2 <- inv_pinf_vec *
-        kernel_cond_cov_kp(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf)
+      # Speed: in psi mode the per-unit covariance feeds only the (discarded) Omega; term_psi recomputes the same
+      # kernel cov it needs, so skip the cov computation here when do_psi (the caller uses psi / coupled_C only).
+      term2 <- 0
+      if (!do_psi) term2 <- inv_pinf_vec * kernel_cond_cov_kp(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf)
       if (do_psi) term_psi(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf, inv_pinf_vec, coup, "Inf", 1)   # T2 channel
 
       # Term 3: -1{g == g'_j}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
       term3 <- 0
       if (is_self_j) {
-        term3 <- -inv_pg_vec *
-          kernel_cond_cov_kp(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g)
+        if (!do_psi) term3 <- -inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g)
         if (do_psi) term_psi(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g, -inv_pg_vec, coup, as.character(g), -1)  # T3 channel
       }
 
       # Term 4: -1{g == g'_k}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
       term4 <- 0
       if (is_self_k) {
-        term4 <- -inv_pg_vec *
-          kernel_cond_cov_kp(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g)
+        if (!do_psi) term4 <- -inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g)
         if (do_psi) term_psi(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g, -inv_pg_vec, coup, as.character(g), -1)  # T4 channel
       }
 
@@ -473,23 +473,29 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
           mask_gp_jk <- panel_obj$cohort_masks[[gp_key_jk]]
           if (is.null(mask_gp_jk)) mask_gp_jk <- rep(FALSE, n)
         }
-        term5 <- inv_pgp_vec *
-          kernel_cond_cov_kp(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk))
+        if (!do_psi) term5 <- inv_pgp_vec * kernel_cond_cov_kp(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk))
         if (do_psi) term_psi(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk), inv_pgp_vec, coup, gp_key_jk, 1)  # T5 channel
       }
 
-      # Per-unit Omega*[j,k](X_i), then its average over units.
-      omega_jk_i <- term1 + term2 + term3 + term4 + term5
-      omega_jk   <- mean(omega_jk_i)
-
-      Omega_hat[j, k] <- omega_jk
-      if (k != j) Omega_hat[k, j] <- omega_jk
-      if (return_pointwise) {
-        Omega_array[, j, k] <- omega_jk_i
-        if (k != j) Omega_array[, k, j] <- omega_jk_i
+      # Per-unit Omega*[j,k](X_i), then its average over units. (Skipped in psi mode: the Omega is discarded by the
+      # caller, which uses only psi / coupled_C -- the cov terms above are not computed there.)
+      if (!do_psi) {
+        omega_jk_i <- term1 + term2 + term3 + term4 + term5
+        omega_jk   <- mean(omega_jk_i)
+        Omega_hat[j, k] <- omega_jk
+        if (k != j) Omega_hat[k, j] <- omega_jk
+        if (return_pointwise) {
+          Omega_array[, j, k] <- omega_jk_i
+          if (k != j) Omega_array[, k, j] <- omega_jk_i
+        }
       }
     }
   }
+
+  # Speed: psi mode discarded the per-unit covariance (the cov terms, the Omega/array, the shrinkage, and the
+  # eigenfloor below all operate on the Omega the caller does not use), so return the weight-estimation channel
+  # directly. lambda for the efficient warning comes from the FIRST (array-building) compute_omega call, not here.
+  if (do_psi) return(list(psi = psi_omega, coupled_C = as.list(cpl)))
 
   # Per-unit array path: shrink each pointwise Omega*(X_i) toward the pooled Omega-bar
   # (= Omega_hat) before returning; stabilization/inversion is done downstream by
@@ -526,11 +532,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
         Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
-    # Efficient psi rides this array pass: the pointwise weight noise IF is the per-unit five-term kernel IF (term_psi
-    # with per-unit coup = Q[,j] W[,k]), with the same analytic inv_p coupled_C. The (negligible, O(lambda~0.005))
-    # shrinkage contribution to the IF is omitted -- lambda -> 0 as n grows, so this is asymptotically exact.
-    if (do_psi) return(list(array = Omega_array, psi = psi_omega, coupled_C = as.list(cpl)))
-    return(Omega_array)
+    return(Omega_array)   # (do_psi already returned above; the efficient psi rides the FIRST array call's lambda)
   }
 
   # Ensure positive semi-definiteness via eigenvalue floor (averaged matrix)
@@ -538,7 +540,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   eig$values <- pmax(eig$values, 1e-12)
   Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
 
-  if (do_psi) list(omega = Omega_hat, psi = psi_omega, coupled_C = as.list(cpl)) else Omega_hat
+  Omega_hat   # (do_psi returns its list above)
 }
 
 # ---------------------------------------------------------------------------
@@ -833,11 +835,16 @@ compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
 #' @param d integer, number of covariates entering the kernel (sets the floor rate)
 #' @return numeric matrix n x H, each row summing to 1
 #' @keywords internal
-compute_pointwise_weights_edid <- function(omega_array, d = 1L) {
+compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NULL) {
   n   <- dim(omega_array)[1]
   H   <- dim(omega_array)[2]
   one <- rep(1, H)
   W   <- matrix(NA_real_, n, H)
+  # Speed: when gen_out_mat is supplied (efficient misspec_robust / diagnostic), ALSO return the per-unit adjoint
+  # q_i = Minv_i (M_i - theta_i 1) from the SAME per-unit eigendecomposition (one eigen pass instead of two; the q
+  # is bit-identical to compute_pointwise_q_edid). gen_out_mat = NULL keeps the default weights path unchanged.
+  do_q <- !is.null(gen_out_mat)
+  Q    <- if (do_q) matrix(0, n, H) else NULL
   # Dimension-aware floor exponent a = c*(5-d)/10, c = 0.7. clamp d to <=4 so a>0
   # (the band (0,(5-d)/10) is empty for d>=5, where the NW conditional covariance
   # is not uniformly consistent; a=0.07 is a conservative fallback there).
@@ -858,34 +865,15 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L) {
     Minv <- e$vectors %*% diag(1 / ev_floored, H) %*% t(e$vectors)
     v    <- drop(Minv %*% one)
     den  <- sum(v)
-    W[i, ] <- if (is.finite(den) && abs(den) > 1e-12) v / den else one / H
+    if (is.finite(den) && abs(den) > 1e-12) {
+      W[i, ] <- v / den
+      if (do_q) {                                                              # same Minv => q_i'1 = 0 (bit-identical)
+        theta_i <- sum(W[i, ] * gen_out_mat[i, ])
+        Q[i, ]  <- drop(Minv %*% (gen_out_mat[i, ] - theta_i))
+      }
+    } else {
+      W[i, ] <- one / H                                                        # degenerate => uniform weight, q stays 0
+    }
   }
-  W
-}
-
-#' Per-unit adjoint q_i for the efficient (pointwise) Sigma_Omega channel.
-#'
-#' q_i = Minv_i (M_i - theta_i 1), theta_i = w_i' M_i, using the SAME eigenvalue-floored Minv_i that
-#' \code{compute_pointwise_weights_edid} used for w_i (so q_i'1 = 0 per unit, mirroring the pooled identity, and the
-#' Eq.(3.12) Term-1 cancellation holds pointwise). Units that took the uniform-weight fallback (degenerate local
-#' covariance) get q_i = 0: there the weight is constant, so the unit contributes no weight-estimation channel.
-#' @keywords internal
-compute_pointwise_q_edid <- function(omega_array, W_pw, gen_out_mat, d = 1L) {
-  n <- dim(omega_array)[1]; H <- dim(omega_array)[2]; one <- rep(1, H)
-  a_floor <- 0.7 * (5 - min(as.integer(d), 4L)) / 10
-  tol     <- n^(-a_floor)
-  tol_ov  <- suppressWarnings(as.numeric(getOption("edid_eig_tol", NA_real_)))   # mirror compute_pointwise_weights_edid
-  if (length(tol_ov) == 1L && is.finite(tol_ov) && tol_ov > 0) tol <- tol_ov
-  Q <- matrix(0, n, H)
-  for (i in seq_len(n)) {
-    Mi <- omega_array[i, , ]; Mi <- 0.5 * (Mi + t(Mi))
-    e  <- eigen(Mi, symmetric = TRUE); mx <- max(e$values)
-    if (!is.finite(mx) || mx <= 0) next                                          # uniform-weight unit: no q channel
-    Minv <- e$vectors %*% diag(1 / pmax(e$values, mx * tol), H) %*% t(e$vectors)
-    den  <- sum(drop(Minv %*% one))
-    if (!is.finite(den) || abs(den) <= 1e-12) next                               # mirror w_i's 2nd uniform fallback
-    theta_i <- sum(W_pw[i, ] * gen_out_mat[i, ])
-    Q[i, ]  <- drop(Minv %*% (gen_out_mat[i, ] - theta_i))                        # q_i'1 = 0 (same Minv as w_i)
-  }
-  Q
+  if (do_q) list(W = W, Q = Q) else W
 }

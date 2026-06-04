@@ -305,8 +305,13 @@ fit_edid_cells <- function(
                                                    prop_ratios, cond_means,
                                                    inv_propensities, bw = kern_bw, K_mat = kern_K,
                                                    return_pointwise = TRUE)
-          W_pw     <- compute_pointwise_weights_edid(omega_arr,
-                                                     d = ncol(panel_obj$covariate_matrix))  # n x H
+          # Fuse the per-unit adjoint q_i into the weights' eigen pass when the weight-estimation channel is needed
+          # (one eigendecomposition per unit instead of two). Q_pw is from the un-frozen weights; the .fwpw freeze
+          # (research jackknife) is incompatible with the psi channel and is guarded with a stop below.
+          want_q   <- isTRUE(getOption("edid_store_psiomega")) || misspec_robust
+          pw_res   <- compute_pointwise_weights_edid(omega_arr, d = ncol(panel_obj$covariate_matrix),
+                        gen_out_mat = if (want_q) gen_out_mat else NULL)        # n x H (+ Q_pw when want_q)
+          if (want_q) { W_pw <- pw_res$W; Q_pw <- pw_res$Q } else W_pw <- pw_res
           # Research hook (default OFF, NOT on the PR): getOption("edid_fixed_wpw") = list("g_t" = list(ids=, W=))
           # FREEZES the per-unit pointwise weights at supplied (id-keyed) values instead of re-estimating them. Used by
           # the efficient weight-estimation-channel jackknife (refit nuisances but FREEZE W_pw) to isolate Sigma_Omega.
@@ -353,8 +358,7 @@ fit_edid_cells <- function(
             if (!is.null(.fwpw))                                              # frozen W is not Minv-consistent =>
               stop("edid_store_psiomega is incompatible with edid_fixed_wpw (frozen W_pw breaks q_i'1 = 0).",
                    call. = FALSE)                                            # ...the Term-1 cancellation is invalid
-            Q_pw  <- compute_pointwise_q_edid(omega_arr, W_pw, gen_out_mat,
-                                              d = ncol(panel_obj$covariate_matrix))   # q_i'1 = 0 per unit
+            # Q_pw was computed in the fused weights pass above (q_i'1 = 0 per unit, same Minv as w_i).
             stopifnot(max(abs(rowSums(Q_pw))) < 1e-6 * (1 + max(abs(Q_pw))))  # defensive: pointwise Term-1 premise
             lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity (psi omits its O(lam) IF)
             if (is.finite(lam_cell) && lam_cell > 0.05)                       # large lambda => omission non-negligible
