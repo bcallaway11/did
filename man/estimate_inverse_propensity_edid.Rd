@@ -4,7 +4,14 @@
 \alias{estimate_inverse_propensity_edid}
 \title{Estimate the inverse propensity s(X) = 1 / P(G=g'|X)}
 \usage{
-estimate_inverse_propensity_edid(X_train, G_train, X_test, gp, bs_df = 4L)
+estimate_inverse_propensity_edid(
+  X_train,
+  G_train,
+  X_test,
+  gp,
+  bs_df = 4L,
+  return_aux = FALSE
+)
 }
 \arguments{
 \item{X_train}{numeric matrix n_train x d}

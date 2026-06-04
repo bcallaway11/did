@@ -4,7 +4,15 @@
 \alias{estimate_all_inverse_propensities}
 \title{Estimate inverse propensities 1/p_g'(X) for all groups via cross-fitting}
 \usage{
-estimate_all_inverse_propensities(panel_obj, g, pairs, bs_df, K_folds, fold_id)
+estimate_all_inverse_propensities(
+  panel_obj,
+  g,
+  pairs,
+  bs_df,
+  K_folds,
+  fold_id,
+  return_aux = FALSE
+)
 }
 \arguments{
 \item{panel_obj}{panel object}

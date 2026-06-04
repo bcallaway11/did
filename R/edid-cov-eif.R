@@ -231,7 +231,8 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
                                         inv_propensities = NULL,
                                         bw = NULL,
                                         K_mat = NULL,
-                                        return_pointwise = FALSE) {
+                                        return_pointwise = FALSE,
+                                        psi_qw = NULL) {
   X_mat <- panel_obj$covariate_matrix
   n     <- nrow(X_mat)
   d     <- ncol(X_mat)
@@ -348,6 +349,52 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   kp_inf <- get_kp(mask_inf, "Inf")
   term1_const <- inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_t_minus_Y1, kp_g)
 
+  # ---- Weight-estimation channel (Sigma_Omega), DATA channel, opt-in via psi_qw = list(q=, w=) (pooled q,w). ----
+  # psi_Omega,l = -sum_{terms} coup * sum_i pref_i * omega^c_il * [(A_l-muA_i)(B_l-muB_i) - C_i] : the NW local-cov
+  # influence function of the kernel-averaged Omega-bar (04_psiomega_fiveterm_spec.md), where coup for entry (j,k) is
+  # q_j w_k (+ q_k w_j off-diagonal). Term 1 cancels globally (sum_{j,k} coup = (q'1)(w'1) = 0, and q'1 = 0), so it is
+  # skipped. Vectorized: with KK[i,l] = pref_i Kg[i,l]/Ks_i, the inner sum_i is
+  #   A_c_l B_c_l S0[l] - A_c_l SB[l] - B_c_l SA[l] + SC[l],  S0=colSums(KK), SA=mu_A'KK, SB=mu_B'KK, SC=(mu_A mu_B - C)'KK.
+  # Inert + Omega byte-identical when psi_qw is NULL.
+  # Sigma_Omega accumulation: averaged (pooled q,w; return_pointwise=FALSE) OR efficient (pointwise per-unit Q,W;
+  # rides the return_pointwise array pass). Inert + Omega/array byte-identical when psi_qw is NULL.
+  do_psi <- !is.null(psi_qw)
+  pw_psi <- do_psi && isTRUE(psi_qw$pointwise)
+  psi_omega <- if (do_psi) numeric(n) else NULL
+  cpl <- if (do_psi) new.env(parent = emptyenv()) else NULL   # coupled_C per inv_p group, for the analytic inv_p Gamma
+  if (do_psi) {
+    if (pw_psi) { Q_mat <- psi_qw$Q; W_mat <- psi_qw$W } else { q_vec <- psi_qw$q; w_vec <- psi_qw$w }
+  }
+  term_psi <- function(A, B, kp, pref_vec, coup, grp_key = NULL, grp_sign = 1) {
+    if (!isTRUE(kp$ok)) return(invisible(NULL))
+    if (length(coup) == 1L && coup == 0) return(invisible(NULL))   # pooled all-zero coupling: nothing to add
+    idx <- kp$idx
+    A_c <- A[idx] - mean(A[idx]); B_c <- B[idx] - mean(B[idx])
+    mu_A <- drop(kp$Kg %*% A_c) / kp$Ks; mu_B <- drop(kp$Kg %*% B_c) / kp$Ks
+    cov_vals <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks - mu_A * mu_B
+    bad <- is.na(kp$Ks); mu_A[bad] <- 0; mu_B[bad] <- 0; cov_vals[is.na(cov_vals)] <- 0
+    scal <- pref_vec / kp$Ks; scal[bad] <- 0
+    # coup is SCALAR (pooled/averaged: q_j w_k, constant across units) or LENGTH-n (pointwise/efficient: Q[,j] W[,k],
+    # per-unit). For the pointwise case fold the per-unit coup into scal so each unit i carries its own q_i,w_i; the
+    # pooled case keeps the late scalar multiply (oc), which is byte-identical to the validated averaged path.
+    # Memory-optimized either way: fold scal into the left factor and crossprod the CACHED kp$Kg in ONE matmul,
+    # never materializing KK = scal*Kg (an n x n_group transient ~0.8 GB at n=1e4 with a dominant group).
+    pw_coup <- length(coup) > 1L
+    sc <- if (pw_coup) scal * coup else scal
+    Smat <- crossprod(cbind(sc, mu_A * sc, mu_B * sc, (mu_A * mu_B - cov_vals) * sc), kp$Kg)  # 4 x n_group
+    S0 <- Smat[1, ]; SA <- Smat[2, ]; SB <- Smat[3, ]; SC <- Smat[4, ]
+    oc <- if (pw_coup) 1 else coup
+    psi_omega[idx] <<- psi_omega[idx] - oc * (A_c * B_c * S0 - A_c * SB - B_c * SA + SC)
+    # coupled_C for the inv_p Gamma: dOmega/dbeta_c collects sign_term * coup * C_i (per-unit cov) for the term's inv_p
+    # group c. dtheta_w/dbeta_c = -(1/n) crossprod(B_masked, coupled_C_c). (grp_sign*coup)*cov_vals is length-n in both
+    # the scalar (broadcast) and pointwise (per-unit) cases, so this expression is scheme-agnostic.
+    if (!is.null(grp_key)) {
+      cur <- if (exists(grp_key, envir = cpl, inherits = FALSE)) get(grp_key, envir = cpl) else numeric(n)
+      assign(grp_key, cur + (grp_sign * coup) * cov_vals, envir = cpl)
+    }
+    invisible(NULL)
+  }
+
   for (j in seq_len(H)) {
     gp_j   <- pairs$gp[j]
     tpre_j <- pairs$tpre[j]
@@ -368,6 +415,14 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       Y_t_minus_Ytk <- ow[, col_t] - ow[, col_tk]
       Y_tk_minus_Y1 <- ow[, col_tk] - ow[, col_1]
 
+      # Sigma_Omega entry coupling for (j,k): coup = q_j w_k (+ q_k w_j off-diagonal, since entry (k,j) shares the IF).
+      # Pooled (averaged): scalar. Pointwise (efficient): per-unit length-n vector Q[,j] W[,k] (+ Q[,k] W[,j]).
+      coup <- if (!do_psi) 0 else if (pw_psi) {
+        if (j == k) Q_mat[, j] * W_mat[, j] else Q_mat[, j] * W_mat[, k] + Q_mat[, k] * W_mat[, j]
+      } else {
+        if (j == k) q_vec[j] * w_vec[j] else q_vec[j] * w_vec[k] + q_vec[k] * w_vec[j]
+      }
+
       # Eq. (3.12) term by term, using conditional 1/p_g(X):
       # Term 1: cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), hoisted above the loops.
       term1 <- term1_const
@@ -375,12 +430,14 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       # Term 2: (1/p_inf(X)) * Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X)
       term2 <- inv_pinf_vec *
         kernel_cond_cov_kp(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf)
+      if (do_psi) term_psi(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf, inv_pinf_vec, coup, "Inf", 1)   # T2 channel
 
       # Term 3: -1{g == g'_j}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
       term3 <- 0
       if (is_self_j) {
         term3 <- -inv_pg_vec *
           kernel_cond_cov_kp(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g)
+        if (do_psi) term_psi(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g, -inv_pg_vec, coup, as.character(g), -1)  # T3 channel
       }
 
       # Term 4: -1{g == g'_k}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
@@ -388,6 +445,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       if (is_self_k) {
         term4 <- -inv_pg_vec *
           kernel_cond_cov_kp(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g)
+        if (do_psi) term_psi(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g, -inv_pg_vec, coup, as.character(g), -1)  # T4 channel
       }
 
       # Term 5: 1{g'_j == g'_k}/p_{g'_j}(X) * Cov(Y_{t'_j}-Y_1, Y_{t'_k}-Y_1 | G=g'_j, X)
@@ -417,6 +475,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
         }
         term5 <- inv_pgp_vec *
           kernel_cond_cov_kp(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk))
+        if (do_psi) term_psi(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk), inv_pgp_vec, coup, gp_key_jk, 1)  # T5 channel
       }
 
       # Per-unit Omega*[j,k](X_i), then its average over units.
@@ -467,6 +526,10 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
         Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
+    # Efficient psi rides this array pass: the pointwise weight noise IF is the per-unit five-term kernel IF (term_psi
+    # with per-unit coup = Q[,j] W[,k]), with the same analytic inv_p coupled_C. The (negligible, O(lambda~0.005))
+    # shrinkage contribution to the IF is omitted -- lambda -> 0 as n grows, so this is asymptotically exact.
+    if (do_psi) return(list(array = Omega_array, psi = psi_omega, coupled_C = as.list(cpl)))
     return(Omega_array)
   }
 
@@ -475,7 +538,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   eig$values <- pmax(eig$values, 1e-12)
   Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
 
-  Omega_hat
+  if (do_psi) list(omega = Omega_hat, psi = psi_omega, coupled_C = as.list(cpl)) else Omega_hat
 }
 
 # ---------------------------------------------------------------------------
@@ -568,6 +631,92 @@ compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
   for (key in names(m_aux)) {                            # conditional means m_{gp,period,1}
     correction <- add_term(correction, m_aux[[key]], cond_means[[key]],
                            function(newp) { cm <- cond_means; cm[[key]] <- newp; wmoment(prop_ratios, cm) })
+  }
+  correction
+}
+
+#' gmm weight-channel nuisance correction: ACH correction for the QUADRATIC moment u'C w (C = cov(Ytilde)).
+#'
+#' The gmm weight inverts the unconditional sample covariance C = cov(Ytilde), a SECOND moment that (unlike the
+#' linear att moment) is NOT protected by Neyman orthogonality, so it inherits the first-step estimation of the
+#' (r, m) nuisances that enter Ytilde. The plug-in sample-cov weight IF psi = -(u.d)(w.d) + u'Cw omits this; the
+#' jackknife two-step IF includes it. This adds the ACH correction for the directional moment q = u'C w =
+#' E_n[(u'd_i)(w'd_i)] (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
+#' along basis column c), correction = sum_c score_c %*% (H_inv_c %*% Gamma_c). The augmented gmm weight IF is then
+#' psi - correction (sign jackknife-locked). inv_p does NOT enter (the gmm Ytilde uses r, m only).
+#' @keywords internal
+compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                                   u, w, m_aux, r_aux, pt_assumption = "all", eps_rel = 1e-6) {
+  n <- panel_obj$n
+  qmoment <- function(pr, cm) {                                # per-unit (u'd_i)(w'd_i); mean = u'C w
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption)
+    d  <- sweep(go, 2L, colMeans(go), "-")
+    as.numeric(d %*% u) * as.numeric(d %*% w)
+  }
+  m0 <- mean(qmoment(prop_ratios, cond_means))
+  correction <- numeric(n)
+  add_term <- function(correction, a, base, recompute) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) return(correction)
+    B <- a$B_test; p <- ncol(B); eps <- eps_rel * (1 + max(abs(base)))
+    Gamma <- vapply(seq_len(p), function(j) (mean(recompute(base + eps * B[, j])) - m0) / eps, numeric(1))
+    correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  for (key in names(r_aux)) correction <- add_term(correction, r_aux[[key]], prop_ratios[[key]],
+    function(np) { pr <- prop_ratios; pr[[key]] <- np; qmoment(pr, cond_means) })
+  for (key in names(m_aux)) correction <- add_term(correction, m_aux[[key]], cond_means[[key]],
+    function(np) { cm <- cond_means; cm[[key]] <- np; qmoment(prop_ratios, cm) })
+  correction
+}
+
+#' inv_p nuisance channel of Sigma_Omega: ACH correction for the estimated inverse-propensity prefactors
+#'
+#' The Omega prefactors inv_pg/inv_pinf/inv_pgp(X) are propensity-sieve estimates; perturbing the sieve coef beta_c
+#' moves pref -> Omega-bar -> w -> theta_w = w'mbar. ACH two-step IF (same machinery + sign as
+#' \code{compute_ach_correction_cov_edid}): Gamma_c[j] = d theta_w / d beta_c[j] (FD along basis column j, perturbing the
+#' inv_p prediction where it is unclamped), correction = sum_c score_c %*% (H_inv_c %*% Gamma_c). The weight-channel IF
+#' contribution is then \code{psi_invp = -correction} (added to the data channel; sign FD-locked vs the recovery oracle).
+#' @keywords internal
+compute_invp_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                             inv_propensities, invp_aux, weights, mbar,
+                                             bw = NULL, K_mat = NULL, eps_rel = 1e-6) {
+  n <- panel_obj$n; correction <- numeric(n)
+  if (is.null(invp_aux)) return(correction)
+  theta0 <- sum(weights * mbar)
+  theta_fun <- function(ip) {                                  # recompute Omega-bar -> averaged w -> theta_w
+    om <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means, ip, bw = bw, K_mat = K_mat)
+    sum(compute_efficient_weights_edid(om) * mbar)
+  }
+  for (key in names(invp_aux)) {
+    a <- invp_aux[[key]]
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
+    base <- inv_propensities[[key]]; B <- a$B_test; spos <- a$s_pos
+    eps  <- eps_rel * (1 + max(abs(base)))
+    Gamma <- vapply(seq_len(ncol(B)), function(j) {
+      ip <- inv_propensities; ip[[key]] <- base + eps * B[, j] * spos       # perturb where s>0 (= dpref/dbeta support)
+      (theta_fun(ip) - theta0) / eps
+    }, numeric(1))
+    correction <- correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  correction
+}
+
+#' Analytic inv_p correction (replaces the FD Gamma of \code{compute_invp_correction_cov_edid}).
+#'
+#' Uses \code{coupled_C} (sum_{terms using group c} sign*coup*C_i, accumulated in the kernel loop of
+#' \code{compute_omega_star_cov_edid} when \code{psi_qw} is set): Gamma_c = -(1/n) crossprod(B_masked, coupled_C_c)
+#' (B masked to the unclamped rows s>0), correction = sum_c score_c %*% (H_inv_c %*% Gamma_c). O(p) per group, no
+#' Omega recompute -- this is the optimized inv_p channel; it reproduces the FD version to FP tolerance.
+#' @keywords internal
+compute_invp_correction_analytic_cov_edid <- function(n, invp_aux, coupled_C) {
+  correction <- numeric(n)
+  if (is.null(invp_aux) || is.null(coupled_C)) return(correction)
+  for (key in names(invp_aux)) {
+    a <- invp_aux[[key]]
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
+    cc <- coupled_C[[key]]; if (is.null(cc)) next
+    B_masked <- a$B_test * a$s_pos                                # dpref/dbeta support: rows where s_raw > 0
+    Gamma    <- -as.vector(crossprod(B_masked, cc)) / n           # dtheta_w/dbeta_c = -(1/n) B_masked' coupled_C_c
+    correction <- correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
   }
   correction
 }
@@ -712,4 +861,31 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L) {
     W[i, ] <- if (is.finite(den) && abs(den) > 1e-12) v / den else one / H
   }
   W
+}
+
+#' Per-unit adjoint q_i for the efficient (pointwise) Sigma_Omega channel.
+#'
+#' q_i = Minv_i (M_i - theta_i 1), theta_i = w_i' M_i, using the SAME eigenvalue-floored Minv_i that
+#' \code{compute_pointwise_weights_edid} used for w_i (so q_i'1 = 0 per unit, mirroring the pooled identity, and the
+#' Eq.(3.12) Term-1 cancellation holds pointwise). Units that took the uniform-weight fallback (degenerate local
+#' covariance) get q_i = 0: there the weight is constant, so the unit contributes no weight-estimation channel.
+#' @keywords internal
+compute_pointwise_q_edid <- function(omega_array, W_pw, gen_out_mat, d = 1L) {
+  n <- dim(omega_array)[1]; H <- dim(omega_array)[2]; one <- rep(1, H)
+  a_floor <- 0.7 * (5 - min(as.integer(d), 4L)) / 10
+  tol     <- n^(-a_floor)
+  tol_ov  <- suppressWarnings(as.numeric(getOption("edid_eig_tol", NA_real_)))   # mirror compute_pointwise_weights_edid
+  if (length(tol_ov) == 1L && is.finite(tol_ov) && tol_ov > 0) tol <- tol_ov
+  Q <- matrix(0, n, H)
+  for (i in seq_len(n)) {
+    Mi <- omega_array[i, , ]; Mi <- 0.5 * (Mi + t(Mi))
+    e  <- eigen(Mi, symmetric = TRUE); mx <- max(e$values)
+    if (!is.finite(mx) || mx <= 0) next                                          # uniform-weight unit: no q channel
+    Minv <- e$vectors %*% diag(1 / pmax(e$values, mx * tol), H) %*% t(e$vectors)
+    den  <- sum(drop(Minv %*% one))
+    if (!is.finite(den) || abs(den) <= 1e-12) next                               # mirror w_i's 2nd uniform fallback
+    theta_i <- sum(W_pw[i, ] * gen_out_mat[i, ])
+    Q[i, ]  <- drop(Minv %*% (gen_out_mat[i, ] - theta_i))                        # q_i'1 = 0 (same Minv as w_i)
+  }
+  Q
 }

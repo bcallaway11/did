@@ -14,7 +14,8 @@ compute_omega_star_cov_edid(
   inv_propensities = NULL,
   bw = NULL,
   K_mat = NULL,
-  return_pointwise = FALSE
+  return_pointwise = FALSE,
+  psi_qw = NULL
 )
 }
 \arguments{

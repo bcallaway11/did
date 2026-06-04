@@ -27,10 +27,11 @@
 fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
   need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform"),
-  estimation_effect = FALSE, higher_order = FALSE
+  estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE
 ) {
   weight_method <- match.arg(weight_method)
   higher_order  <- isTRUE(higher_order)
+  misspec_robust <- isTRUE(misspec_robust)
   # Determine if covariate path is active
   is_trivial_xformla <- is.null(xformla) ||
     identical(deparse(xformla, width.cutoff = 500L), "~1")
@@ -107,9 +108,27 @@ fit_edid_cells <- function(
       stop("higher_order = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
     }
   }
+  # The misspecification-robust SE augments the EIF with the weight-estimation channel psi_Omega (the sibling
+  # of the ACH nuisance correction that estimation_effect explicitly leaves out). It needs estimated weights
+  # (no covariates => weights not estimated from X; uniform => fixed weights, channel is exactly zero) and the
+  # plug-in M-estimator aux (K = 1), like the ACH correction.
+  if (misspec_robust) {
+    if (!use_cov_path) {
+      warning("misspec_robust has no effect without covariates (weights are not estimated from X).", call. = FALSE)
+      misspec_robust <- FALSE
+    } else if (weight_method == "uniform") {
+      warning("misspec_robust has no effect for weights = 'uniform' (fixed weights have no estimation channel).",
+              call. = FALSE)
+      misspec_robust <- FALSE
+    } else if (K_use > 1L) {
+      stop("misspec_robust = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
+    }
+  }
   # The first-step aux pieces (B / score / H_inv) are needed whenever EITHER the ACH correction OR the
-  # higher-order refinement is requested.
-  want_aux <- isTRUE(estimation_effect) || higher_order
+  # higher-order refinement is requested -- and (experimental) for the gmm weight-channel correction, whose
+  # quadratic moment u'Cw inherits the (r, m) nuisance estimation.
+  want_aux <- isTRUE(estimation_effect) || higher_order ||
+    ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "gmm")
 
   tgroups   <- panel_obj$treatment_groups
   tperiods  <- panel_obj$time_periods
@@ -256,7 +275,9 @@ fit_edid_cells <- function(
           pairs     = pairs,
           bs_df     = 4L,
           K_folds   = K_use,
-          fold_id   = fold_id
+          fold_id   = fold_id,
+          return_aux = (isTRUE(getOption("edid_store_psiomega")) || misspec_robust) &&  # inv_p M-pieces for
+                       weight_method %in% c("averaged", "efficient")  # the Sigma_Omega corr channel (psi consumers)
         )
       }
 
@@ -286,6 +307,17 @@ fit_edid_cells <- function(
                                                    return_pointwise = TRUE)
           W_pw     <- compute_pointwise_weights_edid(omega_arr,
                                                      d = ncol(panel_obj$covariate_matrix))  # n x H
+          # Research hook (default OFF, NOT on the PR): getOption("edid_fixed_wpw") = list("g_t" = list(ids=, W=))
+          # FREEZES the per-unit pointwise weights at supplied (id-keyed) values instead of re-estimating them. Used by
+          # the efficient weight-estimation-channel jackknife (refit nuisances but FREEZE W_pw) to isolate Sigma_Omega.
+          .fwpw <- getOption("edid_fixed_wpw", NULL)
+          .fwpw <- if (!is.null(.fwpw)) .fwpw[[paste0(g, "_", t)]] else NULL
+          if (!is.null(.fwpw)) {
+            mi <- match(panel_obj$all_units, .fwpw$ids)
+            if (!anyNA(mi) && ncol(.fwpw$W) == ncol(W_pw)) W_pw <- .fwpw$W[mi, , drop = FALSE]
+            else warning(sprintf("edid_fixed_wpw: freeze skipped for cell (%s,%s) (unmatched id or H change); W_pw re-estimated.",
+                                 g, t), call. = FALSE)
+          }
           cond_num <- tryCatch(check_condition_edid(apply(omega_arr, c(2, 3), mean)),
                                error = function(e) NA_real_)
           wY_i     <- rowSums(gen_out_mat * W_pw)
@@ -304,6 +336,43 @@ fit_edid_cells <- function(
             ho_cell <- compute_cell_hessian_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
+          if (isTRUE(getOption("edid_store_wpw"))) {            # research diagnostic (OFF): full per-unit W_pw + ids
+            acc <- getOption("edid_wpw_acc", list())            # (seeds the efficient frozen-W_pw jackknife)
+            acc[[paste0(g, "_", t)]] <- list(ids = panel_obj$all_units, W = W_pw)
+            options(edid_wpw_acc = acc)
+          }
+          # Weight-estimation channel psi_Omega. Computed when EITHER the research diagnostic (edid_store_psiomega)
+          # OR the production misspec_robust SE is requested; STORED to the accumulator only for the diagnostic;
+          # FOLDED into eif_gt (eif_gt + psi_Omega, mirroring the ACH subtraction above) only for misspec_robust.
+          if (isTRUE(getOption("edid_store_psiomega")) || misspec_robust) {   # efficient pointwise Sigma_Omega
+            # The pointwise weight-estimation IF is the per-unit five-term kernel IF: term_psi with per-unit coupling
+            # coup_i = Q[i,j] W_pw[i,k] (q_i'1 = 0 per unit, so Term 1 cancels pointwise), plus the same analytic inv_p
+            # correction (the per-unit coupled_C). wY_i is already NA-checked (stop above), so gen_out_mat is complete.
+            if (K_use > 1L)
+              stop("the misspec_robust / Sigma_Omega channel requires plug-in nuisances (K = 1).", call. = FALSE)
+            if (!is.null(.fwpw))                                              # frozen W is not Minv-consistent =>
+              stop("edid_store_psiomega is incompatible with edid_fixed_wpw (frozen W_pw breaks q_i'1 = 0).",
+                   call. = FALSE)                                            # ...the Term-1 cancellation is invalid
+            Q_pw  <- compute_pointwise_q_edid(omega_arr, W_pw, gen_out_mat,
+                                              d = ncol(panel_obj$covariate_matrix))   # q_i'1 = 0 per unit
+            stopifnot(max(abs(rowSums(Q_pw))) < 1e-6 * (1 + max(abs(Q_pw))))  # defensive: pointwise Term-1 premise
+            lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity (psi omits its O(lam) IF)
+            if (is.finite(lam_cell) && lam_cell > 0.05)                       # large lambda => omission non-negligible
+              warning(sprintf("edid cell (%s,%s): efficient weight-channel SE omits the shrinkage IF and lambda=%.3f > 0.05; the misspec-robust SE is only an approximation to the weight-channel variance here.",
+                              g, t, lam_cell), call. = FALSE)
+            po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                       inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
+                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw))
+            corr_an <- compute_invp_correction_analytic_cov_edid(panel_obj$n, attr(inv_propensities, "aux"),
+                                                                 po$coupled_C)
+            psi_i <- po$psi - corr_an                                         # weight-estimation IF (data - corr)
+            if (isTRUE(getOption("edid_store_psiomega"))) {                   # research diagnostic accumulator
+              acc <- getOption("edid_psiomega_acc", list())
+              acc[[paste0(g, "_", t)]] <- list(data = po$psi, corr = corr_an, lambda = lam_cell)
+              options(edid_psiomega_acc = acc)
+            }
+            if (misspec_robust) eif_gt <- eif_gt + psi_i                      # production: fold the channel into the EIF
+          }
           # Diagnostic only (default off): per-component cross-unit SD of the pointwise weights
           # quantifies how much Omega*(X) shape-varies; ~0 => weights ~constant => efficient ~ averaged.
           if (isTRUE(getOption("edid_diag_wpw")))
@@ -313,18 +382,103 @@ fit_edid_cells <- function(
         } else {
           # Constant-weight schemes (valid but not pointwise-efficient):
           #   averaged = invert kernel Omega-bar; gmm = invert unconditional S_hat; uniform = 1/H.
+          psi_const <- NULL   # weight-estimation IF (averaged kernel channel / gmm sample-cov channel); NULL => fold +0
           omega    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
                                                   prop_ratios, cond_means,
                                                   inv_propensities, bw = kern_bw, K_mat = kern_K)
+          if (isTRUE(getOption("edid_store_omega"))) {       # research diagnostic (default OFF, NOT on the PR):
+            arr <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,  # per-unit Omega*(X_i)
+                     inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE)     # array for the averaged
+            acc <- getOption("edid_omega_acc", list()); acc[[paste0(g, "_", t)]] <- list(omega = omega, arr = arr)
+            options(edid_omega_acc = acc)                    # Sigma_Omega derivation (IF_Omegabar(i) = Omega*(X_i) - Omegabar)
+          }
           cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
           H_local  <- nrow(omega)
-          weights  <- switch(weight_method,
+          # Research hook (default OFF, NOT committed to the PR): getOption("edid_fixed_weights") =
+          # list("g_t" = weight vector) FREEZES the constant weight at a supplied value instead of re-estimating it.
+          # Used by the weight-estimation-channel bootstrap (resample + refit nuisances but FREEZE W) to isolate
+          # Sigma_Omega vs a refit-all bootstrap. Inert unless the option is set; falls back to estimation if H changed.
+          .fw <- getOption("edid_fixed_weights", NULL); .fw <- if (!is.null(.fw)) .fw[[paste0(g, "_", t)]] else NULL
+          weights  <- if (!is.null(.fw) && length(.fw) == H_local) .fw else switch(weight_method,
             uniform = rep(1 / H_local, H_local),
             # pairwise.complete.obs so a single NA moment does not NA-poison the whole
             # covariance (compute_efficient_weights_edid then guards any residual non-finite).
             gmm     = compute_efficient_weights_edid(stats::cov(gen_out_mat, use = "pairwise.complete.obs")),
             compute_efficient_weights_edid(omega))   # "averaged"
           att_gt   <- sum(weights * colMeans(gen_out_mat, na.rm = TRUE))
+          if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "averaged") {
+            # Sigma_Omega = psi_data (kernel five-term IF of Omegabar) - corr (inv_p prefactor channel). The IF holds
+            # only when q and w share omega's inverse (=> q'1 = 0, so Eq.(3.12) Term 1 cancels and is rightly skipped).
+            # Skip cells where the stored weights came from a DIFFERENT construction -- frozen weights
+            # (edid_fixed_weights), the pseudoinverse/uniform fallback, or an NA-incomplete gen_out_mat (complete-case
+            # mbar would be inconsistent with the all-units kernel terms). One w_chk match covers all three; a skip
+            # leaves psi_const = NULL so the misspec_robust fold adds +0 (that cell falls back to the plug-in SE).
+            if (K_use > 1L)
+              stop("the misspec_robust / Sigma_Omega channel requires plug-in nuisances (K = 1).", call. = FALSE)
+            C_inv <- NULL
+            if (is.null(.fw) && !anyNA(gen_out_mat)) {
+              kappa <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
+              C_inv <- if (all(omega == 0) || any(!is.finite(omega))) NULL
+                       else if (!is.finite(kappa) || kappa > EDID_COND_THRESH) compute_pseudoinverse_edid(omega)
+                       else tryCatch(solve(omega), error = function(e) compute_pseudoinverse_edid(omega))
+            }
+            w_chk <- if (is.null(C_inv)) NULL else {                          # the efficient weights from THIS inverse
+              num <- drop(C_inv %*% rep(1, ncol(gen_out_mat))); d <- sum(num)
+              if (!is.finite(d) || abs(d) < EDID_DENOM_EPS) NULL else num / d }
+            if (!is.null(w_chk) && max(abs(weights - w_chk)) < 1e-8) {        # weights ARE those efficient weights
+              mbar  <- colMeans(gen_out_mat)
+              q_vec <- drop(C_inv %*% (mbar - att_gt))                        # same inverse as the weights => q'1 = 0
+              stopifnot(abs(sum(q_vec)) < 1e-6 * (1 + max(abs(q_vec))))       # Term-1 cancellation premise (defensive)
+              po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                         inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights))
+              invp_aux <- attr(inv_propensities, "aux")
+              corr_an  <- compute_invp_correction_analytic_cov_edid(panel_obj$n, invp_aux, po$coupled_C)  # optimized
+              psi_const <- po$psi - corr_an                                  # captured for the misspec_robust fold
+              if (isTRUE(getOption("edid_store_psiomega"))) {                # research diagnostic accumulator
+                corr_fd  <- if (isTRUE(getOption("edid_psiomega_fd")))        # FD oracle (validation only)
+                  compute_invp_correction_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                    inv_propensities, invp_aux, weights, mbar, bw = kern_bw, K_mat = kern_K) else NULL
+                acc <- getOption("edid_psiomega_acc", list())
+                acc[[paste0(g, "_", t)]] <- list(data = po$psi, corr = corr_an, corr_fd = corr_fd)  # = data - corr
+                options(edid_psiomega_acc = acc)
+              }
+            }
+          }
+          if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "gmm") {
+            # gmm weight-estimation IF: the gmm weight inverts C = cov(Ytilde), the unconditional sample covariance.
+            # The channel is the sample-cov two-step IF psi_plug = -(d.u)(d.w) + u'Cw (d_i = Ytilde_i - mbar,
+            # u = (C^-1 - w 1'C^-1)'mbar) PLUS the ACH correction for the quadratic moment u'Cw -- because a covariance
+            # is NOT protected by the att moment's Neyman orthogonality, C inherits the first-step (r, m) nuisance
+            # estimation. psi_Omega = psi_plug + nuis_corr (sign jackknife-locked, cor 1.000). w_chk gate as elsewhere.
+            if (K_use > 1L)
+              stop("the misspec_robust / Sigma_Omega channel requires plug-in nuisances (K = 1).", call. = FALSE)
+            if (is.null(.fw) && !anyNA(gen_out_mat)) {
+              Cmat  <- stats::cov(gen_out_mat, use = "pairwise.complete.obs")     # the SAME C the gmm weights invert
+              C_inv <- if (any(!is.finite(Cmat))) NULL else {
+                kappa <- tryCatch(check_condition_edid(Cmat), error = function(e) NA_real_)
+                if (!is.finite(kappa) || kappa > EDID_COND_THRESH) compute_pseudoinverse_edid(Cmat)
+                else tryCatch(solve(Cmat), error = function(e) compute_pseudoinverse_edid(Cmat)) }
+              w_chk <- if (is.null(C_inv)) NULL else {
+                num <- drop(C_inv %*% rep(1, ncol(gen_out_mat))); dd <- sum(num)
+                if (!is.finite(dd) || abs(dd) < EDID_DENOM_EPS) NULL else num / dd }
+              if (!is.null(w_chk) && max(abs(weights - w_chk)) < 1e-8) {
+                mbar <- colMeans(gen_out_mat)
+                B    <- C_inv - outer(weights, drop(crossprod(rep(1, length(weights)), C_inv)))  # C^-1 - w 1'C^-1
+                u    <- drop(crossprod(B, mbar))
+                dc   <- sweep(gen_out_mat, 2L, mbar, "-")
+                psi_plug  <- -(as.numeric(dc %*% u) * as.numeric(dc %*% weights)) +
+                             as.numeric(crossprod(u, Cmat %*% weights))           # exp07 plug-in sample-cov IF
+                nuis_corr <- compute_gmm_weight_correction_cov_edid(panel_obj, g, t, pairs, prop_ratios,
+                               cond_means, u, weights, m_aux, r_aux, pt_assumption)  # ACH correction for u'Cw
+                psi_const <- psi_plug + nuis_corr                                 # captured for the misspec_robust fold
+                if (isTRUE(getOption("edid_store_psiomega"))) {                   # research diagnostic accumulator
+                  acc <- getOption("edid_psiomega_acc", list())                  # corr = -nuis_corr keeps the uniform
+                  acc[[paste0(g, "_", t)]] <- list(data = psi_plug, corr = -nuis_corr)  # psi_Omega = data - corr convention
+                  options(edid_psiomega_acc = acc)
+                }
+              }
+            }
+          }
           eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
           if (isTRUE(estimation_effect))                                    # ACH first-step correction (w frozen)
             eif_gt <- eif_gt - compute_ach_correction_cov_edid(
@@ -332,6 +486,8 @@ fit_edid_cells <- function(
           if (higher_order)                                                  # per-cell Hessian (w frozen)
             ho_cell <- compute_cell_hessian_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption)
+          if (misspec_robust && !is.null(psi_const))                         # fold the weight channel AFTER the ACH
+            eif_gt <- eif_gt + psi_const                                     # subtraction (averaged/gmm); NULL => +0
         }
       } else {
         # --- No-covariate path ---
@@ -425,6 +581,7 @@ fit_edid_cells <- function(
   list(
     cells      = cells,
     eif_matrix = eif_matrix,
-    cell_index = cell_index
+    cell_index = cell_index,
+    misspec_robust = misspec_robust   # the EFFECTIVE flag (downgraded to FALSE by the guards above if applicable)
   )
 }

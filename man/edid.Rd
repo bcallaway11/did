@@ -27,7 +27,8 @@ edid(
   estimation_effect = FALSE,
   cband = TRUE,
   cband_method = c("analytic", "multiplier"),
-  higher_order = FALSE
+  higher_order = FALSE,
+  misspec_robust = FALSE
 )
 }
 \arguments{
@@ -158,6 +159,31 @@ multiplier bootstrap, so \code{cband_method = "multiplier"} is coerced to \code{
 warning) and a covariate formula (with no covariates the nuisances have no first-step coefficients and
 the term is exactly zero, so \code{xformla = NULL} errors). It is asymptotically negligible under
 correct specification; its value is finite-sample honesty in covariate-rich designs.}
+
+\item{misspec_robust}{Logical (default \code{FALSE}). If \code{TRUE}, the influence function is augmented
+with the weight-estimation channel \eqn{\psi_\Omega} (the first-step estimation effect of the efficient
+weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})}, the sibling of
+\code{estimation_effect}'s nuisance correction that it explicitly leaves out). It yields standard errors
+that are robust to misspecification of the weighting model: under correct specification \eqn{\psi_\Omega}
+is first-order zero (it vanishes at the \eqn{\sqrt{n}} rate, so the SE converges to the efficient SE),
+while under misspecification it accounts for the resulting estimand drift to the weighted pseudo-true
+\eqn{\theta_w}. Because \eqn{\psi_\Omega} is a genuine per-unit influence function it is folded into the
+EIF, so the cell SEs, every aggregation, the clustered covariance, and the sup-t bands all inherit it. The
+reported variance is that of the augmented influence function \eqn{\mathrm{Var}(\mathrm{eif} + \psi_\Omega)}:
+it equals the plug-in variance under correct specification (\eqn{\psi_\Omega \to 0}) and corrects it under
+misspecification -- which may move a standard error up \emph{or} down, since the plug-in SE is then
+inconsistent (unlike \code{higher_order}, whose positive semi-definite \eqn{\Sigma_{quad}} only inflates).
+It composes additively with \code{estimation_effect} (which corrects the
+nuisance channel) and \code{higher_order}, and -- unlike \code{higher_order} -- it does \emph{not} coerce
+\code{cband_method} (a real influence function is carried by the multiplier bootstrap). Supported for the
+covariate path with \code{weights} in \code{c("efficient", "averaged", "gmm")} and plug-in nuisances (cross-fitted
+nuisances, \code{K > 1}, are not supported and error). For \code{"gmm"} the weight inverts the unconditional
+sample covariance \eqn{C}, a second moment that (unlike the linear ATT moment) is not protected by Neyman
+orthogonality, so the channel includes an Ackerberg-Chen-Hahn correction for the first-step (\eqn{r}, \eqn{m})
+nuisance estimation entering \eqn{C}. It is \emph{not} available for \code{"uniform"} (fixed weights have no
+estimation channel; warns and falls back to the plug-in SE). In weak-overlap / small-\eqn{n} cells where the
+efficient pointwise shrinkage \eqn{\lambda} is non-negligible the efficient channel omits an \eqn{O(\lambda)}
+term and the SE there is a (warned) approximation to the weight-channel variance.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:

@@ -243,7 +243,7 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
 #' @return numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0
 #' @keywords internal
 estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
-                                             bs_df = 4L) {
+                                             bs_df = 4L, return_aux = FALSE) {
   n_test <- nrow(X_test)
 
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
@@ -258,7 +258,8 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
     warning(sprintf(
       "estimate_inverse_propensity_edid: fewer than 2 units in g'=%g; returning 1/pi_g'.", gp
     ))
-    return(rep(length(G_train) / n_gp, n_test))
+    sv <- rep(length(G_train) / n_gp, n_test)
+    return(if (return_aux) list(s_hat = sv, is_fallback = TRUE) else sv)
   }
 
   B_train_obj <- build_basis_matrix_edid(X_train, bs_df)
@@ -268,11 +269,22 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
   B_gp       <- B_train[mask_gp, , drop = FALSE]
   col_sums_all <- colSums(B_train)
 
-  BtB_gp   <- t(B_gp) %*% B_gp
-  beta_hat <- as.vector(compute_pseudoinverse_edid(BtB_gp) %*% col_sums_all)
+  BtB_pinv <- compute_pseudoinverse_edid(t(B_gp) %*% B_gp)
+  beta_hat <- as.vector(BtB_pinv %*% col_sums_all)
 
   B_test <- predict_basis_edid(attr(B_train_obj, "bs_objects"), X_test)
-  s_hat  <- pmax(drop(B_test %*% beta_hat), 0)
+  s_raw  <- drop(B_test %*% beta_hat)
+  s_hat  <- pmax(s_raw, 0)
+
+  if (return_aux) {
+    # M-estimator pieces for the inv_p Sigma_Omega channel (SAME convention as estimate_propensity_ratio_edid).
+    # Moment E[B (s 1{gp} - 1)] = 0 (FOC of min E[s^2 G_gp - 2s]); per-unit score s_i = B_i (1{i in gp} s_raw_i - 1)
+    # (s_raw = B beta, before the >=0 clamp). Hessian H = E[B B' 1{gp}] = (B_gp'B_gp)/n, so H^{-1} = n * pinv(B_gp'B_gp)
+    # (the n factor matches the ratio aux). IF of beta at unit l = -H_inv score_l.
+    score_mat <- (as.numeric(mask_gp) * s_raw - 1) * B_test
+    return(list(s_hat = s_hat, B_test = B_test, score_mat = score_mat, H_inv = n_test * BtB_pinv,
+                s_pos = s_raw > 0, is_fallback = FALSE))
+  }
 
   s_hat
 }
@@ -442,16 +454,18 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
 #' @return named list of n-vectors, keyed by \code{as.character(group)}
 #' @keywords internal
 estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
-                                              K_folds, fold_id) {
+                                              K_folds, fold_id, return_aux = FALSE) {
   n       <- panel_obj$n
   X_mat   <- panel_obj$covariate_matrix
   G_vec   <- panel_obj$unit_cohorts
   result  <- list()
+  aux     <- if (return_aux) list() else NULL       # per-group M-estimator pieces for the inv_p Sigma_Omega channel
 
   groups_needed <- unique(c(g, Inf, pairs$gp[is.finite(pairs$gp)]))
 
   for (gp in groups_needed) {
     s_full <- numeric(n)
+    want_aux_gp <- return_aux && K_folds == 1L       # aux only in the plug-in (train = test) regime, like ACH
 
     for (ell in seq_len(K_folds)) {
       if (K_folds == 1L) {
@@ -464,18 +478,22 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
       }
       if (length(test_idx) == 0L) next
 
-      s_full[test_idx] <- estimate_inverse_propensity_edid(
+      res_ell <- estimate_inverse_propensity_edid(
         X_train = X_mat[train_idx, , drop = FALSE],
         G_train = G_vec[train_idx],
         X_test  = X_mat[test_idx,  , drop = FALSE],
         gp      = gp,
-        bs_df   = bs_df
+        bs_df   = bs_df,
+        return_aux = want_aux_gp
       )
+      if (want_aux_gp) { s_full[test_idx] <- res_ell$s_hat; aux[[as.character(gp)]] <- res_ell }
+      else             s_full[test_idx] <- res_ell
     }
 
     result[[as.character(gp)]] <- s_full
   }
 
+  if (return_aux) attr(result, "aux") <- aux
   result
 }
 

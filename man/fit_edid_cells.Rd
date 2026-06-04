@@ -14,7 +14,8 @@ fit_edid_cells(
   need_eif = FALSE,
   weight_method = c("efficient", "averaged", "gmm", "uniform"),
   estimation_effect = FALSE,
-  higher_order = FALSE
+  higher_order = FALSE,
+  misspec_robust = FALSE
 )
 }
 \arguments{
