@@ -23,8 +23,8 @@ compute_invp_correction_cov_edid(
 \description{
 The Omega prefactors inv_pg/inv_pinf/inv_pgp(X) are propensity-sieve estimates; perturbing the sieve coef beta_c
 moves pref -> Omega-bar -> w -> theta_w = w'mbar. ACH two-step IF (same machinery + sign as
-\code{compute_ach_correction_cov_edid}): Gamma_c\link{j} = d theta_w / d beta_c\link{j} (FD along basis column j, perturbing the
-inv_p prediction where it is unclamped), correction = sum_c score_c \%\emph{\% (H_inv_c \%}\% Gamma_c). The weight-channel IF
+\code{compute_ach_correction_cov_edid}): \verb{Gamma_c[j] = d theta_w / d beta_c[j]} (FD along basis column j, perturbing the
+inv_p prediction where it is unclamped), correction = \verb{sum_c score_c \%*\% (H_inv_c \%*\% Gamma_c)}. The weight-channel IF
 contribution is then \code{psi_invp = -correction} (added to the data channel; sign FD-locked vs the recovery oracle).
 }
 \keyword{internal}

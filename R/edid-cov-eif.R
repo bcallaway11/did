@@ -643,8 +643,8 @@ compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
 #' linear att moment) is NOT protected by Neyman orthogonality, so it inherits the first-step estimation of the
 #' (r, m) nuisances that enter Ytilde. The plug-in sample-cov weight IF psi = -(u.d)(w.d) + u'Cw omits this; the
 #' jackknife two-step IF includes it. This adds the ACH correction for the directional moment q = u'C w =
-#' E_n[(u'd_i)(w'd_i)] (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
-#' along basis column c), correction = sum_c score_c %*% (H_inv_c %*% Gamma_c). The augmented gmm weight IF is then
+#' `E_n[(u'd_i)(w'd_i)]` (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
+#' along basis column c), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. The augmented gmm weight IF is then
 #' psi - correction (sign jackknife-locked). inv_p does NOT enter (the gmm Ytilde uses r, m only).
 #' @keywords internal
 compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
@@ -674,8 +674,8 @@ compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_
 #'
 #' The Omega prefactors inv_pg/inv_pinf/inv_pgp(X) are propensity-sieve estimates; perturbing the sieve coef beta_c
 #' moves pref -> Omega-bar -> w -> theta_w = w'mbar. ACH two-step IF (same machinery + sign as
-#' \code{compute_ach_correction_cov_edid}): Gamma_c[j] = d theta_w / d beta_c[j] (FD along basis column j, perturbing the
-#' inv_p prediction where it is unclamped), correction = sum_c score_c %*% (H_inv_c %*% Gamma_c). The weight-channel IF
+#' \code{compute_ach_correction_cov_edid}): `Gamma_c[j] = d theta_w / d beta_c[j]` (FD along basis column j, perturbing the
+#' inv_p prediction where it is unclamped), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. The weight-channel IF
 #' contribution is then \code{psi_invp = -correction} (added to the data channel; sign FD-locked vs the recovery oracle).
 #' @keywords internal
 compute_invp_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
@@ -704,9 +704,9 @@ compute_invp_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios
 
 #' Analytic inv_p correction (replaces the FD Gamma of \code{compute_invp_correction_cov_edid}).
 #'
-#' Uses \code{coupled_C} (sum_{terms using group c} sign*coup*C_i, accumulated in the kernel loop of
+#' Uses \code{coupled_C} (the sum over terms using group c of the sign-weighted coupling C_i, accumulated in the kernel loop of
 #' \code{compute_omega_star_cov_edid} when \code{psi_qw} is set): Gamma_c = -(1/n) crossprod(B_masked, coupled_C_c)
-#' (B masked to the unclamped rows s>0), correction = sum_c score_c %*% (H_inv_c %*% Gamma_c). O(p) per group, no
+#' (B masked to the unclamped rows s>0), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. O(p) per group, no
 #' Omega recompute -- this is the optimized inv_p channel; it reproduces the FD version to FP tolerance.
 #' @keywords internal
 compute_invp_correction_analytic_cov_edid <- function(n, invp_aux, coupled_C) {

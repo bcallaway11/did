@@ -7,9 +7,9 @@
 compute_invp_correction_analytic_cov_edid(n, invp_aux, coupled_C)
 }
 \description{
-Uses \code{coupled_C} (sum_{terms using group c} sign\emph{coup}C_i, accumulated in the kernel loop of
+Uses \code{coupled_C} (the sum over terms using group c of the sign-weighted coupling C_i, accumulated in the kernel loop of
 \code{compute_omega_star_cov_edid} when \code{psi_qw} is set): Gamma_c = -(1/n) crossprod(B_masked, coupled_C_c)
-(B masked to the unclamped rows s>0), correction = sum_c score_c \%\emph{\% (H_inv_c \%}\% Gamma_c). O(p) per group, no
+(B masked to the unclamped rows s>0), correction = \verb{sum_c score_c \%*\% (H_inv_c \%*\% Gamma_c)}. O(p) per group, no
 Omega recompute -- this is the optimized inv_p channel; it reproduces the FD version to FP tolerance.
 }
 \keyword{internal}

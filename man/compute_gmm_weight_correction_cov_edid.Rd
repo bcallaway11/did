@@ -24,8 +24,8 @@ The gmm weight inverts the unconditional sample covariance C = cov(Ytilde), a SE
 linear att moment) is NOT protected by Neyman orthogonality, so it inherits the first-step estimation of the
 (r, m) nuisances that enter Ytilde. The plug-in sample-cov weight IF psi = -(u.d)(w.d) + u'Cw omits this; the
 jackknife two-step IF includes it. This adds the ACH correction for the directional moment q = u'C w =
-E_n\link{(u'd_i)(w'd_i)} (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
-along basis column c), correction = sum_c score_c \%\emph{\% (H_inv_c \%}\% Gamma_c). The augmented gmm weight IF is then
+\verb{E_n[(u'd_i)(w'd_i)]} (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
+along basis column c), correction = \verb{sum_c score_c \%*\% (H_inv_c \%*\% Gamma_c)}. The augmented gmm weight IF is then
 psi - correction (sign jackknife-locked). inv_p does NOT enter (the gmm Ytilde uses r, m only).
 }
 \keyword{internal}
