@@ -19,6 +19,9 @@
 #'   relative times in \eqn{[-\text{balance\_e}, \text{balance\_e}]}.
 #' @param min_e,max_e Numeric: minimum/maximum relative time to include in dynamic output.
 #' @param na.rm Logical: drop \code{NA} ATT entries before aggregating. Default \code{FALSE}.
+#' @param seed Integer or \code{NULL}: RNG seed for the multiplier-bootstrap path (\code{cband_method =
+#'   "multiplier"}). Defaults to the seed stored on the fit, so standalone \code{aggte_edid()} bootstrap
+#'   results are reproducible; the caller's RNG stream is restored on exit. Ignored on the analytic path.
 #'
 #' @return A \code{did::AGGTEobj} (as returned by \code{\link[did]{aggte}}), so the did \code{print},
 #'   \code{summary}, and \code{tidy} methods apply.
@@ -31,7 +34,8 @@ aggte_edid <- function(
   balance_e = NULL,
   min_e     = -Inf,
   max_e     = Inf,
-  na.rm     = FALSE
+  na.rm     = FALSE,
+  seed      = NULL
 ) {
   mc   <- match.call()
   type <- match.arg(type)
@@ -44,9 +48,22 @@ aggte_edid <- function(
   #    aggregate influence functions (no bootstrap; the only path that can carry the higher-order term).
   #  - cband_method = "multiplier": the did multiplier bootstrap (legacy) when edid(bstrap = TRUE).
   use_analytic <- identical(edid_fit_obj$cband_method, "analytic")
+  do_boot      <- (!use_analytic && isTRUE(edid_fit_obj$bstrap))
+  # Reproducible multiplier bootstrap: seed the RNG (default to the fit's seed) before aggte() -> mboot(),
+  # which draws from the global stream. Save/restore .Random.seed so the caller's RNG stream is undisturbed.
+  if (do_boot) {
+    if (is.null(seed)) seed <- edid_fit_obj$seed
+    if (!is.null(seed)) {
+      if (exists(".Random.seed", envir = .GlobalEnv)) {
+        old_seed <- get(".Random.seed", envir = .GlobalEnv)
+        on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
+      }
+      set.seed(seed)
+    }
+  }
   a <- aggte(as_MP_edid(edid_fit_obj), type = type, balance_e = balance_e,
              min_e = min_e, max_e = max_e, na.rm = na.rm,
-             bstrap = (!use_analytic && isTRUE(edid_fit_obj$bstrap)))
+             bstrap = do_boot)
   if (use_analytic) {
     # Closure that replays THIS aggregation on an att(g,t) vector perturbed at one cell, returning the
     # aggregate per-element att.egt. The aggregation weights do not depend on the att VALUES, so finite-
@@ -80,20 +97,23 @@ aggte_edid <- function(
       Sigma_quad <- sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
       A <- .edid_recover_agg_map(a, fit, reaggregate)      # n_agg x K, constant cell -> aggregate weights
       if (!is.null(A)) {
-        Sig <- Sig + A %*% Sigma_quad %*% t(A)
+        HO  <- A %*% Sigma_quad %*% t(A)      # aggregate-scale higher-order ("Wick") covariance increment
+        Sig <- Sig + HO
         # Make the aggregate SEs higher-order-aware too (not just the sup-t crit): the cell SEs already include
-        # diag(Sigma_quad), so the event-study SEs must include diag(A Sigma_quad A') for cell/aggregate consistency
-        # and honest pointwise coverage. sqrt(diag(cluster_cov_edid(g$egt))) == the analytic se.egt exactly, so this
-        # only ADDS the higher-order term (non-higher_order path byte-identical).
-        sd_ho <- sqrt(pmax(diag(Sig), 0))
-        if (length(sd_ho) == length(a$se.egt)) a$se.egt <- sd_ho
-        # The overall summary SE too: the overall IF is an EXACT linear combo of the per-element IFs (overall = mean
-        # of the dynamic effects), so recover the weights w (overall = egt %*% w) and report sqrt(w' Sig w), which
-        # adds the higher-order term while reproducing the Sigma1 overall.se exactly when Sigma_quad = 0.
-        if (!is.null(g$overall) && !is.null(a$overall.se) && is.matrix(g$egt) && ncol(g$egt) == nrow(Sig)) {
+        # diag(Sigma_quad), so the event-study SEs must include diag(A Sigma_quad A') for cell/aggregate
+        # consistency. ADD only this increment to did::aggte's analytic se.egt -- rather than replacing it with
+        # sqrt(diag(Sig)), whose cluster_cov_edid finite-cluster convention can differ from did's getSE -- so the
+        # non-higher_order path is byte-identical and higher_order only inflates.
+        he_inc <- diag(HO)
+        if (length(he_inc) == length(a$se.egt))
+          a$se.egt <- sqrt(pmax(a$se.egt^2 + he_inc, 0))
+        # The overall summary SE too: the overall IF is an EXACT linear combo of the per-element IFs (overall =
+        # weighted mean of the dynamic effects). Recover the weights w (overall = egt %*% w) and add only the
+        # higher-order term w'(A Sigma_quad A')w to the existing analytic overall.se (same byte-identity property).
+        if (!is.null(g$overall) && !is.null(a$overall.se) && is.matrix(g$egt) && ncol(g$egt) == nrow(HO)) {
           w <- tryCatch(drop(solve(crossprod(g$egt), crossprod(g$egt, g$overall))), error = function(e) NULL)
-          if (!is.null(w) && length(w) == nrow(Sig))
-            a$overall.se <- sqrt(max(drop(crossprod(w, Sig %*% w)), 0))
+          if (!is.null(w) && length(w) == nrow(HO))
+            a$overall.se <- sqrt(max(a$overall.se^2 + drop(crossprod(w, HO %*% w)), 0))
         }
       }
     }

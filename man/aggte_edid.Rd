@@ -10,7 +10,8 @@ aggte_edid(
   balance_e = NULL,
   min_e = -Inf,
   max_e = Inf,
-  na.rm = FALSE
+  na.rm = FALSE,
+  seed = NULL
 )
 }
 \arguments{
@@ -26,6 +27,10 @@ relative times in \eqn{[-\text{balance\_e}, \text{balance\_e}]}.}
 \item{min_e, max_e}{Numeric: minimum/maximum relative time to include in dynamic output.}
 
 \item{na.rm}{Logical: drop \code{NA} ATT entries before aggregating. Default \code{FALSE}.}
+
+\item{seed}{Integer or \code{NULL}: RNG seed for the multiplier-bootstrap path (\code{cband_method =
+"multiplier"}). Defaults to the seed stored on the fit, so standalone \code{aggte_edid()} bootstrap
+results are reproducible; the caller's RNG stream is restored on exit. Ignored on the analytic path.}
 }
 \value{
 A \code{did::AGGTEobj} (as returned by \code{\link[did]{aggte}}), so the did \code{print},

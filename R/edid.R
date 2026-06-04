@@ -440,6 +440,10 @@ edid <- function(
       att_gt_df$se[ok]       <- bnd$se
       att_gt_df$ci_lower[ok] <- bnd$ci_lower
       att_gt_df$ci_upper[ok] <- bnd$ci_upper
+      # Keep t_stat / p_value consistent with the (possibly higher-order-inflated) analytic SE. Under the
+      # non-higher_order path bnd$se equals the plug-in SE, so these recompute to byte-identical values.
+      att_gt_df$t_stat[ok]   <- att_gt_df$att[ok] / bnd$se
+      att_gt_df$p_value[ok]  <- 2 * stats::pnorm(-abs(att_gt_df$t_stat[ok]))
     }
   }
 

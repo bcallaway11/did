@@ -160,6 +160,22 @@ validate_edid_inputs <- function(
          "edid() requires never-treated units.")
   }
 
+  # Cohorts with fewer than 2 units give a degenerate group sampling variance: on the no-covariate path
+  # cov_nn_edid(.)/n_g for a singleton cohort contributes ~0, so the reported SE is understated with no
+  # other signal (the covariate path already guards each sieve fit at n_gp < 2). Warn so the user knows
+  # inference for the affected cells is unreliable.
+  if (n_never < 2L) {
+    warning("Only ", n_never, " never-treated unit(s): the comparison-group sampling variance is ",
+            "degenerate and edid() standard errors are unreliable.", call. = FALSE)
+  }
+  finite_cohort_sizes <- table(unit_ft[is.finite(unit_ft)])
+  small_cohorts <- names(finite_cohort_sizes)[finite_cohort_sizes < 2L]
+  if (length(small_cohorts) > 0L) {
+    warning("Treated cohort(s) ", paste(small_cohorts, collapse = ", "), " have fewer than 2 units: ",
+            "their group-time sampling variance is degenerate and the reported standard errors for ",
+            "those cells are understated.", call. = FALSE)
+  }
+
   # ------------------------------------------------------------------
   # 11. covariates is deprecated: error with redirect message
   # ------------------------------------------------------------------
@@ -308,6 +324,14 @@ validate_edid_inputs <- function(
         "Cluster variable `%s` is not time-invariant for %d unit(s) (e.g., %s). ",
         clustervars, length(bad), bad[1]),
         "Cluster variable must be constant within unit.")
+    }
+    # Cluster-robust SEs need >= 2 distinct clusters; a single cluster yields an all-NA covariance.
+    # Warn loudly rather than returning NA SEs silently.
+    n_clusters <- length(unique(cl_col))
+    if (n_clusters < 2L) {
+      warning(sprintf(
+        "Cluster variable `%s` has only %d distinct cluster(s): cluster-robust standard errors are undefined and will be returned as NA. Provide at least 2 clusters, or drop clustervars.",
+        clustervars, n_clusters), call. = FALSE)
     }
   }
 
