@@ -15,7 +15,6 @@ validate_edid_inputs(
   pt_assumption,
   alp,
   clustervars,
-  control_group,
   biters,
   anticipation,
   survey_design
@@ -39,8 +38,6 @@ validate_edid_inputs(
 \item{alp}{numeric scalar in (0, 1)}
 
 \item{clustervars}{character scalar or NULL}
-
-\item{control_group}{character scalar, already matched via \code{match.arg}}
 
 \item{biters}{non-negative integer (internal bootstrap iterations)}
 

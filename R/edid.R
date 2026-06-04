@@ -36,12 +36,6 @@
 #'   in \code{data}, or \code{NULL} for no clustering (default). When supplied,
 #'   cluster-robust standard errors are computed via the sandwich EIF formula.
 #'   Note: edid() currently supports only a single cluster variable internally.
-#' @param control_group Control group definition. One of:
-#'   \describe{
-#'     \item{\code{"nevertreated"}}{Use never-treated units (default).}
-#'     \item{\code{"notyettreated"}}{Use the last-treated cohort as
-#'       pseudo-controls (relabeled as never-treated internally).}
-#'   }
 #' @param bstrap Logical: whether to use multiplier bootstrap inference.
 #'   Default \code{FALSE} (analytical standard errors). When \code{TRUE},
 #'   \code{biters} bootstrap draws are used.
@@ -82,7 +76,7 @@
 #'   It composes additively with \code{estimation_effect} (which corrects the
 #'   nuisance channel) and \code{higher_order}, and -- unlike \code{higher_order} -- it does \emph{not} coerce
 #'   \code{cband_method} (a real influence function is carried by the multiplier bootstrap). Supported for the
-#'   covariate path with \code{weights} in \code{c("efficient", "averaged", "gmm")} and plug-in nuisances (cross-fitted
+#'   covariate path with \code{weight_scheme} in \code{c("efficient", "averaged", "gmm")} and plug-in nuisances (cross-fitted
 #'   nuisances, \code{K > 1}, are not supported and error). For \code{"gmm"} the weight inverts the unconditional
 #'   sample covariance \eqn{C}, a second moment that (unlike the linear ATT moment) is not protected by Neyman
 #'   orthogonality, so the channel includes an Ackerberg-Chen-Hahn correction for the first-step (\eqn{r}, \eqn{m})
@@ -108,7 +102,7 @@
 #'   \eqn{[-\text{balance\_e}, \text{balance\_e}]}.
 #' @param survey_design Always \code{NULL}. Survey designs are not yet
 #'   implemented; passing a non-NULL value triggers an error.
-#' @param weights How the per-pair generated-outcome moments are combined in the
+#' @param weight_scheme How the per-pair generated-outcome moments are combined in the
 #'   covariate path. \code{"efficient"} (default) uses the semiparametric-efficient
 #'   pointwise weights \eqn{w(X_i)=\Omega^*(X_i)^{-1}\mathbf 1/(\mathbf 1'\Omega^*(X_i)^{-1}\mathbf 1)},
 #'   estimated by kernel and stabilized by two finite-sample regularizations: data-driven shrinkage of
@@ -221,7 +215,6 @@ edid <- function(
   pt_assumption     = c("all", "post"),
   alp               = 0.05,
   clustervars       = NULL,
-  control_group     = c("nevertreated", "notyettreated"),
   bstrap            = FALSE,
   biters            = 1000L,
   seed              = NULL,
@@ -229,14 +222,14 @@ edid <- function(
   aggregate         = c("all", "overall", "event_study", "group", "calendar", "none"),
   balance_e         = NULL,
   survey_design     = NULL,
-  weights           = c("efficient", "averaged", "gmm", "uniform"),
+  weight_scheme     = c("efficient", "averaged", "gmm", "uniform"),
   estimation_effect = FALSE,
   cband             = TRUE,
   cband_method      = c("analytic", "multiplier"),
   higher_order      = FALSE,
   misspec_robust    = FALSE
 ) {
-  weight_method <- match.arg(weights)
+  weight_method <- match.arg(weight_scheme)
   cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
   cband_method  <- match.arg(cband_method)
   higher_order  <- isTRUE(higher_order)
@@ -283,7 +276,6 @@ edid <- function(
   # Argument matching
   # ------------------------------------------------------------------
   pt_assumption     <- match.arg(pt_assumption)
-  control_group     <- match.arg(control_group)
   aggregate         <- match.arg(aggregate, several.ok = TRUE)
   # When "all" is present it subsumes the others
   if ("all" %in% aggregate) aggregate <- "all"
@@ -323,7 +315,6 @@ edid <- function(
     pt_assumption = pt_assumption,
     alp           = alp,
     clustervars   = clustervars,
-    control_group = control_group,
     biters        = n_bootstrap_internal,
     anticipation  = anticipation,
     survey_design = survey_design
@@ -341,7 +332,6 @@ edid <- function(
     xformla       = xformla,
     covariates    = covariates,
     clustervars   = clustervars,
-    control_group = control_group,
     anticipation  = anticipation
   )
 
@@ -392,10 +382,10 @@ edid <- function(
   # ------------------------------------------------------------------
   # Aggregation
   # ------------------------------------------------------------------
-  do_overall    <- aggregate %in% c("all", "overall")
-  do_event_study <- aggregate %in% c("all", "event_study")
-  do_group      <- aggregate %in% c("all", "group")
-  do_calendar   <- aggregate %in% c("all", "calendar")
+  do_overall    <- any(aggregate %in% c("all", "overall"))
+  do_event_study <- any(aggregate %in% c("all", "event_study"))
+  do_group      <- any(aggregate %in% c("all", "group"))
+  do_calendar   <- any(aggregate %in% c("all", "calendar"))
 
   # Aggregations are computed below, AFTER the edid_fit object exists, via aggte_edid() -- i.e. through
   # did::aggte() on the edid MP. So $overall/$event_study/$group/$calendar/$simple are standard
@@ -465,7 +455,6 @@ edid <- function(
   edid_fit <- list(
     call             = mc,
     pt_assumption    = pt_assumption,
-    control_group    = control_group,
     alpha            = alp,
     n                = panel_obj$n,
     T_periods        = panel_obj$T_periods,
@@ -508,7 +497,7 @@ edid <- function(
   # (att.egt / egt); pre-treatment leads are dropped via na.rm. `$overall` is the headline AGGTEobj:
   # the dynamic event-study average when an event study is requested, else the cohort-share "simple"
   # aggregate. `$event_study`, `$group`, `$calendar`, `$simple` are the corresponding AGGTEobj objects.
-  .agg <- function(ty) tryCatch(aggte_edid(edid_fit, type = ty, na.rm = TRUE), error = function(e) NULL)
+  .agg <- function(ty) tryCatch(aggte_edid(edid_fit, type = ty, balance_e = balance_e, na.rm = TRUE), error = function(e) NULL)
   if (do_event_study) edid_fit$event_study <- .agg("dynamic")
   if (do_group)       edid_fit$group       <- .agg("group")
   if (do_calendar)    edid_fit$calendar    <- .agg("calendar")

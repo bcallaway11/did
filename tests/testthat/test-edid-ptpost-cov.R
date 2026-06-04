@@ -22,16 +22,14 @@ make_ptpost_panel <- function(seed = 1, n = 4000, delta = 0.6) {
 
 test_that("PT-Post covariate path uses base period g-1 (unbiased when PT-Post holds, PT-All fails)", {
   df <- make_ptpost_panel(seed = 1, n = 4000, delta = 0.6)
-  fp <- edid(df, "y", "id", "tt", "g", xformla = ~ x1, control_group = "nevertreated",
-             pt_assumption = "post", aggregate = "none")
+  fp <- edid(df, "y", "id", "tt", "g", xformla = ~ x1, pt_assumption = "post", aggregate = "none")
   a  <- fp$att_gt[fp$att_gt$group == 3 & fp$att_gt$time >= 3, ]
   # PT-Post holds => unbiased; the bug would give ~1 + delta = 1.6
   expect_lt(abs(a$att[a$time == 3] - 1), 0.2)
   expect_lt(abs(a$att[a$time == 4] - 1), 0.2)
 
   # sanity: PT-All is genuinely violated here, so pt="all" should be materially biased away from 1
-  fa <- edid(df, "y", "id", "tt", "g", xformla = ~ x1, control_group = "nevertreated",
-             pt_assumption = "all", aggregate = "none")
+  fa <- edid(df, "y", "id", "tt", "g", xformla = ~ x1, pt_assumption = "all", aggregate = "none")
   aa <- fa$att_gt[fa$att_gt$group == 3 & fa$att_gt$time == 3, ]
   expect_gt(aa$att - 1, 0.15)
 })

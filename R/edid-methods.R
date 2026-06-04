@@ -62,10 +62,7 @@ print.edid_fit <- function(x, ...) {
   cat("Signif. codes: `*' confidence band does not cover 0")
   cat("\n\n")
 
-  cg <- x$control_group
-  cg_text <- if (cg == "nevertreated") "Never Treated" else
-             if (cg == "notyettreated") "Not Yet Treated" else cg
-  cat("Control Group:  "); cat(cg_text); cat(",  ")
+  cat("Control Group:  "); cat("Never Treated"); cat(",  ")
   cat("Anticipation Periods:  "); cat(x$anticipation); cat("\n")
   cat("Estimation Method:  Efficient DiD (Chen, Sant'Anna & Xie 2025)\n")
   pt_text <- if (x$pt_assumption == "all") "PT-All" else "PT-Post"

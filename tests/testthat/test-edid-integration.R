@@ -26,7 +26,7 @@ test_that("edid_fit contains all required top-level fields", {
   fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
               gname = "first_treat",
               pt_assumption = "all", aggregate = "all", bstrap = FALSE)
-  required_fields <- c("call", "pt_assumption", "control_group", "alpha", "n",
+  required_fields <- c("call", "pt_assumption", "alpha", "n",
                         "T_periods", "treatment_groups", "anticipation", "inference_type",
                         "cells", "att_gt", "overall", "event_study", "group")
   for (f in required_fields) {

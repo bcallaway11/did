@@ -46,7 +46,7 @@ as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL) {
     yname = NULL, tname = fit$tname, idname = fit$idname, gname = fit$gname,
     data = tinv, panel = TRUE, faster_mode = FALSE,
     tlist = sort(fit$time_periods), glist = glist,
-    control_group = fit$control_group, anticipation = fit$anticipation,
+    control_group = "nevertreated", anticipation = fit$anticipation,
     bstrap = bstrap, biters = biters, alp = fit$alpha, cband = FALSE,
     clustervars = clustervars, cluster_vector = fit$cluster_indices, n = n
   )

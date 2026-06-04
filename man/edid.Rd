@@ -15,7 +15,6 @@ edid(
   pt_assumption = c("all", "post"),
   alp = 0.05,
   clustervars = NULL,
-  control_group = c("nevertreated", "notyettreated"),
   bstrap = FALSE,
   biters = 1000L,
   seed = NULL,
@@ -23,7 +22,7 @@ edid(
   aggregate = c("all", "overall", "event_study", "group", "calendar", "none"),
   balance_e = NULL,
   survey_design = NULL,
-  weights = c("efficient", "averaged", "gmm", "uniform"),
+  weight_scheme = c("efficient", "averaged", "gmm", "uniform"),
   estimation_effect = FALSE,
   cband = TRUE,
   cband_method = c("analytic", "multiplier"),
@@ -72,13 +71,6 @@ in \code{data}, or \code{NULL} for no clustering (default). When supplied,
 cluster-robust standard errors are computed via the sandwich EIF formula.
 Note: edid() currently supports only a single cluster variable internally.}
 
-\item{control_group}{Control group definition. One of:
-\describe{
-\item{\code{"nevertreated"}}{Use never-treated units (default).}
-\item{\code{"notyettreated"}}{Use the last-treated cohort as
-pseudo-controls (relabeled as never-treated internally).}
-}}
-
 \item{bstrap}{Logical: whether to use multiplier bootstrap inference.
 Default \code{FALSE} (analytical standard errors). When \code{TRUE},
 \code{biters} bootstrap draws are used.}
@@ -109,7 +101,7 @@ event-study aggregation to relative times in
 \item{survey_design}{Always \code{NULL}. Survey designs are not yet
 implemented; passing a non-NULL value triggers an error.}
 
-\item{weights}{How the per-pair generated-outcome moments are combined in the
+\item{weight_scheme}{How the per-pair generated-outcome moments are combined in the
 covariate path. \code{"efficient"} (default) uses the semiparametric-efficient
 pointwise weights \eqn{w(X_i)=\Omega^*(X_i)^{-1}\mathbf 1/(\mathbf 1'\Omega^*(X_i)^{-1}\mathbf 1)},
 estimated by kernel and stabilized by two finite-sample regularizations: data-driven shrinkage of
@@ -176,7 +168,7 @@ inconsistent (unlike \code{higher_order}, whose positive semi-definite \eqn{\Sig
 It composes additively with \code{estimation_effect} (which corrects the
 nuisance channel) and \code{higher_order}, and -- unlike \code{higher_order} -- it does \emph{not} coerce
 \code{cband_method} (a real influence function is carried by the multiplier bootstrap). Supported for the
-covariate path with \code{weights} in \code{c("efficient", "averaged", "gmm")} and plug-in nuisances (cross-fitted
+covariate path with \code{weight_scheme} in \code{c("efficient", "averaged", "gmm")} and plug-in nuisances (cross-fitted
 nuisances, \code{K > 1}, are not supported and error). For \code{"gmm"} the weight inverts the unconditional
 sample covariance \eqn{C}, a second moment that (unlike the linear ATT moment) is not protected by Neyman
 orthogonality, so the channel includes an Ackerberg-Chen-Hahn correction for the first-step (\eqn{r}, \eqn{m})

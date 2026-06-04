@@ -13,7 +13,6 @@
 #' @param gname character scalar: first-treatment-period column name
 #' @param covariates NULL (stub)
 #' @param clustervars character scalar or NULL
-#' @param control_group \code{"nevertreated"} or \code{"notyettreated"}
 #' @param anticipation non-negative integer
 #'
 #' @return a \code{panel_obj} list; see spec Section 5.1
@@ -21,7 +20,6 @@
 prepare_edid_panel <- function(
   data, yname, idname, tname, gname,
   xformla = NULL, covariates = NULL, clustervars = NULL,
-  control_group = "nevertreated",
   anticipation = 0L
 ) {
 
@@ -79,32 +77,6 @@ prepare_edid_panel <- function(
   unit_ft_map  <- tapply(ft_vals, unit_id_vals, function(x) x[1L])
   # Map to all_units order
   unit_cohorts <- as.numeric(unit_ft_map[match(all_units, names(unit_ft_map))])
-
-  # -----------------------------------------------------------------------
-  # 7. Handle notyettreated control group
-  # -----------------------------------------------------------------------
-  if (control_group == "notyettreated") {
-    finite_cohorts <- unit_cohorts[is.finite(unit_cohorts)]
-    last_g         <- max(finite_cohorts)
-    # Relabel last cohort as Inf (never-treated for estimation purposes)
-    unit_cohorts[unit_cohorts == last_g] <- Inf
-    # Trim periods at/after which the relabeled last cohort is no longer a clean control. With
-    # anticipation a > 0 the last cohort begins anticipating at last_g - a, so it is a valid
-    # (non-anticipating) control only for periods strictly before last_g - a (not merely < last_g).
-    # Keeping periods in [last_g - a, last_g) would use anticipating units as controls and bias the
-    # affected cells. With a = 0 this reduces to the original `< last_g`.
-    eff_last_g  <- last_g - anticipation
-    keep_times  <- time_periods[time_periods < eff_last_g]
-    keep_cols   <- as.character(keep_times)
-    outcome_wide <- outcome_wide[, keep_cols, drop = FALSE]
-    time_periods <- keep_times
-    T_periods    <- length(time_periods)
-    period_1     <- time_periods[1L]
-    period_to_col <- stats::setNames(
-      seq_along(time_periods),
-      as.character(time_periods)
-    )
-  }
 
   # -----------------------------------------------------------------------
   # 8. treatment_groups: sorted unique finite cohort values
@@ -194,7 +166,6 @@ prepare_edid_panel <- function(
     n_clusters         = n_clusters,
     covariate_matrix   = covariate_matrix,
     xformla            = xformla,
-    control_group      = control_group,
     anticipation       = as.integer(anticipation)
   )
 

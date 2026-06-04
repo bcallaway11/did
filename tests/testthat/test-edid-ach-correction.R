@@ -23,15 +23,13 @@ make_cfs_panel <- function(n = 200, seed = 1) {
 }
 
 fit_cfs <- function(df, cfs) {
-  edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-       weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
+  edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
        estimation_effect = cfs)
 }
 
 test_that("default is estimation_effect = FALSE (byte-identical EIF)", {
   df  <- make_cfs_panel(n = 200, seed = 11)
-  fd  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-              weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L)
+  fd  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L)
   fF  <- fit_cfs(df, FALSE)
   expect_false(isTRUE(fd$estimation_effect))
   expect_identical(fd$eif, fF$eif)
@@ -61,11 +59,9 @@ test_that("corrected EIF stays mean-zero to machine precision", {
 
 test_that("correction propagates to the event-study aggregation (points equal, SE may differ)", {
   df   <- make_cfs_panel(n = 200, seed = 14)
-  esF  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-               weights = "efficient", aggregate = "event_study", bstrap = FALSE, seed = 1L,
+  esF  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "event_study", bstrap = FALSE, seed = 1L,
                estimation_effect = FALSE)$event_study
-  esT  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-               weights = "efficient", aggregate = "event_study", bstrap = FALSE, seed = 1L,
+  esT  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "event_study", bstrap = FALSE, seed = 1L,
                estimation_effect = TRUE)$event_study
   skip_if(is.null(esF) || is.null(esT))
   expect_equal(esF$att.egt, esT$att.egt, tolerance = 1e-10)  # ES point estimates unchanged
@@ -74,8 +70,7 @@ test_that("correction propagates to the event-study aggregation (points equal, S
 test_that("estimation_effect has no effect without covariates (warns, disabled)", {
   df <- make_cfs_panel(n = 200, seed = 15)
   expect_warning(
-    edid(df, "y", "id", "t", "g", xformla = NULL, control_group = "nevertreated",
-         aggregate = "none", bstrap = FALSE, seed = 1L, estimation_effect = TRUE),
+    edid(df, "y", "id", "t", "g", xformla = NULL, aggregate = "none", bstrap = FALSE, seed = 1L, estimation_effect = TRUE),
     "no effect without covariates"
   )
 })
@@ -88,7 +83,7 @@ test_that("conditional-mean ACH correction has the CORRECT SIGN (matches the num
   # OLS reweighting). A regression of this kind catches a flipped sign (which would give cor = -1).
   df  <- make_cfs_panel(n = 300, seed = 21)
   pn  <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1,
-                            control_group = "nevertreated", anticipation = 0L)
+                            anticipation = 0L)
   g <- 2L; t <- 4L
   prs <- enumerate_valid_pairs_edid(g, pn$treatment_groups, pn$time_periods, pn$period_1, "all", 0L)
   pfn <- prs; sc <- is.finite(pfn$gp) & (pfn$gp == g); if (any(sc)) pfn$gp[sc] <- Inf

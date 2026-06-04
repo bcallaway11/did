@@ -11,8 +11,7 @@ test_that("validate_edid_inputs() passes on valid one-cohort panel", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     )
   )
 })
@@ -24,8 +23,7 @@ test_that("validate_edid_inputs() passes on two-cohort panel", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "post",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 100L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 100L, anticipation = 0L, survey_design = NULL
     )
   )
 })
@@ -40,8 +38,7 @@ test_that("validate_edid_inputs() errors on missing yname column", {
       data = df, yname = "y_outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "y_outcome"
   )
@@ -54,8 +51,7 @@ test_that("validate_edid_inputs() errors on missing tname column", {
       data = df, yname = "outcome", idname = "unit",
       tname = "t_var", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "t_var"
   )
@@ -72,8 +68,7 @@ test_that("validate_edid_inputs() errors on character outcome column", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     )
   )
 })
@@ -89,8 +84,7 @@ test_that("validate_edid_inputs() errors on Inf outcome", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "finite|non-finite|Inf"
   )
@@ -104,8 +98,7 @@ test_that("validate_edid_inputs() errors on NA outcome", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     )
   )
 })
@@ -121,8 +114,7 @@ test_that("validate_edid_inputs() errors on unbalanced panel", {
       data = df_unbal, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "balanced|unbalanced"
   )
@@ -139,8 +131,7 @@ test_that("validate_edid_inputs() errors on duplicate (idname, tname) rows", {
       data = df_dup, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "[Dd]uplicate"
   )
@@ -158,8 +149,7 @@ test_that("validate_edid_inputs() errors on non-absorbing treatment", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "absorbing|time-varying|constant"
   )
@@ -168,7 +158,7 @@ test_that("validate_edid_inputs() errors on non-absorbing treatment", {
 # ============================================================
 # 3.8 No never-treated units
 # ============================================================
-test_that("validate_edid_inputs() errors when no never-treated units and control_group='nevertreated'", {
+test_that("validate_edid_inputs() errors when no never-treated units are present", {
   df <- make_panel_1cohort()
   # relabel all never-treated as cohort 4
   df$first_treat[df$first_treat == Inf] <- 4L
@@ -177,8 +167,7 @@ test_that("validate_edid_inputs() errors when no never-treated units and control
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "never.treated|nevertreated"
   )
@@ -195,8 +184,7 @@ test_that("validate_edid_inputs() errors when covariates supplied (stub)", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = "x1", pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "covariate|not yet implemented"
   )
@@ -212,8 +200,7 @@ test_that("validate_edid_inputs() errors when survey_design supplied (stub)", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L,
+      alp = 0.05, clustervars = NULL, biters = 0L, anticipation = 0L,
       survey_design = list(strata = "fake")
     ),
     regexp = "survey|not yet implemented"
@@ -230,8 +217,7 @@ test_that("validate_edid_inputs() errors on alp outside (0,1)", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 1.5, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 1.5, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     )
   )
   expect_error(
@@ -239,8 +225,7 @@ test_that("validate_edid_inputs() errors on alp outside (0,1)", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0, clustervars = NULL, control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0, clustervars = NULL, biters = 0L, anticipation = 0L, survey_design = NULL
     )
   )
 })
@@ -257,8 +242,7 @@ test_that("validate_edid_inputs() errors on time-varying cluster variable", {
       data = df, yname = "outcome", idname = "unit",
       tname = "time", gname = "first_treat",
       covariates = NULL, pt_assumption = "all",
-      alp = 0.05, clustervars = "cluster_id", control_group = "nevertreated",
-      biters = 0L, anticipation = 0L, survey_design = NULL
+      alp = 0.05, clustervars = "cluster_id", biters = 0L, anticipation = 0L, survey_design = NULL
     ),
     regexp = "cluster|time.invariant|time-invariant"
   )

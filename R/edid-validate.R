@@ -16,7 +16,6 @@
 #' @param pt_assumption character scalar, already matched via \code{match.arg}
 #' @param alp numeric scalar in (0, 1)
 #' @param clustervars character scalar or NULL
-#' @param control_group character scalar, already matched via \code{match.arg}
 #' @param biters non-negative integer (internal bootstrap iterations)
 #' @param anticipation non-negative integer
 #' @param survey_design always NULL (survey not yet implemented)
@@ -25,7 +24,7 @@
 #' @keywords internal
 validate_edid_inputs <- function(
   data, yname, idname, tname, gname, xformla = NULL, covariates,
-  pt_assumption, alp, clustervars, control_group,
+  pt_assumption, alp, clustervars,
   biters, anticipation, survey_design
 ) {
 
@@ -150,29 +149,15 @@ validate_edid_inputs <- function(
   }
 
   # ------------------------------------------------------------------
-  # 9-10. Control group availability
+  # 9-10. Never-treated control availability
   # ------------------------------------------------------------------
   # Get time-invariant gname per unit (one row per unit)
   unit_ft <- tapply(data[[gname]], data[[idname]], `[`, 1L)
 
-  if (control_group == "nevertreated") {
-    n_never <- sum(is.infinite(unit_ft))
-    if (n_never == 0L) {
-      stop("No never-treated units found (`gname == Inf`). ",
-           "edid() requires never-treated units when `control_group = \"nevertreated\"`.")
-    }
-  } else {
-    # notyettreated
-    finite_ft <- unit_ft[is.finite(unit_ft)]
-    if (length(finite_ft) == 0L) {
-      stop("No finite first-treatment values found; cannot determine last cohort.")
-    }
-    last_g <- max(finite_ft)
-    n_last <- sum(finite_ft == last_g)
-    if (n_last == 0L) {
-      stop("No units in the last treated cohort found. ",
-           "Cannot use `control_group = \"notyettreated\"`.")
-    }
+  n_never <- sum(is.infinite(unit_ft))
+  if (n_never == 0L) {
+    stop("No never-treated units found (`gname == Inf`). ",
+         "edid() requires never-treated units.")
   }
 
   # ------------------------------------------------------------------

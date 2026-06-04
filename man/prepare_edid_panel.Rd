@@ -13,7 +13,6 @@ prepare_edid_panel(
   xformla = NULL,
   covariates = NULL,
   clustervars = NULL,
-  control_group = "nevertreated",
   anticipation = 0L
 )
 }
@@ -31,8 +30,6 @@ prepare_edid_panel(
 \item{covariates}{NULL (stub)}
 
 \item{clustervars}{character scalar or NULL}
-
-\item{control_group}{\code{"nevertreated"} or \code{"notyettreated"}}
 
 \item{anticipation}{non-negative integer}
 }

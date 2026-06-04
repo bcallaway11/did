@@ -252,7 +252,7 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
   if (n_gp == 0L) {
     stop(sprintf(paste0(
       "estimate_inverse_propensity_edid: 0 units in comparison cohort g'=%g; cannot estimate ",
-      "1/p_{g'}(X) (the fallback would divide by zero). Check the comparison group / control_group."), gp))
+      "1/p_{g'}(X) (the fallback would divide by zero). Check the comparison group."), gp))
   }
   if (n_gp < 2L) {
     warning(sprintf(

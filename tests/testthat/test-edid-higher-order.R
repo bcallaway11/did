@@ -32,7 +32,7 @@ make_cfs_panel <- function(n = 300, seed = 7) {
 build_cell_ctx <- function(df, g, t, pt_assumption = "all") {
   df$g[is.finite(df$g) & df$g == 0] <- Inf   # never-treated 0 -> Inf (edid() does this internally)
   panel_obj <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1,
-                                  control_group = "nevertreated", anticipation = 0L)
+                                  anticipation = 0L)
   pairs <- enumerate_valid_pairs_edid(
     target_g = g, treatment_groups = panel_obj$treatment_groups,
     time_periods = panel_obj$time_periods, period_1 = panel_obj$period_1,
@@ -139,8 +139,7 @@ inline_var_quad <- function(ho, N) {
 
 test_that("diag(sigma_quad_edid) reproduces the analytical_se_edid var_quad recipe (~1e-6)", {
   df <- make_cfs_panel(n = 300, seed = 7)
-  fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-             weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
+  fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
              higher_order = TRUE)
   ok <- vapply(fT$cells, function(cc) is.finite(cc$se) && cc$se > 0, logical(1))
   cells_ok <- fT$cells[ok]
@@ -157,11 +156,9 @@ test_that("diag(sigma_quad_edid) reproduces the analytical_se_edid var_quad reci
 
 test_that("edid(higher_order = TRUE) inflates every cell SE and gives finite ordered bands", {
   df <- make_cfs_panel(n = 300, seed = 7)
-  fF <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-             weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
+  fF <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
              higher_order = FALSE)
-  fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-             weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
+  fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
              higher_order = TRUE)
   expect_true(isTRUE(fT$higher_order))
   expect_false(isTRUE(fF$higher_order))
@@ -180,8 +177,7 @@ test_that("edid(higher_order = TRUE) inflates every cell SE and gives finite ord
 
 test_that("edid(higher_order = TRUE) aggregations: SEs untouched, crit finite", {
   df <- make_cfs_panel(n = 300, seed = 7)
-  fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-             weights = "efficient", aggregate = "all", bstrap = FALSE, seed = 1L,
+  fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "all", bstrap = FALSE, seed = 1L,
              higher_order = TRUE)
   for (nm in c("event_study", "group", "calendar")) {
     a <- fT[[nm]]
@@ -198,8 +194,7 @@ test_that("edid(higher_order = TRUE) aggregations: SEs untouched, crit finite", 
 test_that("higher_order = TRUE with cband_method = 'multiplier' warns and coerces to analytic", {
   df <- make_cfs_panel(n = 200, seed = 9)
   expect_warning(
-    fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-               weights = "efficient", aggregate = "none", bstrap = TRUE, biters = 50L, seed = 1L,
+    fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = TRUE, biters = 50L, seed = 1L,
                higher_order = TRUE, cband_method = "multiplier"),
     "requires cband_method = 'analytic'"
   )
@@ -223,10 +218,8 @@ test_that("higher_order = TRUE with xformla = NULL errors", {
 
 test_that("higher_order = FALSE is byte-identical to the default (no behavior change)", {
   df <- make_cfs_panel(n = 200, seed = 5)
-  fd <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-             weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L)
-  f0 <- edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-             weights = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
+  fd <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L)
+  f0 <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
              higher_order = FALSE)
   expect_identical(fd$att_gt$se, f0$att_gt$se)
   expect_identical(fd$att_gt$ci_lower, f0$att_gt$ci_lower)

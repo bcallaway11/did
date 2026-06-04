@@ -29,17 +29,17 @@ make_mr_panel <- function(n = 320, seed = 7, bump = 0.6) {
   do.call(rbind, rows)
 }
 
-fit_mr <- function(df, weights = "efficient", ...) {
+fit_mr <- function(df, weight_scheme = "efficient", ...) {
   suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1,
-                        control_group = "nevertreated", aggregate = "none", weights = weights, ...))
+                        aggregate = "none", weight_scheme = weight_scheme, ...))
 }
 
 # (a) -----------------------------------------------------------------------------------------------------
 test_that("misspec_robust = FALSE is byte-identical to the default", {
   df <- make_mr_panel(n = 240, seed = 5)
   for (wm in c("efficient", "averaged", "gmm")) {
-    f0 <- fit_mr(df, weights = wm)
-    fF <- fit_mr(df, weights = wm, misspec_robust = FALSE)
+    f0 <- fit_mr(df, weight_scheme = wm)
+    fF <- fit_mr(df, weight_scheme = wm, misspec_robust = FALSE)
     expect_identical(fF$att_gt$se, f0$att_gt$se)
     expect_identical(fF$att_gt$ci_lower, f0$att_gt$ci_lower)
     expect_identical(fF$att_gt$ci_upper, f0$att_gt$ci_upper)
@@ -51,8 +51,8 @@ test_that("misspec_robust = FALSE is byte-identical to the default", {
 test_that("misspec_robust = TRUE: point estimates unchanged, augmented EIF mean-zero, SEs finite", {
   df <- make_mr_panel(n = 320, seed = 7)
   for (wm in c("efficient", "averaged", "gmm")) {
-    f0 <- fit_mr(df, weights = wm)
-    f1 <- fit_mr(df, weights = wm, misspec_robust = TRUE)
+    f0 <- fit_mr(df, weight_scheme = wm)
+    f1 <- fit_mr(df, weight_scheme = wm, misspec_robust = TRUE)
     k  <- !f1$att_gt$is_pre
     expect_equal(f1$att_gt$att, f0$att_gt$att, tolerance = 1e-12)          # att UNCHANGED
     expect_true(all(is.finite(f1$att_gt$se[k])) && all(f1$att_gt$se[k] > 0))
@@ -64,11 +64,11 @@ test_that("misspec_robust = TRUE: point estimates unchanged, augmented EIF mean-
 test_that("eif(misspec_robust=TRUE) - eif(FALSE) equals the diagnostic psi_Omega (data - corr)", {
   df <- make_mr_panel(n = 320, seed = 7)
   for (wm in c("efficient", "averaged", "gmm")) {
-    f0 <- fit_mr(df, weights = wm)                                          # plug-in eif (no fold)
-    f1 <- fit_mr(df, weights = wm, misspec_robust = TRUE)                   # folded eif
+    f0 <- fit_mr(df, weight_scheme = wm)                                          # plug-in eif (no fold)
+    f1 <- fit_mr(df, weight_scheme = wm, misspec_robust = TRUE)                   # folded eif
     old <- options(edid_store_psiomega = TRUE, edid_psiomega_acc = list())  # diagnostic accumulator
     on.exit(options(old), add = TRUE)
-    fd <- fit_mr(df, weights = wm)                                          # computes psi but does NOT fold
+    fd <- fit_mr(df, weight_scheme = wm)                                          # computes psi but does NOT fold
     pa <- getOption("edid_psiomega_acc"); options(edid_store_psiomega = NULL, edid_psiomega_acc = NULL)
     cn <- paste0(fd$att_gt$group, "_", fd$att_gt$time)
     e0 <- as.matrix(f0$eif); e1 <- as.matrix(f1$eif)
@@ -90,10 +90,10 @@ test_that("eif(misspec_robust=TRUE) - eif(FALSE) equals the diagnostic psi_Omega
 test_that("misspec_robust composes additively with estimation_effect (same psi added; combined EIF mean-zero)", {
   df <- make_mr_panel(n = 320, seed = 11)
   for (wm in c("efficient", "averaged", "gmm")) {                                  # assert BOTH fold sites' ACH+psi ordering
-    f_e  <- fit_mr(df, weights = wm, estimation_effect = TRUE)
-    f_em <- fit_mr(df, weights = wm, estimation_effect = TRUE, misspec_robust = TRUE)
+    f_e  <- fit_mr(df, weight_scheme = wm, estimation_effect = TRUE)
+    f_em <- fit_mr(df, weight_scheme = wm, estimation_effect = TRUE, misspec_robust = TRUE)
     old <- options(edid_store_psiomega = TRUE, edid_psiomega_acc = list())
-    fd <- fit_mr(df, weights = wm)
+    fd <- fit_mr(df, weight_scheme = wm)
     pa <- getOption("edid_psiomega_acc"); options(old)
     cn <- paste0(fd$att_gt$group, "_", fd$att_gt$time)
     ee <- as.matrix(f_e$eif); eem <- as.matrix(f_em$eif); k <- !fd$att_gt$is_pre
@@ -111,19 +111,15 @@ test_that("misspec_robust: the channel rides through aggregations + clustering (
   df <- make_mr_panel(n = 360, seed = 13)
   df$cl <- (df$id %% 30L)                                                   # 30 clusters
   for (agg in c("group", "event_study")) {
-    a0 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-                                weights = "efficient", aggregate = agg))
-    a1 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-                                weights = "efficient", aggregate = agg, misspec_robust = TRUE))
+    a0 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = agg))
+    a1 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = agg, misspec_robust = TRUE))
     r0 <- a0[[agg]]; r1 <- a1[[agg]]                                        # the aggregate result (att.egt/se.egt/overall.*)
     expect_equal(r1$att.egt, r0$att.egt, tolerance = 1e-12)                # aggregate point estimates UNCHANGED
     expect_true(all(is.finite(r1$se.egt)) && is.finite(r1$overall.se))    # finite
     expect_gt(max(abs(r1$se.egt - r0$se.egt)), 1e-8)                       # the channel PROPAGATED to the aggregate SE
   }
-  cl0 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-                               weights = "averaged", aggregate = "none", clustervars = "cl"))
-  cl1 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-                               weights = "averaged", aggregate = "none", clustervars = "cl", misspec_robust = TRUE))
+  cl0 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "averaged", aggregate = "none", clustervars = "cl"))
+  cl1 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "averaged", aggregate = "none", clustervars = "cl", misspec_robust = TRUE))
   k <- !cl1$att_gt$is_pre
   expect_true(all(is.finite(cl1$att_gt$se[k])))                            # cluster-robust fold rides rowsum
   expect_gt(max(abs(cl1$att_gt$se[k] - cl0$att_gt$se[k])), 1e-8)           # ...and actually moves the clustered SE
@@ -138,30 +134,28 @@ test_that("misspec_robust warns + falls back to plug-in for uniform / no covaria
       warning = function(w) { ws <<- c(ws, conditionMessage(w)); invokeRestart("muffleWarning") })
     list(value = val, warnings = ws)
   }
-  # uniform: fixed weights have no estimation channel -> warn-disable, SE unchanged
-  f0u <- fit_mr(df, weights = "uniform")
-  ru  <- catch_warnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-                             aggregate = "none", weights = "uniform", misspec_robust = TRUE))
+  # uniform: fixed weight_scheme have no estimation channel -> warn-disable, SE unchanged
+  f0u <- fit_mr(df, weight_scheme = "uniform")
+  ru  <- catch_warnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, aggregate = "none", weight_scheme = "uniform", misspec_robust = TRUE))
   expect_true(any(grepl("misspec_robust", ru$warnings)))                   # the warn-disable warning fired
   expect_identical(ru$value$att_gt$se, f0u$att_gt$se)                      # SE unchanged (fell back to plug-in)
   expect_false(ru$value$misspec_robust)                                    # stored S3 flag reflects the downgrade
   # gmm: now ACTIVE (sample-cov channel + the ACH correction for u'Cw) -> SE changes, flag stays TRUE
-  f0g <- fit_mr(df, weights = "gmm")
-  fMg <- fit_mr(df, weights = "gmm", misspec_robust = TRUE)
+  f0g <- fit_mr(df, weight_scheme = "gmm")
+  fMg <- fit_mr(df, weight_scheme = "gmm", misspec_robust = TRUE)
   expect_true(fMg$misspec_robust)                                          # gmm is NOT warn-disabled
   expect_false(isTRUE(all.equal(fMg$att_gt$se[!fMg$att_gt$is_pre], f0g$att_gt$se[!f0g$att_gt$is_pre])))  # SE moves
   expect_equal(fMg$att_gt$att, f0g$att_gt$att, tolerance = 1e-12)          # point estimates unchanged
   # efficient stays active; no covariates warn-disables
-  expect_true(fit_mr(df, weights = "efficient", misspec_robust = TRUE)$misspec_robust)
-  r <- catch_warnings(edid(df, "y", "id", "t", "g", control_group = "nevertreated",   # no xformla
-                           weights = "averaged", aggregate = "none", misspec_robust = TRUE))
+  expect_true(fit_mr(df, weight_scheme = "efficient", misspec_robust = TRUE)$misspec_robust)
+  r <- catch_warnings(edid(df, "y", "id", "t", "g", # no xformla
+                           weight_scheme = "averaged", aggregate = "none", misspec_robust = TRUE))
   expect_true(any(grepl("without covariates", r$warnings)))
 })
 
 test_that("misspec_robust does NOT coerce cband_method (a real IF is carried by the multiplier bootstrap)", {
   df <- make_mr_panel(n = 220, seed = 9)
-  fM <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, control_group = "nevertreated",
-                              weights = "efficient", aggregate = "none", misspec_robust = TRUE,
+  fM <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", misspec_robust = TRUE,
                               cband_method = "multiplier", bstrap = TRUE, biters = 199L))
   expect_identical(fM$cband_method, "multiplier")
 })
