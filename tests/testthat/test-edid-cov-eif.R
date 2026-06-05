@@ -46,8 +46,10 @@ test_that("reported SE matches manual EIF plug-in formula for valid-inference ce
   # pre-treatment zeros) will have reported SE = NA even though sqrt(sum(eif^2)/n^2)
   # gives a finite (possibly 0) value. We compare only cells with finite reported SE.
   df  <- make_simple_panel(n = 120, seed = 20)
+  # misspec_robust = FALSE: this tests the PLUG-IN EIF-SE identity (the default now folds the
+  # weight-estimation / higher-order channels, which the plug-in eif^2 sum does not include).
   fit <- edid(df, "y", "id", "t", "g", xformla = ~ x1,
-               aggregate = "none", seed = 1L)
+               aggregate = "none", seed = 1L, misspec_robust = FALSE)
   eif_mat <- fit$eif
   if (!is.null(eif_mat)) {
     n            <- fit$n

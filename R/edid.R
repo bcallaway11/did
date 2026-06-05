@@ -60,9 +60,15 @@
 #'   warning) and a covariate formula (with no covariates the nuisances have no first-step coefficients and
 #'   the term is exactly zero, so \code{xformla = NULL} errors). It is asymptotically negligible under
 #'   correct specification; its value is finite-sample honesty in covariate-rich designs.
-#' @param misspec_robust Logical (default \code{FALSE}). If \code{TRUE}, the influence function is augmented
-#'   with the weight-estimation channel \eqn{\psi_\Omega} (the first-step estimation effect of the efficient
-#'   weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})}, the sibling of
+#' @param misspec_robust Logical (default \code{TRUE}). Master switch for misspecification-robust standard
+#'   errors: when \code{TRUE}, the reported SE accounts for \emph{every} applicable estimation effect --- the
+#'   weight-estimation channel (described below), the first-step nuisance ACH correction
+#'   (\code{estimation_effect}), and the higher-order ("Wick") nuisance term (\code{higher_order}) --- each
+#'   enabled only where it applies and silently skipped where it does not (no covariates; multiplier path;
+#'   \code{weight_scheme = "uniform"}), so default calls do not warn. An explicitly-set \code{estimation_effect}
+#'   or \code{higher_order} overrides that piece, and \code{misspec_robust = FALSE} reverts to the plug-in
+#'   efficient-IF SE. The weight-estimation channel \eqn{\psi_\Omega} is the first-step estimation effect of the
+#'   efficient weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})} (the sibling of
 #'   \code{estimation_effect}'s nuisance correction that it explicitly leaves out). It yields standard errors
 #'   that are robust to misspecification of the weighting model: under correct specification \eqn{\psi_\Omega}
 #'   is first-order zero (it vanishes at the \eqn{\sqrt{n}} rate, so the SE converges to the efficient SE),
@@ -234,14 +240,19 @@ edid <- function(
   cband             = TRUE,
   cband_method      = c("analytic", "multiplier"),
   higher_order      = FALSE,
-  misspec_robust    = FALSE,
+  misspec_robust    = TRUE,
   trim_level        = 200
 ) {
   weight_method <- match.arg(weight_scheme)
   cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
+  ee_explicit   <- !missing(estimation_effect)      # did the user set the fine-grained flags explicitly?
+  ho_explicit   <- !missing(higher_order)
+  mr_explicit   <- !missing(misspec_robust)
   cband_method  <- match.arg(cband_method)
+  estimation_effect <- isTRUE(estimation_effect)
   higher_order  <- isTRUE(higher_order)
   misspec_robust <- isTRUE(misspec_robust)
+  has_cov       <- !(is.null(xformla) || identical(deparse(xformla, width.cutoff = 500L), "~1"))
   mc <- match.call()
 
   # ------------------------------------------------------------------
@@ -254,14 +265,16 @@ edid <- function(
   #       degenerate-U higher-order term, so it is coerced to the analytic path (with a warning);
   #   (2) it needs the first-step sieve coefficients -- with no covariates the nuisances are unconditional
   #       means with no coefficients and Sigma_quad is identically zero, so xformla is required (error).
-  if (higher_order) {
+  # Only an EXPLICIT higher_order = TRUE validates/coerces here; the misspec_robust master switch enables the
+  # higher-order term only where it already applies (covariates + analytic), so it never errors/coerces.
+  if (higher_order && ho_explicit) {
     if (cband_method != "analytic") {
       warning("higher_order = TRUE requires cband_method = 'analytic' (the multiplier bootstrap cannot ",
               "carry the degenerate-U higher-order term); coercing cband_method to 'analytic'.",
               call. = FALSE)
       cband_method <- "analytic"
     }
-    if (is.null(xformla) || identical(deparse(xformla, width.cutoff = 500L), "~1")) {
+    if (!has_cov) {
       stop("higher_order = TRUE requires a covariate formula (xformla): with no covariates the sieve ",
            "nuisances are unconditional means with no first-step coefficients, so the higher-order ",
            "variance is exactly zero. Supply xformla, or use higher_order = FALSE.", call. = FALSE)
@@ -276,8 +289,23 @@ edid <- function(
   # at the cell OR aggregation level). So when the user requests bstrap = TRUE WITHOUT explicitly choosing a
   # cband_method -- and is not in the higher_order path, which requires the analytic covariance -- select the
   # multiplier bootstrap, as the bstrap documentation promises. An explicit cband_method always wins.
-  if (isTRUE(bstrap) && !cband_method_explicit && !higher_order) {
+  if (isTRUE(bstrap) && !cband_method_explicit && !(higher_order && ho_explicit)) {
     cband_method <- "multiplier"
+  }
+
+  # ------------------------------------------------------------------
+  # misspec_robust master switch (default TRUE)
+  # ------------------------------------------------------------------
+  # misspec_robust = TRUE makes the reported SE account for EVERY applicable estimation effect: the
+  # weight-estimation channel, the first-step nuisance ACH correction (estimation_effect), and the
+  # higher-order ("Wick") nuisance term. Each is enabled only where it applies and silently skipped where it
+  # does not (no covariates; multiplier path; weight_scheme = "uniform"), so default calls never warn. An
+  # explicitly-set fine-grained flag overrides the bundle; misspec_robust = FALSE reverts to the plug-in
+  # efficient-IF SE (honoring any individually-set estimation_effect / higher_order).
+  if (misspec_robust) {
+    if (!ee_explicit) estimation_effect <- has_cov
+    if (!ho_explicit) higher_order      <- has_cov && cband_method == "analytic"
+    if (!mr_explicit) misspec_robust    <- has_cov && weight_method != "uniform"
   }
 
   # ------------------------------------------------------------------

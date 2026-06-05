@@ -149,7 +149,7 @@ test_that("covariate-path SE equals sqrt(colSums(eif^2)/n^2) for every weight sc
   for (ws in c("efficient", "averaged", "gmm", "uniform")) {
     fit <- suppressWarnings(
       edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = ws,
-           aggregate = "none", seed = 1L)
+           aggregate = "none", seed = 1L, misspec_robust = FALSE)   # plug-in EIF-SE identity
     )
     ok  <- is.finite(fit$att_gt$se) & fit$att_gt$se > 0
     eif_se <- sqrt(colSums(fit$eif^2) / fit$n^2)

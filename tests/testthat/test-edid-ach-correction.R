@@ -23,13 +23,19 @@ make_cfs_panel <- function(n = 200, seed = 1) {
 }
 
 fit_cfs <- function(df, cfs) {
+  # misspec_robust = FALSE isolates the ACH (estimation_effect) channel. The misspec_robust master switch
+  # now defaults TRUE and would otherwise fold the weight-estimation channel into every fit; these tests
+  # target the ACH nuisance correction only.
   edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
-       estimation_effect = cfs)
+       estimation_effect = cfs, misspec_robust = FALSE)
 }
 
-test_that("default is estimation_effect = FALSE (byte-identical EIF)", {
+test_that("under misspec_robust = FALSE, estimation_effect defaults to FALSE (byte-identical EIF)", {
   df  <- make_cfs_panel(n = 200, seed = 11)
-  fd  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L)
+  # The misspec_robust master switch defaults TRUE; with it OFF the fine-grained estimation_effect defaults
+  # FALSE, so the plug-in fit is byte-identical to an explicit estimation_effect = FALSE.
+  fd  <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none",
+              bstrap = FALSE, seed = 1L, misspec_robust = FALSE)
   fF  <- fit_cfs(df, FALSE)
   expect_false(isTRUE(fd$estimation_effect))
   expect_identical(fd$eif, fF$eif)

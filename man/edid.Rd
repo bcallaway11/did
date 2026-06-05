@@ -27,7 +27,7 @@ edid(
   cband = TRUE,
   cband_method = c("analytic", "multiplier"),
   higher_order = FALSE,
-  misspec_robust = FALSE,
+  misspec_robust = TRUE,
   trim_level = 200
 )
 }
@@ -153,9 +153,15 @@ warning) and a covariate formula (with no covariates the nuisances have no first
 the term is exactly zero, so \code{xformla = NULL} errors). It is asymptotically negligible under
 correct specification; its value is finite-sample honesty in covariate-rich designs.}
 
-\item{misspec_robust}{Logical (default \code{FALSE}). If \code{TRUE}, the influence function is augmented
-with the weight-estimation channel \eqn{\psi_\Omega} (the first-step estimation effect of the efficient
-weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})}, the sibling of
+\item{misspec_robust}{Logical (default \code{TRUE}). Master switch for misspecification-robust standard
+errors: when \code{TRUE}, the reported SE accounts for \emph{every} applicable estimation effect --- the
+weight-estimation channel (described below), the first-step nuisance ACH correction
+(\code{estimation_effect}), and the higher-order ("Wick") nuisance term (\code{higher_order}) --- each
+enabled only where it applies and silently skipped where it does not (no covariates; multiplier path;
+\code{weight_scheme = "uniform"}), so default calls do not warn. An explicitly-set \code{estimation_effect}
+or \code{higher_order} overrides that piece, and \code{misspec_robust = FALSE} reverts to the plug-in
+efficient-IF SE. The weight-estimation channel \eqn{\psi_\Omega} is the first-step estimation effect of the
+efficient weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})} (the sibling of
 \code{estimation_effect}'s nuisance correction that it explicitly leaves out). It yields standard errors
 that are robust to misspecification of the weighting model: under correct specification \eqn{\psi_\Omega}
 is first-order zero (it vanishes at the \eqn{\sqrt{n}} rate, so the SE converges to the efficient SE),

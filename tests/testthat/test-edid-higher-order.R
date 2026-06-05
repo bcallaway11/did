@@ -216,11 +216,15 @@ test_that("higher_order = TRUE with xformla = NULL errors", {
   )
 })
 
-test_that("higher_order = FALSE is byte-identical to the default (no behavior change)", {
+test_that("under misspec_robust = FALSE, higher_order defaults to FALSE (byte-identical)", {
   df <- make_cfs_panel(n = 200, seed = 5)
-  fd <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L)
-  f0 <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, seed = 1L,
-             higher_order = FALSE)
+  # The misspec_robust master switch defaults TRUE and bundles the higher-order ("Wick") term where it
+  # applies (covariates + analytic). With misspec_robust = FALSE the fine-grained higher_order defaults
+  # FALSE, so the plug-in fit is byte-identical to an explicit higher_order = FALSE.
+  fd <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none",
+             bstrap = FALSE, seed = 1L, misspec_robust = FALSE)
+  f0 <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none",
+             bstrap = FALSE, seed = 1L, misspec_robust = FALSE, higher_order = FALSE)
   expect_identical(fd$att_gt$se, f0$att_gt$se)
   expect_identical(fd$att_gt$ci_lower, f0$att_gt$ci_lower)
   expect_identical(fd$eif, f0$eif)

@@ -154,6 +154,7 @@ fit_edid_cells <- function(
 
   cell_id <- 0L
   n_extreme_ratio_instances <- 0L  # accumulate extreme-ratio warnings; emit once at end
+  n_shrink_approx <- 0L; max_shrink_lambda <- 0; shrink_eg_g <- NA; shrink_eg_t <- NA  # shrinkage-IF approx; emit once
 
   # Hoist the CELL-INVARIANT Nadaraya-Watson kernel: the n x n weight matrix K and the bandwidths depend only on
   # the full covariate matrix, so they are identical for every (g,t) cell. Build ONCE and reuse, instead of
@@ -378,9 +379,10 @@ fit_edid_cells <- function(
             # Q_pw was computed in the fused weights pass above (q_i'1 = 0 per unit, same Minv as w_i).
             stopifnot(max(abs(rowSums(Q_pw))) < 1e-6 * (1 + max(abs(Q_pw))))  # defensive: pointwise Term-1 premise
             lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity (psi omits its O(lam) IF)
-            if (is.finite(lam_cell) && lam_cell > 0.05)                       # large lambda => omission non-negligible
-              warning(sprintf("edid cell (%s,%s): efficient weight-channel SE omits the shrinkage IF and lambda=%.3f > 0.05; the misspec-robust SE is only an approximation to the weight-channel variance here.",
-                              g, t, lam_cell), call. = FALSE)
+            if (is.finite(lam_cell) && lam_cell > 0.05) {                     # large lambda => omission; collect, warn once at end
+              n_shrink_approx <- n_shrink_approx + 1L
+              if (lam_cell > max_shrink_lambda) { max_shrink_lambda <- lam_cell; shrink_eg_g <- g; shrink_eg_t <- t }
+            }
             po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
                        inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
                        psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw))
@@ -561,6 +563,15 @@ fit_edid_cells <- function(
       "Extreme propensity ratios detected (max > 100) in %d estimation step(s). Results may be unstable.",
       n_extreme_ratio_instances
     ))
+  }
+
+  if (n_shrink_approx > 0L) {
+    warning(sprintf(
+      paste0("misspec_robust: the efficient weight-channel SE is an approximation in %d cell(s) where the ",
+             "pointwise shrinkage lambda > 0.05 (max %.3f, e.g. cell (%s,%s)); it omits the O(lambda) ",
+             "shrinkage influence function there. Use misspec_robust = FALSE for the plug-in SE if exact ",
+             "weight-channel SEs are needed."),
+      n_shrink_approx, max_shrink_lambda, shrink_eg_g, shrink_eg_t), call. = FALSE)
   }
 
   # Build EIF matrix if needed
