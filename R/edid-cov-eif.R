@@ -61,14 +61,29 @@ compute_generated_outcomes_cov_edid <- function(
   col_t   <- panel_obj$period_to_col[[as.character(t)]]
   col_1   <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
 
-  # Overlap-trimming keep mask (DRDID-style): a comparison observation whose propensity ratio / inverse
-  # propensity is extreme is zeroed in the MOMENT (its outcome-side reweighting contribution), while still
-  # contributing to nuisance estimation. trim_keep is a named list of {0,1} n-vectors keyed by comparison
-  # cohort ("Inf" / as.character(gp)); NULL or a missing key => keep all (no trimming).
+  # Overlap-trimming keep mask (DRDID-style, UNIT-level): at non-overlap X (propensity ratio or inverse
+  # propensity extreme) the WHOLE per-pair generated outcome is zeroed -- not just a comparison observation's
+  # reweighting term, but ALSO the treated term1, whose conditional means are extrapolated there and whose
+  # efficient weight w(X)=Omega*(X)^{-1}1/... is built from a 1/p-blown-up Omega. Zeroing the whole phi_j drops
+  # the unit from this pair's moment AND its EIF, so a corrupted weight multiplies zero; the estimand becomes
+  # the ATT on the overlap sub-population (as in DRDID). The trimmed obs STILL contributes to nuisance
+  # estimation (Omega/m/r are unaffected). trim_keep is a named list of {0,1} n-vectors keyed by comparison
+  # cohort ("Inf" / as.character(gp)); NULL or a missing key => keep all (no trimming). A pair's overlap mask
+  # is the product of the masks of the comparisons it uses (never-treated, and g' for cross-cohort pairs).
   .keep <- function(key) {
     if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
   }
   keep_inf <- .keep("Inf")
+
+  # DRDID-style renormalization (per pair). After the whole phi_j is zeroed at non-overlap X, the kept treated
+  # units must form a proper Hajek mean: rescale by pi_g / (kept-treated mass). Zeroing ALONE under-weights the
+  # trimmed-treated term1 and biases the ATT toward 0 (verified); this rescale restores the overlap-ATT scale.
+  # The treated and the r-reweighted comparison masses coincide (E[keep p_g]), so one per-pair rescale
+  # renormalizes all components consistently. With no trimming m_kept == pi_g => factor 1 (byte-identical).
+  .renorm <- function(phi, keep) {
+    m_kept <- mean(Ig * keep)
+    if (m_kept > .Machine$double.eps) phi * (pi_g / m_kept) else rep(0, n)
+  }
 
   # Never-treated indicator (used in all pairs)
   I_inf   <- as.numeric(panel_obj$never_treated_mask)
@@ -113,7 +128,10 @@ compute_generated_outcomes_cov_edid <- function(
       m_inf_diff <- m_inf_t - m_inf_tp  # m_{Inf,t,tpre}(X)
       y_diff     <- ow[, col_t] - ow[, col_tp]  # Y_t - Y_tpre
 
-      phi_j <- (Ig / pi_g - r_inf * (I_inf * keep_inf) / pi_g) * (y_diff - m_inf_diff)
+      # Self-pair (only comparison is never-treated): keep_inf is this pair's overlap mask; zero the WHOLE
+      # phi_j (incl. the treated Ig term) at non-overlap X so a corrupted efficient weight there multiplies
+      # zero, then renormalize by the kept-treated mass.
+      phi_j <- .renorm(keep_inf * (Ig / pi_g - r_inf * I_inf / pi_g) * (y_diff - m_inf_diff), keep_inf)
 
     } else {
       # -----------------------------------------------------------------
@@ -166,12 +184,19 @@ compute_generated_outcomes_cov_edid <- function(
       # Y_tilde = (G_g/pi_g)(Y_t - Y_1 - m_{inf,t,t'}(X) - m_{g',t',1}(X))
       #         - r_{g,inf}(G_inf/pi_g)(Y_t - Y_t' - m_{inf,t,t'}(X))
       #         - r_{g,g'}(G_{g'}/pi_g)(Y_t' - Y_1 - m_{g',t',1}(X))
-      keep_gp <- .keep(gp_key)
+      keep_gp   <- .keep(gp_key)
+      keep_pair <- keep_inf * keep_gp                  # overlap for THIS pair: never-treated AND comparison g'
       term1 <- (Ig / pi_g) * (Y_t - Y_1 - m_inf_diff - m_gp_tp)
-      term2 <- r_inf * (I_inf * keep_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
-      term3 <- r_gp * (I_gp * keep_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
+      term2 <- r_inf * (I_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
+      term3 <- r_gp * (I_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
 
-      phi_j <- term1 - term2 - term3
+      # Overlap trim is UNIT-level (the WHOLE generated outcome), not per comparison term: at non-overlap X the
+      # treated term1's conditional means are extrapolated AND the efficient weight w(X) = Omega*(X)^{-1}1/... is
+      # built from a 1/p-blown-up Omega, so the entire phi_j (incl. the treated term1) must be zeroed there --
+      # otherwise the treated unit stays in the estimand carrying a corrupted weight. keep_pair = 0 drops the
+      # unit from this pair's moment AND its EIF, so any corrupted weight multiplies zero. .renorm then rescales
+      # by the kept-treated mass (DRDID-style) so the kept units form a proper Hajek mean.
+      phi_j <- .renorm(keep_pair * (term1 - term2 - term3), keep_pair)
     }
 
     gen_out_mat[, j] <- phi_j

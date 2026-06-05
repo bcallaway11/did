@@ -63,3 +63,25 @@ test_that("trim_level has no effect on the no-covariate path (no propensity mode
                               seed = 1, misspec_robust = FALSE, trim_level = 2))
   expect_equal(a1$att_gt$att, a2$att_gt$att, tolerance = 1e-12)
 })
+
+test_that("overlap trimming + renormalization recovers the ATT under overlap failure", {
+  # Overlap-failure DGP: for large x1 almost all units are treated (cohort 3), so those treated units have no
+  # comparison support and 1/p blows up in the efficient Omega. True ATT = 1 (homogeneous; PT holds). Without
+  # trimming the efficient estimate is badly biased; unit-level trimming + the DRDID-style renormalization
+  # (zeroing the whole phi at non-overlap X, then rescaling by the kept-treated mass) recovers the overlap ATT.
+  set.seed(11); n <- 800
+  x1  <- runif(n, -3, 3); lin <- 3.0 * x1
+  P   <- exp(cbind(0, lin, lin - 1)); P <- P / rowSums(P)
+  g   <- apply(P, 1, function(p) sample(c(Inf, 3, 5), 1, prob = p))
+  df  <- do.call(rbind, lapply(1:6, function(tt) {
+    tau <- 1 * (is.finite(g) & tt >= g)
+    data.frame(id = 1:n, t = tt, g = ifelse(is.finite(g), g, 0), x1 = x1, y = 0.3 * x1 + tau + rnorm(n))
+  }))
+  ov <- function(tl) suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient",
+                                           aggregate = "overall", misspec_robust = FALSE, seed = 1,
+                                           trim_level = tl))$simple$overall.att
+  a_inf <- ov(Inf)    # no trimming: overlap failure biases the efficient estimate
+  a_200 <- ov(200)    # default trim + renormalization: recovers the overlap ATT
+  expect_gt(abs(a_inf - 1), 0.5)    # untrimmed is badly biased
+  expect_lt(abs(a_200 - 1), 0.2)    # trimmed + renormalized recovers ~1.0
+})
