@@ -84,6 +84,13 @@
 #'   estimation channel; warns and falls back to the plug-in SE). In weak-overlap / small-\eqn{n} cells where the
 #'   efficient pointwise shrinkage \eqn{\lambda} is non-negligible the efficient channel omits an \eqn{O(\lambda)}
 #'   term and the SE there is a (warned) approximation to the weight-channel variance.
+#' @param trim_level Numeric (default \code{200}). Overlap-trimming threshold (covariate path only). A
+#'   comparison observation is dropped from an \eqn{(g,t)} cell's moment and efficient weights when its
+#'   estimated propensity ratio \eqn{r(X)} OR inverse propensity \eqn{1/p_{g'}(X)} has absolute value
+#'   \eqn{\ge} \code{trim_level} -- mirroring DRDID's \code{trim.level = 0.995} (a control IPW-weight cap of
+#'   \eqn{\approx 200}). The observation still contributes to nuisance estimation; only its outcome-side
+#'   weight is zeroed. This guards against severe lack of overlap and redefines the target to the overlap
+#'   sub-population (as in DRDID). \code{trim_level = Inf} disables trimming. No effect on the no-covariate path.
 #' @param seed Integer seed for reproducibility of the bootstrap draws / the analytic sup-t simulation, or
 #'   \code{NULL} (default, no seed set).
 #' @param anticipation Non-negative integer: number of anticipation periods.
@@ -227,7 +234,8 @@ edid <- function(
   cband             = TRUE,
   cband_method      = c("analytic", "multiplier"),
   higher_order      = FALSE,
-  misspec_robust    = FALSE
+  misspec_robust    = FALSE,
+  trim_level        = 200
 ) {
   weight_method <- match.arg(weight_scheme)
   cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
@@ -355,7 +363,8 @@ edid <- function(
     weight_method = weight_method,
     estimation_effect = isTRUE(estimation_effect),
     higher_order  = higher_order,
-    misspec_robust = misspec_robust
+    misspec_robust = misspec_robust,
+    trim_level    = trim_level
   )
 
   cells      <- fit_result$cells

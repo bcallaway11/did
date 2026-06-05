@@ -27,7 +27,8 @@
 fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
   need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform"),
-  estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE
+  estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
+  trim_level = Inf
 ) {
   weight_method <- match.arg(weight_method)
   higher_order  <- isTRUE(higher_order)
@@ -281,6 +282,21 @@ fit_edid_cells <- function(
         )
       }
 
+      # Overlap-trimming keep mask (covariate path, DRDID-style): zero a comparison observation in the
+      # moment/weights when its propensity ratio OR inverse propensity is extreme (abs >= trim_level), while
+      # still using it for nuisance estimation. trim_level = Inf => keep all. Built once per cell and reused by
+      # the moment and (below) Omega / the EIF for consistency.
+      trim_keep <- NULL
+      if (is.finite(trim_level) && (!is.null(prop_ratios) || !is.null(inv_propensities))) {
+        ks <- union(names(prop_ratios), names(inv_propensities))
+        trim_keep <- stats::setNames(lapply(ks, function(k) {
+          keep <- rep(TRUE, panel_obj$n)
+          rr <- prop_ratios[[k]];      if (!is.null(rr)) keep <- keep & (abs(rr) < trim_level)
+          ip <- inv_propensities[[k]]; if (!is.null(ip)) keep <- keep & (abs(ip) < trim_level)
+          keep
+        }), ks)
+      }
+
       # Steps 2-6: dispatch on covariate vs. no-covariate path
       if (use_cov_path) {
         # --- Covariate path ---
@@ -291,7 +307,8 @@ fit_edid_cells <- function(
           pairs         = pairs,
           prop_ratios   = prop_ratios,
           cond_means    = cond_means,
-          pt_assumption = pt_assumption
+          pt_assumption = pt_assumption,
+          trim_keep     = trim_keep
         )
         if (isTRUE(getOption("edid_store_genout"))) {            # diagnostic: expose per-cell generated outcomes
           acc <- getOption("edid_genout_acc", list()); acc[[paste0(g, "_", t)]] <- gen_out_mat

@@ -11,7 +11,8 @@ compute_generated_outcomes_cov_edid(
   pairs,
   prop_ratios,
   cond_means,
-  pt_assumption
+  pt_assumption,
+  trim_keep = NULL
 )
 }
 \arguments{

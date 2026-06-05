@@ -27,7 +27,8 @@ edid(
   cband = TRUE,
   cband_method = c("analytic", "multiplier"),
   higher_order = FALSE,
-  misspec_robust = FALSE
+  misspec_robust = FALSE,
+  trim_level = 200
 )
 }
 \arguments{
@@ -176,6 +177,14 @@ nuisance estimation entering \eqn{C}. It is \emph{not} available for \code{"unif
 estimation channel; warns and falls back to the plug-in SE). In weak-overlap / small-\eqn{n} cells where the
 efficient pointwise shrinkage \eqn{\lambda} is non-negligible the efficient channel omits an \eqn{O(\lambda)}
 term and the SE there is a (warned) approximation to the weight-channel variance.}
+
+\item{trim_level}{Numeric (default \code{200}). Overlap-trimming threshold (covariate path only). A
+comparison observation is dropped from an \eqn{(g,t)} cell's moment and efficient weights when its
+estimated propensity ratio \eqn{r(X)} OR inverse propensity \eqn{1/p_{g'}(X)} has absolute value
+\eqn{\ge} \code{trim_level} -- mirroring DRDID's \code{trim.level = 0.995} (a control IPW-weight cap of
+\eqn{\approx 200}). The observation still contributes to nuisance estimation; only its outcome-side
+weight is zeroed. This guards against severe lack of overlap and redefines the target to the overlap
+sub-population (as in DRDID). \code{trim_level = Inf} disables trimming. No effect on the no-covariate path.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:

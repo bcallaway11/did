@@ -47,7 +47,8 @@ compute_generated_outcomes_cov_edid <- function(
   pairs,
   prop_ratios,
   cond_means,
-  pt_assumption
+  pt_assumption,
+  trim_keep = NULL
 ) {
   H    <- nrow(pairs)
   n    <- panel_obj$n
@@ -59,6 +60,15 @@ compute_generated_outcomes_cov_edid <- function(
 
   col_t   <- panel_obj$period_to_col[[as.character(t)]]
   col_1   <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
+
+  # Overlap-trimming keep mask (DRDID-style): a comparison observation whose propensity ratio / inverse
+  # propensity is extreme is zeroed in the MOMENT (its outcome-side reweighting contribution), while still
+  # contributing to nuisance estimation. trim_keep is a named list of {0,1} n-vectors keyed by comparison
+  # cohort ("Inf" / as.character(gp)); NULL or a missing key => keep all (no trimming).
+  .keep <- function(key) {
+    if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
+  }
+  keep_inf <- .keep("Inf")
 
   # Never-treated indicator (used in all pairs)
   I_inf   <- as.numeric(panel_obj$never_treated_mask)
@@ -103,7 +113,7 @@ compute_generated_outcomes_cov_edid <- function(
       m_inf_diff <- m_inf_t - m_inf_tp  # m_{Inf,t,tpre}(X)
       y_diff     <- ow[, col_t] - ow[, col_tp]  # Y_t - Y_tpre
 
-      phi_j <- (Ig / pi_g - r_inf * I_inf / pi_g) * (y_diff - m_inf_diff)
+      phi_j <- (Ig / pi_g - r_inf * (I_inf * keep_inf) / pi_g) * (y_diff - m_inf_diff)
 
     } else {
       # -----------------------------------------------------------------
@@ -156,9 +166,10 @@ compute_generated_outcomes_cov_edid <- function(
       # Y_tilde = (G_g/pi_g)(Y_t - Y_1 - m_{inf,t,t'}(X) - m_{g',t',1}(X))
       #         - r_{g,inf}(G_inf/pi_g)(Y_t - Y_t' - m_{inf,t,t'}(X))
       #         - r_{g,g'}(G_{g'}/pi_g)(Y_t' - Y_1 - m_{g',t',1}(X))
+      keep_gp <- .keep(gp_key)
       term1 <- (Ig / pi_g) * (Y_t - Y_1 - m_inf_diff - m_gp_tp)
-      term2 <- r_inf * (I_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
-      term3 <- r_gp * (I_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
+      term2 <- r_inf * (I_inf * keep_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
+      term3 <- r_gp * (I_gp * keep_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
 
       phi_j <- term1 - term2 - term3
     }
@@ -535,9 +546,17 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     return(Omega_array)   # (do_psi already returned above; the efficient psi rides the FIRST array call's lambda)
   }
 
-  # Ensure positive semi-definiteness via eigenvalue floor (averaged matrix)
-  eig <- eigen(Omega_hat, symmetric = TRUE)
-  eig$values <- pmax(eig$values, 1e-12)
+  # Ensure positive semi-definiteness AND cap the condition number via a dimension-aware RELATIVE eigenvalue
+  # floor (scale-invariant), matching the pointwise path. An absolute 1e-12 floor leaves the averaged Omega-bar
+  # arbitrarily ill-conditioned for small-scale outcomes (e.g. kappa ~1e13), which makes its inverse blow up and
+  # destabilizes the efficient-weight / weight-estimation-channel computations (catastrophic cancellation in
+  # q'1). The relative floor mx * n^(-a_floor) caps kappa at n^(a_floor), as in compute_pointwise_weights_edid.
+  eig     <- eigen(Omega_hat, symmetric = TRUE)
+  d_cov   <- ncol(panel_obj$covariate_matrix)
+  a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
+  mx      <- max(eig$values)
+  floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
+  eig$values <- pmax(eig$values, floor_v)
   Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
 
   Omega_hat   # (do_psi returns its list above)
