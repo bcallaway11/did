@@ -12,7 +12,8 @@ compute_generated_outcomes_cov_edid(
   prop_ratios,
   cond_means,
   pt_assumption,
-  trim_keep = NULL
+  trim_keep = NULL,
+  return_trim_info = FALSE
 )
 }
 \arguments{
@@ -33,9 +34,18 @@ cross-fitted propensity ratios. Must include key \code{"Inf"} for
 \eqn{E[Y_{period} - Y_1 | G=gp, X]}. Must include never-treated keys.}
 
 \item{pt_assumption}{\code{"all"} or \code{"post"}}
+
+\item{trim_keep}{optional named list of \{0,1\} n-vectors keyed by comparison cohort (\code{"Inf"} /
+\code{as.character(gp)}): DRDID-style overlap-trim masks; NULL or a missing key keeps all units for that
+comparison. A pair's mask is the product of the masks of the comparisons it uses.}
+
+\item{return_trim_info}{logical: if TRUE return \code{list(gen_out, keep, m_kept)} carrying the per-pair
+kept-treated masks + masses (\code{keep}/\code{m_kept} NULL when no unit was trimmed) for the EIF's
+kept-treated-mass centering; if FALSE (default) return the bare n x H generated-outcome matrix.}
 }
 \value{
-numeric matrix n x H; entries may be NA if nuisances are NA
+numeric matrix n x H (entries may be NA if nuisances are NA), or the list above when
+\code{return_trim_info = TRUE}
 }
 \description{
 Returns the n x H matrix of generated outcomes where column j corresponds

@@ -15,6 +15,7 @@ compute_ach_correction_cov_edid(
   m_aux,
   r_aux,
   pt_assumption = "all",
+  trim_keep = NULL,
   eps_rel = 1e-06
 )
 }
@@ -27,6 +28,9 @@ compute_ach_correction_cov_edid(
 
 \item{m_aux, r_aux}{named lists (keyed as \code{cond_means}/\code{prop_ratios}) of per-nuisance
 pieces \code{list(B_test, score_mat, H_inv, is_fallback)} from the \code{return_aux} path}
+
+\item{trim_keep}{optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+held FIXED at \eqn{\hat\theta} so \eqn{\Gamma} is the trimmed moment's nuisance sensitivity}
 
 \item{eps_rel}{relative finite-difference step}
 }

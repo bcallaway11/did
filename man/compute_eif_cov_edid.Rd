@@ -4,7 +4,15 @@
 \alias{compute_eif_cov_edid}
 \title{Compute the efficient influence function for a cell with covariates}
 \usage{
-compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
+compute_eif_cov_edid(
+  panel_obj,
+  gen_out_mat,
+  weights,
+  att_gt,
+  g,
+  trim_keep_mat = NULL,
+  m_kept = NULL
+)
 }
 \arguments{
 \item{panel_obj}{panel object (needs cohort_masks, cohort_fractions)}
@@ -17,6 +25,13 @@ of per-observation pointwise weights \eqn{w(X_i)}}
 \item{att_gt}{scalar point estimate (= sum_j w_j * colMeans(gen_out_mat))}
 
 \item{g}{scalar: target treatment cohort (unused; kept for API compatibility)}
+
+\item{trim_keep_mat}{optional n x H matrix of the per-pair kept-treated masks \eqn{keep_{j}} that
+\code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output);
+NULL (no overlap trimming) selects the byte-identical \eqn{G_g/\pi_g} centering below.}
+
+\item{m_kept}{optional length-H vector of the per-pair kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
+that \code{.renorm} divided by; required (non-NULL) iff \code{trim_keep_mat} is non-NULL.}
 }
 \value{
 numeric vector length n, mean approximately 0

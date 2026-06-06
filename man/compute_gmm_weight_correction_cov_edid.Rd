@@ -16,8 +16,13 @@ compute_gmm_weight_correction_cov_edid(
   m_aux,
   r_aux,
   pt_assumption = "all",
+  trim_keep = NULL,
   eps_rel = 1e-06
 )
+}
+\arguments{
+\item{trim_keep}{optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+held FIXED at \eqn{\hat\theta} so C = cov(Ytilde) is the trimmed/renormalized covariance the gmm weights invert}
 }
 \description{
 The gmm weight inverts the unconditional sample covariance C = cov(Ytilde), a SECOND moment that (unlike the

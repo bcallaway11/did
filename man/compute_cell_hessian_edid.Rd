@@ -15,6 +15,7 @@ compute_cell_hessian_edid(
   m_aux,
   r_aux,
   pt_assumption = "all",
+  trim_keep = NULL,
   eps = 1e-04
 )
 }
@@ -25,6 +26,9 @@ compute_cell_hessian_edid(
 \item{W}{frozen weights: length-H vector or n x H matrix (NOT recomputed here).}
 
 \item{m_aux, r_aux}{named lists of ACH first-step pieces (see \code{edid_nuisance_blocks}).}
+
+\item{trim_keep}{optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+held FIXED at \eqn{\hat\theta} so the Hessian is of the trimmed moment (keeping \eqn{att(\theta)} quadratic).}
 
 \item{eps}{finite-difference step (coefficient units). Default 1e-4 (matches the prototype).}
 }

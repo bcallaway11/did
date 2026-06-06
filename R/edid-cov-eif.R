@@ -37,8 +37,15 @@
 #'   \code{paste0(gp, "_", period)}: cross-fitted conditional means
 #'   \eqn{E[Y_{period} - Y_1 | G=gp, X]}. Must include never-treated keys.
 #' @param pt_assumption \code{"all"} or \code{"post"}
+#' @param trim_keep optional named list of \{0,1\} n-vectors keyed by comparison cohort (\code{"Inf"} /
+#'   \code{as.character(gp)}): DRDID-style overlap-trim masks; NULL or a missing key keeps all units for that
+#'   comparison. A pair's mask is the product of the masks of the comparisons it uses.
+#' @param return_trim_info logical: if TRUE return \code{list(gen_out, keep, m_kept)} carrying the per-pair
+#'   kept-treated masks + masses (\code{keep}/\code{m_kept} NULL when no unit was trimmed) for the EIF's
+#'   kept-treated-mass centering; if FALSE (default) return the bare n x H generated-outcome matrix.
 #'
-#' @return numeric matrix n x H; entries may be NA if nuisances are NA
+#' @return numeric matrix n x H (entries may be NA if nuisances are NA), or the list above when
+#'   \code{return_trim_info = TRUE}
 #' @keywords internal
 compute_generated_outcomes_cov_edid <- function(
   panel_obj,
@@ -697,6 +704,8 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
 #' @param weights frozen weights: length-H vector or n x H matrix (NOT recomputed here)
 #' @param m_aux,r_aux named lists (keyed as \code{cond_means}/\code{prop_ratios}) of per-nuisance
 #'   pieces \code{list(B_test, score_mat, H_inv, is_fallback)} from the \code{return_aux} path
+#' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+#'   held FIXED at \eqn{\hat\theta} so \eqn{\Gamma} is the trimmed moment's nuisance sensitivity
 #' @param eps_rel relative finite-difference step
 #' @return numeric vector length n (the term to subtract from the plug-in EIF)
 #' @keywords internal
@@ -743,6 +752,8 @@ compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
 #' `E_n[(u'd_i)(w'd_i)]` (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
 #' along basis column c), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. The augmented gmm weight IF is then
 #' psi - correction (sign jackknife-locked). inv_p does NOT enter (the gmm Ytilde uses r, m only).
+#' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+#'   held FIXED at \eqn{\hat\theta} so C = cov(Ytilde) is the trimmed/renormalized covariance the gmm weights invert
 #' @keywords internal
 compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
                                                    u, w, m_aux, r_aux, pt_assumption = "all",
@@ -867,6 +878,8 @@ edid_nuisance_blocks <- function(m_aux, r_aux) {
 #'   \code{compute_generated_outcomes_cov_edid}.
 #' @param W frozen weights: length-H vector or n x H matrix (NOT recomputed here).
 #' @param m_aux,r_aux named lists of ACH first-step pieces (see \code{edid_nuisance_blocks}).
+#' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+#'   held FIXED at \eqn{\hat\theta} so the Hessian is of the trimmed moment (keeping \eqn{att(\theta)} quadratic).
 #' @param eps finite-difference step (coefficient units). Default 1e-4 (matches the prototype).
 #' @return list with \code{H} (P x P numerical Hessian) and \code{blocks} (the ordered nuisance blocks
 #'   used, from \code{edid_nuisance_blocks}); \code{H} is a 0 x 0 matrix when there are no estimated blocks.
