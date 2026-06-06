@@ -301,16 +301,22 @@ fit_edid_cells <- function(
       # Steps 2-6: dispatch on covariate vs. no-covariate path
       if (use_cov_path) {
         # --- Covariate path ---
-        gen_out_mat <- compute_generated_outcomes_cov_edid(
-          panel_obj     = panel_obj,
-          g             = g,
-          t             = t,
-          pairs         = pairs,
-          prop_ratios   = prop_ratios,
-          cond_means    = cond_means,
-          pt_assumption = pt_assumption,
-          trim_keep     = trim_keep
+        go_res <- compute_generated_outcomes_cov_edid(
+          panel_obj        = panel_obj,
+          g                = g,
+          t                = t,
+          pairs            = pairs,
+          prop_ratios      = prop_ratios,
+          cond_means       = cond_means,
+          pt_assumption    = pt_assumption,
+          trim_keep        = trim_keep,
+          return_trim_info = TRUE
         )
+        gen_out_mat <- go_res$gen_out
+        # Per-pair kept-treated masks + masses so the EIF centers on pi_g,kept (= m_kept_j), not pi_g, whenever
+        # overlap trimming bit (NULL when trim_level = Inf => EIF takes its byte-identical no-trim path).
+        eif_keep   <- go_res$keep
+        eif_mkept  <- go_res$m_kept
         if (isTRUE(getOption("edid_store_genout"))) {            # diagnostic: expose per-cell generated outcomes
           acc <- getOption("edid_genout_acc", list()); acc[[paste0(g, "_", t)]] <- gen_out_mat
           options(edid_genout_acc = acc)
@@ -351,13 +357,15 @@ fit_edid_cells <- function(
               "identity and invalidating the SE. edid requires complete cases: drop incomplete units ",
               "before calling, or inspect cell (%s,%s)."), g, t, g, t), call. = FALSE)
           att_gt   <- mean(wY_i, na.rm = TRUE)                               # E_n[w(X_i)' Ytilde_i]
-          eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, W_pw, att_gt, g)
+          eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, W_pw, att_gt, g, eif_keep, eif_mkept)
           if (isTRUE(estimation_effect))                                    # ACH first-step correction (W frozen)
             eif_gt <- eif_gt - compute_ach_correction_cov_edid(
-              panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption)
+              panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption,
+              trim_keep = trim_keep)
           if (higher_order)                                                  # per-cell Hessian (W = W_pw frozen)
             ho_cell <- compute_cell_hessian_edid(
-              panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption)
+              panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption,
+              trim_keep = trim_keep)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
           if (isTRUE(getOption("edid_store_wpw"))) {            # research diagnostic (OFF): full per-unit W_pw + ids
             acc <- getOption("edid_wpw_acc", list())            # (seeds the efficient frozen-W_pw jackknife)
@@ -492,7 +500,8 @@ fit_edid_cells <- function(
                 psi_plug  <- -(as.numeric(dc %*% u) * as.numeric(dc %*% weights)) +
                              as.numeric(crossprod(u, Cmat %*% weights))           # exp07 plug-in sample-cov IF
                 nuis_corr <- compute_gmm_weight_correction_cov_edid(panel_obj, g, t, pairs, prop_ratios,
-                               cond_means, u, weights, m_aux, r_aux, pt_assumption)  # ACH correction for u'Cw
+                               cond_means, u, weights, m_aux, r_aux, pt_assumption,
+                               trim_keep = trim_keep)                              # ACH correction for u'Cw
                 psi_const <- psi_plug + nuis_corr                                 # captured for the misspec_robust fold
                 if (isTRUE(getOption("edid_store_psiomega"))) {                   # research diagnostic accumulator
                   acc <- getOption("edid_psiomega_acc", list())                  # corr = -nuis_corr keeps the uniform
@@ -502,13 +511,15 @@ fit_edid_cells <- function(
               }
             }
           }
-          eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g)
+          eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, weights, att_gt, g, eif_keep, eif_mkept)
           if (isTRUE(estimation_effect))                                    # ACH first-step correction (w frozen)
             eif_gt <- eif_gt - compute_ach_correction_cov_edid(
-              panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption)
+              panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption,
+              trim_keep = trim_keep)
           if (higher_order)                                                  # per-cell Hessian (w frozen)
             ho_cell <- compute_cell_hessian_edid(
-              panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption)
+              panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption,
+              trim_keep = trim_keep)
           if (misspec_robust && !is.null(psi_const))                         # fold the weight channel AFTER the ACH
             eif_gt <- eif_gt + psi_const                                     # subtraction (averaged/gmm); NULL => +0
         }

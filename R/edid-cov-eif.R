@@ -48,7 +48,8 @@ compute_generated_outcomes_cov_edid <- function(
   prop_ratios,
   cond_means,
   pt_assumption,
-  trim_keep = NULL
+  trim_keep = NULL,
+  return_trim_info = FALSE
 ) {
   H    <- nrow(pairs)
   n    <- panel_obj$n
@@ -89,6 +90,14 @@ compute_generated_outcomes_cov_edid <- function(
   I_inf   <- as.numeric(panel_obj$never_treated_mask)
 
   gen_out_mat <- matrix(NA_real_, nrow = n, ncol = H)
+
+  # Per-pair overlap-trim record for the EIF's kept-treated-mass centering. After .renorm divides pair j's
+  # generated outcome by m_kept_j = E_n[G_g keep_j] (the pi_g in the 1/pi_g terms CANCELS), the estimator is a
+  # Hajek ratio in m_kept_j -- NOT in pi_g. The EIF therefore centers on (G_g keep_j / m_kept_j), not (G_g/pi_g);
+  # see compute_eif_cov_edid. keep_mat[, j] / m_kept_vec[j] record the EXACT mask + mass .renorm used for pair j so
+  # the EIF reuses them (no re-deriving the per-pair masks => no drift). Defaults (keep=1, mass=pi_g) = no trimming.
+  keep_mat   <- matrix(1, nrow = n, ncol = H)
+  m_kept_vec <- rep(pi_g, H)
 
   for (j in seq_len(H)) {
     gp_j    <- pairs$gp[j]
@@ -131,6 +140,7 @@ compute_generated_outcomes_cov_edid <- function(
       # Self-pair (only comparison is never-treated): keep_inf is this pair's overlap mask; zero the WHOLE
       # phi_j (incl. the treated Ig term) at non-overlap X so a corrupted efficient weight there multiplies
       # zero, then renormalize by the kept-treated mass.
+      keep_used <- keep_inf
       phi_j <- .renorm(keep_inf * (Ig / pi_g - r_inf * I_inf / pi_g) * (y_diff - m_inf_diff), keep_inf)
 
     } else {
@@ -196,12 +206,29 @@ compute_generated_outcomes_cov_edid <- function(
       # otherwise the treated unit stays in the estimand carrying a corrupted weight. keep_pair = 0 drops the
       # unit from this pair's moment AND its EIF, so any corrupted weight multiplies zero. .renorm then rescales
       # by the kept-treated mass (DRDID-style) so the kept units form a proper Hajek mean.
+      keep_used <- keep_pair
       phi_j <- .renorm(keep_pair * (term1 - term2 - term3), keep_pair)
     }
+
+    # Record the per-pair kept-treated mask + mass that .renorm used (mirrors its m_kept guard EXACTLY): a
+    # degenerate pair (entire treated cohort trimmed, m_kept <= eps) zeroed phi_j, so its centering basis must be 0.
+    mk_j <- mean(Ig * keep_used)
+    if (mk_j <= .Machine$double.eps) { keep_mat[, j] <- 0; m_kept_vec[j] <- 1 }
+    else                            { keep_mat[, j] <- keep_used; m_kept_vec[j] <- mk_j }
 
     gen_out_mat[, j] <- phi_j
   }
 
+  if (isTRUE(return_trim_info)) {
+    # keep/m_kept are non-NULL ONLY when at least one unit was actually trimmed in this cell (trim_keep requested
+    # AND some keep entry is 0). If trimming was requested but bit nothing (all keep == 1, m_kept == pi_g exactly),
+    # return NULL so compute_eif_cov_edid takes its BYTE-IDENTICAL no-trim path (G_g/pi_g) -- the per-pair centering
+    # is mathematically equal there but differs at ~1e-15 in FP, which would needlessly perturb good-overlap baselines.
+    trimmed <- !is.null(trim_keep) && any(keep_mat < 0.5)
+    return(list(gen_out = gen_out_mat,
+                keep    = if (trimmed) keep_mat   else NULL,
+                m_kept  = if (trimmed) m_kept_vec else NULL))
+  }
   gen_out_mat
 }
 
@@ -609,10 +636,16 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
 #'   of per-observation pointwise weights \eqn{w(X_i)}
 #' @param att_gt scalar point estimate (= sum_j w_j * colMeans(gen_out_mat))
 #' @param g scalar: target treatment cohort (unused; kept for API compatibility)
+#' @param trim_keep_mat optional n x H matrix of the per-pair kept-treated masks \eqn{keep_{j}} that
+#'   \code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output);
+#'   NULL (no overlap trimming) selects the byte-identical \eqn{G_g/\pi_g} centering below.
+#' @param m_kept optional length-H vector of the per-pair kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
+#'   that \code{.renorm} divided by; required (non-NULL) iff \code{trim_keep_mat} is non-NULL.
 #'
 #' @return numeric vector length n, mean approximately 0
 #' @keywords internal
-compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
+compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
+                                 trim_keep_mat = NULL, m_kept = NULL) {
   # Correct first-order influence function for the ratio estimator
   #   ATT_hat = E_n[w' Ytilde] / E_n[G_g]:
   #     EIF_i = w' Ytilde_i - (G_{g,i} / pi_g) * ATT.
@@ -624,7 +657,24 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
   pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
   # w' Ytilde_i : constant weights (length-H vector) or pointwise weights (n x H matrix)
   wY   <- if (is.matrix(weights)) rowSums(gen_out_mat * weights) else drop(gen_out_mat %*% weights)
-  wY - (Gg / pi_g) * att_gt
+
+  if (is.null(trim_keep_mat) || is.null(m_kept)) {
+    # No overlap trimming: ratio in pi_hat_g => centering -(G_g/pi_g)*ATT (the standard line).
+    return(wY - (Gg / pi_g) * att_gt)
+  }
+
+  # Overlap trimming active. .renorm divided pair j's generated outcome by m_kept_j = E_n[G_g keep_j], and the
+  # 1/pi_g in each term CANCELS against the pi_g in the renorm factor -- so the estimator is a Hajek ratio in
+  # m_kept_j (= pi_g,kept), NOT in pi_g. Each pair contributes att_j = E_n[w_j Ytilde_j] (sum_j att_j = att_gt),
+  # and the delta method for sum_j N_j/m_kept_j gives the per-pair centering
+  #     EIF_i = wY_i - sum_j att_j * (G_{g,i} keep_{j,i} / m_kept_j).
+  # The omitted pi_g-only centering used above mis-states the variance under trimming with no shrinkage; this
+  # restores it (and reduces EXACTLY to the no-trim line when keep_j == 1 and m_kept_j == pi_g). Mean-zero is
+  # preserved exactly: E_n[G_g keep_j]/m_kept_j = 1 => E_n[EIF] = att_gt - sum_j att_j = 0.
+  WY_mat <- if (is.matrix(weights)) gen_out_mat * weights else sweep(gen_out_mat, 2L, weights, "*")
+  att_j  <- colMeans(WY_mat)                                   # per-pair weighted contribution; sum_j att_j = att_gt
+  cbasis <- sweep(trim_keep_mat, 2L, m_kept, "/") * Gg         # n x H: G_g * keep_j / m_kept_j (Gg recycled down cols)
+  wY - as.numeric(cbasis %*% att_j)
 }
 
 #' ACH (Ackerberg, Chen & Hahn 2012) first-step nuisance-estimation correction
@@ -652,9 +702,12 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g) {
 #' @keywords internal
 compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
                                             cond_means, weights, m_aux, r_aux,
-                                            pt_assumption = "all", eps_rel = 1e-6) {
+                                            pt_assumption = "all", trim_keep = NULL, eps_rel = 1e-6) {
+  # trim_keep is held FIXED at theta_hat while the nuisances perturb: Gamma must be the sensitivity of the
+  # ACTUAL (trimmed/renormalized) moment, and the overlap trim set is treated as fixed (DRDID-style; the
+  # non-smooth boundary indicator's derivative is negligible and would otherwise inject a spurious FD jump).
   wmoment <- function(pr, cm) {
-    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption)
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption, trim_keep = trim_keep)
     if (is.matrix(weights)) rowSums(go * weights) else drop(go %*% weights)
   }
   m0         <- mean(wmoment(prop_ratios, cond_means))   # uncentered moment at theta_hat
@@ -692,10 +745,13 @@ compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
 #' psi - correction (sign jackknife-locked). inv_p does NOT enter (the gmm Ytilde uses r, m only).
 #' @keywords internal
 compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
-                                                   u, w, m_aux, r_aux, pt_assumption = "all", eps_rel = 1e-6) {
+                                                   u, w, m_aux, r_aux, pt_assumption = "all",
+                                                   trim_keep = NULL, eps_rel = 1e-6) {
   n <- panel_obj$n
+  # trim_keep fixed at theta_hat (see compute_ach_correction_cov_edid): C = cov(Ytilde) must be the covariance of
+  # the trimmed/renormalized generated outcomes the gmm weights actually invert.
   qmoment <- function(pr, cm) {                                # per-unit (u'd_i)(w'd_i); mean = u'C w
-    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption)
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption, trim_keep = trim_keep)
     d  <- sweep(go, 2L, colMeans(go), "-")
     as.numeric(d %*% u) * as.numeric(d %*% w)
   }
@@ -817,7 +873,7 @@ edid_nuisance_blocks <- function(m_aux, r_aux) {
 #' @keywords internal
 compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
                                       cond_means, W, m_aux, r_aux,
-                                      pt_assumption = "all", eps = 1e-4) {
+                                      pt_assumption = "all", trim_keep = NULL, eps = 1e-4) {
   blocks <- edid_nuisance_blocks(m_aux, r_aux)
   if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
 
@@ -836,7 +892,9 @@ compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
       if (blocks[[k]]$is_prop) pr[[blocks[[k]]$key]] <- pr[[blocks[[k]]$key]] + shift
       else                     cm[[blocks[[k]]$key]] <- cm[[blocks[[k]]$key]] + shift
     }
-    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption)
+    # trim_keep fixed at theta_hat: att(theta) must be the trimmed/renormalized moment whose Hessian we want
+    # (same fixed-trim-set treatment as the ACH correction; keeps att(theta) exactly quadratic in theta).
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption, trim_keep = trim_keep)
     mean(if (is.matrix(W)) rowSums(go * W) else drop(go %*% W))
   }
 
