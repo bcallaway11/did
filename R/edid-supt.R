@@ -168,7 +168,29 @@ sigma_quad_edid <- function(cells, cluster_indices, n) {
 #' @return list(se, crit, ci_lower, ci_upper).
 #' @keywords internal
 analytic_bands_edid <- function(att, Sigma, alp = 0.05, cband = TRUE, seed = NULL) {
-  se   <- sqrt(diag(as.matrix(Sigma)))
-  crit <- if (isTRUE(cband)) supt_crit_edid(Sigma, alp = alp, seed = seed) else stats::qnorm(1 - alp / 2)
-  list(se = se, crit = crit, ci_lower = att - crit * se, ci_upper = att + crit * se)
+  Sigma <- as.matrix(Sigma)
+  se    <- sqrt(diag(Sigma))
+  # Coordinates with degenerate (zero / non-finite) variance carry no band and -- crucially -- are
+  # EXCLUDED from supt_crit_edid()'s simultaneous family (its internal ok = is.finite(d) & d > 0).
+  # Emit the band over EXACTLY that family so the uniform guarantee is not silently claimed over more
+  # coordinates than were simulated; degenerate coordinates get NA bounds rather than a spurious
+  # zero-width / NaN interval. On non-degenerate input (the normal path) `good` is all-TRUE, so this is
+  # a no-op: same se, same crit, same bounds.
+  good <- is.finite(se) & se > 0
+  if (isTRUE(cband)) {
+    crit <- supt_crit_edid(Sigma, alp = alp, seed = seed)
+    if (any(!good)) {
+      warning(sprintf(
+        paste0("sup-t band: %d of %d coordinate(s) have degenerate variance; they are excluded from ",
+               "the simultaneous critical value and their bands are returned as NA."),
+        sum(!good), length(se)), call. = FALSE)
+    }
+  } else {
+    crit <- stats::qnorm(1 - alp / 2)
+  }
+  ci_lower <- att - crit * se
+  ci_upper <- att + crit * se
+  ci_lower[!good] <- NA_real_
+  ci_upper[!good] <- NA_real_
+  list(se = se, crit = crit, ci_lower = ci_lower, ci_upper = ci_upper)
 }

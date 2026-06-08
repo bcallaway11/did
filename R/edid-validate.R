@@ -259,6 +259,22 @@ validate_edid_inputs <- function(
           conditionMessage(e)
         ))
       })
+
+      # Rank check: collinear / redundant covariates fall back to a pseudoinverse downstream -- still
+      # consistent, but with no user-facing signal. WARN (do not stop: the estimate is valid) so the
+      # user knows the design is rank-deficient. Exclude all-zero columns first, so empty factor levels
+      # (e.g. a covariate that is constant within the estimation sample -- a benign degeneracy the
+      # estimator handles) do not trigger a spurious warning; only genuinely collinear non-constant
+      # columns (e.g. ~ x1 + I(2 * x1)) do.
+      mm_nz   <- mm[, colSums(mm != 0) > 0L, drop = FALSE]
+      mm_rank <- if (ncol(mm_nz) > 0L) qr(mm_nz)$rank else 0L
+      if (mm_rank < ncol(mm_nz)) {
+        warning(sprintf(
+          paste0("`xformla` expands to a rank-deficient design: %d non-constant covariate column(s) but ",
+                 "rank %d (collinear or redundant covariates). The estimator proceeds via a pseudoinverse; ",
+                 "consider dropping the linearly dependent term(s)."),
+          ncol(mm_nz), mm_rank), call. = FALSE)
+      }
     }
   }
 
