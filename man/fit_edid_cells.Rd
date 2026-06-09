@@ -16,7 +16,8 @@ fit_edid_cells(
   estimation_effect = FALSE,
   higher_order = FALSE,
   misspec_robust = FALSE,
-  trim_level = Inf
+  trim_level = Inf,
+  mc_cores = getOption("edid_mc_cores", 1L)
 )
 }
 \arguments{

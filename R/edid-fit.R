@@ -28,7 +28,7 @@ fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
   need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform"),
   estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
-  trim_level = Inf
+  trim_level = Inf, mc_cores = getOption("edid_mc_cores", 1L)
 ) {
   weight_method <- match.arg(weight_method)
   higher_order  <- isTRUE(higher_order)
@@ -120,6 +120,19 @@ fit_edid_cells <- function(
     } else if (weight_method == "uniform") {
       warning("misspec_robust has no effect for weights = 'uniform' (fixed weights have no estimation channel).",
               call. = FALSE)
+      misspec_robust <- FALSE
+    } else if (weight_method %in% c("efficient", "averaged") &&
+               identical(getOption("edid_omega_method", "kernel"), "sieve")) {
+      # The weight-estimation channel is NOT implemented for the sieve smoother: its psi pass rebuilds
+      # Omega with the KERNEL (compute_omega_star_cov_edid), which would silently mix sieve weights with a
+      # kernel weight-channel covariance. Until the sieve psi channel is derived, fall back to the plug-in
+      # efficient SE for the weight channel (warn). estimation_effect (ACH) and higher_order do NOT rebuild
+      # Omega -- they use the frozen sieve weights -- so they remain active and consistent. gmm is excluded
+      # above: its channel inverts the unconditional sample covariance, not Omega, so it is smoother-agnostic.
+      warning("misspec_robust: the weight-estimation channel is not implemented for ",
+              "options(edid_omega_method = 'sieve'); reporting the plug-in efficient SE for that channel ",
+              "(estimation_effect / higher_order are unaffected). Use the kernel smoother for a ",
+              "weight-channel-robust SE.", call. = FALSE)
       misspec_robust <- FALSE
     } else if (K_use > 1L) {
       stop("misspec_robust = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
@@ -224,7 +237,7 @@ fit_edid_cells <- function(
     }
     gb
   }
-  .mc_pre <- max(1L, suppressWarnings(as.integer(getOption("edid_mc_cores", 1L)))); if (is.na(.mc_pre)) .mc_pre <- 1L
+  .mc_pre <- max(1L, suppressWarnings(as.integer(mc_cores))); if (is.na(.mc_pre)) .mc_pre <- 1L
   .glist <- if (.mc_pre > 1L && .Platform$OS.type != "windows")
               parallel::mclapply(tgroups, .gbuild, mc.cores = .mc_pre, mc.preschedule = FALSE)
             else lapply(tgroups, .gbuild)
@@ -583,9 +596,9 @@ fit_edid_cells <- function(
            shrink_g = shrink_g, shrink_t = shrink_t)
   }  # end .fit_one_cell
 
-  # Dispatch: parallel over independent cells when edid_mc_cores > 1 (fork; not on Windows), else serial lapply
+  # Dispatch: parallel over independent cells when cores > 1 (fork; not on Windows), else serial lapply
   # (byte-identical to the original loop). mc.preschedule = FALSE load-balances the very uneven per-cell costs.
-  .mc <- suppressWarnings(as.integer(getOption("edid_mc_cores", 1L)))
+  .mc <- suppressWarnings(as.integer(mc_cores))
   if (length(.mc) != 1L || is.na(.mc) || .mc < 1L) .mc <- 1L
   .results <- if (.mc > 1L && .Platform$OS.type != "windows")
                 parallel::mclapply(.specs, .fit_one_cell, mc.cores = .mc, mc.preschedule = FALSE)

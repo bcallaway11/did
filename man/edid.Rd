@@ -28,7 +28,8 @@ edid(
   cband_method = c("analytic", "multiplier"),
   higher_order = FALSE,
   misspec_robust = TRUE,
-  trim_level = 200
+  trim_level = 200,
+  cores = getOption("edid_mc_cores", 1L)
 )
 }
 \arguments{
@@ -191,6 +192,13 @@ estimated propensity ratio \eqn{r(X)} OR inverse propensity \eqn{1/p_{g'}(X)} ha
 \eqn{\approx 200}). The observation still contributes to nuisance estimation; only its outcome-side
 weight is zeroed. This guards against severe lack of overlap and redefines the target to the overlap
 sub-population (as in DRDID). \code{trim_level = Inf} disables trimming. No effect on the no-covariate path.}
+
+\item{cores}{Positive integer (default \code{getOption("edid_mc_cores", 1L)}). Number of forked workers
+for the embarrassingly-parallel \eqn{(g,t)} cell loop and the per-cohort nuisance prebuild, via
+\code{\link[parallel]{mclapply}}. A value \code{> 1} gives a wall-clock speed-up on multi-core machines
+and is numerically \emph{identical} to the serial path (the cells are independent). It is fork-based, so
+it has no effect on Windows (leave at \code{1L}); peak memory grows roughly linearly in the number of
+workers. The \code{edid_mc_cores} option sets a session-wide default that \code{cores} overrides.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:
@@ -231,20 +239,16 @@ minimum asymptotic variance.
 These global options expose escape hatches and tuning knobs for the covariate path. All have safe
 defaults; they are intended for diagnostics, reproducibility studies, and large-\eqn{n} scaling. Except
 where noted, they change only the reported standard errors / bands, not the point estimate \eqn{ATT(g,t)}.
+(The number of parallel workers is the \code{cores} argument, not an option.)
 \describe{
-\item{\code{edid_mc_cores}}{Integer (default \code{1L}). Number of forked workers for the
-embarrassingly-parallel \eqn{(g,t)} cell loop and the per-cohort nuisance prebuild, via
-\code{\link[parallel]{mclapply}}. A value \code{> 1} gives a wall-clock speed-up on multi-core
-machines and is numerically \emph{identical} to the serial path (the cells are independent). It is
-fork-based, so it has no effect on Windows (leave at \code{1L}); peak memory grows roughly linearly
-in the number of workers.}
 \item{\code{edid_omega_method}}{How the conditional covariance \eqn{\Omega^*(X)} is built.
 \code{"kernel"} (default) is the fast BLAS Nadaraya-Watson build; \code{"kernel_orig"} is the exact
 original per-pair build (a reference that agrees with \code{"kernel"} to roughly \code{1e-13});
 \code{"sieve"} is an \eqn{O(np)} series build that avoids the \eqn{n \times n} kernel matrix and so
 scales past its memory wall at large \eqn{n}. \strong{Note:} the sieve uses a different smoother (it
 changes the point estimate slightly) and is not wired for the \code{misspec_robust} weight-estimation
-channel, so pair it with \code{misspec_robust = FALSE}.}
+channel; under \code{"sieve"} that channel is automatically disabled with a warning and the plug-in
+efficient SE is reported for it (\code{estimation_effect} and \code{higher_order} still apply).}
 \item{\code{edid_pd_blend}}{Logical (default \code{FALSE}). When \code{TRUE}, a per-unit
 \eqn{\Omega^*(X_i)} that is genuinely indefinite is blended toward the pooled \eqn{\bar\Omega^*} by the
 minimum amount that restores positive-definiteness (closed form via Weyl's inequality), instead of

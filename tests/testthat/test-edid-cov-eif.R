@@ -75,8 +75,6 @@ test_that("reported SE matches manual EIF plug-in formula for valid-inference ce
 test_that("compute_eif_cov_edid formula: weighted_phi minus att_gt, then centered", {
   # Build a minimal scenario with exactly 1 pair
   df <- make_simple_panel(n = 120, seed = 30)
-  devtools::load_all(quiet = TRUE)
-
   panel_obj <- prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~ x1)
   g <- 3; t <- 3
   pairs <- enumerate_valid_pairs_edid(g, panel_obj$treatment_groups,
