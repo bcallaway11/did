@@ -627,8 +627,6 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       samp_var  <- mean(outer(dg, dg) + Omega_hat^2) / max(m_eff, 1)  # within-unit kernel sampling noise
       lam       <- min(1, max(0, samp_var / max(shape_var, .Machine$double.eps)))
     }
-    if (isTRUE(getOption("edid_diag_lambda")))
-      options(edid_lambda_acc = c(getOption("edid_lambda_acc", numeric(0)), lam))  # diagnostic accumulator
     if (lam > 0)
       for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
         Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
@@ -1162,11 +1160,6 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
   # regularization strength affects pointwise efficiency; NA/unset keeps the rate above.
   tol_ov <- suppressWarnings(as.numeric(getOption("edid_eig_tol", NA_real_)))
   if (length(tol_ov) == 1L && is.finite(tol_ov) && tol_ov > 0) tol <- tol_ov
-  # Diagnostic (default off): record per-unit RAW eigenvalue health (min/max, # floored, degeneracy) before any
-  # flooring, so we can quantify how often Omega(X_i) is non-PD / ill-conditioned (kernel vs sieve). edid_eig_diag.
-  .ediag <- isTRUE(getOption("edid_eig_diag"))
-  if (.ediag) { .emin <- rep(NA_real_, n); .emax <- rep(NA_real_, n); .enf <- rep(NA_integer_, n)
-                .edeg <- rep(FALSE, n); .eblend <- rep(0, n) }
   # Per-unit adaptive PD-blend (opt-in: edid_pd_blend). When a unit's Omega(X_i) is non-PD / near-singular, blend
   # it toward the pooled, well-conditioned Omega-bar (PSD, estimated from ALL units) just enough to restore
   # conditioning, instead of flooring the raw (unreliable) per-unit estimate. Well-conditioned units are left
@@ -1187,9 +1180,7 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
     Mi <- 0.5 * (Mi + t(Mi))
     e  <- eigen(Mi, symmetric = TRUE)
     mx <- max(e$values)
-    if (.ediag) { .emin[i] <- min(e$values); .emax[i] <- mx
-      .enf[i] <- if (is.finite(mx) && mx > 0) sum(e$values < mx * tol) else H }
-    if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; if (.ediag) .edeg[i] <- TRUE; next }
+    if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }
     if (.blend) {                                                                  # restore PD by pooling, not flooring
       mu_i <- min(e$values)
       # Trigger ONLY on genuine indefiniteness (a negative eigenvalue beyond machine noise). Normal near-low-rank
@@ -1200,7 +1191,6 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
         a_i <- if (mu_bar > mu_i) min(1, max(0, (eps - mu_i) / (mu_bar - mu_i))) else 1
         Mi  <- (1 - a_i) * Mi + a_i * obF
         e   <- eigen(0.5 * (Mi + t(Mi)), symmetric = TRUE); mx <- max(e$values)
-        if (.ediag) .eblend[i] <- a_i
       }
     }
     ev_floored <- pmax(e$values, mx * tol)
@@ -1221,11 +1211,6 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
     } else {
       W[i, ] <- one / H                                                        # degenerate => uniform weight, q stays 0
     }
-  }
-  if (.ediag) {
-    acc <- getOption("edid_eig_acc", list())
-    acc[[length(acc) + 1L]] <- list(min = .emin, max = .emax, nfloor = .enf, deg = .edeg, blend = .eblend, H = H, tol = tol, n = n)
-    options(edid_eig_acc = acc)
   }
   if (do_q) list(W = W, Q = Q) else W
 }

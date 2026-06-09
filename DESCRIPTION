@@ -17,6 +17,8 @@ Imports:
     DRDID (>= 1.1.0),
     generics,
     methods,
+    parallel,
+    splines,
     tidyr,
     fastglm,
     data.table (>= 1.15.4),

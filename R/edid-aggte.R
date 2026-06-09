@@ -94,7 +94,10 @@ aggte_edid <- function(
   if (!is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) >= 1L) {
     Sig <- cluster_cov_edid(g$egt, fit$cluster_indices, fit$n)
     if (isTRUE(fit$higher_order) && !is.null(reaggregate) && !is.null(fit$cells)) {
-      Sigma_quad <- sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
+      # Reuse the Sigma_quad computed once in edid(); recompute only if absent (e.g. a hand-built fit or a
+      # standalone aggte_edid() call). Same input (fit$cells) => bit-identical to the cached matrix.
+      Sigma_quad <- if (!is.null(fit$sigma_quad)) fit$sigma_quad
+                    else sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
       A <- .edid_recover_agg_map(a, fit, reaggregate)      # n_agg x K, constant cell -> aggregate weights
       if (!is.null(A)) {
         HO  <- A %*% Sigma_quad %*% t(A)      # aggregate-scale higher-order ("Wick") covariance increment

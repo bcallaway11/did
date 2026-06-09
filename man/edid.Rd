@@ -226,6 +226,45 @@ adoption designs using the Efficient DiD (EDiD) estimator of Chen, Sant'Anna
 each \eqn{(g, t)} cell with optimal inverse-covariance weights to achieve
 minimum asymptotic variance.
 }
+\section{Advanced options (set via \code{options()})}{
+
+These global options expose escape hatches and tuning knobs for the covariate path. All have safe
+defaults; they are intended for diagnostics, reproducibility studies, and large-\eqn{n} scaling. Except
+where noted, they change only the reported standard errors / bands, not the point estimate \eqn{ATT(g,t)}.
+\describe{
+\item{\code{edid_mc_cores}}{Integer (default \code{1L}). Number of forked workers for the
+embarrassingly-parallel \eqn{(g,t)} cell loop and the per-cohort nuisance prebuild, via
+\code{\link[parallel]{mclapply}}. A value \code{> 1} gives a wall-clock speed-up on multi-core
+machines and is numerically \emph{identical} to the serial path (the cells are independent). It is
+fork-based, so it has no effect on Windows (leave at \code{1L}); peak memory grows roughly linearly
+in the number of workers.}
+\item{\code{edid_omega_method}}{How the conditional covariance \eqn{\Omega^*(X)} is built.
+\code{"kernel"} (default) is the fast BLAS Nadaraya-Watson build; \code{"kernel_orig"} is the exact
+original per-pair build (a reference that agrees with \code{"kernel"} to roughly \code{1e-13});
+\code{"sieve"} is an \eqn{O(np)} series build that avoids the \eqn{n \times n} kernel matrix and so
+scales past its memory wall at large \eqn{n}. \strong{Note:} the sieve uses a different smoother (it
+changes the point estimate slightly) and is not wired for the \code{misspec_robust} weight-estimation
+channel, so pair it with \code{misspec_robust = FALSE}.}
+\item{\code{edid_pd_blend}}{Logical (default \code{FALSE}). When \code{TRUE}, a per-unit
+\eqn{\Omega^*(X_i)} that is genuinely indefinite is blended toward the pooled \eqn{\bar\Omega^*} by the
+minimum amount that restores positive-definiteness (closed form via Weyl's inequality), instead of
+relying on the eigenvalue floor alone. Useful for the sieve at small \eqn{n} / large \eqn{H}; it never
+fires on the well-conditioned default kernel. Changes the variance where it activates.}
+\item{\code{edid_hessian}}{\code{"analytic"} (default) uses the exact closed-form per-cell Hessian for
+the \code{higher_order} term; \code{"fd"} forces the finite-difference fallback (slower and less
+accurate, kept as an oracle).}
+\item{\code{edid_ach}}{\code{"analytic"} (default) uses the exact closed-form Ackerberg-Chen-Hahn
+first-step correction; \code{"fd"} forces the finite-difference oracle (validation only).}
+\item{\code{edid_shrink_lambda}}{Numeric, or \code{NA} (default) for the data-driven Ledoit-Wolf
+shrinkage intensity of the pointwise \eqn{\hat\Omega^*(X_i)} toward \eqn{\bar\Omega^*}. \code{0}
+disables shrinkage; a value in \eqn{[0,1]} fixes the intensity.}
+\item{\code{edid_eig_tol}}{Numeric, or \code{NA} (default) for the rate-based relative eigenvalue floor
+\eqn{n^{-a}}. A positive value sets the floor directly (condition-number cap \eqn{= 1/}\code{tol}).}
+}
+Other \code{edid_*} options are internal development / diagnostic hooks (e.g. \code{edid_fixed_weights},
+\code{edid_fixed_wpw}, \code{edid_store_psiomega}, \code{edid_psiomega_fd}) and are unsupported.
+}
+
 \examples{
 # Simulate a simple balanced panel with staggered adoption
 set.seed(42)

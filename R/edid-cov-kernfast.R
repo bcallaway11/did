@@ -9,6 +9,7 @@
 
 #' Optimized kernel Omega*(X): drop-in, signature-compatible with compute_omega_star_cov_edid().
 #' @keywords internal
+#' @noRd
 compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
                                                 prop_ratios, cond_means,
                                                 inv_propensities = NULL,
@@ -147,7 +148,6 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     }
     if (lam > 0) for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
       Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
-    if (isTRUE(getOption("edid_diag_lambda"))) options(edid_lambda_acc = c(getOption("edid_lambda_acc", numeric(0)), lam))
     attr(Omega_array, "shrink_lambda") <- lam
     attr(Omega_array, "omega_bar") <- Omega_hat   # pooled (PSD after flooring): target for per-unit PD-blend
     return(Omega_array)

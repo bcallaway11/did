@@ -342,10 +342,6 @@ fit_edid_cells <- function(
         # overlap trimming bit (NULL when trim_level = Inf => EIF takes its byte-identical no-trim path).
         eif_keep   <- go_res$keep
         eif_mkept  <- go_res$m_kept
-        if (isTRUE(getOption("edid_store_genout"))) {            # diagnostic: expose per-cell generated outcomes
-          acc <- getOption("edid_genout_acc", list()); acc[[paste0(g, "_", t)]] <- gen_out_mat
-          options(edid_genout_acc = acc)
-        }
         # One shared per-cell cache for the cell-invariant per-group kernel slices (K_mat[,idx] + row sums):
         # the array build and the psi pass slice the SAME groups from the SAME K_mat, so memoizing once here
         # halves get_kp's column-subset cost. Cleared each cell (reassigned next iteration) => memory-neutral.
@@ -396,11 +392,6 @@ fit_edid_cells <- function(
               panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption,
               trim_keep = trim_keep, keep_mat = eif_keep, m_kept = eif_mkept)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
-          if (isTRUE(getOption("edid_store_wpw"))) {            # research diagnostic (OFF): full per-unit W_pw + ids
-            acc <- getOption("edid_wpw_acc", list())            # (seeds the efficient frozen-W_pw jackknife)
-            acc[[paste0(g, "_", t)]] <- list(ids = panel_obj$all_units, W = W_pw)
-            options(edid_wpw_acc = acc)
-          }
           # Weight-estimation channel psi_Omega. Computed when EITHER the research diagnostic (edid_store_psiomega)
           # OR the production misspec_robust SE is requested; STORED to the accumulator only for the diagnostic;
           # FOLDED into eif_gt (eif_gt + psi_Omega, mirroring the ACH subtraction above) only for misspec_robust.
@@ -447,13 +438,6 @@ fit_edid_cells <- function(
                                                   prop_ratios, cond_means,
                                                   inv_propensities, bw = kern_bw, K_mat = kern_K,
                                                   kp_cache = kp_cache)
-          if (isTRUE(getOption("edid_store_omega"))) {       # research diagnostic (default OFF, NOT on the PR):
-            arr <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,  # per-unit Omega*(X_i)
-                     inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,     # array for the averaged
-                     kp_cache = kp_cache)
-            acc <- getOption("edid_omega_acc", list()); acc[[paste0(g, "_", t)]] <- list(omega = omega, arr = arr)
-            options(edid_omega_acc = acc)                    # Sigma_Omega derivation (IF_Omegabar(i) = Omega*(X_i) - Omegabar)
-          }
           cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
           H_local  <- nrow(omega)
           # Research hook (default OFF, NOT committed to the PR): getOption("edid_fixed_weights") =
