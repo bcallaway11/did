@@ -443,12 +443,24 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   if (do_psi) {
     if (pw_psi) { Q_mat <- psi_qw$Q; W_mat <- psi_qw$W } else { q_vec <- psi_qw$q; w_vec <- psi_qw$w }
   }
-  term_psi <- function(A, B, kp, pref_vec, coup, grp_key = NULL, grp_sign = 1) {
+  # Per-(vector, group) conditional-mean cache: each centered difference vector's E_K[.|X] is recomputed for
+  # EVERY (j,k) it appears in (e.g. Y_t-Y_1 in group g recurs in every self pair). Memoize the centered vector and
+  # its raw kernel mean once per (vkey, gkey) -- the SAME caching kernel_fast already uses -- then term_psi reads
+  # them. The raw mu is cached (NOT bad-zeroed); the bad-handling stays inside term_psi, so the arithmetic and
+  # accumulation order are byte-identical to the per-call form (only the redundant H^2 -> H mu matmuls are removed).
+  .muc <- new.env(parent = emptyenv())
+  cmean_psi <- function(v, vkey, kp, gkey) {
+    key <- paste0(vkey, "@@", gkey)
+    if (exists(key, envir = .muc, inherits = FALSE)) return(get(key, envir = .muc))
+    idx <- kp$idx; v_c <- v[idx] - mean(v[idx]); mu <- drop(kp$Kg %*% v_c) / kp$Ks
+    out <- list(v_c = v_c, mu = mu); assign(key, out, envir = .muc); out
+  }
+  term_psi <- function(A, B, kp, pref_vec, coup, akey, bkey, gkey, grp_sign = 1) {
     if (!isTRUE(kp$ok)) return(invisible(NULL))
     if (length(coup) == 1L && coup == 0) return(invisible(NULL))   # pooled all-zero coupling: nothing to add
-    idx <- kp$idx
-    A_c <- A[idx] - mean(A[idx]); B_c <- B[idx] - mean(B[idx])
-    mu_A <- drop(kp$Kg %*% A_c) / kp$Ks; mu_B <- drop(kp$Kg %*% B_c) / kp$Ks
+    idx <- kp$idx; grp_key <- gkey
+    ca <- cmean_psi(A, akey, kp, gkey); cb <- cmean_psi(B, bkey, kp, gkey)
+    A_c <- ca$v_c; B_c <- cb$v_c; mu_A <- ca$mu; mu_B <- cb$mu
     cov_vals <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks - mu_A * mu_B
     bad <- is.na(kp$Ks); mu_A[bad] <- 0; mu_B[bad] <- 0; cov_vals[is.na(cov_vals)] <- 0
     scal <- pref_vec / kp$Ks; scal[bad] <- 0
@@ -510,20 +522,23 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       # kernel cov it needs, so skip the cov computation here when do_psi (the caller uses psi / coupled_C only).
       term2 <- 0
       if (!do_psi) term2 <- inv_pinf_vec * kernel_cond_cov_kp(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf)
-      if (do_psi) term_psi(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf, inv_pinf_vec, coup, "Inf", 1)   # T2 channel
+      if (do_psi) term_psi(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf, inv_pinf_vec, coup,
+                           paste0("u", col_tj), paste0("u", col_tk), "Inf", 1)   # T2 channel
 
       # Term 3: -1{g == g'_j}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
       term3 <- 0
       if (is_self_j) {
         if (!do_psi) term3 <- -inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g)
-        if (do_psi) term_psi(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g, -inv_pg_vec, coup, as.character(g), -1)  # T3 channel
+        if (do_psi) term_psi(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g, -inv_pg_vec, coup,
+                             "w", paste0("v", col_tj), as.character(g), -1)  # T3 channel
       }
 
       # Term 4: -1{g == g'_k}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
       term4 <- 0
       if (is_self_k) {
         if (!do_psi) term4 <- -inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g)
-        if (do_psi) term_psi(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g, -inv_pg_vec, coup, as.character(g), -1)  # T4 channel
+        if (do_psi) term_psi(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g, -inv_pg_vec, coup,
+                             "w", paste0("v", col_tk), as.character(g), -1)  # T4 channel
       }
 
       # Term 5: 1{g'_j == g'_k}/p_{g'_j}(X) * Cov(Y_{t'_j}-Y_1, Y_{t'_k}-Y_1 | G=g'_j, X)
@@ -552,7 +567,8 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
           if (is.null(mask_gp_jk)) mask_gp_jk <- rep(FALSE, n)
         }
         if (!do_psi) term5 <- inv_pgp_vec * kernel_cond_cov_kp(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk))
-        if (do_psi) term_psi(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk), inv_pgp_vec, coup, gp_key_jk, 1)  # T5 channel
+        if (do_psi) term_psi(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk), inv_pgp_vec, coup,
+                             paste0("v", col_tj), paste0("v", col_tk), gp_key_jk, 1)  # T5 channel
       }
 
       # Per-unit Omega*[j,k](X_i), then its average over units. (Skipped in psi mode: the Omega is discarded by the
