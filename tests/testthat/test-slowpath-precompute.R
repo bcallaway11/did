@@ -8,7 +8,8 @@
 # =============================================================================
 
 test_that("panel precompute is bit-identical to the original get_wide_data path", {
-  withr::defer(options(did.disable_precompute = NULL))
+  old_opt <- getOption("did.disable_precompute")
+  withr::defer(options(did.disable_precompute = old_opt))
   set.seed(101)
   sp <- did::reset.sim(time.periods = 5)
   d <- did::build_sim_dataset(sp)
@@ -33,7 +34,8 @@ test_that("panel precompute is bit-identical to the original get_wide_data path"
 })
 
 test_that("panel precompute also bit-identical for factor / transform covariates", {
-  withr::defer(options(did.disable_precompute = NULL))
+  old_opt <- getOption("did.disable_precompute")
+  withr::defer(options(did.disable_precompute = old_opt))
   set.seed(202)
   sp <- did::reset.sim(time.periods = 4)
   d <- did::build_sim_dataset(sp)
