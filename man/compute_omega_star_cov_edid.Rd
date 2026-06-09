@@ -15,7 +15,8 @@ compute_omega_star_cov_edid(
   bw = NULL,
   K_mat = NULL,
   return_pointwise = FALSE,
-  psi_qw = NULL
+  psi_qw = NULL,
+  kp_cache = NULL
 )
 }
 \arguments{
@@ -39,6 +40,10 @@ compute_omega_star_cov_edid(
 \item{K_mat}{optional precomputed n x n kernel weight matrix (cell-invariant); built internally when NULL}
 
 \item{return_pointwise}{logical: also return the per-unit Omega*(X_i) array (for pointwise efficient weights)}
+
+\item{kp_cache}{optional environment for memoizing the cell-invariant per-group kernel slices
+(\code{K_mat[, idx]} + row sums). Pass a shared env to reuse the slices across the array build
+(\code{compute_omega_star_kernel_fast_edid}) and this psi pass within a cell; NULL builds a local one.}
 }
 \value{
 numeric matrix H x H (positive semi-definite), or a list with the per-unit array when

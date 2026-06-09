@@ -14,7 +14,8 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
                                                 inv_propensities = NULL,
                                                 bw = NULL, K_mat = NULL,
                                                 return_pointwise = FALSE,
-                                                psi_qw = NULL) {
+                                                psi_qw = NULL,
+                                                kp_cache = NULL) {
   if (!is.null(psi_qw))
     stop("compute_omega_star_kernel_fast_edid: the psi/misspec channel stays on compute_omega_star_cov_edid.")
   X_mat <- panel_obj$covariate_matrix
@@ -29,8 +30,9 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     inv_pinf_vec <- inv_propensities[["Inf"]];          if (is.null(inv_pinf_vec)) inv_pinf_vec <- rep(1/pi_inf, n)
   } else { inv_pg_vec <- rep(1/pi_g, n); inv_pinf_vec <- rep(1/pi_inf, n) }
 
-  # per-group kernel pieces (idx, Kg, Ks), memoized exactly as the original get_kp
-  kpiece <- new.env(parent = emptyenv())
+  # per-group kernel pieces (idx, Kg, Ks), memoized exactly as the original get_kp. A shared kp_cache (from
+  # fit_edid_cells) lets the psi pass reuse these byte-identical slices instead of re-cutting K_mat[,idx].
+  kpiece <- if (is.null(kp_cache)) new.env(parent = emptyenv()) else kp_cache
   get_kp <- function(mask, key) {
     if (exists(key, envir = kpiece, inherits = FALSE)) return(get(key, envir = kpiece))
     idx <- which(mask)
@@ -136,8 +138,9 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     Hh <- dim(Omega_array)[2]
     lam_opt <- suppressWarnings(as.numeric(getOption("edid_shrink_lambda", NA_real_)))
     if (length(lam_opt) == 1L && is.finite(lam_opt)) lam <- min(1, max(0, lam_opt)) else {
-      ksum <- rowSums(K_mat); ksq <- rowSums(K_mat^2)
-      m_eff <- stats::median(ksum^2 / pmax(ksq, .Machine$double.eps))
+      m_eff <- attr(K_mat, "edid_m_eff")                          # cell-invariant; precomputed once by fit_edid_cells
+      if (is.null(m_eff)) { ksum <- rowSums(K_mat); ksq <- rowSums(K_mat^2)  # standalone fallback (same value)
+        m_eff <- stats::median(ksum^2 / pmax(ksq, .Machine$double.eps)) }
       shape_var <- mean(apply(Omega_array, c(2, 3), stats::var))
       dg <- diag(Omega_hat); samp_var <- mean(outer(dg, dg) + Omega_hat^2) / max(m_eff, 1)
       lam <- min(1, max(0, samp_var / max(shape_var, .Machine$double.eps)))

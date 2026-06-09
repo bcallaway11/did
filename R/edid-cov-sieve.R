@@ -30,7 +30,10 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
                                           inv_propensities = NULL,
                                           bw = NULL, K_mat = NULL,
                                           return_pointwise = FALSE,
-                                          psi_qw = NULL, bs_df = 4L) {
+                                          psi_qw = NULL, bs_df = 4L,
+                                          kp_cache = NULL) {
+  # kp_cache is accepted for signature-compatibility with the kernel builders (fit_edid_cells passes it
+  # uniformly via .omega_fun); the series scenario builds no n x n kernel matrix, so it is intentionally unused.
   if (!is.null(psi_qw))
     stop("compute_omega_star_sieve_edid: the psi/misspec channel is not implemented in the sieve scenario.")
   X_mat <- panel_obj$covariate_matrix

@@ -173,6 +173,11 @@ fit_edid_cells <- function(
   if (use_cov_path && !identical(.omega_method, "sieve")) {  # any kernel variant needs the n x n weight matrix
     kk_full <- build_kernel_weights_edid(panel_obj$covariate_matrix)
     kern_bw <- kk_full$bw; kern_K <- kk_full$K
+    # m_eff (Kish effective local sample size) is a function of K_mat ALONE => cell-invariant. Compute it ONCE
+    # here and carry it on the matrix so the per-cell shrinkage step reuses it instead of re-summing the n x n
+    # K_mat AND re-allocating the n x n K_mat^2 temporary on every (g,t). Read back via attr(K_mat,"edid_m_eff").
+    .ks <- rowSums(kern_K); .ksq <- rowSums(kern_K^2)
+    attr(kern_K, "edid_m_eff") <- stats::median(.ks^2 / pmax(.ksq, .Machine$double.eps))
   }
 
   # Per-cohort nuisance cache. The valid pairs, propensity ratios r_{g,.}, inverse propensities, and the
@@ -341,6 +346,10 @@ fit_edid_cells <- function(
           acc <- getOption("edid_genout_acc", list()); acc[[paste0(g, "_", t)]] <- gen_out_mat
           options(edid_genout_acc = acc)
         }
+        # One shared per-cell cache for the cell-invariant per-group kernel slices (K_mat[,idx] + row sums):
+        # the array build and the psi pass slice the SAME groups from the SAME K_mat, so memoizing once here
+        # halves get_kp's column-subset cost. Cleared each cell (reassigned next iteration) => memory-neutral.
+        kp_cache <- new.env(parent = emptyenv())
         if (weight_method == "efficient") {
           # Paper's pointwise efficient weights w(X_i)=Omega*(X_i)^{-1}1/(1'Omega*(X_i)^{-1}1),
           # with a dimension-aware eigenvalue-floor regularization (a=0.7*(5-d)/10) that is
@@ -348,7 +357,7 @@ fit_edid_cells <- function(
           omega_arr <- .omega_fun(panel_obj, g, t, pairs,
                                                    prop_ratios, cond_means,
                                                    inv_propensities, bw = kern_bw, K_mat = kern_K,
-                                                   return_pointwise = TRUE)
+                                                   return_pointwise = TRUE, kp_cache = kp_cache)
           # Fuse the per-unit adjoint q_i into the weights' eigen pass when the weight-estimation channel is needed
           # (one eigendecomposition per unit instead of two). Q_pw is from the un-frozen weights; the .fwpw freeze
           # (research jackknife) is incompatible with the psi channel and is guarded with a stop below.
@@ -413,7 +422,7 @@ fit_edid_cells <- function(
             }
             po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
                        inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
-                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw))
+                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw), kp_cache = kp_cache)
             corr_an <- compute_invp_correction_analytic_cov_edid(panel_obj$n, attr(inv_propensities, "aux"),
                                                                  po$coupled_C)
             psi_i <- po$psi - corr_an                                         # weight-estimation IF (data - corr)
@@ -436,10 +445,12 @@ fit_edid_cells <- function(
           psi_const <- NULL   # weight-estimation IF (averaged kernel channel / gmm sample-cov channel); NULL => fold +0
           omega    <- .omega_fun(panel_obj, g, t, pairs,
                                                   prop_ratios, cond_means,
-                                                  inv_propensities, bw = kern_bw, K_mat = kern_K)
+                                                  inv_propensities, bw = kern_bw, K_mat = kern_K,
+                                                  kp_cache = kp_cache)
           if (isTRUE(getOption("edid_store_omega"))) {       # research diagnostic (default OFF, NOT on the PR):
             arr <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,  # per-unit Omega*(X_i)
-                     inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE)     # array for the averaged
+                     inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,     # array for the averaged
+                     kp_cache = kp_cache)
             acc <- getOption("edid_omega_acc", list()); acc[[paste0(g, "_", t)]] <- list(omega = omega, arr = arr)
             options(edid_omega_acc = acc)                    # Sigma_Omega derivation (IF_Omegabar(i) = Omega*(X_i) - Omegabar)
           }
@@ -481,7 +492,8 @@ fit_edid_cells <- function(
               q_vec <- drop(C_inv %*% (mbar - att_gt))                        # same inverse as the weights => q'1 = 0
               stopifnot(abs(sum(q_vec)) < 1e-6 * (1 + max(abs(q_vec))))       # Term-1 cancellation premise (defensive)
               po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
-                         inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights))
+                         inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights),
+                         kp_cache = kp_cache)
               invp_aux <- attr(inv_propensities, "aux")
               corr_an  <- compute_invp_correction_analytic_cov_edid(panel_obj$n, invp_aux, po$coupled_C)  # optimized
               psi_const <- po$psi - corr_an                                  # captured for the misspec_robust fold

@@ -299,6 +299,9 @@ build_kernel_weights_edid <- function(X_mat, bw = NULL) {
 #' @param bw numeric vector length d or NULL (auto from \code{bw.nrd0})
 #' @param K_mat optional precomputed n x n kernel weight matrix (cell-invariant); built internally when NULL
 #' @param return_pointwise logical: also return the per-unit Omega*(X_i) array (for pointwise efficient weights)
+#' @param kp_cache optional environment for memoizing the cell-invariant per-group kernel slices
+#'   (\code{K_mat[, idx]} + row sums). Pass a shared env to reuse the slices across the array build
+#'   (\code{compute_omega_star_kernel_fast_edid}) and this psi pass within a cell; NULL builds a local one.
 #'
 #' @return numeric matrix H x H (positive semi-definite), or a list with the per-unit array when
 #'   \code{return_pointwise = TRUE}
@@ -309,7 +312,8 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
                                         bw = NULL,
                                         K_mat = NULL,
                                         return_pointwise = FALSE,
-                                        psi_qw = NULL) {
+                                        psi_qw = NULL,
+                                        kp_cache = NULL) {
   X_mat <- panel_obj$covariate_matrix
   n     <- nrow(X_mat)
   d     <- ncol(X_mat)
@@ -379,7 +383,9 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   # the O(H^2) (j,k) loop. kernel_cond_cov_kp() centers (A,B) by their group means (shift-invariant -> exact, avoids
   # catastrophic cancellation) and BATCHES the three weighted sums into ONE matrix product (one dgemm). Algebraically
   # identical to the per-call weighted-sums form; never materializes the n x n_group residual matrices.
-  kpiece <- new.env(parent = emptyenv())
+  # kp_cache (when supplied by fit_edid_cells) is SHARED with the array build so each cell-invariant slice
+  # K_mat[,idx] is cut once per cell, not once per pass; the entries are byte-identical across passes.
+  kpiece <- if (is.null(kp_cache)) new.env(parent = emptyenv()) else kp_cache
   get_kp <- function(group_mask, key) {
     if (exists(key, envir = kpiece, inherits = FALSE)) return(get(key, envir = kpiece))
     idx <- which(group_mask)
@@ -613,8 +619,9 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     if (length(lam_opt) == 1L && is.finite(lam_opt)) {
       lam <- min(1, max(0, lam_opt))
     } else {
-      ksum      <- rowSums(K_mat); ksq <- rowSums(K_mat^2)        # Kish effective local sample size
-      m_eff     <- stats::median(ksum^2 / pmax(ksq, .Machine$double.eps))
+      m_eff     <- attr(K_mat, "edid_m_eff")                      # cell-invariant; precomputed once by fit_edid_cells
+      if (is.null(m_eff)) { ksum <- rowSums(K_mat); ksq <- rowSums(K_mat^2)  # standalone fallback (Kish local n; same value)
+        m_eff <- stats::median(ksum^2 / pmax(ksq, .Machine$double.eps)) }
       shape_var <- mean(apply(Omega_array, c(2, 3), stats::var))  # across-unit spread (signal + noise)
       dg        <- diag(Omega_hat)
       samp_var  <- mean(outer(dg, dg) + Omega_hat^2) / max(m_eff, 1)  # within-unit kernel sampling noise
