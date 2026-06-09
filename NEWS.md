@@ -1,3 +1,37 @@
+# did 2.3.1.908
+
+## Bug fixes
+
+  * Fixed the conditional parallel-trends pre-test (`conditional_did_pretest()`), which had silently broken under R >= 4.0 and spuriously rejected almost always whenever there was more than one pre-treatment ATT(g,t) cell. The observed Cramér-von Mises statistic was left in `(n_gt x nX)` orientation while its bootstrap null distribution is `(nX x n_gt)`, scaling the observed statistic by `n / n_gt` relative to the bootstrap and driving the p-value to ~0. The root cause was `ifelse(class(J) == "matrix", ...)`: `class()` of a matrix became length-2 (`c("matrix","array")`) in R 4.0, so `ifelse()` evaluated both branches and the no-transpose branch always won. The orientation is now selected with `is.matrix()`
+
+  * `aggte(type = "group", na.rm = TRUE)` with a finite `max_e` no longer errors ("No valid att_gt() estimates found ...") when a group's only non-missing ATT(g,t) lies past `max_e`. The group filter now applies the same `max_e` window as the group-specific estimate, excluding such a group from the aggregation instead of erroring. The default `max_e = Inf` is unchanged
+
+  * Duplicated `(idname, tname)` rows (the same unit observed more than once in a period, a common long-format data-prep mistake) are now rejected with a clear error in **both** code paths. Previously only `faster_mode = TRUE` caught this; `faster_mode = FALSE` silently produced incorrect estimates. Both paths now emit the same message
+
+  * A `weightsname` column with negative values or a non-positive mean is now rejected with a clear, identical error in both code paths, instead of silently producing `NA`/`NaN` estimates (negative weights flip signs and a non-positive mean divides by ~0 during weight normalization)
+
+## New features
+
+  * New `compute_inffunc` argument in `att_gt()` (default `TRUE`). Set `compute_inffunc = FALSE` for a **point-estimates-only** run: it returns the group-time ATT point estimates (identical to a full run) without influence functions, standard errors, uniform bands, or the pre-test. This is meaningfully faster (it skips the bootstrap and the influence-function computation) and uses much less memory (no \eqn{n \times k} influence-function matrix is ever formed), which helps for quick exploration or very large datasets. The result cannot be passed to `aggte()` (which needs the influence functions and now errors with a clear message); `bstrap` and `cband` are set to `FALSE` automatically
+
+  * Covariate formulas (`xformla`) may now use transformations and other model-matrix terms, e.g. `~ I(X^2)`, `~ log(X)`, `~ poly(X, 2)`, `~ X1 * X2`. These previously errored ("object 'X' not found" / "malformed data.table") because pre-processing stored the evaluated model frame — losing the raw variable, and creating matrix-valued columns — instead of the raw covariates. Pre-processing now retains the raw covariate variables so the design matrix can be rebuilt, and drops rows whose evaluated design is non-finite (e.g. `log()` of a non-positive value)
+
+  * A factor covariate now produces exactly the same estimates, standard errors, and warning messages as adding its dummy columns by hand. Previously the `faster_mode = FALSE` path applied `droplevels()` within each 2x2 comparison, so a factor level absent from a particular comparison changed the design (and could error with "contrasts can be applied only to factors with 2 or more levels"). The design matrix is now built once over the full sample, with global factor levels, and row-subset per cell — matching manual dummy expansion and the `faster_mode = TRUE` path
+
+## Performance and internal
+
+  * `faster_mode = TRUE` is substantially faster (about 20-40% on typical problems) with identical results. Each (g,t) cell previously built and extracted a `data.table` even though the underlying cohort vectors are already materialized in the pre-computed tensors; the per-cell cohort is now a plain list of vectors passed straight to the DRDID estimators (panel, repeated cross-section, and unbalanced-panel paths). The unbalanced-panel influence-function aggregation uses `rowsum()` in place of a per-cell `data.table` group-by
+
+  * The `faster_mode = FALSE` estimation path builds the covariate design matrix once and row-subsets it per (g,t) cell instead of rebuilding `model.matrix()` for every cell. `faster_mode = TRUE` and `faster_mode = FALSE` remain identical to numerical precision for every supported option
+
+  * The conditional pre-test (`conditional_did_pretest()`) is dramatically faster and far lighter on memory. Its multiplier bootstrap (`test.mboot()`) previously looped over `biters` draws, each multiplying the full `n x k x nX` influence array by fresh weights and running `apply(., c(2,3), mean)` — `O(n^2 k)` work **and** an `O(n^2 k)` transient array allocation per draw (over 1 GB per draw, repeated thousands of times, at a few thousand units). The bootstrap is now a single tiled matrix contraction (100x+ faster, and the per-draw gigabyte allocations are gone), numerically identical to the old loop up to floating-point summation order. The `indicator()` weighting function is also vectorized. The pre-test's per-`X` estimation step rides along with the `faster_mode = FALSE` speedup below
+
+  * The `faster_mode = FALSE` panel path assembles each 2x2 cell directly from precomputed per-period blocks (outcomes, weights, design) indexed by position, instead of subsetting and reshaping (`get_wide_data()`) the long data for every cell — bit-identical results, with about half the transient allocation. Set `options(did.disable_precompute = TRUE)` to force the original path. The repeated-cross-section / unbalanced influence-function aggregation now uses `rowsum()` instead of `stats::aggregate()` (about 40x faster on that step), bit-identically
+
+  * Internal speedups with identical results: vectorized the multiplier-bootstrap post-processing (`mboot()`), removed a duplicated `n x k` matrix construction in the aggregation estimated-weight influence term (`wif()`), preallocated the influence-function sparse-matrix assembly, and removed redundant work in pre-processing and simulation
+
+  * Replaced fragile `ifelse(cond, x <- a, x <- b)` side-effect idioms (which relied on R's branch-evaluation order) with `if/else` throughout; behavior is unchanged
+
 # did 2.3.1.906
 
   * `aggte()` no longer silently ignores a `clustervars` request it cannot honor. The aggregation-level clustered standard error can only use the cluster information that `att_gt()` retained for the variable it was given; previously, asking `aggte()` to cluster on a variable that `att_gt()` was not run with silently returned the i.i.d. standard error (analytic) or errored deep in `mboot()` (bootstrap). `aggte()` now detects this — including an override naming a different variable than `att_gt()` clustered on — and warns, falling back to non-clustered standard errors, instead of silently mis-reporting or crashing. Inheriting `clustervars` from the `att_gt()` object, and overriding to the same variable, are unchanged

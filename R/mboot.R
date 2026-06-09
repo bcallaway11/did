@@ -111,14 +111,31 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
   V <- cov(bres)
-  # bootstrap standard error
-  bSigma <- apply(bres, 2,
-                  function(b) (quantile(b, .75, type=1, na.rm = T) -
-                                 quantile(b, .25, type=1, na.rm = T))/(qnorm(.75) - qnorm(.25)))
+  # bootstrap standard error: IQR-based scale normalized to the SD of a normal.
+  # The qnorm difference is a constant (hoisted out of the per-column loop), and
+  # both quantiles are taken in a single call so each column is sorted only once.
+  iqr_norm <- qnorm(.75) - qnorm(.25)
+  bSigma <- apply(bres, 2, function(b) {
+    qs <- quantile(b, c(.25, .75), type = 1, na.rm = TRUE)
+    (qs[2L] - qs[1L]) / iqr_norm
+  })
 
-  # critical value for uniform confidence band
-  bT <- base::suppressWarnings(apply(bres, 1, function(b) max( abs(b/bSigma), na.rm = T)))
-  bT <- bT[is.finite(bT)]
+  # critical value for uniform confidence band: per bootstrap draw, the max over
+  # columns of |b / bSigma|. Vectorized as a column-fold of pmax (equivalent to the
+  # previous row-wise apply(max, na.rm = TRUE): NA entries are ignored via -Inf, and
+  # an all-NA row yields -Inf, which is dropped by the is.finite filter below).
+  if (ncol(bres) == 0L) {
+    # All bootstrap dimensions degenerate: every row has no finite t-statistic.
+    # This matches the previous apply(max, na.rm = TRUE), which returned -Inf for
+    # every row and then dropped them all via the is.finite filter.
+    bT <- numeric(0)
+  } else {
+    scaled <- abs(bres / rep(bSigma, each = nrow(bres)))
+    scaled[is.na(scaled)] <- -Inf
+    bT <- scaled[, 1L]
+    for (j in seq_len(ncol(scaled))[-1L]) bT <- pmax(bT, scaled[, j])
+    bT <- bT[is.finite(bT)]
+  }
   crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
 
   #se <- rep(0, length(ndg.dim))

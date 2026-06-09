@@ -35,6 +35,14 @@ compute.aggte <- function(MP,
   inffunc1 <- MP$inffunc
   n <- MP$n
 
+  # aggte() needs the influence functions to aggregate and to compute standard errors.
+  # They are absent when att_gt() was run with compute_inffunc = FALSE (point estimates only).
+  if (is.null(inffunc1)) {
+    stop("This att_gt() result was produced with compute_inffunc = FALSE (point estimates ",
+         "only), so it has no influence functions and cannot be aggregated by aggte(). ",
+         "Re-run att_gt() with compute_inffunc = TRUE (the default) to use aggte().")
+  }
+
 
   gname <- dp$gname
   tname <- dp$tname
@@ -128,8 +136,14 @@ compute.aggte <- function(MP,
     if (type == "group") {
       # Get the groups that have some non-missing ATT(g,t) in post-treatmemt periods
       gnotna <- sapply(glist, function(g) {
-        # look at post-treatment periods for group g
-        whichg <- which((group == g) & (g <= t))
+        # look at post-treatment periods for group g, restricted to the SAME
+        # max_e window used by the group-specific estimate below (selective.att.g /
+        # selective.se.inner). Without the (t <= group + max_e) condition a group
+        # whose only non-NA ATT(g,t) lies PAST max_e would pass this filter but then
+        # have an all-NA (hence, under na.rm, empty) selection in the estimate,
+        # erroring in get_agg_inf_func(). (max_e defaults to Inf, so this is a no-op
+        # unless the user sets a finite max_e.)
+        whichg <- which((group == g) & (g <= t) & (t <= (group + max_e)))
         attg <- att[whichg]
         group_select <- !is.na(mean(attg))
         return(group_select)
@@ -209,11 +223,12 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  ifelse(isTRUE(dp$faster_mode), weights.ind <- dta$weights, weights.ind <- dta$.w)
+  if (isTRUE(dp$faster_mode)) weights.ind <- dta$weights else weights.ind <- dta$.w
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
-  pg <- sapply(originalglist, function(g) mean(weights.ind * (dta[, gname] == g)))
+  gvar <- dta[[gname]]  # extract the group column once, reused below
+  pg <- sapply(originalglist, function(g) mean(weights.ind * (gvar == g)))
 
   # length of this is equal to number of groups
   pgg <- pg
@@ -225,7 +240,7 @@ compute.aggte <- function(MP,
   keepers <- which(group <= t & t <= (group + max_e)) ### added second condition to allow for limit on longest period included in att
 
   # n x 1 vector of group variable
-  G <- orig2t_vec(dta[, gname])
+  G <- orig2t_vec(gvar)
 
   #-----------------------------------------------------------------------------
   # Compute the simple ATT summary
@@ -640,16 +655,19 @@ wif <- function(keepers, pg, weights.ind, G, group) {
   # note: weights are all of the form P(G=g|cond)/sum_cond(P(G=g|cond))
   # this is equal to P(G=g)/sum_cond(P(G=g)) which simplifies things here
 
-  # effect of estimating weights in the numerator
-  if1 <- sapply(keepers, function(k) {
-    (weights.ind * 1 * BMisc::TorF(G == group[k]) - pg[k]) /
-      sum(pg[keepers])
-  })
-  # effect of estimating weights in the denominator
-  if2 <- base::rowSums(sapply(keepers, function(k) {
+  # The (n x k) matrix [ weights.ind * 1{G == group[k]} - pg[k] ] appears in both
+  # the numerator and the denominator terms below; build it once and reuse it.
+  # This is identical to the previous code, which constructed it twice via two
+  # separate sapply() calls. sum(pg[keepers]) is likewise hoisted out of the loop.
+  Spg <- sum(pg[keepers])
+  centered <- sapply(keepers, function(k) {
     weights.ind * 1 * BMisc::TorF(G == group[k]) - pg[k]
-  })) %*%
-    t(pg[keepers] / (sum(pg[keepers])^2))
+  })
+
+  # effect of estimating weights in the numerator
+  if1 <- centered / Spg
+  # effect of estimating weights in the denominator
+  if2 <- base::rowSums(centered) %*% t(pg[keepers] / (Spg^2))
 
   # return the influence function for the weights
   if1 - if2

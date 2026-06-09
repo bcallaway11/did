@@ -10,11 +10,24 @@ data_fm <- did::build_sim_dataset(sp)
 # Unbalanced version
 data_ub <- data_fm[-c(1, 5, 10), ]
 
-# Helper to compare two att_gt results
+# Helper to compare two att_gt results.
+# NOTE: the fast and slow paths order units differently (the exported influence
+# function is a ROW PERMUTATION between modes), so a naive expect_equal of the two
+# inffunc matrices would falsely fail. We therefore compare permutation-INVARIANT
+# summaries -- column sums, the Gram matrix t(IF) %*% IF (which is exactly what the
+# analytic variance V = crossprod(IF)/n uses), and the resulting standard errors --
+# which DO have to match and which catch any row-permutation / indexing bug.
 compare_modes <- function(res_slow, res_fast, label) {
   expect_equal(res_slow$att, res_fast$att, tolerance = 1e-10, label = paste(label, "ATT"))
   expect_equal(res_slow$group, res_fast$group, label = paste(label, "group"))
   expect_equal(res_slow$t, res_fast$t, label = paste(label, "t"))
+  if (!is.null(res_slow$inffunc) && !is.null(res_fast$inffunc)) {
+    ifs <- as.matrix(res_slow$inffunc); iff <- as.matrix(res_fast$inffunc)
+    expect_equal(dim(ifs), dim(iff), label = paste(label, "IF dim"))
+    expect_equal(colSums(ifs), colSums(iff), tolerance = 1e-8, label = paste(label, "IF colSums"))
+    expect_equal(crossprod(ifs), crossprod(iff), tolerance = 1e-8, label = paste(label, "IF Gram"))
+  }
+  expect_equal(res_slow$se, res_fast$se, tolerance = 1e-9, label = paste(label, "SE"))
 }
 
 # =============================================================================

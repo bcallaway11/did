@@ -84,6 +84,62 @@ compute.att_gt <- function(dp) {
   }
   set(data, j = ".y", value = data[[yname]])
 
+  # -- design matrix: built ONCE over the full data, then row-subset per (g,t) cell --
+  # This (a) avoids rebuilding model.matrix() nG*nT times, and (b) gives every cell the
+  # GLOBAL factor levels / GLOBAL transform basis -- exactly what the repeated-cross-
+  # section path, the fast path, and manually-constructed dummy columns use. As a
+  # result a factor covariate behaves identically to adding its dummies by hand: a
+  # level absent from a particular 2x2 comparison becomes an all-zero column (handled
+  # by the estimator's overlap/rank check, giving the same NA + warning as the manual
+  # dummies) rather than a dropped contrast that changes the design across cells.
+  #
+  # For purely row-wise numeric formulae (e.g. ~X, ~X1+X2, ~X1*X2, ~I(X^2)) the slice
+  # is bit-identical to a per-cell model.matrix(xformla, disdat); for factors it equals
+  # the manual-dummy design; for data-dependent bases (poly/scale/ns/...) it uses the
+  # global basis, which yields the same ATT/SE as a per-cell fit (the estimator is
+  # invariant to a full-rank reparameterization of the covariates).
+  #
+  # `data` is already complete-cases and finite (see pre_process_did), so na.pass adds
+  # no NA rows and full_mm aligns 1:1 (by row position) with `data`.
+  full_mm <- model.matrix(xformla, data = data, na.action = na.pass)
+  if (panel) {
+    # per-period row slices keyed by idname, for the earlier-period covariates that
+    # get_wide_data() retains. (idname is used rather than .rowid because .rowid is
+    # only created on the RC/unbalanced path; in a balanced panel idname is unique
+    # within each period.)
+    period_mm <- vector("list", length(tlist))
+    period_id <- vector("list", length(tlist))
+    period_y  <- vector("list", length(tlist))
+    period_w  <- vector("list", length(tlist))
+    y_col <- data[[".y"]]
+    w_col <- data[[".w"]]
+    for (tp in seq_along(tlist)) {
+      rows_tp <- which(t_col == tlist[tp])
+      period_mm[[tp]] <- full_mm[rows_tp, , drop = FALSE]
+      period_id[[tp]] <- data[[idname]][rows_tp]
+      period_y[[tp]]  <- y_col[rows_tp]
+      period_w[[tp]]  <- w_col[rows_tp]
+    }
+    # Precompute fast path: when the panel is balanced with every period sharing the
+    # same units in the same (id-sorted) row order and default weights are used, each
+    # 2x2 cell can be assembled by position from these per-period blocks -- skipping
+    # the per-cell data[time_mask] subset + get_wide_data() reshape (the dominant
+    # cost on the slow path). Falls through to the original get_wide_data() code,
+    # bit-identically, for fix_weights / unaligned panels.
+    panel_units_aligned <- all(vapply(period_id, function(x)
+      length(x) == length(period_id[[1L]]) && all(x == period_id[[1L]]), logical(1)))
+    g_unit_panel <- g_col[which(t_col == tlist[1L])]
+    # options(did.disable_precompute = TRUE) forces the original get_wide_data() path
+    # (escape hatch / used to verify bit-identical equivalence).
+    use_precompute_panel <- is.null(fix_weights) && panel_units_aligned &&
+      !isTRUE(getOption("did.disable_precompute"))
+  } else {
+    # repeated cross-section / unbalanced: row-subset the full design by POSITION
+    # (.rowid is not unique across periods here).
+    global_mm <- full_mm
+    use_precompute_panel <- FALSE
+  }
+
   # loop over groups
   for (g in 1:nG) {
     # Set up .G once (use pre-extracted g_col to avoid get() inside data.table)
@@ -171,55 +227,94 @@ compute.att_gt <- function(dp) {
       # disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
       target_times <- c(tlist[t + tfac], tlist[pret])
       time_mask <- t_col %in% target_times
-      disdat <- data[time_mask]
+      # The precompute panel path assembles each cell from per-period blocks and does
+      # not need this long 2-period subset (the dominant per-cell cost); RC,
+      # fix_weights, and unaligned panels still build disdat as before.
+      if (!(panel && use_precompute_panel)) {
+        disdat <- data[time_mask]
+      }
 
 
       if (panel) {
-        # transform  disdat it into "cross-sectional" data where one of the columns
-        # contains the change in the outcome over time.
-        disdat <- get_wide_data(disdat, yname, idname, tname)
-
-        # still total number of units (not just included in G or C)
-        n <- nrow(disdat)
-
-        # pick up the indices for units that will be used to compute ATT(g,t)
-        disidx <- disdat$.G == 1 | disdat$.C == 1
-
-        # pick up the data that will be used to compute ATT(g,t)
-        disdat <- disdat[disidx]
-
-        n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
-
-        # drop missing factors
-        disdat <- droplevels(disdat)
-
-        # give short names for data in this iteration
-        G <- disdat$.G
-        C <- disdat$.C
-
-        # handle pre-treatment universal base period differently
-        # we need to do this because panel2cs2 just puts later period
-        # in .y1, but if we are in a pre-treatment period with a universal
-        # base period, then the "base period" is actually the later period
-        Ypre <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y0 else disdat$.y1
-        Ypost <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y1 else disdat$.y0
-
-        # Select weights based on fix_weights
-        if (is.null(fix_weights)) {
-          # Default: .w from get_wide_data (earlier period)
-          w <- disdat$.w
-        } else if (fix_weights == "base_period") {
-          w <- weights_by_period[[pret_g]][disidx]
-        } else if (fix_weights == "first_period") {
-          w <- weights_by_period[[1L]][disidx]
-        } else if (fix_weights == "varying") {
-          w <- disdat$.w  # will be overridden below when switching to RC estimator
+        if (use_precompute_panel) {
+          # ---- precompute fast path (balanced, id-aligned panel; default weights) --
+          # Build the 2x2 cell directly from the per-period blocks. g is time-invariant
+          # so .G / .C are unit-level; Ypost is always period (t+tfac) and Ypre always
+          # period pret because get_wide_data's .y1/.y0 (later/earlier) swap exactly
+          # cancels the universal-base ordering used below. The earlier period (whose
+          # weights + covariates get_wide_data retains) is min(t + tfac, pret).
+          G_full <- as.numeric(g_unit_panel == current_g)
+          if (nevertreated) {
+            C_full <- as.numeric(g_unit_panel == 0)
+          } else {
+            time_threshold <- tlist[max(t, pret) + tfac] + anticipation
+            C_full <- as.numeric((g_unit_panel == 0) |
+              ((g_unit_panel > time_threshold) & (g_unit_panel != current_g)))
+          }
+          disidx <- G_full == 1 | C_full == 1
+          n <- length(g_unit_panel)
+          kept <- which(disidx)
+          n1 <- length(kept)
+          G <- G_full[kept]
+          C <- C_full[kept]
+          Ypost <- period_y[[t + tfac]][kept]
+          Ypre  <- period_y[[pret]][kept]
+          earlier_idx <- min(t + tfac, pret)
+          w <- period_w[[earlier_idx]][kept]
+          covariates <- period_mm[[earlier_idx]][kept, , drop = FALSE]
+          dimnames(covariates) <- list(NULL, colnames(covariates))
         } else {
-          w <- disdat$.w
-        }
+          # ---- original path: per-cell get_wide_data() reshape ----
+          # transform  disdat it into "cross-sectional" data where one of the columns
+          # contains the change in the outcome over time.
+          disdat <- get_wide_data(disdat, yname, idname, tname)
 
-        # matrix of covariates
-        covariates <- model.matrix(xformla, data = disdat)
+          # still total number of units (not just included in G or C)
+          n <- nrow(disdat)
+
+          # pick up the indices for units that will be used to compute ATT(g,t)
+          disidx <- disdat$.G == 1 | disdat$.C == 1
+
+          # pick up the data that will be used to compute ATT(g,t)
+          disdat <- disdat[disidx]
+
+          n1 <- nrow(disdat) # num obs. for computing ATT(g,t)
+
+          # drop missing factors
+          disdat <- droplevels(disdat)
+
+          # give short names for data in this iteration
+          G <- disdat$.G
+          C <- disdat$.C
+
+          # handle pre-treatment universal base period differently
+          # we need to do this because panel2cs2 just puts later period
+          # in .y1, but if we are in a pre-treatment period with a universal
+          # base period, then the "base period" is actually the later period
+          Ypre <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y0 else disdat$.y1
+          Ypost <- if (tlist[(t + tfac)] > tlist[pret]) disdat$.y1 else disdat$.y0
+
+          # Select weights based on fix_weights
+          if (is.null(fix_weights)) {
+            # Default: .w from get_wide_data (earlier period)
+            w <- disdat$.w
+          } else if (fix_weights == "base_period") {
+            w <- weights_by_period[[pret_g]][disidx]
+          } else if (fix_weights == "first_period") {
+            w <- weights_by_period[[1L]][disidx]
+          } else if (fix_weights == "varying") {
+            w <- disdat$.w  # will be overridden below when switching to RC estimator
+          } else {
+            w <- disdat$.w
+          }
+
+          # matrix of covariates: index the precomputed earlier-period design by this
+          # cell's units (idname). get_wide_data retained the earlier period, whose
+          # index is min(t + tfac, pret).
+          earlier_idx <- min(t + tfac, pret)
+          covariates <- period_mm[[earlier_idx]][match(disdat[[idname]], period_id[[earlier_idx]]), , drop = FALSE]
+          dimnames(covariates) <- list(NULL, colnames(covariates))
+        }
 
         #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
@@ -240,10 +335,12 @@ compute.att_gt <- function(dp) {
             # only changes weights, not the covariate conditioning set.
             # Use min(pret, t+tfac) to match the panel estimator's convention:
             # with base_period="universal", pret can be later than t for placebo cells.
-            earlier_period <- tlist[min(pret, t + tfac)]
+            earlier_idx_v <- min(pret, t + tfac)
+            earlier_period <- tlist[earlier_idx_v]
             early_mask <- disdat_long[[tname]] == earlier_period
             disdat_early <- disdat_long[early_mask]
-            cov_early <- model.matrix(xformla, data = disdat_early)
+            cov_early <- period_mm[[earlier_idx_v]][match(disdat_early[[idname]], period_id[[earlier_idx_v]]), , drop = FALSE]
+            dimnames(cov_early) <- list(NULL, colnames(cov_early))
             # Map each row in disdat_long to its unit's earlier-period covariates
             early_ids <- disdat_early[[idname]]
             all_ids <- disdat_long[[idname]]
@@ -384,6 +481,10 @@ compute.att_gt <- function(dp) {
 
         # pick up the data that will be used to compute ATT(g,t)
         disdat <- data[disidx, ]
+        # positional index into `data` for slicing the global design matrix, kept in
+        # sync with any later row drops below (droplevels does not reorder/drop rows).
+        # global_mm[disdat_rows, ] is the design for the rows used in this cell.
+        disdat_rows <- which(disidx)
 
         # drop missing factors
         disdat <- droplevels(disdat)
@@ -406,9 +507,10 @@ compute.att_gt <- function(dp) {
           }
           # Build lookup: weight from target period per unit
           target_rows <- data[t_col == target_period, ]
-          target_w <- stats::setNames(target_rows$.w, target_rows$.rowid)
-          # Look up weight for each observation's unit
-          w <- as.numeric(target_w[as.character(disdat$.rowid)])
+          # Map each observation's weight from the target period by integer .rowid
+          # matching (equivalent to the previous named-character lookup: first match
+          # wins, unmatched -> NA), without coercing every .rowid to character.
+          w <- target_rows$.w[match(disdat$.rowid, target_rows$.rowid)]
           # Drop units not observed in the target period
           missing_w <- is.na(w)
           if (any(missing_w)) {
@@ -417,6 +519,7 @@ compute.att_gt <- function(dp) {
                            fix_weights, " (period ", target_period, ") ",
                            "for group ", glist[g], " in time period ", tlist[t + tfac]))
             disdat <- disdat[!missing_w, ]
+            disdat_rows <- disdat_rows[!missing_w]
             G <- disdat$.G
             C <- disdat$.C
             Y <- disdat[[yname]]
@@ -464,8 +567,9 @@ compute.att_gt <- function(dp) {
         }
 
 
-        # matrix of covariates
-        covariates <- model.matrix(xformla, data = disdat)
+        # matrix of covariates: row-subset the global design by position.
+        covariates <- global_mm[disdat_rows, , drop = FALSE]
+        dimnames(covariates) <- list(NULL, colnames(covariates))
 
         #-----------------------------------------------------------------------------
         # more checks for enough observations in each group
@@ -602,12 +706,15 @@ compute.att_gt <- function(dp) {
       } else {
         # aggregate inf functions by id (order by id)
         # Use current disdat$.rowid (may differ from rightids if fix_weights dropped obs)
+        # rowsum(reorder = TRUE) sums per id and returns rows in ascending-id order,
+        # matching stats::aggregate() but ~40x faster (see test-slowpath-rowsum).
         current_ids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
-        aggte_inffunc <- suppressWarnings(stats::aggregate(attgt$att.inf.func, list(current_ids), sum))
-        idx <- which(unique(data$.rowid) %in% aggte_inffunc[, 1])
+        rs <- rowsum(attgt$att.inf.func, current_ids, reorder = TRUE)
+        rs_ids <- as.numeric(rownames(rs))
+        idx <- which(unique(data$.rowid) %in% rs_ids)
         inffunc_updates[[update_counter]] <- list(
           indices = idx,
-          values = aggte_inffunc[, 2]
+          values = as.numeric(rs[, 1])
         )
       }
 
@@ -622,25 +729,27 @@ compute.att_gt <- function(dp) {
     } # end looping over t
   } # end looping over g
 
-  # Build the influence function sparse matrix directly from triplets
-  trip_i <- integer(0)
-  trip_j <- integer(0)
-  trip_x <- numeric(0)
-  for (j in seq_along(inffunc_updates)) {
-    update <- inffunc_updates[[j]]
-    idx <- update$indices  # already integer indices
-    if (length(idx) > 0L) {
-      trip_i <- c(trip_i, idx)
-      trip_j <- c(trip_j, rep.int(j, length(idx)))
-      trip_x <- c(trip_x, update$values)
-    }
+  # Build the influence function sparse matrix directly from triplets.
+  # Gather per-column indices/values into lists and concatenate once, rather than
+  # growing the triplet vectors with c() on every iteration (which reallocates
+  # O(ncol^2) in total). The triplet order is unchanged (column-major, original
+  # within-column order), so the resulting sparse matrix is identical.
+  # Skipped for point estimates only (compute_inffunc = FALSE): no matrix is returned.
+  if (is.null(dp$compute_inffunc) || isTRUE(dp$compute_inffunc)) {
+    nz_list <- lapply(inffunc_updates, `[[`, "indices")
+    val_list <- lapply(inffunc_updates, `[[`, "values")
+    trip_i <- unlist(nz_list, use.names = FALSE)
+    trip_x <- unlist(val_list, use.names = FALSE)
+    trip_j <- rep.int(seq_along(inffunc_updates), lengths(nz_list))
+    inffunc <- Matrix::sparseMatrix(
+      i = trip_i,
+      j = trip_j,
+      x = trip_x,
+      dims = c(inffunc_nrow, length(inffunc_updates))
+    )
+  } else {
+    inffunc <- NULL
   }
-  inffunc <- Matrix::sparseMatrix(
-    i = trip_i,
-    j = trip_j,
-    x = trip_x,
-    dims = c(inffunc_nrow, length(inffunc_updates))
-  )
 
   return(list(attgt.list = attgt.list, inffunc = inffunc))
 }

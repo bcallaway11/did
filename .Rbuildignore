@@ -19,6 +19,7 @@ Icon?
 ^CITATION\.cff$
 ^R/honest_did$
 ^\.claude$
+^CLAUDE\.md$
 ^\.lintr$
 ^revdep_manual$
 ^vignettes/.*_cache$

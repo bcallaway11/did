@@ -91,10 +91,11 @@ conditional_did_pretest <- function(yname,
 
   # create dataset with n observations;
   # recover covariates from this dataset
-  ifelse(panel & (allow_unbalanced_panel==FALSE),
-         dta <- data[ data[,tname]==tlist[1], ],
-         dta <- data
-         )
+  if (panel & (allow_unbalanced_panel == FALSE)) {
+    dta <- data[ data[,tname]==tlist[1], ]
+  } else {
+    dta <- data
+  }
 
   # need X twice, once to loop over, and once to calculate weighting function
   X <- model.matrix(xformla, dta)
@@ -157,8 +158,30 @@ conditional_did_pretest <- function(yname,
   # get the test statistic for all values of g,t,x
   J.inner <- sapply(out, function(o) o$J)
 
-  # handle case with 1 pre-treatment period differently from multiple periods
-  ifelse(class(J.inner)=="matrix", J <- t(J.inner), J <- as.matrix(J.inner))
+  # Orient J as (nX rows = covariate threshold values) x (n_gt cols = pre-treatment
+  # (g,t) cells) so the observed CvM statistic below uses the SAME (1/nX)
+  # normalization as the bootstrap null distribution in test.mboot() (which forms
+  # Jb = t(apply(Ub*inf.func, c(2,3), mean)) and is therefore (nX x n_gt)).
+  #
+  # sapply() returns an (n_gt x nX) MATRIX when there are multiple pre-treatment
+  # cells, but a length-nX VECTOR when there is only one -- so transpose the matrix
+  # case and column-ify the vector case.
+  #
+  # BUG FIX (gh issue: pre-test spuriously rejects): this was previously
+  #   ifelse(class(J.inner) == "matrix", J <- t(J.inner), J <- as.matrix(J.inner))
+  # which was correct under R < 4.0 but silently broke in R >= 4.0, where
+  # class(<matrix>) became c("matrix","array") (length 2). ifelse() then evaluated
+  # BOTH assignment branches and the second (as.matrix, no transpose) always won, so
+  # for the multi-cell case J stayed (n_gt x nX). Because sum(apply(J^2, 2, mean)) =
+  # (1/nrow(J)) * sum(J^2), that mis-orientation scaled the observed CvM by
+  # nX/n_gt = n/n_gt relative to the bootstrap, driving the p-value to ~0 and making
+  # the pre-test over-reject whenever there was more than one pre-treatment (g,t)
+  # cell. Use is.matrix() to restore the intended orientation.
+  if (is.matrix(J.inner)) {
+    J <- t(J.inner)
+  } else {
+    J <- as.matrix(J.inner)
+  }
 
   # compute CvM test statistic by averaging over X, and summing over g and t
   CvM <- n*sum(apply(J^2, 2, mean))
@@ -254,10 +277,12 @@ conditional_did_pretest <- function(yname,
 #'
 #' @export
 indicator <- function(X, u) {
-  # check if each element in each row of X <= corresponding element in u
-  cond <- t(apply( X, 1, function(x) x <= u))
-  # check if entire row of X <= entire row of u
-  1*apply(cond, 1, all)
+  # Row i is 1 iff X[i, j] <= u[j] for EVERY column j. Vectorized: rep(u, each =
+  # nrow(X)) lines u up with X's column-major layout, so (X <= .) is the elementwise
+  # comparison and a row passes iff none of its entries exceed u (rowSums == ncol).
+  # Bit-identical to the prior t(apply(X, 1, `<=`)) + apply(all) for finite X
+  # (model.matrix output is finite), but O(n*p) without the per-row closure.
+  1 * (rowSums(X <= rep(u, each = nrow(X))) == ncol(X))
 }
 
 
@@ -290,9 +315,11 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
   panel <- DIDparams$panel
 
   # just get n obsevations (for clustering below...)
-  ifelse(panel,
-         dta <- data[ data[,tname]==tlist[1], ],
-         dta <- data)
+  if (panel) {
+    dta <- data[ data[,tname]==tlist[1], ]
+  } else {
+    dta <- data
+  }
   n <- nrow(dta)
 
   # if include id as variable to cluster on
@@ -307,27 +334,49 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
     stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
   }
 
-  # bootstrap
-  bout <- pbapply::pbsapply(1:biters, FUN=function(b) {
-    if (length(clustervars) > 0) {
-      # draw Rademachar weights
-      # these are the same within clusters
-      # see paper for details
-      n1 <- length(unique(dta[,clustervars]))
-      Vb <- matrix(sample(c(-1,1), n1, replace=T))
-      Vb <- cbind.data.frame(unique(dta[,clustervars]), Vb)
-      Ub <- data.frame(dta[,clustervars])
-      Ub <- Vb[match(Ub[,1], Vb[,1]),]
-      Ub <- Ub[,-1]
-    } else {
-      Ub <- sample(c(-1,1), n, replace=T)
-    }
-    # multiply weights onto influence function
-    Jb <- t(apply(Ub*inf.func, c(2,3), mean))
-    CvMb <- n*sum(apply(Jb^2, 2, mean))
-    # return bootstrap draw
-    CvMb
-  }, cl=cores)
+  # ---------------------------------------------------------------------------
+  # Vectorized multiplier bootstrap (replaces a biters-long pbsapply loop that
+  # multiplied a full n x k x nX influence array by fresh Rademacher weights and
+  # ran apply(., c(2,3), mean) on every draw -- O(n*k*nX) compute AND an O(n*k*nX)
+  # transient array allocation per draw, ~1.2 GB x biters at n in the thousands).
+  #
+  # The per-draw statistic is, writing inf[i,j,x] for the influence array,
+  #   Jb[x,j] = (1/n) sum_i U_b[i] inf[i,j,x]
+  #   CvMb_b  = n * mean_x( sum_j Jb[x,j]^2 ) = (n/nX) * sum_{x,j} Jb[x,j]^2.
+  # Stacking the weights of all draws into V (n x biters) and reshaping inf to
+  # M (n x k*nX), Jb for every draw is crossprod(V, M)/n in one BLAS call, and
+  # CvMb is (n/nX) * rowSums(.^2). Drawing all biters*n (or biters*n1) Rademacher
+  # values in a single sample() call consumes the RNG stream identically to the
+  # per-draw loop (each value is one R_unif_index(2)), so results match the old
+  # loop up to floating-point summation order (~1e-14).
+  # ---------------------------------------------------------------------------
+  dms <- dim(inf.func)
+  k <- dms[2]; nX <- dms[3]
+
+  # Build the n x biters multiplier matrix; columns are independent draws.
+  if (length(clustervars) > 0) {
+    # Rademacher weights are constant within cluster; map each unit to its cluster's
+    # weight via match() exactly as the original loop did.
+    uc <- unique(dta[, clustervars])
+    n1 <- length(uc)
+    Vc <- matrix(sample(c(-1, 1), n1 * biters, replace = TRUE), nrow = n1)
+    V <- Vc[match(dta[, clustervars], uc), , drop = FALSE]
+  } else {
+    V <- matrix(sample(c(-1, 1), n * biters, replace = TRUE), nrow = n)
+  }
+
+  # Tile over the X dimension so peak memory is n*k*chunk doubles instead of the
+  # full n*k*nX reshape. CvMb is a plain sum over X, so chunking is exact (the only
+  # difference is summation order). Chunk targets ~5e6 doubles (~40 MB) per slice.
+  chunk <- max(1L, as.integer(5e6 %/% (n * k)))
+  bout <- numeric(biters)
+  for (start in seq.int(1L, nX, by = chunk)) {
+    xs <- start:min(start + chunk - 1L, nX)
+    Mc <- matrix(inf.func[, , xs, drop = FALSE], nrow = n)   # n x (k*length(xs))
+    Jf <- crossprod(V, Mc) / n                                # biters x (k*length(xs))
+    bout <- bout + rowSums(Jf^2)
+  }
+  bout <- (n / nX) * bout
 
   crit.val <- quantile(bout, 1-alp, type=1)
 

@@ -108,19 +108,32 @@ validate_args <- function(args, data){
 #' @return A list containing ordered data and arguments
 #' @noRd
 did_standardization <- function(data, args){
-  # keep relevant columns in data
-  cols_to_keep <-  c(args$idname, args$tname, args$gname, args$yname, args$weightsname, args$clustervars)
-
-  model_frame <- model.frame(args$xformla, data = data, na.action = na.pass)
+  # keep relevant columns plus the RAW covariate variables (all.vars of xformla), so
+  # model.matrix(args$xformla, .) can be rebuilt downstream. Keeping the evaluated
+  # model.frame instead would lose the raw variable for transform formulae
+  # (~I(X^2), ~poly(X, 2), ~log(X)) and create matrix-valued columns that break the
+  # data.table coercion. For bare-variable / factor formulae this is identical.
+  xvars <- all.vars(args$xformla)
+  cols_to_keep <- unique(c(args$idname, args$tname, args$gname, args$yname,
+                           args$weightsname, args$clustervars, xvars))
   # Subset the dataset to keep only the relevant columns
   data <- data[, ..cols_to_keep]
-
-  # Column bind the model frame to the data
-  data <- cbind(data, as.data.table(model_frame))
 
   # Check if any covariates were missing
   n_orig <- data[, .N]
   data <- data[complete.cases(data)]
+  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # covariate); safe now that raw-covariate NAs are removed (so poly()/ns()/... will
+  # not error on NA input). Use model.frame (NOT model.matrix) with na.action =
+  # na.pass: model.frame keeps every row -- including NA/NaN-valued terms -- so the
+  # complete.cases() mask stays aligned with `data` (model.matrix would silently drop
+  # NaN rows, shortening the mask and letting the offending rows survive). Inf-valued
+  # terms are kept, matching the prior behavior.
+  if (length(xvars) > 0L && data[, .N] > 0L) {
+    mf_check <- suppressWarnings(model.frame(args$xformla, data = data, na.action = na.pass))
+    finite_rows <- complete.cases(mf_check)
+    if (!all(finite_rows)) data <- data[finite_rows]
+  }
   n_new <- data[, .N]
   n_diff <- n_orig - n_new
   if (n_diff != 0) {
@@ -128,7 +141,11 @@ did_standardization <- function(data, args){
   }
 
   # Set weights
-  base::ifelse(is.null(args$weightsname), weights <- rep(1, n_new), weights <- data[[args$weightsname]])
+  if (is.null(args$weightsname)) weights <- rep(1, n_new) else weights <- data[[args$weightsname]]
+  # Validate user-supplied weights: negative weights flip signs and a non-positive
+  # mean divides by ~0 during normalization, silently producing NA/NaN ATTs.
+  if (!is.null(args$weightsname) && (any(weights < 0, na.rm = TRUE) || isTRUE(mean(weights, na.rm = TRUE) <= 0)))
+    stop("The weights variable '", args$weightsname, "' must be non-negative with a positive mean.")
   # enforcing normalization of weights. At this point we already drop any missing values in weights.
   weights <- weights/mean(weights)
   data$weights <- weights

@@ -112,11 +112,16 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
 
   X <- rnorm(n)
 
+  # Build the exp(outer(...)) propensity term once and reuse it for the row-sum
+  # normalization (it was previously computed twice). apply(., 1, sum) is kept
+  # (rather than rowSums) so `pr` is bit-identical to before -- this matters because
+  # the sample() draw for G below depends on the exact values of `pr`.
   if (ipw) {
-    pr <- exp(outer(X,gamG)) / apply( exp(outer(X,gamG)), 1, sum)
+    e <- exp(outer(X, gamG))
   } else {
-    pr <- exp(outer((pnorm(X)+0.5)^2,gamG)) / apply( exp(outer((pnorm(X)+0.5)^2,gamG)), 1, sum)
+    e <- exp(outer((pnorm(X) + 0.5)^2, gamG))
   }
+  pr <- e / apply(e, 1, sum)
 
   G <- apply(pr, 1, function(pvec) sample(seq(0,time.periods), size=1, prob=pvec))
 
@@ -144,7 +149,7 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   
   # generate treated potential outcomes
   Y1tdf <- sapply(1:time.periods, function(t) {
-    te.t[t] + te.bet.ind[Gt]*Ct + Xt*te.bet.X[t] + (Gt <= t)*te.e[sapply(1:nt, function(i) max(t-Gt[i]+1,1))] + te + rnorm(nt) # hack for the dynamic effects but ok
+    te.t[t] + te.bet.ind[Gt]*Ct + Xt*te.bet.X[t] + (Gt <= t)*te.e[pmax(t-Gt+1, 1)] + te + rnorm(nt) # hack for the dynamic effects but ok
   })
 
   # generate observed data

@@ -79,26 +79,56 @@ pre_process_did <- function(yname,
     }
   }
 
-  # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname, clustervars)], model.frame(xformla, data=data, na.action=na.pass))
+  # drop irrelevant columns from data. Keep the RAW covariate variables (all.vars of
+  # xformla), NOT the evaluated model.frame, so model.matrix(xformla, .) can be
+  # rebuilt downstream. This is what makes transform formulae work (e.g. ~I(X^2),
+  # ~poly(X, 2), ~log(X)): the evaluated model.frame would store columns named by the
+  # transformed expression -- losing the raw variable that model.matrix needs -- and,
+  # for matrix-valued terms like poly(), a matrix column that later breaks the
+  # data.table coercion in compute.att_gt(). For bare-variable formulae (e.g. ~X,
+  # ~X1+X2) and factor covariates the kept columns are identical to before.
+  xvars <- all.vars(xformla)
+  keep_cols <- unique(c(idname, tname, yname, gname, weightsname, clustervars, xvars))
+  data <- data[, keep_cols, drop = FALSE]
 
   # check if any covariates were missing
   n_orig <- nrow(data)
-  data <- data[complete.cases(data),]
+  # drop rows with any missing id / time / outcome / group / weight / cluster or any
+  # missing RAW covariate value
+  data <- data[complete.cases(data), ]
+  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # covariate), preserving the previous model.frame-based row dropping. We use
+  # model.frame (NOT model.matrix) with na.action = na.pass: model.frame keeps EVERY
+  # row -- including those where a term evaluates to NA/NaN -- so complete.cases()
+  # flags them and the indicator stays aligned with `data`. (model.matrix would
+  # instead silently drop the NaN rows, making the mask shorter than `data` and the
+  # offending rows survive.) Inf-valued terms are kept, matching the prior behavior.
+  # Safe to evaluate now that raw-covariate NAs have been removed (so poly()/ns()/...
+  # will not error on NA input).
+  if (length(xvars) > 0L && nrow(data) > 0L) {
+    mf_check <- suppressWarnings(model.frame(xformla, data = data, na.action = na.pass))
+    finite_rows <- complete.cases(mf_check)
+    if (!all(finite_rows)) data <- data[finite_rows, ]
+  }
   n_diff <- n_orig - nrow(data)
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
   }
 
   # weights if null
-  ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
+  if (is.null(weightsname)) w <- rep(1, nrow(data)) else w <- data[,weightsname]
+
+  # Validate user-supplied weights: negative weights flip signs and a non-positive
+  # mean divides by ~0 during normalization, silently producing NA/NaN ATTs.
+  if (!is.null(weightsname) && (any(w < 0, na.rm = TRUE) || isTRUE(mean(w, na.rm = TRUE) <= 0)))
+    stop("The weights variable '", weightsname, "' must be non-negative with a positive mean.")
 
   if (".w" %in% colnames(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
   data$.w <- w
 
   # Check for time-varying weights in panel data
   if (!is.null(weightsname) && panel) {
-    w_by_id <- tapply(data[, weightsname], data[, idname], function(x) max(x) - min(x))
+    w_by_id <- tapply(data[, weightsname], data[, idname], function(x) diff(range(x)))
     if (any(w_by_id > .Machine$double.eps^0.5, na.rm = TRUE)) {
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
@@ -115,7 +145,7 @@ pre_process_did <- function(yname,
 
   # figure out the dates
   # list of dates from smallest to largest
-  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  tlist <- sort(unique(data[,tname]))
 
   # Groups with treatment time bigger than max time period + anticipation are considered to be never treated.
   # We account for anticipation because units treated shortly after the last observed period
@@ -126,7 +156,7 @@ pre_process_did <- function(yname,
   data[asif_never_treated, gname] <- 0
 
   # list of treated groups (by time) from smallest to largest
-  glist <- unique(data[,gname], )[order(unique(data[,gname]))]
+  glist <- sort(unique(data[,gname]))
 
 
   # Check if there is a never treated group
@@ -195,15 +225,17 @@ pre_process_did <- function(yname,
   # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
   treated_first_period <- ( data[,gname] <= first.period + anticipation ) & ( !(data[,gname]==0) )
   treated_first_period[is.na(treated_first_period)] <- FALSE
-  nfirstperiod <- ifelse(panel, length(unique(data[treated_first_period,][,idname])), nrow(data[treated_first_period,]))
+  # if/else (not ifelse) so the data subset is built only for the relevant branch;
+  # the result is identical to the previous ifelse(panel, ...) expression.
+  nfirstperiod <- if (panel) length(unique(data[treated_first_period, idname])) else sum(treated_first_period)
   if ( nfirstperiod > 0 ) {
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
                     if (anticipation > 0) paste0(" (accounting for anticipation = ", anticipation, ")") else "",
                     "."))
     data <- data[ data[,gname] %in% c(0,glist), ]
     # update tlist and glist
-    tlist <- unique(data[,tname])[order(unique(data[,tname]))]
-    glist <- unique(data[,gname], )[order(unique(data[,gname]))]
+    tlist <- sort(unique(data[,tname]))
+    glist <- sort(unique(data[,gname]))
     glist <- glist[glist>0]
 
     # drop groups treated in the first period or before
@@ -222,6 +254,14 @@ pre_process_did <- function(yname,
     id_g_unique <- unique(data[, c(idname, gname)])
     if (anyDuplicated(id_g_unique[[idname]]) != 0L) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+    }
+
+    # Check that (idname, tname) is unique: each unit observed at most once per
+    # period. Mirrors the fast path (pre_process_did2.R) so both code paths reject
+    # duplicated (id, period) rows identically -- without this guard the slow path
+    # silently produced incorrect estimates on long-format data with duplicates.
+    if (anyDuplicated(data[, c(idname, tname)]) != 0L) {
+      stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
     }
   }
 
@@ -394,13 +434,18 @@ pre_process_did <- function(yname,
   # order dataset wrt idname and tname
   data <- data[order(data[,idname], data[,tname]),]
 
+  # ensure a plain data.frame for downstream consumers, but avoid a redundant full
+  # copy when `data` is already a plain data.frame (the common case). Equivalent to
+  # the previous unconditional as.data.frame(data) in the DIDparams() call below.
+  if (!all(class(data) == "data.frame")) data <- as.data.frame(data)
+
   # store parameters for passing around later
   dp <- DIDparams(yname=yname,
                   tname=tname,
                   idname=idname,
                   gname=gname,
                   xformla=xformla,
-                  data=as.data.frame(data),
+                  data=data,
                   control_group=control_group,
                   anticipation=anticipation,
                   weightsname=weightsname,

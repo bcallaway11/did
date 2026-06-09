@@ -86,6 +86,15 @@
 #'   Default is `FALSE`.
 #' @param pl Whether or not to use parallel processing
 #' @param cores The number of cores to use for parallel processing
+#' @param compute_inffunc Whether or not to compute the influence functions. The
+#'  default is `TRUE`. The influence functions are required for standard errors,
+#'  uniform confidence bands, the parallel-trends pre-test, and for aggregating the
+#'  group-time effects with [aggte()]. Set `compute_inffunc = FALSE` to obtain the
+#'  group-time ATT *point estimates only*: this is faster and uses substantially less
+#'  memory (no \eqn{n \times k} influence-function matrix is formed or bootstrapped),
+#'  but the returned object has no standard errors / pre-test and cannot be passed to
+#'  [aggte()]. The point estimates are identical to those from a full run. When
+#'  `compute_inffunc = FALSE`, `bstrap` and `cband` are set to `FALSE` automatically.
 #' @param est_method the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 #' approach in the `DRDID` package.  Other built-in methods
 #' include "ipw" for inverse probability weighting and "reg" for
@@ -265,9 +274,21 @@ att_gt <- function(yname,
                    print_details = FALSE,
                    pl = FALSE,
                    cores = 1,
+                   compute_inffunc = TRUE,
                    ...) {
   # Capture extra arguments for custom est_method
   extra_args <- list(...)
+
+  # Validate compute_inffunc (point-estimates-only switch)
+  if (!is.logical(compute_inffunc) || length(compute_inffunc) != 1 || is.na(compute_inffunc)) {
+    stop("compute_inffunc must be a single logical (TRUE or FALSE).")
+  }
+  # When influence functions are not computed there are no standard errors, no
+  # uniform bands, and no parallel-trends pre-test, so the bootstrap is moot.
+  if (!compute_inffunc) {
+    bstrap <- FALSE
+    cband <- FALSE
+  }
 
   # Warn if extra arguments passed with built-in est_method
   if (length(extra_args) > 0 && !inherits(est_method, "function")) {
@@ -344,6 +365,8 @@ att_gt <- function(yname,
 
     # attach extra args for custom est_method
     dp$extra_args <- extra_args
+    # whether to compute influence functions (FALSE = point estimates only)
+    dp$compute_inffunc <- compute_inffunc
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
@@ -379,6 +402,8 @@ att_gt <- function(yname,
 
     # attach extra args for custom est_method
     dp$extra_args <- extra_args
+    # whether to compute influence functions (FALSE = point estimates only)
+    dp$compute_inffunc <- compute_inffunc
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
@@ -417,7 +442,11 @@ att_gt <- function(yname,
   # analytical standard errors
   # estimate variance. The i.i.d. form is clustered at the unit level; with a coarser cluster variable
   # the variance is formed from cluster sums instead (the cluster_analytic branch below).
-  n <- ifelse(faster_mode, dp$id_count, dp$n)
+  n <- if (faster_mode) dp$id_count else dp$n
+
+  # All inference below requires the influence functions. With compute_inffunc = FALSE
+  # (point estimates only) skip it entirely; see the else-branch before return().
+  if (compute_inffunc) {
   # Analytical variance of the ATT(g,t)'s. With a cluster variable (beyond idname) and no bootstrap, use
   # the cluster-robust form -- the cluster sums of the influence function -- mirroring the cluster-sum
   # aggregation of the multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10). It is kept on the same
@@ -595,6 +624,16 @@ att_gt <- function(yname,
     }
   }
 
+
+  } else {
+    # point estimates only (compute_inffunc = FALSE): no influence functions were
+    # computed, so there are no standard errors, uniform bands, or pre-test.
+    se <- rep(NA_real_, length(att))
+    V <- NULL
+    cval <- qnorm(1 - alp / 2)
+    W <- NULL
+    Wpval <- NULL
+  }
 
   # Return this list
   return(MP(group = group, t = tt, att = att, V_analytical = V, se = se, c = cval, inffunc = inffunc, n = n, W = W, Wpval = Wpval, alp = alp, DIDparams = dp))

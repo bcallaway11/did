@@ -28,6 +28,7 @@ att_gt(
   print_details = FALSE,
   pl = FALSE,
   cores = 1,
+  compute_inffunc = TRUE,
   ...
 )
 }
@@ -235,6 +236,18 @@ Default is \code{FALSE}.}
 \item{pl}{Whether or not to use parallel processing}
 
 \item{cores}{The number of cores to use for parallel processing}
+
+\item{compute_inffunc}{Whether or not to compute the influence functions. The
+default is \code{TRUE}. The influence functions are required for standard errors,
+uniform confidence bands, the parallel-trends pre-test, and for aggregating the
+group-time effects with \code{\link[=aggte]{aggte()}}. Set
+\code{compute_inffunc = FALSE} to obtain the group-time ATT \emph{point estimates
+only}: this is faster and uses substantially less memory (no \eqn{n \times k}
+influence-function matrix is formed or bootstrapped), but the returned object has
+no standard errors / pre-test and cannot be passed to \code{\link[=aggte]{aggte()}}.
+The point estimates are identical to those from a full run. When
+\code{compute_inffunc = FALSE}, \code{bstrap} and \code{cband} are set to
+\code{FALSE} automatically.}
 
 \item{...}{Additional arguments to be passed to a custom \code{est_method}
 function. These are ignored when using built-in estimation methods
