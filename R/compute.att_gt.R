@@ -67,6 +67,13 @@ compute.att_gt <- function(dp) {
 
   fix_weights <- dp$fix_weights
 
+  # Whether to compute influence functions (default TRUE; FALSE = point estimates
+  # only). When FALSE we skip requesting influence functions from the 2x2 estimators,
+  # skip the per-cell influence-function scaling, and skip storing inffunc_updates --
+  # so a point-estimates-only run does not pay the influence-function compute/memory
+  # cost. The att estimates are identical either way.
+  do_inf <- is.null(dp$compute_inffunc) || isTRUE(dp$compute_inffunc)
+
   # Pre-extract columns to avoid repeated get() inside data.table (which is slow)
   g_col <- data[[gname]]
   t_col <- data[[tname]]
@@ -197,7 +204,7 @@ compute.att_gt <- function(dp) {
           attgt.list[[counter]] <- list(att = 0, group = glist[g], year = tlist[(t + tfac)], post = 0)
           # inffunc[,counter] <- rep(0,n)
           # counter <- counter+1
-          inffunc_updates[[update_counter]] <- list(
+          if (do_inf) inffunc_updates[[update_counter]] <- list(
             indices = integer(0), # No non-zero entries
             values = numeric(0)
           )
@@ -369,20 +376,20 @@ compute.att_gt <- function(dp) {
               res <- do.call(est_method, c(list(
                 y = Y_rc, post = post_rc,
                 D = G_rc, covariates = covariates_rc,
-                i.weights = w_rc, inffunc = TRUE
+                i.weights = w_rc, inffunc = do_inf
               ), extra_args))
             } else if (est_method == "ipw") {
               res <- DRDID::std_ipw_did_rc(Y_rc, post_rc, G_rc,
                 covariates = covariates_rc,
-                i.weights = w_rc, boot = FALSE, inffunc = TRUE)
+                i.weights = w_rc, boot = FALSE, inffunc = do_inf)
             } else if (est_method == "reg") {
               res <- DRDID::reg_did_rc(Y_rc, post_rc, G_rc,
                 covariates = covariates_rc,
-                i.weights = w_rc, boot = FALSE, inffunc = TRUE)
+                i.weights = w_rc, boot = FALSE, inffunc = do_inf)
             } else {
               res <- DRDID::drdid_rc(Y_rc, post_rc, G_rc,
                 covariates = covariates_rc,
-                i.weights = w_rc, boot = FALSE, inffunc = TRUE)
+                i.weights = w_rc, boot = FALSE, inffunc = do_inf)
             }
           } else {
             # Panel path: run overlap/rank checks on panel data
@@ -410,44 +417,46 @@ compute.att_gt <- function(dp) {
                 D = G,
                 covariates = covariates,
                 i.weights = w,
-                inffunc = TRUE
+                inffunc = do_inf
               ), extra_args))
             } else if (est_method == "ipw") {
               # inverse-probability weights
               res <- DRDID::std_ipw_did_panel(Ypost, Ypre, G,
                 covariates = covariates,
                 i.weights = w,
-                boot = FALSE, inffunc = TRUE
+                boot = FALSE, inffunc = do_inf
               )
             } else if (est_method == "reg") {
               # regression
               res <- DRDID::reg_did_panel(Ypost, Ypre, G,
                 covariates = covariates,
                 i.weights = w,
-                boot = FALSE, inffunc = TRUE
+                boot = FALSE, inffunc = do_inf
               )
             } else {
               # doubly robust, this is default
               res <- DRDID::drdid_panel(Ypost, Ypre, G,
                 covariates = covariates,
                 i.weights = w,
-                boot = FALSE, inffunc = TRUE
+                boot = FALSE, inffunc = do_inf
               )
             }
           }
 
           # adjust influence function to account for only using
-          # subgroup to estimate att(g,t)
-          if (!is.null(fix_weights) && fix_weights == "varying") {
-            # RC influence function has one entry per obs in disdat_long
-            # (2 per unit: pre + post). Aggregate to unit level by ID,
-            # independent of row ordering.
-            res$att.inf.func <- as.numeric(rowsum(res$att.inf.func,
-                                                  disdat_long[[idname]],
-                                                  reorder = FALSE))
-            res$att.inf.func <- (n / n1) * res$att.inf.func
-          } else {
-            res$att.inf.func <- (n / n1) * res$att.inf.func
+          # subgroup to estimate att(g,t) (skipped for point estimates only)
+          if (do_inf) {
+            if (!is.null(fix_weights) && fix_weights == "varying") {
+              # RC influence function has one entry per obs in disdat_long
+              # (2 per unit: pre + post). Aggregate to unit level by ID,
+              # independent of row ordering.
+              res$att.inf.func <- as.numeric(rowsum(res$att.inf.func,
+                                                    disdat_long[[idname]],
+                                                    reorder = FALSE))
+              res$att.inf.func <- (n / n1) * res$att.inf.func
+            } else {
+              res$att.inf.func <- (n / n1) * res$att.inf.func
+            }
           }
           res
         }, error = function(e) {
@@ -457,7 +466,7 @@ compute.att_gt <- function(dp) {
 
         if (is.null(attgt)) {
           attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
-          inffunc_updates[[update_counter]] <- list(
+          if (do_inf) inffunc_updates[[update_counter]] <- list(
             indices = seq_len(n),
             values = rep(NA_real_, n)
           )
@@ -555,7 +564,7 @@ compute.att_gt <- function(dp) {
           attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
           # inffunc[,counter] <- NA
           # counter <- counter+1
-          inffunc_updates[[update_counter]] <- list(
+          if (do_inf) inffunc_updates[[update_counter]] <- list(
             indices = seq_len(n),
             values = rep(NA_real_, n)
           )
@@ -602,7 +611,7 @@ compute.att_gt <- function(dp) {
 
           if (reg_problems_likely | pscore_problems_likely) {
             attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
-            inffunc_updates[[update_counter]] <- list(
+            if (do_inf) inffunc_updates[[update_counter]] <- list(
               indices = seq_len(n),
               values = rep(NA_real_, n)
             )
@@ -627,7 +636,7 @@ compute.att_gt <- function(dp) {
               D = G,
               covariates = covariates,
               i.weights = w,
-              inffunc = TRUE
+              inffunc = do_inf
             ), extra_args))
           } else if (est_method == "ipw") {
             # inverse-probability weights
@@ -637,7 +646,7 @@ compute.att_gt <- function(dp) {
               D = G,
               covariates = covariates,
               i.weights = w,
-              boot = FALSE, inffunc = TRUE
+              boot = FALSE, inffunc = do_inf
             )
           } else if (est_method == "reg") {
             # regression
@@ -647,7 +656,7 @@ compute.att_gt <- function(dp) {
               D = G,
               covariates = covariates,
               i.weights = w,
-              boot = FALSE, inffunc = TRUE
+              boot = FALSE, inffunc = do_inf
             )
           } else {
             # doubly robust, this is default
@@ -657,19 +666,18 @@ compute.att_gt <- function(dp) {
               D = G,
               covariates = covariates,
               i.weights = w,
-              boot = FALSE, inffunc = TRUE
+              boot = FALSE, inffunc = do_inf
             )
           }
 
-          # n/n1 adjusts for estimating the
-          # att_gt only using observations from groups
-          # G and C
-          res$att.inf.func <- (n / n1) * res$att.inf.func
+          # n/n1 adjusts for estimating the att_gt only using observations from
+          # groups G and C (skipped for point estimates only)
+          if (do_inf) res$att.inf.func <- (n / n1) * res$att.inf.func
 
           # If ATT is NaN, replace it with NA, and mark influence function as missing
           if (is.nan(res$ATT)) {
             res$ATT <- NA
-            res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
+            if (do_inf) res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
           }
           res
         }, error = function(e) {
@@ -679,7 +687,7 @@ compute.att_gt <- function(dp) {
 
         if (is.null(attgt)) {
           attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
-          inffunc_updates[[update_counter]] <- list(
+          if (do_inf) inffunc_updates[[update_counter]] <- list(
             indices = seq_len(n),
             values = rep(NA_real_, n)
           )
@@ -695,7 +703,10 @@ compute.att_gt <- function(dp) {
       )
 
 
-      # populate the influence function in the right places
+      # populate the influence function in the right places (skipped for point
+      # estimates only -- compute_inffunc = FALSE -- so we neither aggregate nor
+      # store the per-cell influence function)
+      if (do_inf) {
       if (panel) {
         # Store integer indices directly (avoids which() later)
         idx <- which(disidx)
@@ -717,6 +728,7 @@ compute.att_gt <- function(dp) {
           values = as.numeric(rs[, 1])
         )
       }
+      }
 
 
       # save it in influence function matrix
@@ -735,7 +747,7 @@ compute.att_gt <- function(dp) {
   # O(ncol^2) in total). The triplet order is unchanged (column-major, original
   # within-column order), so the resulting sparse matrix is identical.
   # Skipped for point estimates only (compute_inffunc = FALSE): no matrix is returned.
-  if (is.null(dp$compute_inffunc) || isTRUE(dp$compute_inffunc)) {
+  if (do_inf) {
     nz_list <- lapply(inffunc_updates, `[[`, "indices")
     val_list <- lapply(inffunc_updates, `[[`, "values")
     trip_i <- unlist(nz_list, use.names = FALSE)

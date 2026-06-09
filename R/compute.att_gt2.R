@@ -138,7 +138,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
           warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = rep(NA_real_, n)))
+          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
         }
       }
 
@@ -147,7 +147,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
         if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
           warning(paste0("Not enough control units", gt_label, " to run specified regression"))
-          return(list(att = NA, inf_func = rep(NA_real_, n)))
+          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
         }
       }
     }
@@ -250,7 +250,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
           warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = rep(NA_real_, n_inf)))
+          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }
 
@@ -259,7 +259,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
         if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
           warning(paste0("Not enough control units", gt_label, " to run specified regression"))
-          return(list(att = NA, inf_func = rep(NA_real_, n_inf)))
+          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }
     }
@@ -495,7 +495,7 @@ run_att_gt_estimation <- function(g, t, dp2){
   # When force_rc on balanced panel, the influence function has 2*n_units rows.
   # Half-split is safe here: cohort_data is explicitly stacked as
   # [all pre, all post] via rep(c(0L, 1L), each = n_units) in construction above.
-  if (force_rc && !is.null(did_result) && dp2$panel) {
+  if (force_rc && !is.null(did_result) && dp2$panel && !is.null(did_result$inf_func)) {
     inf <- did_result$inf_func
     n_half <- length(inf) %/% 2L
     did_result$inf_func <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
