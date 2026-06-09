@@ -134,7 +134,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
 
       # checks for pscore based methods
       if (dp2$est_method %in% c("dr", "ipw")) {
-        preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
+        preliminary_logit <- overlap_logit_fit(covariates, D_vec)
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
           warning(paste0("overlap condition violated", gt_label))
@@ -246,7 +246,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
 
       # checks for pscore based methods
       if (dp2$est_method %in% c("dr", "ipw")) {
-        preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
+        preliminary_logit <- overlap_logit_fit(covariates, D_vec)
         preliminary_pscores <- preliminary_logit$fitted.values
         if (max(preliminary_pscores) >= 0.999) {
           warning(paste0("overlap condition violated", gt_label))

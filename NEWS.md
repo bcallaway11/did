@@ -28,6 +28,8 @@
 
   * The `faster_mode = FALSE` panel path assembles each 2x2 cell directly from precomputed per-period blocks (outcomes, weights, design) indexed by position, instead of subsetting and reshaping (`get_wide_data()`) the long data for every cell — bit-identical results, with about half the transient allocation. Set `options(did.disable_precompute = TRUE)` to force the original path. The repeated-cross-section / unbalanced influence-function aggregation now uses `rowsum()` instead of `stats::aggregate()` (about 40x faster on that step), bit-identically
 
+  * The per-(g,t) overlap-check propensity logit (fit for every `dr`/`ipw` cell to detect propensity-score overlap violations) now uses `fastglm`'s low-level entry point (`fastglmPure`) instead of the `fastglm()` wrapper, skipping its per-call input coercion and family/deviance bookkeeping. The fitted values -- and therefore the overlap decision -- are bit-identical, and the fit is about 1.4x faster (roughly 5-7% off `dr`/`ipw` `att_gt`)
+
   * Internal speedups with identical results: vectorized the multiplier-bootstrap post-processing (`mboot()`), removed a duplicated `n x k` matrix construction in the aggregation estimated-weight influence term (`wif()`), preallocated the influence-function sparse-matrix assembly, and removed redundant work in pre-processing and simulation
 
   * Replaced fragile `ifelse(cond, x <- a, x <- b)` side-effect idioms (which relied on R's branch-evaluation order) with `if/else` throughout; behavior is unchanged

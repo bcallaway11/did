@@ -350,7 +350,7 @@ compute.att_gt <- function(dp) {
             # Run overlap/rank checks on RC data (not wide panel data)
             if (!is.function(est_method)) {
               if (est_method %in% c("dr", "ipw")) {
-                preliminary_logit <- fastglm::fastglm(covariates_rc, G_rc, family = binomial())
+                preliminary_logit <- overlap_logit_fit(covariates_rc, G_rc)
                 if (max(preliminary_logit$fitted.values) >= 0.999) {
                   warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
@@ -388,7 +388,7 @@ compute.att_gt <- function(dp) {
             # Panel path: run overlap/rank checks on panel data
             if (!is.function(est_method)) {
               if (est_method %in% c("dr", "ipw")) {
-                preliminary_logit <- fastglm::fastglm(covariates, G, family = binomial())
+                preliminary_logit <- overlap_logit_fit(covariates, G)
                 if (max(preliminary_logit$fitted.values) >= 0.999) {
                   warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
@@ -583,7 +583,7 @@ compute.att_gt <- function(dp) {
 
           # checks for pscore based methods
           if (est_method %in% c("dr", "ipw")) {
-            preliminary_logit <- fastglm::fastglm(covariates, G, family = binomial())
+            preliminary_logit <- overlap_logit_fit(covariates, G)
             preliminary_pscores <- preliminary_logit$fitted.values
             if (max(preliminary_pscores) >= 0.999) {
               pscore_problems_likely <- TRUE
