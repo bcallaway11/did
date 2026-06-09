@@ -160,9 +160,11 @@
 #'     original per-pair build (a reference that agrees with \code{"kernel"} to roughly \code{1e-13});
 #'     \code{"sieve"} is an \eqn{O(np)} series build that avoids the \eqn{n \times n} kernel matrix and so
 #'     scales past its memory wall at large \eqn{n}. \strong{Note:} the sieve uses a different smoother (it
-#'     changes the point estimate slightly) and is not wired for the \code{misspec_robust} weight-estimation
-#'     channel; under \code{"sieve"} that channel is automatically disabled with a warning and the plug-in
-#'     efficient SE is reported for it (\code{estimation_effect} and \code{higher_order} still apply).}
+#'     changes the point estimate slightly). The \code{misspec_robust} weight-estimation channel \emph{is}
+#'     supported under the sieve for \code{weight_scheme = "efficient"} (the influence function uses the
+#'     eigen-floor-aware coupling of the series estimator); for \code{weight_scheme = "averaged"} the channel
+#'     is disabled with a warning (its pooled-covariance form is numerically unstable for the sieve) and the
+#'     plug-in efficient SE is reported. \code{estimation_effect} and \code{higher_order} apply under either.}
 #'   \item{\code{edid_pd_blend}}{Logical (default \code{FALSE}). When \code{TRUE}, a per-unit
 #'     \eqn{\Omega^*(X_i)} that is genuinely indefinite is blended toward the pooled \eqn{\bar\Omega^*} by the
 #'     minimum amount that restores positive-definiteness (closed form via Weyl's inequality), instead of

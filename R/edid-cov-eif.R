@@ -1140,7 +1140,7 @@ compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
 #' @param d integer, number of covariates entering the kernel (sets the floor rate)
 #' @return numeric matrix n x H, each row summing to 1
 #' @keywords internal
-compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NULL) {
+compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NULL, need_coup = FALSE) {
   n   <- dim(omega_array)[1]
   H   <- dim(omega_array)[2]
   one <- rep(1, H)
@@ -1150,6 +1150,12 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
   # is bit-identical to compute_pointwise_q_edid). gen_out_mat = NULL keeps the default weights path unchanged.
   do_q <- !is.null(gen_out_mat)
   Q    <- if (do_q) matrix(0, n, H) else NULL
+  # need_coup: ALSO return the per-unit EIGEN-FLOOR-AWARE coupling gradient C_i = dtheta_i / dOmega_i^shrunk --
+  # the Daleckii-Krein derivative of the FLOORED inverse M = V diag(1/max(lambda, c)) V', NOT the smooth
+  # -sym(q w'). It reduces to -sym(q w') when nothing floors, so the (well-conditioned) kernel is unaffected;
+  # the sieve's per-unit Omega is heavily floored, and the smooth adjoint there over-states the weight channel
+  # several-fold. Used by the sieve weight-channel psi (the kernel path keeps Q/W).
+  C    <- if (do_q && need_coup) array(0, dim = c(n, H, H)) else NULL
   # Dimension-aware floor exponent a = c*(5-d)/10, c = 0.7. clamp d to <=4 so a>0
   # (the band (0,(5-d)/10) is empty for d>=5, where the NW conditional covariance
   # is not uniformly consistent; a=0.07 is a conservative fallback there).
@@ -1207,10 +1213,27 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
         theta_i <- sum(W[i, ] * gen_out_mat[i, ])
         z       <- gen_out_mat[i, ] - theta_i
         Q[i, ]  <- drop(Vt %*% (crossprod(Vt, z) / ev_floored))               # Minv %*% (gen_out_i - theta_i)
+        if (need_coup) {                                                        # eigen-floor-aware coupling gradient
+          # dtheta = (1/s) 1'(dM)(gen_out - theta), dM = V[f^{[1]} o (V'dOmega V)]V' (Daleckii-Krein),
+          # f(lam)=1/max(lam,c): floored directions are clamped (f'=0), so their inverse does NOT respond to
+          # dOmega -- exactly the variance reduction the smooth -sym(q w') adjoint ignores. The floor level
+          # c = mx*tol is held FIXED here (its d(mx)/dOmega dependence, and the data-driven shrinkage lambda /
+          # Omega-bar derivatives, are higher-order and omitted -- ~0.5% in the operating regime, the same
+          # asymptotically-negligible-stabilization convention the kernel path uses).
+          atil <- drop(crossprod(Vt, one)); util <- drop(crossprod(Vt, z))     # V'1 , V'(gen_out_i - theta_i)
+          lam  <- e$values; invfl <- 1 / ev_floored; c_fl <- mx * tol
+          fp   <- ifelse(lam > c_fl, -1 / lam^2, 0)                            # f'(lam) (clamped to 0 when floored)
+          dl   <- outer(lam, lam, "-")
+          Dm   <- outer(invfl, invfl, "-") / dl                                # divided differences f^{[1]}_kl
+          near <- abs(dl) < 1e-8 * (abs(mx) + 1e-300)                          # degenerate / diagonal -> derivative
+          if (any(near)) Dm[near] <- outer(fp, fp, function(a, b) 0.5 * (a + b))[near]
+          Smat <- 0.5 * (outer(atil, util) + outer(util, atil))                # sym(a~ u~')
+          C[i, , ] <- (Vt %*% (Dm * Smat) %*% t(Vt)) / den                     # (1/s) V[f^{[1]} o sym] V'
+        }
       }
     } else {
       W[i, ] <- one / H                                                        # degenerate => uniform weight, q stays 0
     }
   }
-  if (do_q) list(W = W, Q = Q) else W
+  if (do_q) list(W = W, Q = Q, C = C) else W
 }

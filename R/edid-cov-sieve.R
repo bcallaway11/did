@@ -36,8 +36,7 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
                                           kp_cache = NULL) {
   # kp_cache is accepted for signature-compatibility with the kernel builders (fit_edid_cells passes it
   # uniformly via .omega_fun); the series scenario builds no n x n kernel matrix, so it is intentionally unused.
-  if (!is.null(psi_qw))
-    stop("compute_omega_star_sieve_edid: the psi/misspec channel is not implemented in the sieve scenario.")
+  # psi_qw triggers the weight-estimation channel (Sigma_Omega): handled below via the sieve OLS-projection IF.
   X_mat <- panel_obj$covariate_matrix
   n <- nrow(X_mat); H <- nrow(pairs); ow <- panel_obj$outcome_wide
   col_t <- panel_obj$period_to_col[[as.character(t)]]
@@ -77,6 +76,91 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   term1_const <- inv_pg_vec * ccov(cm_w_g, cm_w_g)
 
   gp <- pairs$gp; tpre <- pairs$tpre; is_self <- is.finite(gp) & gp == g
+
+  # ---------------------------------------------------------------------------
+  # Weight-estimation channel (Sigma_Omega) for the SIEVE smoother
+  # ---------------------------------------------------------------------------
+  # Mirrors compute_omega_star_cov_edid()'s do_psi path term-for-term, replacing the kernel-local IF of
+  # Cov(A,B|X) with the OLS-PROJECTION IF. Each Eq.(3.12) covariance term is Cov(A,B|X_i) = E[AB|X_i] -
+  # E[A|X_i]E[B|X_i], all three group-OLS fits mu(X) = B_all beta, beta = BtB_inv B_grp' Z[idx]. The two-step
+  # IF of att w.r.t. these coefficients is D' IF_beta with D = (1/n) sum_i s_i dCov_i/dbeta (s_i = pref_i*coup_i,
+  # pref/coup/sign copied from the kernel term_psi) and IF_beta(l) = n BtB_inv B_l e_l (l in group); the 1/n and
+  # n cancel, so per moment the contribution is e_l * B_l' BtB_inv (sum_i s_i dCov_i/dbeta) -- a length-p
+  # accumulator summed over cells i FIRST (O(n p), no n x n), then one basis-dot per group unit. Product rule on
+  # E[A|X]E[B|X] gives the -mu_B, -mu_A weights. Term 1 (cell-constant) is skipped: q_i'1 = 0 makes its coupling
+  # sum to 0 per unit (the cancellation the kernel relies on). Centering of A,B is OLS-span-invariant => uses raw
+  # fits. Returns list(psi, coupled_C); the inv-p correction and the eif fold (psi - corr) are smoother-agnostic.
+  if (!is.null(psi_qw)) {
+    pw_psi <- isTRUE(psi_qw$pointwise)
+    if (pw_psi) { Q_mat <- psi_qw$Q; W_mat <- psi_qw$W } else { q_vec <- psi_qw$q; w_av <- psi_qw$w }
+    C_arr  <- psi_qw$C    # per-unit eigen-floor-aware coupling gradient (n x H x H); preferred over Q/W when present
+    # Leading-order shrinkage correction. The per-unit Omega is regularized to Omega^shrunk = (1-lam)Omega_i +
+    # lam*Omega_bar before inversion, and the adjoint q (from W_mat/Q_mat) is computed on Omega^shrunk. The
+    # covariance term enters Omega_i with coefficient (1-lam), so dtheta = -(1-lam) q'(dOmega_i)w. The sieve's
+    # per-unit Omega is poorly conditioned => lam is large => omitting this factor over-states the channel
+    # several-fold (the shrinkage is a big variance reduction, NOT asymptotically negligible here). Scale the
+    # per-cell sensitivity by (1-lam). (The kernel path keeps lam~0, so this is a no-op there.) The data-driven
+    # dlam and dOmega_bar terms are higher-order and omitted, as for the kernel.
+    .lam_shr <- suppressWarnings(as.numeric(psi_qw$lambda))
+    if (length(.lam_shr) != 1L || !is.finite(.lam_shr)) .lam_shr <- 0
+    .shr <- min(1, max(0, 1 - .lam_shr))
+    Wg     <- w_vec                                            # Y_t - Y_1 (the self-term left vector)
+    psi_om <- numeric(n)
+    cpl    <- new.env(parent = emptyenv())                     # coupled_C per inv_p group (smoother-agnostic)
+    rf     <- new.env(parent = emptyenv())                     # raw (uncentered) group-OLS fits, cached per (vkey,group)
+    rawfit <- function(v, vkey, gkey, pc) {
+      key <- if (is.null(vkey)) NULL else paste0(vkey, "@@", gkey)
+      if (!is.null(key) && exists(key, envir = rf, inherits = FALSE)) return(get(key, envir = rf))
+      beta <- pc$BtB_inv %*% crossprod(pc$B_grp, v[pc$idx])
+      mu   <- drop(pc$B_all %*% beta)
+      out  <- list(mu = mu, e = v[pc$idx] - mu[pc$idx])        # mu length n; residual e length n_grp (on idx)
+      if (!is.null(key)) assign(key, out, envir = rf)
+      out
+    }
+    add_term <- function(A, B, pc, pref_vec, coup, grp_sign, gkey, akey, bkey) {
+      if (!isTRUE(pc$ok)) return(invisible(NULL))
+      fa <- rawfit(A, akey, gkey, pc); fb <- rawfit(B, bkey, gkey, pc); fab <- rawfit(A * B, NULL, gkey, pc)
+      cov_vals <- fab$mu - fa$mu * fb$mu                        # conditional Cov(A,B|X), length n
+      s   <- pref_vec * coup                                    # per-unit att-sensitivity (coup pointwise len-n or scalar)
+      aAB <- drop(pc$BtB_inv %*% crossprod(pc$B_all, s))        # BtB_inv (sum_i s_i B_i); NO factor n (cancels)
+      aA  <- drop(pc$BtB_inv %*% crossprod(pc$B_all, s * fb$mu))# weight = mu_B (product rule)
+      aB  <- drop(pc$BtB_inv %*% crossprod(pc$B_all, s * fa$mu))# weight = mu_A
+      idx <- pc$idx
+      psi_om[idx] <<- psi_om[idx] +
+        (-drop(pc$B_grp %*% aAB) * fab$e + drop(pc$B_grp %*% aA) * fa$e + drop(pc$B_grp %*% aB) * fb$e)
+      cur <- if (exists(gkey, envir = cpl, inherits = FALSE)) get(gkey, envir = cpl) else numeric(n)
+      assign(gkey, cur + (grp_sign * coup) * cov_vals, envir = cpl)
+      invisible(NULL)
+    }
+    inv_pgp_psi <- function(j) {
+      if (is.infinite(gp[j])) return(inv_pinf_vec)
+      gpk <- as.character(gp[j])
+      if (!is.null(inv_propensities) && !is.null(inv_propensities[[gpk]])) return(inv_propensities[[gpk]])
+      pi_gp <- panel_obj$cohort_fractions[[gpk]]; if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n)
+    }
+    for (j in seq_len(H)) {
+      ctj <- panel_obj$period_to_col[[as.character(tpre[j])]]
+      Uj  <- ow[, col_t] - ow[, ctj]; Vj <- ow[, ctj] - ow[, col_1]
+      for (k in j:H) {
+        ctk  <- panel_obj$period_to_col[[as.character(tpre[k])]]
+        Uk   <- ow[, col_t] - ow[, ctk]; Vk <- ow[, ctk] - ow[, col_1]
+        coup <- if (!is.null(C_arr)) { if (j == k) -C_arr[, j, j] else -2 * C_arr[, j, k] }  # eigen-floor-aware coupling
+                else if (pw_psi)     { if (j == k) Q_mat[, j] * W_mat[, j] else Q_mat[, j] * W_mat[, k] + Q_mat[, k] * W_mat[, j] }
+                else                 { if (j == k) q_vec[j] * w_av[j]      else q_vec[j] * w_av[k]      + q_vec[k] * w_av[j] }
+        coup <- coup * .shr                                       # leading-order (1-lam) shrinkage-IF correction
+        add_term(Uj, Uk, pc_inf, inv_pinf_vec, coup, 1, "Inf", paste0("u", ctj), paste0("u", ctk))             # T2
+        if (is_self[j]) add_term(Wg, Vj, pc_g, -inv_pg_vec, coup, -1, as.character(g), "w", paste0("v", ctj))  # T3
+        if (is_self[k]) add_term(Wg, Vk, pc_g, -inv_pg_vec, coup, -1, as.character(g), "w", paste0("v", ctk))  # T4
+        if (identical(gp[j], gp[k])) {                                                                          # T5
+          gpk <- as.character(gp[j])
+          pc5 <- if (is.infinite(gp[j])) pc_inf else { mgp <- panel_obj$cohort_masks[[gpk]]; if (is.null(mgp)) list(ok = FALSE) else get_pieces(mgp, gpk) }
+          add_term(Vj, Vk, pc5, inv_pgp_psi(j), coup, 1, gpk, paste0("v", ctj), paste0("v", ctk))
+        }
+      }
+    }
+    return(list(psi = psi_om, coupled_C = as.list(cpl)))
+  }
+
   cm_u_inf <- vector("list", H); cm_v_g <- vector("list", H); cm_v_gp <- vector("list", H)
   for (j in seq_len(H)) {
     ctp <- panel_obj$period_to_col[[as.character(tpre[j])]]

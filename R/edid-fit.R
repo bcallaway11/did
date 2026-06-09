@@ -121,18 +121,18 @@ fit_edid_cells <- function(
       warning("misspec_robust has no effect for weights = 'uniform' (fixed weights have no estimation channel).",
               call. = FALSE)
       misspec_robust <- FALSE
-    } else if (weight_method %in% c("efficient", "averaged") &&
+    } else if (weight_method == "averaged" &&
                identical(getOption("edid_omega_method", "kernel"), "sieve")) {
-      # The weight-estimation channel is NOT implemented for the sieve smoother: its psi pass rebuilds
-      # Omega with the KERNEL (compute_omega_star_cov_edid), which would silently mix sieve weights with a
-      # kernel weight-channel covariance. Until the sieve psi channel is derived, fall back to the plug-in
-      # efficient SE for the weight channel (warn). estimation_effect (ACH) and higher_order do NOT rebuild
-      # Omega -- they use the frozen sieve weights -- so they remain active and consistent. gmm is excluded
-      # above: its channel inverts the unconditional sample covariance, not Omega, so it is smoother-agnostic.
-      warning("misspec_robust: the weight-estimation channel is not implemented for ",
-              "options(edid_omega_method = 'sieve'); reporting the plug-in efficient SE for that channel ",
-              "(estimation_effect / higher_order are unaffected). Use the kernel smoother for a ",
-              "weight-channel-robust SE.", call. = FALSE)
+      # The EFFICIENT (pointwise) sieve weight-channel IS implemented and calibrated (it uses the eigen-floor-
+      # aware coupling C_i = dtheta/dOmega^shrunk via compute_pointwise_weights_edid(need_coup=TRUE); validated
+      # to nominal coverage + jackknife slope ~1). The AVERAGED sieve channel inverts the pooled Omega-bar in
+      # the psi pass, which is numerically unstable for the sieve (near-singular pooled inverse), so it is NOT
+      # offered: fall back to the plug-in efficient SE (warn). estimation_effect / higher_order are unaffected
+      # (they use the frozen weights, no Omega rebuild); gmm is excluded above (sample-cov channel, smoother-agnostic).
+      warning("misspec_robust: the weight-estimation channel for weight_scheme = 'averaged' is not implemented ",
+              "under options(edid_omega_method = 'sieve') (the pooled-Omega-bar channel is numerically unstable ",
+              "there); reporting the plug-in efficient SE for that channel. Use weight_scheme = 'efficient' for ",
+              "the sieve weight-channel-robust SE, or the kernel smoother.", call. = FALSE)
       misspec_robust <- FALSE
     } else if (K_use > 1L) {
       stop("misspec_robust = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
@@ -183,6 +183,11 @@ fit_edid_cells <- function(
     sieve       = compute_omega_star_sieve_edid,
     kernel_orig = compute_omega_star_cov_edid,
     compute_omega_star_kernel_fast_edid)                  # "kernel" (default) -> mean-cached fast build
+  # The weight-estimation (psi_Omega) channel must use the SAME smoother as the weights, else it silently
+  # mixes (e.g. sieve weights + kernel Sigma_Omega). Route psi to the sieve builder under "sieve", else the
+  # exact kernel build compute_omega_star_cov_edid (bit-identical to the fast build, which itself has no psi
+  # path). For the default kernel path this is unchanged from before.
+  .psi_omega_fun <- if (identical(.omega_method, "sieve")) compute_omega_star_sieve_edid else compute_omega_star_cov_edid
   if (use_cov_path && !identical(.omega_method, "sieve")) {  # any kernel variant needs the n x n weight matrix
     kk_full <- build_kernel_weights_edid(panel_obj$covariate_matrix)
     kern_bw <- kk_full$bw; kern_K <- kk_full$K
@@ -371,9 +376,11 @@ fit_edid_cells <- function(
           # (one eigendecomposition per unit instead of two). Q_pw is from the un-frozen weights; the .fwpw freeze
           # (research jackknife) is incompatible with the psi channel and is guarded with a stop below.
           want_q   <- isTRUE(getOption("edid_store_psiomega")) || misspec_robust
+          .sieve_psi <- identical(.omega_method, "sieve")    # sieve weight channel needs the eigen-floor-aware coupling
           pw_res   <- compute_pointwise_weights_edid(omega_arr, d = ncol(panel_obj$covariate_matrix),
-                        gen_out_mat = if (want_q) gen_out_mat else NULL)        # n x H (+ Q_pw when want_q)
-          if (want_q) { W_pw <- pw_res$W; Q_pw <- pw_res$Q } else W_pw <- pw_res
+                        gen_out_mat = if (want_q) gen_out_mat else NULL,
+                        need_coup = want_q && .sieve_psi)                       # n x H (+ Q_pw, + C_pw for sieve)
+          if (want_q) { W_pw <- pw_res$W; Q_pw <- pw_res$Q; C_pw <- pw_res$C } else W_pw <- pw_res
           # Research hook (default OFF, NOT on the PR): getOption("edid_fixed_wpw") = list("g_t" = list(ids=, W=))
           # FREEZES the per-unit pointwise weights at supplied (id-keyed) values instead of re-estimating them. Used by
           # the efficient weight-estimation-channel jackknife (refit nuisances but FREEZE W_pw) to isolate Sigma_Omega.
@@ -405,6 +412,11 @@ fit_edid_cells <- function(
               panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption,
               trim_keep = trim_keep, keep_mat = eif_keep, m_kept = eif_mkept)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
+          if (isTRUE(getOption("edid_store_wpw"))) {            # validation hook (OFF): full per-unit W_pw + ids
+            acc <- getOption("edid_wpw_acc", list())            # seeds the weight-channel jackknife (efficient)
+            acc[[paste0(g, "_", t)]] <- list(ids = panel_obj$all_units, W = W_pw)
+            options(edid_wpw_acc = acc)
+          }
           # Weight-estimation channel psi_Omega. Computed when EITHER the research diagnostic (edid_store_psiomega)
           # OR the production misspec_robust SE is requested; STORED to the accumulator only for the diagnostic;
           # FOLDED into eif_gt (eif_gt + psi_Omega, mirroring the ACH subtraction above) only for misspec_robust.
@@ -424,9 +436,9 @@ fit_edid_cells <- function(
               n_shrink <- n_shrink + 1L
               if (lam_cell > max_lambda) { max_lambda <- lam_cell; shrink_g <- g; shrink_t <- t }
             }
-            po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+            po    <- .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
                        inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
-                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw), kp_cache = kp_cache)
+                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw, lambda = lam_cell, C = C_pw), kp_cache = kp_cache)
             corr_an <- compute_invp_correction_analytic_cov_edid(panel_obj$n, attr(inv_propensities, "aux"),
                                                                  po$coupled_C)
             psi_i <- po$psi - corr_an                                         # weight-estimation IF (data - corr)
@@ -488,7 +500,7 @@ fit_edid_cells <- function(
               mbar  <- colMeans(gen_out_mat)
               q_vec <- drop(C_inv %*% (mbar - att_gt))                        # same inverse as the weights => q'1 = 0
               stopifnot(abs(sum(q_vec)) < 1e-6 * (1 + max(abs(q_vec))))       # Term-1 cancellation premise (defensive)
-              po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+              po    <- .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
                          inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights),
                          kp_cache = kp_cache)
               invp_aux <- attr(inv_propensities, "aux")
