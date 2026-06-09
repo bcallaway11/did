@@ -183,7 +183,14 @@ orthogonality, so the channel includes an Ackerberg-Chen-Hahn correction for the
 nuisance estimation entering \eqn{C}. It is \emph{not} available for \code{"uniform"} (fixed weights have no
 estimation channel; warns and falls back to the plug-in SE). In weak-overlap / small-\eqn{n} cells where the
 efficient pointwise shrinkage \eqn{\lambda} is non-negligible the efficient channel omits an \eqn{O(\lambda)}
-term and the SE there is a (warned) approximation to the weight-channel variance.}
+term and the SE there is a (warned) approximation to the weight-channel variance.
+\strong{Calibration:} with \code{misspec_robust = TRUE} (and its bundled \code{estimation_effect} /
+\code{higher_order}) the reported SE is the finite-sample-calibrated standard error and is the recommended
+default; a Monte-Carlo audit finds its coverage close to and converging to nominal across all weight
+schemes and both \code{edid_omega_method} smoothers. \code{misspec_robust = FALSE} reports the bare
+asymptotic efficient-influence-function SE: it is valid as \eqn{n \to \infty} but \emph{anti-conservative
+in small samples} (it omits the finite-sample estimation-effect channels), so confidence intervals can
+under-cover at small \eqn{n}; prefer the default for calibrated inference.}
 
 \item{trim_level}{Numeric (default \code{200}). Overlap-trimming threshold (covariate path only). A
 comparison observation is dropped from an \eqn{(g,t)} cell's moment and efficient weights when its
