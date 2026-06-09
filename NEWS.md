@@ -1,5 +1,9 @@
 # did 2.3.1.908
 
+## Dependencies
+
+  * Requires `DRDID (>= 1.3.0)`. That release provides faster and more robust 2x2 DiD estimators (used internally for every group-time ATT): estimates are unchanged up to floating-point precision, and `DRDID` now guards against silently-incorrect standard errors on ill-conditioned (near-singular) designs
+
 ## Bug fixes
 
   * Fixed the conditional parallel-trends pre-test (`conditional_did_pretest()`), which had silently broken under R >= 4.0 and spuriously rejected almost always whenever there was more than one pre-treatment ATT(g,t) cell. The observed Cramér-von Mises statistic was left in `(n_gt x nX)` orientation while its bootstrap null distribution is `(nX x n_gt)`, scaling the observed statistic by `n / n_gt` relative to the bootstrap and driving the p-value to ~0. The root cause was `ifelse(class(J) == "matrix", ...)`: `class()` of a matrix became length-2 (`c("matrix","array")`) in R 4.0, so `ifelse()` evaluated both branches and the no-transpose branch always won. The orientation is now selected with `is.matrix()`

@@ -14,7 +14,7 @@ Imports:
     Matrix,
     pbapply,
     ggplot2,
-    DRDID (>= 1.1.0),
+    DRDID (>= 1.3.0),
     generics,
     methods,
     tidyr,
