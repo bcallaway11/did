@@ -32,7 +32,13 @@ pieces \code{list(B_test, score_mat, H_inv, is_fallback)} from the \code{return_
 \item{trim_keep}{optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
 held FIXED at \eqn{\hat\theta} so \eqn{\Gamma} is the trimmed moment's nuisance sensitivity}
 
-\item{eps_rel}{relative finite-difference step}
+\item{eps_rel}{relative finite-difference step for the nuisance-sensitivity Gamma. Kept at the standard
+first-difference optimum 1e-6: although the weighted moment is linear in each prediction in exact arithmetic,
+in finite samples (extreme propensity ratios / near-degenerate sieve folds) it carries mild single-nuisance
+curvature, so a larger step trades truncation error for the saved rounding and is NOT safe (it shifts Gamma's
+direction; see test-edid-ach-correction). The residual ~2e-8 build-sensitivity this leaves in the
+estimation_effect channel is negligible (8 significant digits); an exact analytic Gamma could remove even
+that but is not warranted for a 2e-8 gain.}
 }
 \value{
 numeric vector length n (the term to subtract from the plug-in EIF)

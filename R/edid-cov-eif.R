@@ -911,6 +911,7 @@ edid_nuisance_blocks <- function(m_aux, r_aux) {
 #' reason the slow finite-difference fallback existed). \code{keep_mat = NULL} (no trimming) gives sc_j == 1, i.e. the
 #' byte-identical no-trim closed form.
 #' @keywords internal
+#' @noRd
 compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption = "all",
                                                keep_mat = NULL, m_kept = NULL) {
   blocks <- edid_nuisance_blocks(m_aux, r_aux)
