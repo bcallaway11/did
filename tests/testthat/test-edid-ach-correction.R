@@ -121,6 +121,34 @@ test_that("conditional-mean ACH correction has the CORRECT SIGN (matches the num
   # Under covr instrumentation the deep numerical-derivative internals can degenerate one input to a
   # constant vector, making cor() NA; a genuine sign flip would give a finite cor ~= -1 (not NA), so
   # skipping only on NA keeps the sign guard fully intact everywhere it can actually run.
-  skip_if(is.na(cc), "ACH sign check degenerate under coverage instrumentation")
+  #
+  # The m-channel ACH is Neyman-orthogonal under the UNIFORM weights used here, so on this fixture the
+  # correction is ~0: the exact analytic Gamma (the default) returns ~1e-14, while the old finite difference
+  # returned ~1e-8 of numerical residual. cor() of a ~0 vector has no defined sign, so skip the sign check when
+  # the correction is negligible. The non-negligible (efficient-weight) ACH -- where a sign flip WOULD matter --
+  # is validated directly against the FD oracle in the next test.
+  skip_if(is.na(cc) || max(abs(pkg_change)) < 1e-6,
+          "m-channel ACH is orthogonal (~0) under uniform weights; sign undefined (see FD-oracle test)")
   expect_gt(cc, 0.95)
+})
+
+test_that("analytic ACH reproduces the finite-difference oracle where the correction is non-negligible", {
+  # The default analytic ACH Gamma is exact (closed form, no finite differences). On the efficient-weight path
+  # the ACH is a LARGE, real correction (it moves the SEs substantially), so it is the right place to verify the
+  # analytic against the forced finite-difference oracle -- any sign or coefficient error would show as a gross
+  # mismatch. (Under uniform weights the m-channel is orthogonal and ~0, which is why the sign test above is
+  # skipped there; here the correction is non-zero so the comparison is meaningful.)
+  df  <- make_cfs_panel(n = 300, seed = 21)
+  run <- function(ach, ee) {
+    op <- options(edid_ach = ach); on.exit(options(op), add = TRUE)
+    edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "none",
+         bstrap = FALSE, seed = 1L, misspec_robust = FALSE, estimation_effect = ee)$att_gt$se
+  }
+  se_noee <- run("analytic", FALSE)   # plug-in SE (no ACH)
+  se_an   <- run("analytic", TRUE)    # ACH via the exact analytic Gamma (default)
+  se_fd   <- run("fd",       TRUE)    # ACH via the finite-difference oracle
+  ok <- is.finite(se_noee) & is.finite(se_an) & is.finite(se_fd)
+  skip_if(sum(ok) < 2L, "too few non-degenerate cells")
+  expect_gt(max(abs(se_an[ok] - se_noee[ok])), 1e-3)   # the ACH is a real, non-negligible correction here
+  expect_equal(se_an[ok], se_fd[ok], tolerance = 1e-5) # analytic reproduces the FD oracle (sign + magnitude)
 })

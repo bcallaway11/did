@@ -708,6 +708,73 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
   wY - as.numeric(cbasis %*% att_j)
 }
 
+#' Analytic ACH first-step correction (closed-form Gamma; default path).
+#'
+#' The weighted moment M(theta) = E_n[sum_j W_ij phi_ij(theta)] is LINEAR in each nuisance prediction (the
+#' generated outcome phi is linear in r and in m separately, with the overlap trim frozen at theta_hat). So the
+#' basis-coefficient sensitivity for nuisance key K is Gamma_K = (1/n) B_K' s_K, where the per-unit weighted-
+#' moment sensitivity s_{K,i} = sum_j W_ij d phi_ij / d pred_{K,i} is assembled in ONE pass from the SAME bilinear
+#' coefficients compute_generated_outcomes_cov_edid uses (so d phi/d pred is correct by construction; FD-cross-
+#' checked in test-edid-ach-correction). Replaces the per-COEFFICIENT finite difference (sum_K ncol(B_K) generated-
+#' outcome rebuilds) with a few crossprods -- exact (no eps), no rebuilds. The frozen-trim scale
+#' sc_j = (pi_g / m_kept_j) * keep_j[,i] is folded into the weight, reproducing .renorm; keep/m_kept are derived
+#' from trim_keep exactly as in compute_generated_outcomes_cov_edid, so the signature is unchanged (no keep_mat arg).
+#' @keywords internal
+#' @noRd
+compute_ach_correction_analytic_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                                     weights, m_aux, r_aux, pt_assumption = "all",
+                                                     trim_keep = NULL) {
+  n     <- panel_obj$n; ow <- panel_obj$outcome_wide
+  pi_g  <- panel_obj$cohort_fractions[[as.character(g)]]
+  Ig    <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  I_inf <- as.numeric(panel_obj$never_treated_mask)
+  col_t <- panel_obj$period_to_col[[as.character(t)]]
+  col_1 <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
+  Y_t   <- ow[, col_t]; Y_1 <- ow[, col_1]
+  .keep <- function(key) if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
+  keep_inf <- .keep("Inf")
+  # per-key per-unit sensitivity s_K = sum_j W_ij d phi_ij / d pred_K  (mirror of the phi construction, term by term)
+  svec <- new.env(parent = emptyenv())
+  adds <- function(key, v) { cur <- if (exists(key, envir = svec, inherits = FALSE)) get(key, envir = svec) else numeric(n)
+                             assign(key, cur + v, envir = svec) }
+  for (j in seq_len(nrow(pairs))) {
+    gp_j <- pairs$gp[j]; tpre_j <- pairs$tpre[j]; col_tp <- panel_obj$period_to_col[[as.character(tpre_j)]]
+    wj   <- if (is.matrix(weights)) weights[, j] else rep(weights[j], n)
+    is_self <- (is.finite(gp_j) && gp_j == g) || identical(pt_assumption, "post")
+    keep_used <- if (is_self) keep_inf else keep_inf * .keep(as.character(gp_j))
+    m_kept_j  <- mean(Ig * keep_used)
+    sc <- if (m_kept_j > .Machine$double.eps) (pi_g / m_kept_j) * keep_used else numeric(n)   # == .renorm scale
+    wj <- wj * sc                                                                             # W_ij * sc_ij
+    r_inf  <- prop_ratios[["Inf"]]
+    md_inf <- cond_means[[paste0("Inf_", t)]] - cond_means[[paste0("Inf_", tpre_j)]]          # m_{Inf,t} - m_{Inf,tpre}
+    if (is_self) {                                                                            # phi = sc (Ig/pi_g - r_inf I_inf/pi_g)(yd - md_inf)
+      yd   <- Y_t - ow[, col_tp]
+      pref <- Ig / pi_g - r_inf * (I_inf / pi_g)
+      adds("Inf",                 wj * (-(I_inf / pi_g)) * (yd - md_inf))                     # d/d r_inf
+      adds(paste0("Inf_", t),     wj * pref * (-1))                                           # d/d m_{Inf,t}
+      adds(paste0("Inf_", tpre_j),wj * pref * ( 1))                                           # d/d m_{Inf,tpre}
+    } else {                                                                                  # cross: sc (term1 - term2 - term3)
+      gpk     <- as.character(gp_j); r_gp <- prop_ratios[[gpk]]
+      I_gp    <- if (is.infinite(gp_j)) I_inf else as.numeric(panel_obj$cohort_masks[[gpk]])
+      m_gp_tp <- cond_means[[paste0(gpk, "_", tpre_j)]]; Y_tpre <- ow[, col_tp]
+      adds(paste0("Inf_", t),      wj * (-(Ig / pi_g) + r_inf * (I_inf / pi_g)))              # d/d m_{Inf,t}  (term1 + (-term2))
+      adds(paste0("Inf_", tpre_j), wj * ( (Ig / pi_g) - r_inf * (I_inf / pi_g)))              # d/d m_{Inf,tpre}
+      adds(paste0(gpk, "_", tpre_j), wj * (-(Ig / pi_g) + r_gp * (I_gp / pi_g)))              # d/d m_{gp,tpre} (term1 + (-term3))
+      adds("Inf", wj * (-(I_inf / pi_g)) * (Y_t - Y_tpre - md_inf))                           # d/d r_inf  (-term2)
+      adds(gpk,   wj * (-(I_gp / pi_g)) * (Y_tpre - Y_1 - m_gp_tp))                           # d/d r_gp   (-term3)
+    }
+  }
+  correction <- numeric(n)
+  add_corr <- function(key, a) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test) || !exists(key, envir = svec, inherits = FALSE)) return(invisible())
+    Gamma <- as.vector(crossprod(a$B_test, get(key, envir = svec))) / n                       # (1/n) B' s
+    correction <<- correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  for (key in names(r_aux)) add_corr(key, r_aux[[key]])
+  for (key in names(m_aux)) add_corr(key, m_aux[[key]])
+  correction
+}
+
 #' ACH (Ackerberg, Chen & Hahn 2012) first-step nuisance-estimation correction
 #'
 #' Returns the length-n vector to SUBTRACT from the plug-in EIF so the influence function
@@ -742,6 +809,12 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
 compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
                                             cond_means, weights, m_aux, r_aux,
                                             pt_assumption = "all", trim_keep = NULL, eps_rel = 1e-6) {
+  # Analytic Gamma (default): exact closed form, no finite differences, no per-coefficient generated-outcome
+  # rebuilds (the FD below did sum_K ncol(B_K) of them, the dominant cost of estimation_effect). The forced-FD
+  # fallback (options(edid_ach = "fd")) is kept as an oracle for validation / any future non-linear moment.
+  if (!identical(getOption("edid_ach", "analytic"), "fd"))
+    return(compute_ach_correction_analytic_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                                    weights, m_aux, r_aux, pt_assumption, trim_keep = trim_keep))
   # trim_keep is held FIXED at theta_hat while the nuisances perturb: Gamma must be the sensitivity of the
   # ACTUAL (trimmed/renormalized) moment, and the overlap trim set is treated as fixed (DRDID-style; the
   # non-smooth boundary indicator's derivative is negligible and would otherwise inject a spurious FD jump).
