@@ -184,13 +184,16 @@ nuisance estimation entering \eqn{C}. It is \emph{not} available for \code{"unif
 estimation channel; warns and falls back to the plug-in SE). In weak-overlap / small-\eqn{n} cells where the
 efficient pointwise shrinkage \eqn{\lambda} is non-negligible the efficient channel omits an \eqn{O(\lambda)}
 term and the SE there is a (warned) approximation to the weight-channel variance.
-\strong{Calibration:} with \code{misspec_robust = TRUE} (and its bundled \code{estimation_effect} /
-\code{higher_order}) the reported SE is the finite-sample-calibrated standard error and is the recommended
-default; a Monte-Carlo audit finds its coverage close to and converging to nominal across all weight
-schemes and both \code{edid_omega_method} smoothers. \code{misspec_robust = FALSE} reports the bare
-asymptotic efficient-influence-function SE: it is valid as \eqn{n \to \infty} but \emph{anti-conservative
-in small samples} (it omits the finite-sample estimation-effect channels), so confidence intervals can
-under-cover at small \eqn{n}; prefer the default for calibrated inference.}
+\strong{What the SE includes (no fudge factor):} \code{misspec_robust = TRUE} (default, with its bundled
+\code{estimation_effect} / \code{higher_order}) reports \eqn{\mathrm{Var}(\mathrm{EIF} + \psi_\Omega +
+\mathrm{ACH} + \mathrm{Wick})} -- it \emph{adds back the genuine influence-function terms for the first-step
+estimation} of the weights \eqn{w(X)} and the nuisances \eqn{(m, r)}, instead of treating them as known.
+These are derived variance terms folded into the EIF; nothing is rescaled by a constant and the point
+estimate is unchanged. \code{misspec_robust = FALSE} omits those terms and reports the bare asymptotic
+efficient-influence-function SE: valid as \eqn{n \to \infty} but \emph{anti-conservative in small samples}
+(the dropped first-step estimation variance is real and non-negligible there), so its intervals can
+under-cover at small \eqn{n}. A Monte-Carlo audit finds the default's coverage close to and converging to
+nominal across all weight schemes and both \code{edid_omega_method} smoothers; it is the recommended default.}
 
 \item{trim_level}{Numeric (default \code{200}). Overlap-trimming threshold (covariate path only). A
 comparison observation is dropped from an \eqn{(g,t)} cell's moment and efficient weights when its
@@ -254,10 +257,13 @@ original per-pair build (a reference that agrees with \code{"kernel"} to roughly
 \code{"sieve"} is an \eqn{O(np)} series build that avoids the \eqn{n \times n} kernel matrix and so
 scales past its memory wall at large \eqn{n}. \strong{Note:} the sieve uses a different smoother (it
 changes the point estimate slightly). The \code{misspec_robust} weight-estimation channel \emph{is}
-supported under the sieve for \code{weight_scheme = "efficient"} (the influence function uses the
-eigen-floor-aware coupling of the series estimator); for \code{weight_scheme = "averaged"} the channel
-is disabled with a warning (its pooled-covariance form is numerically unstable for the sieve) and the
-plug-in efficient SE is reported. \code{estimation_effect} and \code{higher_order} apply under either.}
+supported under the sieve for \code{weight_scheme} in \code{c("efficient", "averaged")}: the influence
+function of the series conditional-covariance estimator uses the eigen-floor-aware coupling (the
+Daleckii-Krein derivative of the regularized inverse) -- per-unit \eqn{\Omega^*(X_i)} for
+\code{"efficient"}, the pooled \eqn{\bar\Omega^*} for \code{"averaged"} -- so the reported SE is
+calibrated rather than the several-fold-inflated value a smooth-inverse adjoint gives. \code{"gmm"} is
+smoother-agnostic (sample-covariance channel); \code{estimation_effect} and \code{higher_order} apply
+under either smoother.}
 \item{\code{edid_pd_blend}}{Logical (default \code{FALSE}). When \code{TRUE}, a per-unit
 \eqn{\Omega^*(X_i)} that is genuinely indefinite is blended toward the pooled \eqn{\bar\Omega^*} by the
 minimum amount that restores positive-definiteness (closed form via Weyl's inequality), instead of

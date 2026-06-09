@@ -1237,3 +1237,42 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
   }
   if (do_q) list(W = W, Q = Q, C = C) else W
 }
+
+#' Pooled (averaged-scheme) eigen-floor-aware coupling gradient
+#'
+#' Returns the H x H gradient \eqn{C = d\theta / d\bar\Omega} for the constant ("averaged") weight
+#' \eqn{\bar w = M^{-1}1 / (1' M^{-1}1)}, where \eqn{M^{-1}} is the FLOORED inverse of the pooled
+#' \eqn{\bar\Omega} (\eqn{M^{-1} = V \,\mathrm{diag}(1/\max(\lambda,c))\, V'}). The smooth \eqn{-\mathrm{sym}(q\bar w')}
+#' adjoint ignores the eigenvalue floor; this is the Daleckii-Krein derivative of the floored inverse, so the
+#' floored directions are clamped (\eqn{f'=0}) and do NOT respond to \eqn{d\bar\Omega}. This matters for the
+#' averaged+sieve channel in high-H cells where the pooled floor binds and the smooth adjoint over-states
+#' \eqn{\psi_\Omega} (jackknife slope/sign break). It reduces EXACTLY to \eqn{-\mathrm{sym}(q\bar w')} when nothing
+#' floors -- the same per-unit construction as \code{compute_pointwise_weights_edid(need_coup = TRUE)}, for one
+#' pooled matrix instead of n. The fixed floor level \eqn{c} (and \eqn{d(\mathrm{mx})/d\bar\Omega}) are
+#' higher-order and omitted, matching the kernel/pointwise convention.
+#'
+#' @param omega_floored floored pooled Omega-bar carrying \code{attr(., "eig_floor")} =
+#'   \code{list(values = raw eigenvalues, vectors = V, floor = c)} (attached by
+#'   \code{compute_omega_star_sieve_edid}'s averaged path). If absent, returns \code{NULL}.
+#' @param mbar length-H mean generated outcome; \eqn{\theta = \sum_h \bar w_h \,\mathrm{mbar}_h}
+#' @param att scalar plug-in att for this cell (\eqn{= \bar w' \mathrm{mbar}})
+#' @return H x H matrix \eqn{C}, or \code{NULL} if the eigendecomposition attribute is absent or the
+#'   normalizer is degenerate (caller then falls back to the smooth q/w coupling).
+#' @keywords internal
+compute_obar_coupling_edid <- function(omega_floored, mbar, att) {
+  ef <- attr(omega_floored, "eig_floor"); if (is.null(ef)) return(NULL)
+  Vt  <- ef$vectors; lam <- ef$values; c_fl <- ef$floor
+  H   <- length(lam); if (H < 1L) return(NULL)
+  ev_floored <- pmax(lam, c_fl); invfl <- 1 / ev_floored
+  one <- rep(1, H); z <- mbar - att
+  den <- sum(drop(Vt %*% (crossprod(Vt, one) / ev_floored)))            # 1' Minv 1
+  if (!is.finite(den) || abs(den) < 1e-12) return(NULL)
+  atil <- drop(crossprod(Vt, one)); util <- drop(crossprod(Vt, z))      # V'1 , V'(mbar - theta)
+  fp   <- ifelse(lam > c_fl, -1 / lam^2, 0)                             # f'(lam) clamped to 0 when floored
+  dl   <- outer(lam, lam, "-")
+  Dm   <- outer(invfl, invfl, "-") / dl                                 # divided differences f^{[1]}
+  mx   <- max(lam); near <- abs(dl) < 1e-8 * (abs(mx) + 1e-300)
+  if (any(near)) Dm[near] <- outer(fp, fp, function(a, b) 0.5 * (a + b))[near]
+  Smat <- 0.5 * (outer(atil, util) + outer(util, atil))                # sym(a~ u~')
+  (Vt %*% (Dm * Smat) %*% t(Vt)) / den
+}

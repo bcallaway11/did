@@ -18,6 +18,50 @@ EDID_CLIP_HI <- 20         # ratio clipping upper bound (deferred: covariate pat
 #' @keywords internal
 EDID_SE_EPS <- sqrt(.Machine$double.eps) * 10  # SE below which is treated as zero/NA
 
+#' @keywords internal
+# Variance-inflation ceiling for the misspec_robust weight-estimation channel: the largest factor by which
+# folding psi_Omega may inflate a cell's EIF variance (=> SE inflation <= sqrt of this). A genuine first-order
+# correction inflates the cell SE by at most ~2-3x; this 100 (SE <= 10x) is far above that yet far below the
+# catastrophic blowups (SE ~1e14) the sieve psi can produce in poor-overlap / placebo cells, where huge
+# inverse-propensity prefactors meet a near-singular series basis Gram. Beyond it the channel is not a credible
+# influence function (it is no longer mean-zero), so that cell falls back to the plug-in efficient SE.
+EDID_PSI_VAR_RATIO <- 100
+
+#' Is the weight-estimation channel a credible influence function for this cell?
+#'
+#' A valid \eqn{\psi_\Omega} is finite and mean-zero, and -- being a first-order, root-n-vanishing correction --
+#' inflates the cell EIF variance only modestly. In poor-overlap / placebo cells the sieve OLS-projection IF can
+#' instead explode (the eigen-floor bounds the coupling but not its product with large inverse-propensity
+#' prefactors and a near-singular basis Gram), giving a non-mean-zero \eqn{\psi} and an absurd SE. This gate
+#' rejects such \eqn{\psi} so the caller can fall back to the (finite) plug-in efficient SE for that cell --
+#' the same per-cell skip convention used elsewhere on this path. Tested against \code{eif_base}, the
+#' ACH-corrected, mean-zero baseline EIF the channel would be folded into.
+#'
+#' The variance ratio is computed on the SAME quantity the reported SE uses: when \code{cluster_indices} is
+#' supplied (the cluster-robust SE sums the EIF within clusters first), the inflation is measured on the
+#' cluster-summed EIF, so the SE-inflation ceiling (the square root of \code{EDID_PSI_VAR_RATIO}) holds for the
+#' clustered SE too (a \eqn{\psi} that is modest per unit but strongly within-cluster correlated -- which
+#' inflates the clustered SE far more than the i.i.d. SE -- is then judged on the metric that governs the
+#' reported number). Without clustering it is the plain i.i.d. sum of squares.
+#'
+#' @param psi numeric length-n weight-estimation influence function for the cell
+#' @param eif_base numeric length-n baseline EIF (mean-zero) that \code{psi} would be added to
+#' @param cluster_indices optional length-n cluster id vector; when non-NULL the ratio is computed on the
+#'   cluster-summed EIF, matching the cluster-robust SE. \code{NULL} (default) => i.i.d. sum of squares.
+#' @return \code{TRUE} if \code{psi} is finite and its (clustered, if applicable) variance inflation is within
+#'   \code{EDID_PSI_VAR_RATIO}
+#' @keywords internal
+psi_channel_credible_edid <- function(psi, eif_base, cluster_indices = NULL) {
+  if (is.null(psi) || !all(is.finite(psi))) return(FALSE)
+  if (is.null(cluster_indices)) {                                  # i.i.d.: per-unit sum of squares
+    base <- eif_base; fold <- eif_base + psi
+  } else {                                                         # cluster-robust: sum within clusters first
+    base <- rowsum(eif_base, cluster_indices); fold <- rowsum(eif_base + psi, cluster_indices)
+  }
+  v0 <- sum(base^2); v1 <- sum(fold^2)
+  is.finite(v1) && v1 <= EDID_PSI_VAR_RATIO * max(v0, .Machine$double.eps)
+}
+
 # ---------------------------------------------------------------------------
 # Small shared helpers
 # ---------------------------------------------------------------------------

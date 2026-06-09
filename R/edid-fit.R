@@ -28,6 +28,7 @@ fit_edid_cells <- function(
   panel_obj, pt_assumption, alpha, store_eif, xformla = NULL, seed = NULL,
   need_eif = FALSE, weight_method = c("efficient", "averaged", "gmm", "uniform"),
   estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
+  estimation_effect_explicit = TRUE, higher_order_explicit = TRUE, misspec_robust_explicit = TRUE,
   trim_level = Inf, mc_cores = getOption("edid_mc_cores", 1L)
 ) {
   weight_method <- match.arg(weight_method)
@@ -88,7 +89,10 @@ fit_edid_cells <- function(
   # defensively in case cross-fitting is ever enabled upstream.
   if (isTRUE(estimation_effect)) {
     if (!use_cov_path) {
-      warning("estimation_effect has no effect without covariates (no first-step nuisances).", call. = FALSE)
+      # Warn only on an EXPLICIT opt-in (a no-covariate model has no first-step nuisances to correct); when the
+      # master switch enabled it by default it is silently downgraded -- consistent with misspec_robust above.
+      if (isTRUE(estimation_effect_explicit))
+        warning("estimation_effect has no effect without covariates (no first-step nuisances).", call. = FALSE)
       estimation_effect <- FALSE
     } else if (K_use > 1L) {
       stop("estimation_effect = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
@@ -103,7 +107,8 @@ fit_edid_cells <- function(
   # xformla = NULL); guard defensively here too.
   if (higher_order) {
     if (!use_cov_path) {
-      warning("higher_order has no effect without covariates (no first-step sieve nuisances).", call. = FALSE)
+      if (isTRUE(higher_order_explicit))       # explicit opt-in only; master-switch default is silently downgraded
+        warning("higher_order has no effect without covariates (no first-step sieve nuisances).", call. = FALSE)
       higher_order <- FALSE
     } else if (K_use > 1L) {
       stop("higher_order = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
@@ -114,25 +119,17 @@ fit_edid_cells <- function(
   # (no covariates => weights not estimated from X; uniform => fixed weights, channel is exactly zero) and the
   # plug-in M-estimator aux (K = 1), like the ACH correction.
   if (misspec_robust) {
+    # As the documented master switch, misspec_robust = TRUE is "applied only where valid, silently skipped
+    # otherwise" -- so it warns about an inapplicable setting only when the user EXPLICITLY set it (opting in
+    # where the channel cannot run); on the default it is quietly downgraded. The K > 1 combination always errors.
     if (!use_cov_path) {
-      warning("misspec_robust has no effect without covariates (weights are not estimated from X).", call. = FALSE)
+      if (isTRUE(misspec_robust_explicit))
+        warning("misspec_robust has no effect without covariates (weights are not estimated from X).", call. = FALSE)
       misspec_robust <- FALSE
     } else if (weight_method == "uniform") {
-      warning("misspec_robust has no effect for weights = 'uniform' (fixed weights have no estimation channel).",
-              call. = FALSE)
-      misspec_robust <- FALSE
-    } else if (weight_method == "averaged" &&
-               identical(getOption("edid_omega_method", "kernel"), "sieve")) {
-      # The EFFICIENT (pointwise) sieve weight-channel IS implemented and calibrated (it uses the eigen-floor-
-      # aware coupling C_i = dtheta/dOmega^shrunk via compute_pointwise_weights_edid(need_coup=TRUE); validated
-      # to nominal coverage + jackknife slope ~1). The AVERAGED sieve channel inverts the pooled Omega-bar in
-      # the psi pass, which is numerically unstable for the sieve (near-singular pooled inverse), so it is NOT
-      # offered: fall back to the plug-in efficient SE (warn). estimation_effect / higher_order are unaffected
-      # (they use the frozen weights, no Omega rebuild); gmm is excluded above (sample-cov channel, smoother-agnostic).
-      warning("misspec_robust: the weight-estimation channel for weight_scheme = 'averaged' is not implemented ",
-              "under options(edid_omega_method = 'sieve') (the pooled-Omega-bar channel is numerically unstable ",
-              "there); reporting the plug-in efficient SE for that channel. Use weight_scheme = 'efficient' for ",
-              "the sieve weight-channel-robust SE, or the kernel smoother.", call. = FALSE)
+      if (isTRUE(misspec_robust_explicit))
+        warning("misspec_robust has no effect for weights = 'uniform' (fixed weights have no estimation channel).",
+                call. = FALSE)
       misspec_robust <- FALSE
     } else if (K_use > 1L) {
       stop("misspec_robust = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
@@ -168,6 +165,7 @@ fit_edid_cells <- function(
   cell_id <- 0L
   n_extreme_ratio_instances <- 0L  # accumulate extreme-ratio warnings; emit once at end
   n_shrink_approx <- 0L; max_shrink_lambda <- 0; shrink_eg_g <- NA; shrink_eg_t <- NA  # shrinkage-IF approx; emit once
+  n_psi_unstable_total <- 0L  # cells where the weight channel was not a credible IF -> plug-in SE; emit once
 
   # Hoist the CELL-INVARIANT Nadaraya-Watson kernel: the n x n weight matrix K and the bandwidths depend only on
   # the full covariate matrix, so they are identical for every (g,t) cell. Build ONCE and reuse, instead of
@@ -291,7 +289,7 @@ fit_edid_cells <- function(
   .fit_one_cell <- function(.sp) {
     g <- .sp$g; t <- .sp$t; cell_id <- .sp$cell_id
     is_pre  <- (t < g)
-    n_extreme <- 0L; n_shrink <- 0L; max_lambda <- 0; shrink_g <- NA; shrink_t <- NA
+    n_extreme <- 0L; n_shrink <- 0L; max_lambda <- 0; shrink_g <- NA; shrink_t <- NA; n_psi_unstable <- 0L
 
       # Step 1: pairs from the per-cohort cache (g-only; computed once above)
       gb    <- gcache[[as.character(g)]]
@@ -318,7 +316,7 @@ fit_edid_cells <- function(
         ),
         eif = rep(NA_real_, n),
         ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
-        n_extreme = 0L, n_shrink = 0L, max_lambda = 0, shrink_g = NA, shrink_t = NA))
+        n_extreme = 0L, n_shrink = 0L, max_lambda = 0, shrink_g = NA, shrink_t = NA, n_psi_unstable = 0L))
       }
 
       # g-only nuisances from the per-cohort cache: propensity ratios, inverse propensities, trim mask, r-aux.
@@ -431,9 +429,9 @@ fit_edid_cells <- function(
                    call. = FALSE)                                            # ...the Term-1 cancellation is invalid
             # Q_pw was computed in the fused weights pass above (q_i'1 = 0 per unit, same Minv as w_i).
             stopifnot(max(abs(rowSums(Q_pw))) < 1e-6 * (1 + max(abs(Q_pw))))  # defensive: pointwise Term-1 premise
-            lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity (psi omits its O(lam) IF)
-            if (is.finite(lam_cell) && lam_cell > 0.05) {                     # large lambda => omission; collect, warn once at end
-              n_shrink <- n_shrink + 1L
+            lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity (kernel psi omits its O(lam) IF)
+            if (is.finite(lam_cell) && lam_cell > 0.05 && !.sieve_psi) {       # KERNEL only: the sieve psi applies the
+              n_shrink <- n_shrink + 1L                                       # leading (1-lam) correction (.shr), so it does not omit it
               if (lam_cell > max_lambda) { max_lambda <- lam_cell; shrink_g <- g; shrink_t <- t }
             }
             po    <- .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
@@ -447,7 +445,10 @@ fit_edid_cells <- function(
               acc[[paste0(g, "_", t)]] <- list(data = po$psi, corr = corr_an, lambda = lam_cell)
               options(edid_psiomega_acc = acc)
             }
-            if (misspec_robust) eif_gt <- eif_gt + psi_i                      # production: fold the channel into the EIF
+            if (misspec_robust) {                                            # production: fold the channel into the EIF
+              if (psi_channel_credible_edid(psi_i, eif_gt, panel_obj$cluster_indices)) eif_gt <- eif_gt + psi_i
+              else n_psi_unstable <- n_psi_unstable + 1L                      # poor overlap / near-singular basis: keep plug-in SE
+            }
           }
           # Diagnostic only (default off): per-component cross-unit SD of the pointwise weights
           # quantifies how much Omega*(X) shape-varies; ~0 => weights ~constant => efficient ~ averaged.
@@ -477,6 +478,11 @@ fit_edid_cells <- function(
             gmm     = compute_efficient_weights_edid(stats::cov(gen_out_mat, use = "pairwise.complete.obs")),
             compute_efficient_weights_edid(omega))   # "averaged"
           att_gt   <- sum(weights * colMeans(gen_out_mat, na.rm = TRUE))
+          if (isTRUE(getOption("edid_store_weights"))) {       # validation hook (OFF): constant weight vector per cell
+            wacc <- getOption("edid_weights_acc", list())       # mirror of edid_store_wpw for the constant-weight schemes;
+            wacc[[paste0(g, "_", t)]] <- weights                # lets the averaged/gmm jackknife freeze the full-sample W
+            options(edid_weights_acc = wacc)
+          }
           if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "averaged") {
             # Sigma_Omega = psi_data (kernel five-term IF of Omegabar) - corr (inv_p prefactor channel). The IF holds
             # only when q and w share omega's inverse (=> q'1 = 0, so Eq.(3.12) Term 1 cancels and is rightly skipped).
@@ -498,11 +504,23 @@ fit_edid_cells <- function(
               if (!is.finite(d) || abs(d) < EDID_DENOM_EPS) NULL else num / d }
             if (!is.null(w_chk) && max(abs(weights - w_chk)) < 1e-8) {        # weights ARE those efficient weights
               mbar  <- colMeans(gen_out_mat)
-              q_vec <- drop(C_inv %*% (mbar - att_gt))                        # same inverse as the weights => q'1 = 0
-              stopifnot(abs(sum(q_vec)) < 1e-6 * (1 + max(abs(q_vec))))       # Term-1 cancellation premise (defensive)
-              po    <- .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
-                         inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights),
-                         kp_cache = kp_cache)
+              # Sieve: in high-H cells the pooled Omega-bar eigen-floor binds, and the smooth -sym(q w') adjoint
+              # over-states psi_Omega there (the floored directions don't respond to dOmega-bar; jackknife sign/
+              # slope break on long-horizon cells). Use the eigen-floor-aware coupling C = dtheta/dOmega-bar
+              # (Daleckii-Krein derivative of the FLOORED inverse), which reduces to the smooth coupling when
+              # nothing floors. The kernel pooled Omega-bar floor is inactive, so the kernel keeps the smooth q.
+              .obarC <- if (identical(.omega_method, "sieve")) compute_obar_coupling_edid(omega, mbar, att_gt) else NULL
+              po    <- if (!is.null(.obarC)) {
+                .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                  inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(C = .obarC, w = weights),
+                  kp_cache = kp_cache)
+              } else {
+                q_vec <- drop(C_inv %*% (mbar - att_gt))                      # same inverse as the weights => q'1 = 0
+                stopifnot(abs(sum(q_vec)) < 1e-6 * (1 + max(abs(q_vec))))     # Term-1 cancellation premise (defensive)
+                .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                  inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights),
+                  kp_cache = kp_cache)
+              }
               invp_aux <- attr(inv_propensities, "aux")
               corr_an  <- compute_invp_correction_analytic_cov_edid(panel_obj$n, invp_aux, po$coupled_C)  # optimized
               psi_const <- po$psi - corr_an                                  # captured for the misspec_robust fold
@@ -561,8 +579,10 @@ fit_edid_cells <- function(
             ho_cell <- compute_cell_hessian_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption,
               trim_keep = trim_keep, keep_mat = eif_keep, m_kept = eif_mkept)
-          if (misspec_robust && !is.null(psi_const))                         # fold the weight channel AFTER the ACH
-            eif_gt <- eif_gt + psi_const                                     # subtraction (averaged/gmm); NULL => +0
+          if (misspec_robust && !is.null(psi_const)) {                       # fold the weight channel AFTER the ACH
+            if (psi_channel_credible_edid(psi_const, eif_gt, panel_obj$cluster_indices)) eif_gt <- eif_gt + psi_const  # averaged/gmm
+            else n_psi_unstable <- n_psi_unstable + 1L                       # poor overlap / near-singular basis: keep plug-in SE
+          }
         }
       } else {
         # --- No-covariate path ---
@@ -605,7 +625,7 @@ fit_edid_cells <- function(
            eif = if (keep_eif) eif_gt else NULL,
            ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
            n_extreme = n_extreme, n_shrink = n_shrink, max_lambda = max_lambda,
-           shrink_g = shrink_g, shrink_t = shrink_t)
+           shrink_g = shrink_g, shrink_t = shrink_t, n_psi_unstable = n_psi_unstable)
   }  # end .fit_one_cell
 
   # Dispatch: parallel over independent cells when cores > 1 (fork; not on Windows), else serial lapply
@@ -634,6 +654,7 @@ fit_edid_cells <- function(
         max_shrink_lambda <- .r$max_lambda; shrink_eg_g <- .r$shrink_g; shrink_eg_t <- .r$shrink_t
       }
     }
+    if (!is.null(.r$n_psi_unstable)) n_psi_unstable_total <- n_psi_unstable_total + .r$n_psi_unstable
   }
 
   if (n_extreme_ratio_instances > 0L) {
@@ -643,13 +664,27 @@ fit_edid_cells <- function(
     ))
   }
 
-  if (n_shrink_approx > 0L) {
+  if (n_shrink_approx > 0L && isTRUE(misspec_robust_explicit)) {
+    # Only warn when the user EXPLICITLY requested misspec_robust = TRUE (opting into the exact weight channel).
+    # The default path is the finite-sample-CALIBRATED SE (the Monte-Carlo audit documented in ?edid finds the
+    # omitted O(lambda) shrinkage IF empirically negligible -> coverage ~ nominal), so nagging on it is noise.
     warning(sprintf(
       paste0("misspec_robust: the efficient weight-channel SE is an approximation in %d cell(s) where the ",
              "pointwise shrinkage lambda > 0.05 (max %.3f, e.g. cell (%s,%s)); it omits the O(lambda) ",
              "shrinkage influence function there. Use misspec_robust = FALSE for the plug-in SE if exact ",
              "weight-channel SEs are needed."),
       n_shrink_approx, max_shrink_lambda, shrink_eg_g, shrink_eg_t), call. = FALSE)
+  }
+
+  if (n_psi_unstable_total > 0L) {
+    # Always warn (not gated to explicit): a per-cell fallback to the plug-in SE is information the user needs.
+    warning(sprintf(
+      paste0("misspec_robust: the weight-estimation channel was numerically unstable in %d cell(s) (poor ",
+             "covariate overlap and/or a near-singular series basis inflate the channel beyond a credible ",
+             "influence function); it is dropped there (estimation_effect / higher_order are retained), so those ",
+             "cells report the weight-channel-free SE. Other cells are unaffected. If many cells are affected, ",
+             "consider a coarser xformla or the kernel smoother (options(edid_omega_method = 'kernel'))."),
+      n_psi_unstable_total), call. = FALSE)
   }
 
   # Build EIF matrix if needed

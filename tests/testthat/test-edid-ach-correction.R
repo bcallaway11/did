@@ -96,8 +96,10 @@ test_that("conditional-mean ACH correction has the CORRECT SIGN (matches the num
   cr  <- prs[is.finite(prs$gp) & prs$gp != g, , drop = FALSE]
   if (nrow(cr) > 0L) pfn <- unique(rbind(pfn, data.frame(gp = Inf, tpre = unique(cr$tpre))))
   fold <- rep(1L, pn$n)
-  cm <- estimate_all_conditional_means(pn, pfn, t_val = t, bs_df = 4L, K_folds = 1L, fold_id = fold, return_aux = TRUE)
-  pr <- estimate_all_propensity_ratios(pn, g, pfn, bs_df = 4L, K_folds = 1L, fold_id = fold, return_aux = TRUE)
+  # suppressWarnings: on this small synthetic fixture a never-treated training fold can fall below 2 units, so the
+  # series estimator falls back to a constant (benign, and not what this sign test checks). It does not affect cor().
+  cm <- suppressWarnings(estimate_all_conditional_means(pn, pfn, t_val = t, bs_df = 4L, K_folds = 1L, fold_id = fold, return_aux = TRUE))
+  pr <- suppressWarnings(estimate_all_propensity_ratios(pn, g, pfn, bs_df = 4L, K_folds = 1L, fold_id = fold, return_aux = TRUE))
   prop_ratios <- pr$predictions; cond_means <- cm$predictions; m_aux <- cm$aux
   H <- nrow(prs); w <- rep(1 / H, H)
   pkg_change <- -compute_ach_correction_cov_edid(pn, g, t, prs, prop_ratios, cond_means, w, m_aux, list())

@@ -93,7 +93,12 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   if (!is.null(psi_qw)) {
     pw_psi <- isTRUE(psi_qw$pointwise)
     if (pw_psi) { Q_mat <- psi_qw$Q; W_mat <- psi_qw$W } else { q_vec <- psi_qw$q; w_av <- psi_qw$w }
-    C_arr  <- psi_qw$C    # per-unit eigen-floor-aware coupling gradient (n x H x H); preferred over Q/W when present
+    # Eigen-floor-aware coupling gradient: preferred over the smooth Q/W or q/w adjoint when present. A 3D array
+    # (n x H x H) is the per-unit (efficient) gradient; a 2D matrix (H x H) is the pooled (averaged) gradient,
+    # broadcast as a constant coupling across cells. Built from the Daleckii-Krein derivative of the FLOORED
+    # inverse so the floored directions are clamped (the smooth adjoint over-states psi_Omega where the floor binds).
+    C_arr  <- psi_qw$C
+    C_pooled <- !is.null(C_arr) && length(dim(C_arr)) == 2L
     # Leading-order shrinkage correction. The per-unit Omega is regularized to Omega^shrunk = (1-lam)Omega_i +
     # lam*Omega_bar before inversion, and the adjoint q (from W_mat/Q_mat) is computed on Omega^shrunk. The
     # covariance term enters Omega_i with coefficient (1-lam), so dtheta = -(1-lam) q'(dOmega_i)w. The sieve's
@@ -144,7 +149,8 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
       for (k in j:H) {
         ctk  <- panel_obj$period_to_col[[as.character(tpre[k])]]
         Uk   <- ow[, col_t] - ow[, ctk]; Vk <- ow[, ctk] - ow[, col_1]
-        coup <- if (!is.null(C_arr)) { if (j == k) -C_arr[, j, j] else -2 * C_arr[, j, k] }  # eigen-floor-aware coupling
+        coup <- if (C_pooled)       { if (j == k) -C_arr[j, j]    else -2 * C_arr[j, k] }    # pooled (averaged) gradient: scalar
+                else if (!is.null(C_arr)) { if (j == k) -C_arr[, j, j] else -2 * C_arr[, j, k] }  # per-unit (efficient) gradient: len-n
                 else if (pw_psi)     { if (j == k) Q_mat[, j] * W_mat[, j] else Q_mat[, j] * W_mat[, k] + Q_mat[, k] * W_mat[, j] }
                 else                 { if (j == k) q_vec[j] * w_av[j]      else q_vec[j] * w_av[k]      + q_vec[k] * w_av[j] }
         coup <- coup * .shr                                       # leading-order (1-lam) shrinkage-IF correction
@@ -236,6 +242,14 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   eig <- eigen(Omega_hat, symmetric = TRUE)
   d_cov <- ncol(X_mat); a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
   mx <- max(eig$values); floor_v <- if (is.finite(mx) && mx > 0) mx * n^(-a_floor) else 1e-12
+  lam_raw <- eig$values                                       # raw (pre-floor) eigenvalues, for the coupling IF below
   eig$values <- pmax(eig$values, floor_v)
-  eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  # Attach the raw eigendecomposition so the AVERAGED+sieve weight channel can build the eigen-floor-aware
+  # coupling (Daleckii-Krein derivative of the FLOORED inverse). The pooled Omega-bar floor binds in high-H
+  # cells (floor ~ mx*n^-a, e.g. 18% of mx at n=600); there the smooth -sym(q w') adjoint over-states psi_Omega
+  # (the floored directions do not respond to dOmega). Inert for kernel (different builder) and for the estimate
+  # itself (attributes are stripped by solve/%*%); read only by compute_obar_coupling_edid.
+  attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+  out
 }

@@ -16,6 +16,9 @@ fit_edid_cells(
   estimation_effect = FALSE,
   higher_order = FALSE,
   misspec_robust = FALSE,
+  estimation_effect_explicit = TRUE,
+  higher_order_explicit = TRUE,
+  misspec_robust_explicit = TRUE,
   trim_level = Inf,
   mc_cores = getOption("edid_mc_cores", 1L)
 )

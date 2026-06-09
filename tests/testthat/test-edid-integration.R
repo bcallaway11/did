@@ -255,9 +255,11 @@ test_that("edid() on minimal degenerate panel runs without error", {
   # PT-Post, g=2: baseline = 2-1-0 = 1 = period_1, so all cells have no valid pairs -> NA ATT
   # Should return result without error (all NA cells)
   expect_no_error({
-    fit <- edid(df, yname = "outcome", idname = "unit", tname = "time",
+    # suppressWarnings: the panel is deliberately degenerate (1 never-treated unit / <2-unit cohorts), so edid()
+    # correctly warns those cells' SEs are unreliable. This test only asserts it RUNS (all-NA cells) without error.
+    fit <- suppressWarnings(edid(df, yname = "outcome", idname = "unit", tname = "time",
                 gname = "first_treat",
-                pt_assumption = "post", aggregate = "none")
+                pt_assumption = "post", aggregate = "none"))
   })
 })
 

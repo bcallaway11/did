@@ -90,8 +90,10 @@ test_that("safe_inference_edid() CI width is positive for non-degenerate EIF", {
 test_that("safe_inference_edid() p_value is in [0, 1]", {
   set.seed(15)
   eif <- rnorm(80)
-  res <- safe_inference_edid(eif, cluster_indices = NULL, alpha = 0.05)
-  if (res$inference_valid) {
-    expect_true(res$p_value >= 0 && res$p_value <= 1)
-  }
+  # Pass a finite att: CIs and the p-value require it (att defaults to NA, which marks inference invalid).
+  # With a clean Gaussian EIF, no clustering, and a finite att the inference is valid and the p-value is a
+  # proper probability. Always assert (no bare conditional that could leave the test expectation-free).
+  res <- safe_inference_edid(eif, cluster_indices = NULL, alpha = 0.05, att = 0.1)
+  expect_true(isTRUE(res$inference_valid))
+  expect_true(is.finite(res$p_value) && res$p_value >= 0 && res$p_value <= 1)
 })
