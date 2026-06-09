@@ -161,29 +161,122 @@ fit_edid_cells <- function(
   # rebuilding (an O(d*n^2) outer/dnorm + an n x n allocation) inside compute_omega_star_cov_edid on every cell --
   # the dominant cost of the covariate path. Numerically identical; only the covariate path needs it.
   kern_bw <- NULL; kern_K <- NULL
-  if (use_cov_path) {
+  # Conditional-covariance smoother for Omega*(X), two scenarios:
+  #   "kernel" (default): O(n^2) NW kernel, mean-cached fast build (compute_omega_star_kernel_fast_edid);
+  #                       "kernel_orig" forces the original per-(j,k) build (exact reference).
+  #   "sieve":            O(n*p) series build, NO n x n matrix (scales past the kernel's memory wall).
+  .omega_method <- getOption("edid_omega_method", "kernel")
+  .omega_fun <- switch(.omega_method,
+    sieve       = compute_omega_star_sieve_edid,
+    kernel_orig = compute_omega_star_cov_edid,
+    compute_omega_star_kernel_fast_edid)                  # "kernel" (default) -> mean-cached fast build
+  if (use_cov_path && !identical(.omega_method, "sieve")) {  # any kernel variant needs the n x n weight matrix
     kk_full <- build_kernel_weights_edid(panel_obj$covariate_matrix)
     kern_bw <- kk_full$bw; kern_K <- kk_full$K
   }
 
-  for (g in tgroups) {
-    for (t in iter_periods) {
-      cell_id <- cell_id + 1L
-      is_pre  <- (t < g)
+  # Per-cohort nuisance cache. The valid pairs, propensity ratios r_{g,.}, inverse propensities, and the
+  # overlap-trim mask depend ONLY on the target cohort g, NOT the period t -- yet the per-(g,t) loop re-estimated
+  # them for every t (a T-fold redundancy). Estimate them ONCE per g here (plug-in nuisances are deterministic =>
+  # bit-identical), then each cell worker reads them and only fits the t-dependent conditional means. Built before
+  # the parallel dispatch so the cache is shared copy-on-write across forks.
+  # The per-cohort nuisance estimation (esp. the return_aux M-estimator pieces that the misspec_robust default
+  # needs) is the dominant cost of the default path, so it is itself run in PARALLEL across cohorts (mclapply),
+  # not just hoisted -- otherwise it would be a serial Amdahl bottleneck before the parallel cell loop.
+  .gbuild <- function(g) {
+    pairs_g <- enumerate_valid_pairs_edid(target_g = g, treatment_groups = tgroups, time_periods = tperiods,
+                 period_1 = period_1, pt_assumption = pt_assumption, anticipation = panel_obj$anticipation)
+    gb <- list(pairs = pairs_g, prop_ratios = NULL, r_aux = NULL, inv_propensities = NULL,
+               trim_keep = NULL, pairs_for_nuisance = NULL, n_extreme = 0L)
+    if (nrow(pairs_g) > 0L && use_cov_path) {
+      pfn <- pairs_g
+      self_cmp <- is.finite(pfn$gp) & (pfn$gp == g); if (any(self_cmp)) pfn$gp[self_cmp] <- Inf
+      cross_pairs <- pairs_g[is.finite(pairs_g$gp) & pairs_g$gp != g, , drop = FALSE]
+      if (nrow(cross_pairs) > 0L)
+        pfn <- unique(rbind(pfn, data.frame(gp = Inf, tpre = unique(cross_pairs$tpre))))
+      gb$pairs_for_nuisance <- pfn
+      ne <- 0L
+      pr <- withCallingHandlers(
+        estimate_all_propensity_ratios(panel_obj = panel_obj, g = g, pairs = pfn, bs_df = 4L,
+                                       K_folds = K_use, fold_id = fold_id, return_aux = want_aux),
+        warning = function(w) {
+          if (grepl("Extreme propensity ratios", conditionMessage(w), fixed = TRUE)) { ne <<- ne + 1L; invokeRestart("muffleWarning") }
+        })
+      if (want_aux) { gb$r_aux <- pr$aux; gb$prop_ratios <- pr$predictions } else gb$prop_ratios <- pr
+      gb$n_extreme <- ne
+      gb$inv_propensities <- estimate_all_inverse_propensities(panel_obj = panel_obj, g = g, pairs = pairs_g,
+        bs_df = 4L, K_folds = K_use, fold_id = fold_id,
+        return_aux = (isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method %in% c("averaged", "efficient"))
+      if (is.finite(trim_level) && (!is.null(gb$prop_ratios) || !is.null(gb$inv_propensities))) {
+        ks <- union(names(gb$prop_ratios), names(gb$inv_propensities))
+        gb$trim_keep <- stats::setNames(lapply(ks, function(k) {
+          keep <- rep(TRUE, panel_obj$n)
+          rr <- gb$prop_ratios[[k]];      if (!is.null(rr)) keep <- keep & (abs(rr) < trim_level)
+          ip <- gb$inv_propensities[[k]]; if (!is.null(ip)) keep <- keep & (abs(ip) < trim_level)
+          keep
+        }), ks)
+      }
+    }
+    gb
+  }
+  .mc_pre <- max(1L, suppressWarnings(as.integer(getOption("edid_mc_cores", 1L)))); if (is.na(.mc_pre)) .mc_pre <- 1L
+  .glist <- if (.mc_pre > 1L && .Platform$OS.type != "windows")
+              parallel::mclapply(tgroups, .gbuild, mc.cores = .mc_pre, mc.preschedule = FALSE)
+            else lapply(tgroups, .gbuild)
+  for (.gg in .glist) if (inherits(.gg, "try-error")) stop("edid: per-cohort nuisance precompute failed: ", as.character(.gg))
+  gcache <- stats::setNames(.glist, as.character(tgroups))
+  n_extreme_ratio_instances <- n_extreme_ratio_instances +
+    sum(vapply(gcache, function(b) as.integer(b$n_extreme), integer(1)))  # counted once per cohort now
 
-      # Step 1: enumerate valid pairs
-      pairs <- enumerate_valid_pairs_edid(
-        target_g          = g,
-        treatment_groups  = tgroups,
-        time_periods      = tperiods,
-        period_1          = period_1,
-        pt_assumption     = pt_assumption,
-        anticipation      = panel_obj$anticipation
-      )
+  # Global conditional-mean cache. m_{gp,period}(X) = E[Y_period - Y_1 | G=gp, X] depends ONLY on (gp, period),
+  # not on the target cell -- but was re-fit per (g,t) cell (many cells share the same m). Fit each distinct
+  # (gp, period) ONCE here (deterministic plug-in => bit-identical), in parallel over comparison cohorts; each
+  # worker then subsets the cache to the m's its moment actually uses (preserving the original key order, so the
+  # result is identical). Built before the cell dispatch => shared copy-on-write across forks; no duplicated work.
+  mcache_pred <- NULL; mcache_aux <- NULL
+  if (use_cov_path) {
+    # EXACT set of (gp, period) any cell uses = U_g [ {(gp, t) : gp in pfn_g, t in iter_periods} U {(gp, tpre)} ].
+    combo_set <- unique(do.call(rbind, lapply(tgroups, function(g) {
+      pfn <- gcache[[as.character(g)]]$pairs_for_nuisance; if (is.null(pfn)) return(NULL)
+      rbind(expand.grid(gp = unique(pfn$gp), period = iter_periods, KEEP.OUT.ATTRS = FALSE),
+            data.frame(gp = pfn$gp, period = pfn$tpre))
+    })))
+    # One m per combo, parallelized over COMBOS (fine granularity, matches the cell loop) -- preschedule chunks them.
+    .mfit1 <- function(i) estimate_all_conditional_means(
+      panel_obj = panel_obj, pairs = data.frame(gp = combo_set$gp[i], tpre = combo_set$period[i]),
+      t_val = combo_set$period[i], bs_df = 4L, K_folds = K_use, fold_id = fold_id, return_aux = want_aux)
+    idx <- seq_len(nrow(combo_set))
+    .mlist <- if (.mc_pre > 1L && .Platform$OS.type != "windows")
+                parallel::mclapply(idx, .mfit1, mc.cores = .mc_pre, mc.preschedule = TRUE)
+              else lapply(idx, .mfit1)
+    for (.mm in .mlist) if (inherits(.mm, "try-error")) stop("edid: conditional-mean precompute failed: ", as.character(.mm))
+    if (want_aux) {
+      mcache_pred <- do.call(c, lapply(.mlist, `[[`, "predictions"))
+      mcache_aux  <- do.call(c, lapply(.mlist, `[[`, "aux"))
+    } else {
+      mcache_pred <- do.call(c, .mlist)
+    }
+  }
+
+  # Cell specs in the original (g outer, t inner) order so cell_id matches the serial loop exactly.
+  .specs <- vector("list", n_cells); .k <- 0L
+  for (g in tgroups) for (t in iter_periods) { .k <- .k + 1L; .specs[[.k]] <- list(g = g, t = t, cell_id = .k) }
+
+  # Per-cell worker: the former double-loop body hoisted into a closure so cells can run in parallel
+  # (parallel::mclapply) or serially (lapply). Cells are independent; the n x n kernel (kern_K) is shared
+  # copy-on-write across forks. The shared warning accumulators become per-cell return values, reduced below.
+  .fit_one_cell <- function(.sp) {
+    g <- .sp$g; t <- .sp$t; cell_id <- .sp$cell_id
+    is_pre  <- (t < g)
+    n_extreme <- 0L; n_shrink <- 0L; max_lambda <- 0; shrink_g <- NA; shrink_t <- NA
+
+      # Step 1: pairs from the per-cohort cache (g-only; computed once above)
+      gb    <- gcache[[as.character(g)]]
+      pairs <- gb$pairs
 
       # NA cell if no valid pairs
       if (nrow(pairs) == 0L) {
-        cells[[cell_id]] <- list(
+        return(list(cell = list(
           group           = g,
           time            = t,
           att             = NA_real_,
@@ -199,103 +292,30 @@ fit_edid_cells <- function(
           inference_valid = FALSE,
           eif             = NULL,
           ho              = NULL
-        )
-        ci_group[cell_id]   <- g
-        ci_time[cell_id]    <- t
-        ci_cell_id[cell_id] <- cell_id
-        ci_is_pre[cell_id]  <- is_pre
-        if (keep_eif) eif_list[[cell_id]] <- rep(NA_real_, n)
-        next
+        ),
+        eif = rep(NA_real_, n),
+        ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
+        n_extreme = 0L, n_shrink = 0L, max_lambda = 0, shrink_g = NA, shrink_t = NA))
       }
 
-      # Covariate nuisance estimates (per cell)
-      prop_ratios  <- NULL
-      cond_means   <- NULL
-      inv_propensities <- NULL
-      ho_cell      <- NULL   # higher-order per-cell pieces (nuisance blocks + Hessian), set on cov path
+      # g-only nuisances from the per-cohort cache: propensity ratios, inverse propensities, trim mask, r-aux.
+      prop_ratios      <- gb$prop_ratios
+      inv_propensities <- gb$inv_propensities
+      r_aux            <- gb$r_aux
+      trim_keep        <- gb$trim_keep
+      cond_means       <- NULL; m_aux <- NULL
+      ho_cell          <- NULL   # higher-order per-cell pieces (nuisance blocks + Hessian), set on cov path
 
       if (use_cov_path) {
-        # Build nuisance estimation pairs.
-        # For Eq. (4.4), we need nuisances for:
-        #   - r[g, Inf] always (never-treated propensity ratio)
-        #   - r[g, gp] for each cross-cohort gp
-        #   - m_{Inf, t} and m_{Inf, tpre} for never-treated conditional means
-        #   - m_{gp, tpre} for each cross-cohort gp's pretrend
-        # Build pairs_for_nuisance that includes Inf + all cross-cohort gps
-        pairs_for_nuisance <- pairs
-        # Self-comparison pairs use Inf as comparison
-        self_cmp <- is.finite(pairs_for_nuisance$gp) & (pairs_for_nuisance$gp == g)
-        if (any(self_cmp)) {
-          pairs_for_nuisance$gp[self_cmp] <- Inf
-        }
-        # Ensure Inf is always present for never-treated nuisances
-        # (needed even for cross-cohort pairs)
-        cross_pairs <- pairs[is.finite(pairs$gp) & pairs$gp != g, , drop = FALSE]
-        if (nrow(cross_pairs) > 0L) {
-          # Add Inf-based pairs for the same tpre values (for m_{Inf,tpre})
-          inf_pairs <- data.frame(gp = Inf, tpre = unique(cross_pairs$tpre))
-          pairs_for_nuisance <- rbind(pairs_for_nuisance, inf_pairs)
-          pairs_for_nuisance <- unique(pairs_for_nuisance)
-        }
-
-        prop_ratios <- withCallingHandlers(
-          estimate_all_propensity_ratios(
-            panel_obj = panel_obj,
-            g         = g,
-            pairs     = pairs_for_nuisance,
-            bs_df    = 4L,
-            K_folds  = K_use,
-            fold_id  = fold_id,
-            return_aux = want_aux
-          ),
-          warning = function(w) {
-            if (grepl("Extreme propensity ratios", conditionMessage(w), fixed = TRUE)) {
-              n_extreme_ratio_instances <<- n_extreme_ratio_instances + 1L
-              invokeRestart("muffleWarning")
-            }
-          }
-        )
-        cond_means <- estimate_all_conditional_means(
-          panel_obj = panel_obj,
-          pairs     = pairs_for_nuisance,
-          t_val    = t,
-          bs_df    = 4L,
-          K_folds  = K_use,
-          fold_id  = fold_id,
-          return_aux = want_aux
-        )
-        # Split predictions from the first-step aux pieces (the *_aux return path wraps both). Requested by
-        # the ACH correction (estimation_effect) and/or the higher-order refinement (higher_order).
-        r_aux <- NULL; m_aux <- NULL
-        if (want_aux) {
-          r_aux <- prop_ratios$aux; prop_ratios <- prop_ratios$predictions
-          m_aux <- cond_means$aux;  cond_means  <- cond_means$predictions
-        }
-        inv_propensities <- estimate_all_inverse_propensities(
-          panel_obj = panel_obj,
-          g         = g,
-          pairs     = pairs,
-          bs_df     = 4L,
-          K_folds   = K_use,
-          fold_id   = fold_id,
-          return_aux = (isTRUE(getOption("edid_store_psiomega")) || misspec_robust) &&  # inv_p M-pieces for
-                       weight_method %in% c("averaged", "efficient")  # the Sigma_Omega corr channel (psi consumers)
-        )
-      }
-
-      # Overlap-trimming keep mask (covariate path, DRDID-style): zero a comparison observation in the
-      # moment/weights when its propensity ratio OR inverse propensity is extreme (abs >= trim_level), while
-      # still using it for nuisance estimation. trim_level = Inf => keep all. Built once per cell and reused by
-      # the moment and (below) Omega / the EIF for consistency.
-      trim_keep <- NULL
-      if (is.finite(trim_level) && (!is.null(prop_ratios) || !is.null(inv_propensities))) {
-        ks <- union(names(prop_ratios), names(inv_propensities))
-        trim_keep <- stats::setNames(lapply(ks, function(k) {
-          keep <- rep(TRUE, panel_obj$n)
-          rr <- prop_ratios[[k]];      if (!is.null(rr)) keep <- keep & (abs(rr) < trim_level)
-          ip <- inv_propensities[[k]]; if (!is.null(ip)) keep <- keep & (abs(ip) < trim_level)
-          keep
-        }), ks)
+        # Conditional means: subset the global cache to exactly this cell's (gp, period) combos, in the SAME order
+        # estimate_all_conditional_means would have produced them -- bit-identical to the per-cell estimate, but
+        # computed once globally instead of once per cell.
+        pfn     <- gb$pairs_for_nuisance
+        .combos <- unique(rbind(data.frame(gp = pfn$gp, period = t),
+                                data.frame(gp = pfn$gp, period = pfn$tpre)))
+        .mk        <- paste0(.combos$gp, "_", .combos$period)
+        cond_means <- mcache_pred[.mk]
+        if (want_aux) m_aux <- mcache_aux[.mk]
       }
 
       # Steps 2-6: dispatch on covariate vs. no-covariate path
@@ -325,7 +345,7 @@ fit_edid_cells <- function(
           # Paper's pointwise efficient weights w(X_i)=Omega*(X_i)^{-1}1/(1'Omega*(X_i)^{-1}1),
           # with a dimension-aware eigenvalue-floor regularization (a=0.7*(5-d)/10) that is
           # asymptotically negligible yet dominates the NW estimation noise for stability.
-          omega_arr <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
+          omega_arr <- .omega_fun(panel_obj, g, t, pairs,
                                                    prop_ratios, cond_means,
                                                    inv_propensities, bw = kern_bw, K_mat = kern_K,
                                                    return_pointwise = TRUE)
@@ -388,8 +408,8 @@ fit_edid_cells <- function(
             stopifnot(max(abs(rowSums(Q_pw))) < 1e-6 * (1 + max(abs(Q_pw))))  # defensive: pointwise Term-1 premise
             lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity (psi omits its O(lam) IF)
             if (is.finite(lam_cell) && lam_cell > 0.05) {                     # large lambda => omission; collect, warn once at end
-              n_shrink_approx <- n_shrink_approx + 1L
-              if (lam_cell > max_shrink_lambda) { max_shrink_lambda <- lam_cell; shrink_eg_g <- g; shrink_eg_t <- t }
+              n_shrink <- n_shrink + 1L
+              if (lam_cell > max_lambda) { max_lambda <- lam_cell; shrink_g <- g; shrink_t <- t }
             }
             po    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
                        inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
@@ -414,7 +434,7 @@ fit_edid_cells <- function(
           # Constant-weight schemes (valid but not pointwise-efficient):
           #   averaged = invert kernel Omega-bar; gmm = invert unconditional S_hat; uniform = 1/H.
           psi_const <- NULL   # weight-estimation IF (averaged kernel channel / gmm sample-cov channel); NULL => fold +0
-          omega    <- compute_omega_star_cov_edid(panel_obj, g, t, pairs,
+          omega    <- .omega_fun(panel_obj, g, t, pairs,
                                                   prop_ratios, cond_means,
                                                   inv_propensities, bw = kern_bw, K_mat = kern_K)
           if (isTRUE(getOption("edid_store_omega"))) {       # research diagnostic (default OFF, NOT on the PR):
@@ -543,7 +563,7 @@ fit_edid_cells <- function(
       # Step 8: store. The per-cell EIF is intentionally NOT kept on the cell list: it is stored once in eif_list
       # -> eif_matrix -> fit$eif (the only place ever read, by as_MP_edid/aggregation), so a per-cell copy would
       # just hold the n x n_cells influence functions a second time. eif_gt still flows into eif_list below.
-      cells[[cell_id]] <- list(
+      the_cell <- list(
         group           = g,
         time            = t,
         att             = att_gt,
@@ -560,12 +580,38 @@ fit_edid_cells <- function(
         ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )
 
-      ci_group[cell_id]   <- g
-      ci_time[cell_id]    <- t
-      ci_cell_id[cell_id] <- cell_id
-      ci_is_pre[cell_id]  <- is_pre
+      list(cell = the_cell,
+           eif = if (keep_eif) eif_gt else NULL,
+           ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
+           n_extreme = n_extreme, n_shrink = n_shrink, max_lambda = max_lambda,
+           shrink_g = shrink_g, shrink_t = shrink_t)
+  }  # end .fit_one_cell
 
-      if (keep_eif) eif_list[[cell_id]] <- eif_gt
+  # Dispatch: parallel over independent cells when edid_mc_cores > 1 (fork; not on Windows), else serial lapply
+  # (byte-identical to the original loop). mc.preschedule = FALSE load-balances the very uneven per-cell costs.
+  .mc <- suppressWarnings(as.integer(getOption("edid_mc_cores", 1L)))
+  if (length(.mc) != 1L || is.na(.mc) || .mc < 1L) .mc <- 1L
+  .results <- if (.mc > 1L && .Platform$OS.type != "windows")
+                parallel::mclapply(.specs, .fit_one_cell, mc.cores = .mc, mc.preschedule = FALSE)
+              else lapply(.specs, .fit_one_cell)
+
+  # Reduce per-cell results back into the pre-allocated structures (identical layout to the serial loop).
+  for (.r in .results) {
+    if (inherits(.r, "try-error")) stop("edid: a parallel cell worker failed: ", as.character(.r))
+    if (is.null(.r)) next
+    .cid <- as.integer(.r$ci[["cell_id"]])
+    cells[[.cid]]    <- .r$cell
+    ci_group[.cid]   <- .r$ci[["g"]]
+    ci_time[.cid]    <- .r$ci[["time"]]
+    ci_cell_id[.cid] <- .cid
+    ci_is_pre[.cid]  <- as.logical(.r$ci[["is_pre"]])
+    if (keep_eif) eif_list[[.cid]] <- if (is.null(.r$eif)) rep(NA_real_, n) else .r$eif
+    n_extreme_ratio_instances <- n_extreme_ratio_instances + .r$n_extreme
+    if (.r$n_shrink > 0L) {
+      n_shrink_approx <- n_shrink_approx + .r$n_shrink
+      if (.r$max_lambda > max_shrink_lambda) {
+        max_shrink_lambda <- .r$max_lambda; shrink_eg_g <- .r$shrink_g; shrink_eg_t <- .r$shrink_t
+      }
     }
   }
 

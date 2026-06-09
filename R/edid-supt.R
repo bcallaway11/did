@@ -105,9 +105,11 @@ sigma_quad_edid <- function(cells, cluster_indices, n) {
 
   cstart <- cumsum(c(0L, Pk[-K]))                            # 0-based joint-coef offset of each cell
 
-  # HC2 leverage-corrected stacked scores S_all (n x P_tot) and block-diagonal H^{-1} (P_tot x P_tot).
-  S_all    <- matrix(0, n, P_tot)
-  Hinv_blk <- matrix(0, P_tot, P_tot)
+  # HC2 leverage-corrected stacked scores S_all (n x P_tot). H^{-1} is block-diagonal: keep it as a LIST of
+  # (index-range, H_inv) blocks rather than a dense P_tot x P_tot matrix -- the dense form makes the V build below
+  # an O(P_tot^3) matmul of a mostly-zero matrix (the measured hotspot at large cell counts).
+  S_all   <- matrix(0, n, P_tot)
+  blk_idx <- list(); blk_Hinv <- list(); bi <- 0L
   for (k in seq_len(K)) {
     if (Pk[k] == 0L) next
     blocks <- cells[[k]]$ho$blocks
@@ -118,8 +120,8 @@ sigma_quad_edid <- function(cells, cluster_indices, n) {
       nz <- rowSums(b$score_mat^2) > 0
       h  <- ifelse(nz, pmin(pmax(h, 0), 0.5), 0)             # cap at 0.5 (HC blow-up guard)
       jj <- cstart[k] + o2 + seq_len(b$p)
-      S_all[, jj]    <- b$score_mat / sqrt(1 - h)            # HC2 correction
-      Hinv_blk[jj, jj] <- b$H_inv
+      S_all[, jj] <- b$score_mat / sqrt(1 - h)               # HC2 correction
+      bi <- bi + 1L; blk_idx[[bi]] <- jj; blk_Hinv[[bi]] <- b$H_inv
       o2 <- o2 + b$p
     }
   }
@@ -133,22 +135,31 @@ sigma_quad_edid <- function(cells, cluster_indices, n) {
     G     <- length(unique(cluster_indices))
     cfac  <- if (G > 1L) G / (G - 1) else 1
   }
-  V <- cfac * Hinv_blk %*% crossprod(Ssum) %*% Hinv_blk / (n^2)
+  # V = cfac * D C D / n^2 with D = blockdiag(H_inv). Since D is block-diagonal, D %*% C %*% D scales C's block
+  # rows then block cols by the per-block H_inv -- no dense P_tot x P_tot Hinv matmul. (Hinv_blk %*% C)[jj, ] =
+  # H_inv_jj %*% C[jj, ]; identical arithmetic, O(P_tot^2 * p) instead of O(P_tot^3).
+  V <- crossprod(Ssum)                                       # C (P_tot x P_tot score covariance)
+  for (bi in seq_along(blk_idx)) { jj <- blk_idx[[bi]]; V[jj, ] <- blk_Hinv[[bi]] %*% V[jj, , drop = FALSE] }
+  for (bi in seq_along(blk_idx)) { jj <- blk_idx[[bi]]; V[, jj] <- V[, jj, drop = FALSE] %*% blk_Hinv[[bi]] }
+  V <- V * (cfac / (n^2))
 
-  # Embed each cell's Hessian block-sparse in the joint space, precompute H_k V, then 0.5 tr(H_k V H_j V).
-  HV <- vector("list", K)
+  # 0.5 tr(H_k V H_j V), exploiting that H_k is nonzero ONLY in its own cell block idx_k. The original embedded
+  # each H_k in a dense P_tot x P_tot Hbig and formed Hbig %*% V (a P_tot^3 matmul of a mostly-zero matrix) per
+  # cell, then a dense t(HV) transpose per (k,j) -- O(K * P_tot^3) + O(K^2 * P_tot^2), quartic in the cell count.
+  # Equivalent block-sparse form: HVb_k = H_k %*% V[idx_k, ] is Pk x P_tot (the only nonzero rows of H_k V), and
+  #   tr(H_k V H_j V) = sum( HVb_k[, idx_j] * t(HVb_j[, idx_k]) )   (Pk x Pj small blocks).
+  # Bit-identical arithmetic; no P_tot x P_tot allocations, matmuls, or transposes.
+  idxs <- lapply(seq_len(K), function(k) if (Pk[k] == 0L) integer(0) else cstart[k] + seq_len(Pk[k]))
+  HVb  <- vector("list", K)
   for (k in seq_len(K)) {
     if (Pk[k] == 0L) next
-    Hbig <- matrix(0, P_tot, P_tot)
-    idx  <- cstart[k] + seq_len(Pk[k])
-    Hbig[idx, idx] <- cells[[k]]$ho$H
-    HV[[k]] <- Hbig %*% V
+    HVb[[k]] <- cells[[k]]$ho$H %*% V[idxs[[k]], , drop = FALSE]   # Pk x P_tot
   }
   for (k in seq_len(K)) {
-    if (is.null(HV[[k]])) next
+    if (is.null(HVb[[k]])) next
     for (j in k:K) {
-      if (is.null(HV[[j]])) next
-      val <- 0.5 * sum(HV[[k]] * t(HV[[j]]))                 # 0.5 tr(H_k V H_j V)
+      if (is.null(HVb[[j]])) next
+      val <- 0.5 * sum(HVb[[k]][, idxs[[j]], drop = FALSE] * t(HVb[[j]][, idxs[[k]], drop = FALSE]))
       Sigma_quad[k, j] <- val
       Sigma_quad[j, k] <- val
     }

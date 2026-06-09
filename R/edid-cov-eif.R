@@ -312,9 +312,10 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   # Performance note (not a correctness condition): the kernel loop is
   # O(n^2 * H^2), which is only a concern for large n. Surface it as an
   # informational message in interactive sessions, silenceable via
-  # options(edid.quiet = TRUE); never as a warning (n in the thousands is
+  # options(edid_quiet = TRUE); never as a warning (n in the thousands is
   # ordinary for DiD and does not indicate anything wrong with the results).
-  if (n > 5000L && interactive() && !isTRUE(getOption("edid.quiet"))) {
+  # (snake_case option name; the legacy dotted `edid.quiet` is still honored for back-compat.)
+  if (n > 5000L && interactive() && !isTRUE(getOption("edid_quiet", getOption("edid.quiet")))) {
     message(sprintf(
       "compute_omega_star_cov_edid: n=%d; the O(n^2) kernel loop may be slow.", n
     ))
@@ -884,9 +885,56 @@ edid_nuisance_blocks <- function(m_aux, r_aux) {
 #' @return list with \code{H} (P x P numerical Hessian) and \code{blocks} (the ordered nuisance blocks
 #'   used, from \code{edid_nuisance_blocks}); \code{H} is a 0 x 0 matrix when there are no estimated blocks.
 #' @keywords internal
+#' Analytic per-cell Hessian (closed form). att(theta) is exactly quadratic and the generated outcome is bilinear
+#' ONLY in (propensity-ratio r_c x its paired conditional-mean m_c): every pair contributes
+#' +r_inf (I_inf/pi_g)(m_inf,t - m_inf,tpre); cross pairs also +r_gp (I_gp/pi_g) m_gp,tpre. Hence the only nonzero
+#' Hessian blocks are H[r_block, m_block] = (1/n) B_r' diag(s) B_m with s_i = sum_j W_ij coef_ij -- a few
+#' crossprods, NO finite differences and NO att_fun rebuilds. Valid in the no-overlap-trim regime (renorm = 1).
+#' @keywords internal
+compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption = "all") {
+  blocks <- edid_nuisance_blocks(m_aux, r_aux)
+  if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
+  ps <- vapply(blocks, function(b) b$p, 1L); starts <- cumsum(c(0L, ps[-length(ps)])); P <- sum(ps)
+  bk <- vapply(blocks, function(b) b$key, character(1)); bprop <- vapply(blocks, function(b) isTRUE(b$is_prop), logical(1))
+  idx_of <- function(key, want_prop) { w <- which(bk == key & bprop == want_prop); if (length(w)) w[1L] else NA_integer_ }
+  n <- panel_obj$n; pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
+  I_inf <- as.numeric(panel_obj$never_treated_mask); Hm <- matrix(0, P, P)
+  svecs <- new.env(parent = emptyenv())
+  adds <- function(rk, mk, v) { key <- paste0(rk, "||", mk)
+    cur <- if (exists(key, envir = svecs, inherits = FALSE)) get(key, envir = svecs) else numeric(n)
+    assign(key, cur + v, envir = svecs) }
+  gp <- pairs$gp; tpre <- pairs$tpre; mt_key <- paste0("Inf_", t)
+  for (j in seq_len(nrow(pairs))) {
+    wj <- if (is.matrix(W)) W[, j] else rep(W[j], n)
+    is_self <- (is.finite(gp[j]) && gp[j] == g) || identical(pt_assumption, "post")
+    coef_inf <- wj * (I_inf / pi_g)
+    adds("Inf", mt_key, coef_inf)                                # +r_inf * m_inf,t
+    adds("Inf", paste0("Inf_", tpre[j]), -coef_inf)              # -r_inf * m_inf,tpre
+    if (!is_self) {                                              # cross pair: + r_gp * m_gp,tpre
+      gpk <- as.character(gp[j])
+      I_gp <- if (is.infinite(gp[j])) I_inf else as.numeric(panel_obj$cohort_masks[[gpk]])
+      adds(gpk, paste0(gpk, "_", tpre[j]), wj * (I_gp / pi_g))
+    }
+  }
+  for (key in ls(svecs)) {
+    pr <- strsplit(key, "||", fixed = TRUE)[[1]]; ri <- idx_of(pr[1], TRUE); mi <- idx_of(pr[2], FALSE)
+    if (is.na(ri) || is.na(mi)) next                            # a referenced nuisance is a fallback => no coefs
+    s <- get(key, envir = svecs); blk <- crossprod(blocks[[ri]]$B, s * blocks[[mi]]$B) / n  # p_r x p_m
+    ir <- starts[ri] + seq_len(ps[ri]); im <- starts[mi] + seq_len(ps[mi])
+    Hm[ir, im] <- Hm[ir, im] + blk; Hm[im, ir] <- Hm[im, ir] + t(blk)
+  }
+  list(H = Hm, blocks = blocks)
+}
+
 compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
                                       cond_means, W, m_aux, r_aux,
                                       pt_assumption = "all", trim_keep = NULL, eps = 1e-4) {
+  # Analytic Hessian (default): closed-form bilinear (r x paired-m) crossprods -- no finite differences, no
+  # att_fun rebuilds. Falls back to the forward-diff FD path when overlap-trimming is active (renorm makes the
+  # per-pair coefficients data-dependent) or when edid_hessian = 'fd'.
+  .trim_active <- !is.null(trim_keep) && any(vapply(trim_keep, function(k) any(!as.logical(k)), logical(1)))
+  if (!identical(getOption("edid_hessian", "analytic"), "fd") && !.trim_active)
+    return(compute_cell_hessian_analytic_edid(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption))
   blocks <- edid_nuisance_blocks(m_aux, r_aux)
   if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
 
@@ -912,15 +960,32 @@ compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
   }
 
   z0 <- numeric(P); f0 <- att_fun(z0)
-  fp <- numeric(P); fm <- numeric(P); Hm <- matrix(0, P, P)
-  for (i in seq_len(P)) {                                   # diagonal second differences
-    e <- numeric(P); e[i] <- eps
-    fp[i] <- att_fun(e); fm[i] <- att_fun(-e)
-    Hm[i, i] <- (fp[i] - 2 * f0 + fm[i]) / (eps^2)
+  fp <- numeric(P); Hm <- matrix(0, P, P)
+  # att(theta) is exactly quadratic AND linear in each prediction separately => zero diagonal / within-block
+  # curvature (H_ii = 0 exactly). So forward differences are exact and we need only att(e_i): no -e_i evals and
+  # no diagonal second differences. This halves the FD evaluations vs the central scheme; Hm stays 0 on the diagonal.
+  for (i in seq_len(P)) { e <- numeric(P); e[i] <- eps; fp[i] <- att_fun(e) }
+  # att(theta) is EXACTLY QUADRATIC and the generated outcome is LINEAR in each prediction separately, so the
+  # Hessian is zero on the diagonal and WITHIN every block; the only nonzero cross-partials couple a propensity-
+  # ratio block with ITS OWN paired conditional-mean block (Eq.(4.4) terms 2-3: r_{g,c} multiplies m_{c,.}).
+  # Skipping the provably-zero (i,j) pairs makes the cross loop O(sum p_r*p_m) FD evals instead of O(P^2); the
+  # skipped entries are exactly 0, so the Hessian matches the full FD version up to roundoff (the entries it
+  # drops are ~1e-10 FD noise around true zero). Pairing is by key prefix: r-block "Inf"/"<gp>" pairs with
+  # m-block "Inf_*"/"<gp>_*". (Profile: the full O(P^2) loop is ~98% of the misspec_robust default's runtime.)
+  coef_blk <- rep(seq_along(blocks), times = ps)                # block index of each stacked coefficient
+  blk_key  <- vapply(blocks, function(b) b$key, character(1))
+  blk_prop <- vapply(blocks, function(b) isTRUE(b$is_prop), logical(1))
+  pair_ok  <- matrix(FALSE, length(blocks), length(blocks))
+  for (a in seq_along(blocks)) for (b in seq_along(blocks)) {
+    if (blk_prop[a] == blk_prop[b]) next                       # r-r or m-m: no bilinear product
+    rk <- if (blk_prop[a]) blk_key[a] else blk_key[b]          # propensity-ratio key
+    mk <- if (blk_prop[a]) blk_key[b] else blk_key[a]          # conditional-mean key
+    pair_ok[a, b] <- startsWith(mk, paste0(rk, "_"))           # mean belongs to this ratio's comparison cohort
   }
-  for (i in seq_len(P)) for (j in seq_len(P)[-seq_len(i)]) {  # symmetric cross-partials
+  for (i in seq_len(P)) for (j in seq_len(P)[-seq_len(i)]) {   # symmetric cross-partials (nonzero block-pairs only)
+    if (!pair_ok[coef_blk[i], coef_blk[j]]) next               # structurally-zero entry: leave Hm[i, j] = 0
     ei <- numeric(P); ei[i] <- eps; ej <- numeric(P); ej[j] <- eps
-    Hm[i, j] <- (att_fun(ei + ej) - fp[i] - fp[j] + 2 * f0 - fm[i] - fm[j] + att_fun(-ei - ej)) / (2 * eps^2)
+    Hm[i, j] <- (att_fun(ei + ej) - fp[i] - fp[j] + f0) / (eps^2)   # forward diff; exact for the quadratic att
     Hm[j, i] <- Hm[i, j]
   }
   list(H = Hm, blocks = blocks)
@@ -970,25 +1035,70 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
   # regularization strength affects pointwise efficiency; NA/unset keeps the rate above.
   tol_ov <- suppressWarnings(as.numeric(getOption("edid_eig_tol", NA_real_)))
   if (length(tol_ov) == 1L && is.finite(tol_ov) && tol_ov > 0) tol <- tol_ov
+  # Diagnostic (default off): record per-unit RAW eigenvalue health (min/max, # floored, degeneracy) before any
+  # flooring, so we can quantify how often Omega(X_i) is non-PD / ill-conditioned (kernel vs sieve). edid_eig_diag.
+  .ediag <- isTRUE(getOption("edid_eig_diag"))
+  if (.ediag) { .emin <- rep(NA_real_, n); .emax <- rep(NA_real_, n); .enf <- rep(NA_integer_, n)
+                .edeg <- rep(FALSE, n); .eblend <- rep(0, n) }
+  # Per-unit adaptive PD-blend (opt-in: edid_pd_blend). When a unit's Omega(X_i) is non-PD / near-singular, blend
+  # it toward the pooled, well-conditioned Omega-bar (PSD, estimated from ALL units) just enough to restore
+  # conditioning, instead of flooring the raw (unreliable) per-unit estimate. Well-conditioned units are left
+  # untouched (full pointwise efficiency). Blend weight is closed-form via Weyl's inequality
+  # lambda_min((1-a)Mi + a*OB) >= (1-a) lambda_min(Mi) + a lambda_min(OB): smallest a giving lambda_min >= eps.
+  # Asymptotically negligible (activates only where the per-unit estimate is not consistently estimable); same
+  # mechanism for the kernel and sieve scenarios.
+  .blend <- isTRUE(getOption("edid_pd_blend")); .ob <- attr(omega_array, "omega_bar")
+  if (.blend && !is.null(.ob)) {
+    .ob <- 0.5 * (.ob + t(.ob)); eo <- eigen(.ob, symmetric = TRUE); mbo <- max(eo$values)
+    if (is.finite(mbo) && mbo > 0) {
+      obF <- eo$vectors %*% diag(pmax(eo$values, mbo * tol), H) %*% t(eo$vectors)   # PSD-floored pooled target
+      mu_bar <- min(pmax(eo$values, mbo * tol))                                     # > 0
+    } else .blend <- FALSE
+  } else .blend <- FALSE
   for (i in seq_len(n)) {
     Mi <- omega_array[i, , ]
     Mi <- 0.5 * (Mi + t(Mi))
     e  <- eigen(Mi, symmetric = TRUE)
     mx <- max(e$values)
-    if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }
+    if (.ediag) { .emin[i] <- min(e$values); .emax[i] <- mx
+      .enf[i] <- if (is.finite(mx) && mx > 0) sum(e$values < mx * tol) else H }
+    if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; if (.ediag) .edeg[i] <- TRUE; next }
+    if (.blend) {                                                                  # restore PD by pooling, not flooring
+      mu_i <- min(e$values)
+      # Trigger ONLY on genuine indefiniteness (a negative eigenvalue beyond machine noise). Normal near-low-rank
+      # conditioning -- the H moments in a cell are correlated, so most eigenvalues are small relative to the max --
+      # is handled exactly by the eigen-floor and is NOT a defect; blending it would needlessly distort good units.
+      if (mu_i < -mx * 1e-8) {
+        eps <- mx * tol                                                            # blend up to the floor target
+        a_i <- if (mu_bar > mu_i) min(1, max(0, (eps - mu_i) / (mu_bar - mu_i))) else 1
+        Mi  <- (1 - a_i) * Mi + a_i * obF
+        e   <- eigen(0.5 * (Mi + t(Mi)), symmetric = TRUE); mx <- max(e$values)
+        if (.ediag) .eblend[i] <- a_i
+      }
+    }
     ev_floored <- pmax(e$values, mx * tol)
-    Minv <- e$vectors %*% diag(1 / ev_floored, H) %*% t(e$vectors)
-    v    <- drop(Minv %*% one)
+    # Apply Omega(X_i)^{-1} to the vectors we actually need (1, and gen_out_i - theta_i) straight from the
+    # eigenpairs: Minv z = V ((V' z) / lambda_floored). This skips forming the H x H Minv = V diag(1/lam) V'
+    # and the extra H x H matmul, n times over (the per-unit loop is O(n H^3); this removes the H^3 rebuild,
+    # leaving the eigendecomposition as the only H^3 step). Same value up to FP reassociation (~1e-13).
+    Vt   <- e$vectors
+    v    <- drop(Vt %*% (crossprod(Vt, one) / ev_floored))                     # Minv %*% 1
     den  <- sum(v)
     if (is.finite(den) && abs(den) > 1e-12) {
       W[i, ] <- v / den
-      if (do_q) {                                                              # same Minv => q_i'1 = 0 (bit-identical)
+      if (do_q) {                                                              # same Minv => q_i'1 = 0
         theta_i <- sum(W[i, ] * gen_out_mat[i, ])
-        Q[i, ]  <- drop(Minv %*% (gen_out_mat[i, ] - theta_i))
+        z       <- gen_out_mat[i, ] - theta_i
+        Q[i, ]  <- drop(Vt %*% (crossprod(Vt, z) / ev_floored))               # Minv %*% (gen_out_i - theta_i)
       }
     } else {
       W[i, ] <- one / H                                                        # degenerate => uniform weight, q stays 0
     }
+  }
+  if (.ediag) {
+    acc <- getOption("edid_eig_acc", list())
+    acc[[length(acc) + 1L]] <- list(min = .emin, max = .emax, nfloor = .enf, deg = .edeg, blend = .eblend, H = H, tol = tol, n = n)
+    options(edid_eig_acc = acc)
   }
   if (do_q) list(W = W, Q = Q) else W
 }
