@@ -49,8 +49,16 @@ supt_crit_edid <- function(Sigma, alp = 0.05, B = 1e5L, seed = NULL) {
   if (p < 2L) return(pointwise)
   R <- Sigma[ok, ok, drop = FALSE] / tcrossprod(d[ok])
   R <- (R + t(R)) / 2                                        # symmetrize away roundoff
-  e <- eigen(R, symmetric = TRUE)
-  U <- sqrt(pmax(e$values, 0)) * t(e$vectors)                # R = U'U (PSD-safe square root)
+  # CANONICAL square root via Cholesky (UNIQUE for PD R), not the eigen-decomposition. The eigenvectors of a
+  # near-degenerate R are not uniquely determined, so an eps-level change in R (an equivalent but FP-reordered
+  # upstream computation -- e.g. a BLAS vs per-dimension kernel build) rotates them and, for a FIXED rng seed,
+  # produces different draws and a crit that wobbles at ~1e-3 even though R itself moved only ~1e-9. The Cholesky
+  # factor is a continuous, canonical function of R, so the seeded crit is reproducible and build-invariant. A
+  # tiny relative ridge guarantees PD (R is only PSD; any rank-deficient coordinate then draws at sqrt(ridge)
+  # scale => a negligible contribution to max_k |Z_k|). Falls back to the PSD eigen root if Cholesky still fails.
+  rg <- 1e-10 * max(1, mean(diag(R)))
+  U  <- tryCatch(chol(R + diag(rg, nrow(R))),               # upper-triangular: (R + ridge) = U'U
+                 error = function(e2) { e <- eigen(R, symmetric = TRUE); sqrt(pmax(e$values, 0)) * t(e$vectors) })
   # ALWAYS restore the caller's RNG state: the B x p rnorm draws below must not perturb the user's stream.
   # The analytic cband is the DEFAULT, so a bare edid() call would otherwise silently advance .Random.seed.
   if (exists(".Random.seed", envir = .GlobalEnv)) {

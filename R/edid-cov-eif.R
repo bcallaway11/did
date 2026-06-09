@@ -264,11 +264,18 @@ build_kernel_weights_edid <- function(X_mat, bw = NULL) {
       bw[k] <- h_k
     }
   }
-  K_mat <- matrix(1, nrow = n, ncol = n)
-  for (k in seq_len(d)) {
-    diff_k <- outer(X_mat[, k], X_mat[, k], "-")
-    K_mat  <- K_mat * stats::dnorm(diff_k / bw[k]) / bw[k]
-  }
+  # Product-Gaussian NW weights K[i,l] = prod_k dnorm((X_ik - X_lk)/bw_k)/bw_k
+  #   = exp(-0.5 * sum_k ((X_ik - X_lk)/bw_k)^2) / prod_k(bw_k * sqrt(2*pi)).
+  # Built via the squared-distance identity ||a-b||^2 = ||a||^2 + ||b||^2 - 2 a.b on the
+  # bandwidth-scaled covariates Xs = X/bw: ONE BLAS-3 tcrossprod replaces the d elementwise
+  # outer()+dnorm passes (8-13x faster build; agrees with the per-dim form to ~1e-13, the FP
+  # reassociation of exp(sum_k .) vs prod_k exp(.); the per-unit Omega inversion is well-
+  # conditioned (relative eigenfloor) so this does not perturb the estimates beyond ~1e-13).
+  Xs   <- sweep(X_mat, 2L, bw, "/")
+  rs   <- rowSums(Xs * Xs)
+  D2   <- outer(rs, rs, "+") - 2 * tcrossprod(Xs)
+  D2[D2 < 0] <- 0                       # clamp tiny negative round-off (near-duplicate rows / diagonal)
+  K_mat <- exp(-0.5 * D2) / prod(bw * sqrt(2 * pi))
   list(bw = bw, K = K_mat)
 }
 
@@ -707,7 +714,13 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
 #'   pieces \code{list(B_test, score_mat, H_inv, is_fallback)} from the \code{return_aux} path
 #' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
 #'   held FIXED at \eqn{\hat\theta} so \eqn{\Gamma} is the trimmed moment's nuisance sensitivity
-#' @param eps_rel relative finite-difference step
+#' @param eps_rel relative finite-difference step for the nuisance-sensitivity Gamma. Kept at the standard
+#'   first-difference optimum 1e-6: although the weighted moment is linear in each prediction in exact arithmetic,
+#'   in finite samples (extreme propensity ratios / near-degenerate sieve folds) it carries mild single-nuisance
+#'   curvature, so a larger step trades truncation error for the saved rounding and is NOT safe (it shifts Gamma's
+#'   direction; see test-edid-ach-correction). The residual ~2e-8 build-sensitivity this leaves in the
+#'   estimation_effect channel is negligible (8 significant digits); an exact analytic Gamma could remove even
+#'   that but is not warranted for a 2e-8 gain.
 #' @return numeric vector length n (the term to subtract from the plug-in EIF)
 #' @keywords internal
 compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
@@ -889,9 +902,17 @@ edid_nuisance_blocks <- function(m_aux, r_aux) {
 #' ONLY in (propensity-ratio r_c x its paired conditional-mean m_c): every pair contributes
 #' +r_inf (I_inf/pi_g)(m_inf,t - m_inf,tpre); cross pairs also +r_gp (I_gp/pi_g) m_gp,tpre. Hence the only nonzero
 #' Hessian blocks are H[r_block, m_block] = (1/n) B_r' diag(s) B_m with s_i = sum_j W_ij coef_ij -- a few
-#' crossprods, NO finite differences and NO att_fun rebuilds. Valid in the no-overlap-trim regime (renorm = 1).
+#' crossprods, NO finite differences and NO att_fun rebuilds.
+#'
+#' Overlap-trim regime: with \code{trim_keep} held FIXED at theta_hat (so att(theta) stays exactly quadratic), pair
+#' j's generated outcome is \code{.renorm(keep_j * phi_j, keep_j)} = (pi_g / m_kept_j) * keep_j * phi_j, a per-pair
+#' CONSTANT rescale times a per-unit 0/1 mask. Folding sc_j = (pi_g / m_kept_j) * keep_j[,i] into the per-pair weight
+#' reproduces that scaling EXACTLY -- the closed-form Hessian is therefore valid under trimming too (it was the only
+#' reason the slow finite-difference fallback existed). \code{keep_mat = NULL} (no trimming) gives sc_j == 1, i.e. the
+#' byte-identical no-trim closed form.
 #' @keywords internal
-compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption = "all") {
+compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption = "all",
+                                               keep_mat = NULL, m_kept = NULL) {
   blocks <- edid_nuisance_blocks(m_aux, r_aux)
   if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
   ps <- vapply(blocks, function(b) b$p, 1L); starts <- cumsum(c(0L, ps[-length(ps)])); P <- sum(ps)
@@ -906,6 +927,9 @@ compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux,
   gp <- pairs$gp; tpre <- pairs$tpre; mt_key <- paste0("Inf_", t)
   for (j in seq_len(nrow(pairs))) {
     wj <- if (is.matrix(W)) W[, j] else rep(W[j], n)
+    # Overlap-trim rescale (frozen at theta_hat): sc_j = (pi_g / m_kept_j) * keep_j[,i] reproduces .renorm exactly.
+    # Folded into wj so it propagates to BOTH the r_inf and the cross r_gp coefficients below. Identity when no trim.
+    if (!is.null(keep_mat)) wj <- wj * ((pi_g / m_kept[j]) * keep_mat[, j])
     is_self <- (is.finite(gp[j]) && gp[j] == g) || identical(pt_assumption, "post")
     coef_inf <- wj * (I_inf / pi_g)
     adds("Inf", mt_key, coef_inf)                                # +r_inf * m_inf,t
@@ -928,13 +952,19 @@ compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux,
 
 compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
                                       cond_means, W, m_aux, r_aux,
-                                      pt_assumption = "all", trim_keep = NULL, eps = 1e-4) {
+                                      pt_assumption = "all", trim_keep = NULL, eps = 5e-2,
+                                      keep_mat = NULL, m_kept = NULL) {
   # Analytic Hessian (default): closed-form bilinear (r x paired-m) crossprods -- no finite differences, no
-  # att_fun rebuilds. Falls back to the forward-diff FD path when overlap-trimming is active (renorm makes the
-  # per-pair coefficients data-dependent) or when edid_hessian = 'fd'.
-  .trim_active <- !is.null(trim_keep) && any(vapply(trim_keep, function(k) any(!as.logical(k)), logical(1)))
-  if (!identical(getOption("edid_hessian", "analytic"), "fd") && !.trim_active)
-    return(compute_cell_hessian_analytic_edid(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption))
+  # att_fun rebuilds. The analytic form now ALSO handles overlap-trimming (frozen trim_keep => the per-pair
+  # renorm is a fixed sc_j scaling folded into the weight; see compute_cell_hessian_analytic_edid), so the slow
+  # FD fallback is only taken when explicitly forced via options(edid_hessian = "fd"). The FD path divides the
+  # generated-outcome differences by eps^2; since att(theta) is EXACTLY quadratic (frozen trim) the forward
+  # second difference has zero truncation error, so eps is chosen LARGE (5e-2, not the generic ~1e-4 optimum)
+  # to minimise the eps^-2 amplification of rounding noise -- the old eps=1e-4 made the FD Hessian both unstable
+  # (kernel-FP-sensitive) and ~2% inaccurate vs this closed form.
+  if (!identical(getOption("edid_hessian", "analytic"), "fd"))
+    return(compute_cell_hessian_analytic_edid(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption,
+                                              keep_mat = keep_mat, m_kept = m_kept))
   blocks <- edid_nuisance_blocks(m_aux, r_aux)
   if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
 

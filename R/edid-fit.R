@@ -385,7 +385,7 @@ fit_edid_cells <- function(
           if (higher_order)                                                  # per-cell Hessian (W = W_pw frozen)
             ho_cell <- compute_cell_hessian_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, W_pw, m_aux, r_aux, pt_assumption,
-              trim_keep = trim_keep)
+              trim_keep = trim_keep, keep_mat = eif_keep, m_kept = eif_mkept)
           weights  <- colMeans(W_pw, na.rm = TRUE)                            # store mean weight per pair
           if (isTRUE(getOption("edid_store_wpw"))) {            # research diagnostic (OFF): full per-unit W_pw + ids
             acc <- getOption("edid_wpw_acc", list())            # (seeds the efficient frozen-W_pw jackknife)
@@ -539,7 +539,7 @@ fit_edid_cells <- function(
           if (higher_order)                                                  # per-cell Hessian (w frozen)
             ho_cell <- compute_cell_hessian_edid(
               panel_obj, g, t, pairs, prop_ratios, cond_means, weights, m_aux, r_aux, pt_assumption,
-              trim_keep = trim_keep)
+              trim_keep = trim_keep, keep_mat = eif_keep, m_kept = eif_mkept)
           if (misspec_robust && !is.null(psi_const))                         # fold the weight channel AFTER the ACH
             eif_gt <- eif_gt + psi_const                                     # subtraction (averaged/gmm); NULL => +0
         }
