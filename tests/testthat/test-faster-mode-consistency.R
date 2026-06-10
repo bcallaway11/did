@@ -164,3 +164,54 @@ test_that("aggte consistency across faster_mode for all types", {
                  tolerance = 1e-8, label = paste("aggte", tp))
   }
 })
+
+# =============================================================================
+# NA-propagation semantics in the unbalanced-panel influence aggregation
+# =============================================================================
+
+# With allow_unbalanced_panel = TRUE, NA/NaN entries in a 2x2 influence function
+# (only reachable via a custom est_method returning a finite ATT alongside a
+# partially-NA influence function) must propagate to the unit's aggregated
+# influence value -- so that cell's SE is NA -- in BOTH modes. The fast path
+# used to zero them silently (sum(na.rm = TRUE)), understating the SE and
+# diverging from the slow path; this pins the propagating semantics.
+test_that("partial-NA influence functions propagate identically across modes (unbalanced panel)", {
+  set.seed(20260609)
+  sp_na <- did::reset.sim(time.periods = 3, n = 400)
+  data_na <- did::build_sim_dataset(sp_na, panel = TRUE)
+  # Drop period 3 for 10 units so the panel is genuinely unbalanced (otherwise
+  # pre-processing downgrades allow_unbalanced_panel to a balanced panel).
+  drop_ids <- head(unique(data_na$id), 10)
+  data_na <- data_na[!(data_na$id %in% drop_ids & data_na$period == 3), ]
+
+  # Finite ATT, one NA injected into the influence function of every 2x2 cell
+  na_inj <- function(y, post, D, covariates, i.weights, inffunc, ...) {
+    res <- DRDID::reg_did_rc(y = y, post = post, D = D, covariates = covariates,
+                             i.weights = i.weights, boot = FALSE, inffunc = TRUE)
+    inf <- res$att.inf.func
+    inf[1] <- NA_real_
+    list(ATT = res$ATT, att.inf.func = inf)
+  }
+
+  run_na <- function(fm) suppressWarnings(suppressMessages(
+    att_gt(yname = "Y", tname = "period", idname = "id", gname = "G",
+           xformla = ~X, data = data_na, panel = TRUE,
+           allow_unbalanced_panel = TRUE, est_method = na_inj,
+           faster_mode = fm, bstrap = FALSE, cband = FALSE)
+  ))
+
+  res_fast <- run_na(TRUE)
+  res_slow <- run_na(FALSE)
+
+  # ATT point estimates stay finite and identical across modes
+  expect_true(all(is.finite(res_fast$att)))
+  expect_equal(res_slow$att, res_fast$att, tolerance = 1e-10)
+  # The injected NA propagates: every (g,t) standard error is NA in both modes
+  expect_true(all(is.na(res_fast$se)))
+  expect_true(all(is.na(res_slow$se)))
+  # Exactly one aggregated influence entry per (g,t) cell is NA, in both modes
+  na_fast <- sum(is.na(as.matrix(res_fast$inffunc)))
+  na_slow <- sum(is.na(as.matrix(res_slow$inffunc)))
+  expect_identical(na_fast, na_slow)
+  expect_identical(na_fast, length(res_fast$att))
+})
