@@ -7,16 +7,10 @@
 
 ## R CMD check results
 
-0 ERRORs | 0 WARNINGs | 1 NOTE
+0 ERRORs | 0 WARNINGs | 0 NOTEs
 
-* checking CRAN incoming feasibility ... NOTE
-  Unknown, possibly misspelled, fields in DESCRIPTION: 'Remotes'
-
-This release requires 'DRDID' (>= 1.3.0). The temporary `Remotes` field lets
-continuous integration install 'DRDID' 1.3.0 from GitHub until that version
-is available on CRAN. We will submit only after 'DRDID' 1.3.0 is accepted on
-CRAN, and the `Remotes` field is removed from DESCRIPTION before the
-submission tarball is built, which also removes this NOTE.
+This release requires 'DRDID' (>= 1.3.0), which is available on CRAN
+(published 2026-06-10).
 
 ## Notable changes
 
