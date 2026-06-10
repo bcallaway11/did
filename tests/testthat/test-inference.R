@@ -35,9 +35,17 @@ withr::defer(unlink(temp_lib, recursive = TRUE), teardown_env())
 old_did_available <- FALSE
 if (!identical(Sys.getenv("NOT_CRAN"), "false")) {
   old_did_available <- tryCatch({
-    remotes::install_version("did", version = "2.1.2", lib = temp_lib,
-                             repos = "https://cloud.r-project.org", quiet = TRUE)
-    isTRUE(requireNamespace("did", lib.loc = temp_lib, quietly = TRUE))
+    # The install can fail with warnings (not errors), e.g. when the dependency
+    # chain cannot compile from source, so suppress them and verify the result
+    # directly on disk: requireNamespace(lib.loc=) would spuriously return TRUE
+    # because the dev `did` namespace is already loaded by devtools::test().
+    suppressWarnings(suppressMessages(
+      remotes::install_version("did", version = "2.1.2", lib = temp_lib,
+                               repos = "https://cloud.r-project.org", quiet = TRUE)
+    ))
+    desc <- file.path(temp_lib, "did", "DESCRIPTION")
+    file.exists(desc) &&
+      identical(as.character(read.dcf(desc, "Version")), "2.1.2")
   }, error = function(e) FALSE)
 }
 
