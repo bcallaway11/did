@@ -36,12 +36,21 @@ test_that("fast BLAS kernel build is invariant to the exact original per-pair bu
 
 test_that("edid() reproduces the pinned golden att/se on mpdta + ~lpop (guards kp_cache / m_eff)", {
   fk <- fit_mpdta_bi("kernel")
-  golden_att <- c(-0.021325657732767, -0.081566921128498, -0.144734309317491, -0.111693456073102,
+  # att + se RE-PINNED for the cell-common overlap-trim estimand (2026-06): the default trim_level = 200
+  # BINDS on mpdta + ~lpop (max |att(200) - att(Inf)| = 0.0069), and in 8 of the 12 cells the comparison
+  # pairs carry DIFFERENT overlap masks, so the common-mask renormalization (every moment masked on the
+  # intersection of the surviving pairs' masks -- ONE estimand per cell) moves those cells by 3e-4..7e-3.
+  # No pair is dropped here (n_pairs_dropped == 0 in every cell); the 4 unmoved cells are those whose
+  # pair masks coincide. trim_level = Inf remains byte-identical to the pre-change build.
+  golden_att <- c(-0.020876019051455, -0.081264904800779, -0.144247924115520, -0.110234369322343,
                   -0.000489304301903, -0.006978740079083, -0.005584399663392, -0.048704071009899,
-                   0.011343970337863,  0.006903644769504, -0.014167439733459, -0.047166800055300)
-  golden_se  <- c(0.02243280187454, 0.02894131655886, 0.03480847736478, 0.03337624223599,
-                  0.00849702796138, 0.01250901383451, 0.02021629886772, 0.02171703477515,
-                  0.00732151564137, 0.00812716405792, 0.01127193490819, 0.01573256470791)
+                   0.007680747334852,  0.012341556720145, -0.016242058275798, -0.053993457185514)
+  # (Earlier se re-pin note, still in force: the kernel misspec_robust weight channel uses the
+  # eigen-floor-aware Daleckii-Krein coupling + (1-lambda) shrinkage factor + Eq.(3.12) Term-1
+  # contribution -- the same construction the sieve channel already used.)
+  golden_se  <- c(0.02255763635885, 0.02891300644631, 0.03471181464718, 0.03302420914630,
+                  0.00888452687748, 0.01250881585930, 0.02013082743995, 0.02140868178139,
+                  0.00702085767154, 0.00770758312701, 0.01108837878524, 0.01586968653181)
   expect_equal(fk$att_gt$att, golden_att, tolerance = 1e-7)
   expect_equal(fk$att_gt$se,  golden_se,  tolerance = 1e-7)
 })

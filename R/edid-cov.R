@@ -139,6 +139,52 @@ predict_basis_edid <- function(bs_obj_list, X_new_mat) {
 }
 
 # ---------------------------------------------------------------------------
+# IC-based sieve-dimension selection (opt-in via edid(bs_df = "ic"))
+# ---------------------------------------------------------------------------
+
+#' Select the B-spline df by the paper's information criterion
+#'
+#' Implements the sieve-index selection rule of Chen, Sant'Anna & Xie (2025)
+#' (the display after Eq. (4.2)):
+#' \deqn{\widehat{K} = \arg\min_K \ 2\,\mathbb{E}_n[\,\ell_K(\widehat\beta_K)\,]
+#'   + C_n K / n, \qquad C_n = \log(n)\ \text{(BIC flavor)},}
+#' where \eqn{\ell_K} is the estimator's own convex loss evaluated at the fitted
+#' sieve coefficients (for the propensity ratio \eqn{r}:
+#' \eqn{\mathbb{E}_n[r^2 G_{g'} - 2 r G_g]}; for the inverse propensity \eqn{s}:
+#' \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}; for the conditional mean \eqn{m}: the
+#' least-squares loss \eqn{\mathbb{E}_n[G_{g'} (Y_\Delta - m)^2]}), \eqn{K} is the
+#' TOTAL basis dimension \code{ncol(B)} implied by the candidate df (the paper's
+#' \eqn{\psi^K} dimension, not the per-covariate df), and \eqn{\mathbb{E}_n}
+#' averages over the full training sample (\eqn{n = n_{train}}; plug-in regime,
+#' the only one \code{edid()} uses). Candidate dfs are \code{grid}; infeasible
+#' candidates (\code{fit_loss} returns \code{NULL}, errors, or gives a non-finite
+#' loss) are skipped; ties keep the smaller df (parsimony); if every candidate is
+#' infeasible the package default \code{4L} is returned.
+#'
+#' @param fit_loss function(df) returning \code{c(loss = , K = )} (empirical
+#'   loss and total basis dimension), or \code{NULL} when the candidate df is
+#'   infeasible for this fit
+#' @param n training-sample size (the \eqn{\mathbb{E}_n} and penalty denominator)
+#' @param grid integer vector of candidate B-spline dfs (default \code{3:8})
+#' @return the selected df (integer scalar)
+#' @keywords internal
+select_bs_df_ic_edid <- function(fit_loss, n, grid = 3:8) {
+  best_df <- NA_integer_
+  best_ic <- Inf
+  Cn      <- log(n)
+  for (df_k in grid) {
+    fl <- tryCatch(fit_loss(df_k), error = function(e) NULL)
+    if (is.null(fl) || !is.finite(fl[["loss"]]) || !is.finite(fl[["K"]])) next
+    ic <- 2 * fl[["loss"]] + Cn * fl[["K"]] / n
+    if (is.finite(ic) && ic < best_ic) {
+      best_ic <- ic
+      best_df <- df_k
+    }
+  }
+  if (is.na(best_df)) 4L else as.integer(best_df)
+}
+
+# ---------------------------------------------------------------------------
 # Propensity ratio estimation
 # ---------------------------------------------------------------------------
 
@@ -157,9 +203,14 @@ predict_basis_edid <- function(bs_obj_list, X_new_mat) {
 #' @param X_test  numeric matrix n_test x d
 #' @param g  scalar: target treatment cohort
 #' @param gp scalar: comparison cohort (may be Inf for never-treated)
-#' @param bs_df integer: B-spline degrees of freedom (default 4)
+#' @param bs_df integer B-spline degrees of freedom (default 4), or \code{"ic"}
+#'   for the per-fit information-criterion selection of
+#'   \code{\link{select_bs_df_ic_edid}} (the paper's BIC-flavored rule)
 #'
-#' @return numeric vector length n_test: estimated r(X) values
+#' @return numeric vector length n_test: estimated r(X) values. Under
+#'   \code{bs_df = "ic"} the selected df is attached as attribute
+#'   \code{"edid_bs_df"} (or list element \code{bs_df} when
+#'   \code{return_aux = TRUE}).
 #' @keywords internal
 estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
                                            bs_df = 4L, return_aux = FALSE) {
@@ -187,6 +238,24 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
     return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
   }
 
+  # Opt-in IC sieve-dimension selection (edid(bs_df = "ic")): pick the df in 3:8
+  # minimizing the paper's criterion 2*E_n[r^2 G_gp - 2 r G_g] + log(n)*K/n
+  # (K = total basis dimension); the winner then takes the standard fitting path
+  # below unchanged. The integer default never enters this branch (byte-identical).
+  ic_pick <- NULL
+  if (identical(bs_df, "ic")) {
+    bs_df <- select_bs_df_ic_edid(function(df_k) {
+      Bo  <- build_basis_matrix_edid(X_train, df_k)
+      B   <- unclass(Bo); attr(B, "bs_objects") <- NULL
+      bg  <- B[mask_gp, , drop = FALSE]
+      bet <- as.vector(compute_pseudoinverse_edid(t(bg) %*% bg) %*%
+                         colSums(B[mask_g, , drop = FALSE]))
+      r_in <- drop(B %*% bet)                              # in-sample (train = test under plug-in)
+      c(loss = mean(mask_gp * r_in^2 - 2 * mask_g * r_in), K = ncol(B))
+    }, n = nrow(X_train))
+    ic_pick <- bs_df
+  }
+
   # Build basis on training data
   B_train_obj <- build_basis_matrix_edid(X_train, bs_df)
   B_train     <- unclass(B_train_obj)
@@ -209,7 +278,10 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   # check_condition_edid().
   r_hat <- drop(B_test %*% beta_hat)
 
-  if (!return_aux) return(r_hat)
+  if (!return_aux) {
+    if (!is.null(ic_pick)) attr(r_hat, "edid_bs_df") <- ic_pick
+    return(r_hat)
+  }
 
   # ACH (Ackerberg, Chen & Hahn 2012) first-step pieces. The estimating equation is
   #   sum_i [ G_{gp,i} B_i (B_i'beta) - G_{g,i} B_i ] = 0,
@@ -221,7 +293,9 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   mask_g_t  <- (G_train == g)
   score_mat <- B_test * (mask_gp_t * r_hat - mask_g_t)   # n x p (row i scaled by G_gp,i r_i - G_g,i)
   H_inv     <- n_test * compute_pseudoinverse_edid(BtB_gp)
-  list(pred = r_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
+  out <- list(pred = r_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
+  if (!is.null(ic_pick)) out$bs_df <- ic_pick
+  out
 }
 
 #' Estimate the inverse propensity s(X) = 1 / P(G=g'|X)
@@ -238,9 +312,13 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
 #' @param G_train numeric vector n_train: cohort values (Inf for never-treated)
 #' @param X_test  numeric matrix n_test x d
 #' @param gp scalar: cohort whose inverse propensity to estimate
-#' @param bs_df integer: B-spline degrees of freedom (default 4)
+#' @param bs_df integer B-spline degrees of freedom (default 4), or \code{"ic"}
+#'   for the per-fit information-criterion selection (see
+#'   \code{\link{select_bs_df_ic_edid}}; loss \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]})
 #'
-#' @return numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0
+#' @return numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0.
+#'   Under \code{bs_df = "ic"} the selected df is attached as attribute
+#'   \code{"edid_bs_df"} (or list element \code{bs_df} when \code{return_aux = TRUE}).
 #' @keywords internal
 estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
                                              bs_df = 4L, return_aux = FALSE) {
@@ -260,6 +338,23 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
     ))
     sv <- rep(length(G_train) / n_gp, n_test)
     return(if (return_aux) list(s_hat = sv, is_fallback = TRUE) else sv)
+  }
+
+  # Opt-in IC sieve-dimension selection (edid(bs_df = "ic")): the s-loss is the
+  # analogue of the ratio loss with the SECOND term unindicated (min E[s^2 G_gp - 2 s],
+  # the paper's display below Eq. (4.2)). Selection uses the raw (unclamped) sieve s,
+  # consistent with the linear first-order condition the loss encodes.
+  ic_pick <- NULL
+  if (identical(bs_df, "ic")) {
+    bs_df <- select_bs_df_ic_edid(function(df_k) {
+      Bo  <- build_basis_matrix_edid(X_train, df_k)
+      B   <- unclass(Bo); attr(B, "bs_objects") <- NULL
+      bg  <- B[mask_gp, , drop = FALSE]
+      bet <- as.vector(compute_pseudoinverse_edid(t(bg) %*% bg) %*% colSums(B))
+      s_in <- drop(B %*% bet)
+      c(loss = mean(mask_gp * s_in^2 - 2 * s_in), K = ncol(B))
+    }, n = nrow(X_train))
+    ic_pick <- bs_df
   }
 
   B_train_obj <- build_basis_matrix_edid(X_train, bs_df)
@@ -282,10 +377,13 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
     # (s_raw = B beta, before the >=0 clamp). Hessian H = E[B B' 1{gp}] = (B_gp'B_gp)/n, so H^{-1} = n * pinv(B_gp'B_gp)
     # (the n factor matches the ratio aux). IF of beta at unit l = -H_inv score_l.
     score_mat <- (as.numeric(mask_gp) * s_raw - 1) * B_test
-    return(list(s_hat = s_hat, B_test = B_test, score_mat = score_mat, H_inv = n_test * BtB_pinv,
-                s_pos = s_raw > 0, is_fallback = FALSE))
+    out <- list(s_hat = s_hat, B_test = B_test, score_mat = score_mat, H_inv = n_test * BtB_pinv,
+                s_pos = s_raw > 0, is_fallback = FALSE)
+    if (!is.null(ic_pick)) out$bs_df <- ic_pick
+    return(out)
   }
 
+  if (!is.null(ic_pick)) attr(s_hat, "edid_bs_df") <- ic_pick
   s_hat
 }
 
@@ -311,9 +409,14 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
 #' @param G_train numeric vector n_train: cohort values (Inf for never-treated)
 #' @param X_test  numeric matrix n_test x d
 #' @param gp scalar: cohort to regress on (may be Inf)
-#' @param bs_df integer: B-spline degrees of freedom (default 4)
+#' @param bs_df integer B-spline degrees of freedom (default 4), or \code{"ic"}
+#'   for the per-fit information-criterion selection (see
+#'   \code{\link{select_bs_df_ic_edid}}; least-squares loss
+#'   \eqn{\mathbb{E}_n[G_{g'} (Y_\Delta - m)^2]})
 #'
-#' @return numeric vector length n_test
+#' @return numeric vector length n_test. Under \code{bs_df = "ic"} the selected
+#'   df is attached as attribute \code{"edid_bs_df"} (or list element
+#'   \code{bs_df} when \code{return_aux = TRUE}).
 #' @keywords internal
 estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
                                            X_test, gp, bs_df = 4L, return_aux = FALSE) {
@@ -334,6 +437,23 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
   X_gp    <- X_train[mask_gp, , drop = FALSE]
   y_gp    <- Y_delta_train[mask_gp]
 
+  # Opt-in IC sieve-dimension selection (edid(bs_df = "ic")): least-squares loss
+  # E_n[G_gp (Y_delta - m)^2] over the FULL training sample (off-cohort terms are
+  # zero), penalty log(n)*K/n. Candidates with more basis columns than cohort
+  # observations are infeasible (mirrors the n_gp <= p_basis fallback below).
+  ic_pick <- NULL
+  if (identical(bs_df, "ic")) {
+    n_train <- length(Y_delta_train)
+    bs_df <- select_bs_df_ic_edid(function(df_k) {
+      Bo <- build_basis_matrix_edid(X_gp, df_k)
+      B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
+      if (n_gp <= ncol(B)) return(NULL)
+      ft <- solve_ols_edid(B, y_gp)
+      c(loss = sum(ft$residuals^2) / n_train, K = ncol(B))
+    }, n = n_train)
+    ic_pick <- bs_df
+  }
+
   B_gp_train_obj <- build_basis_matrix_edid(X_gp, bs_df)
   B_gp_train     <- unclass(B_gp_train_obj)
   attr(B_gp_train, "bs_objects") <- NULL
@@ -351,7 +471,10 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
   B_test <- predict_basis_edid(attr(B_gp_train_obj, "bs_objects"), X_test)
   m_hat <- drop(B_test %*% fit$coef)
 
-  if (!return_aux) return(m_hat)
+  if (!return_aux) {
+    if (!is.null(ic_pick)) attr(m_hat, "edid_bs_df") <- ic_pick
+    return(m_hat)
+  }
 
   # ACH (Ackerberg, Chen & Hahn 2012) first-step pieces for the within-cohort OLS
   #   sum_{i: G=gp} B_i (Y_delta_i - B_i'beta) = 0.
@@ -368,7 +491,9 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
   resid_full[mask_gp]  <- fit$residuals
   score_mat <- -B_test * resid_full                      # n x p (leading minus: see SIGN note above)
   H_inv     <- n_test * compute_pseudoinverse_edid(crossprod(B_gp_train))
-  list(pred = m_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
+  out <- list(pred = m_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
+  if (!is.null(ic_pick)) out$bs_df <- ic_pick
+  out
 }
 
 # ---------------------------------------------------------------------------
@@ -397,6 +522,8 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
   G_vec   <- panel_obj$unit_cohorts
   result  <- list()
   aux     <- list()
+  ic_mode <- identical(bs_df, "ic")   # per-fit IC selection: record the selected dfs
+  sel_key <- character(0L); sel_df <- integer(0L)
 
   unique_gps <- unique(pairs$gp)
 
@@ -429,13 +556,22 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
       } else {
         r_full[test_idx] <- out_gp
       }
+      if (ic_mode) {                                 # selected df (per fit; K = 1 in edid())
+        dfk <- if (return_aux) out_gp$bs_df else attr(out_gp, "edid_bs_df")
+        if (!is.null(dfk)) { sel_key <- c(sel_key, as.character(gp)); sel_df <- c(sel_df, dfk) }
+      }
     }
 
     .check_extreme_ratios_edid(r_full, g, gp)
     result[[as.character(gp)]] <- r_full
   }
 
-  if (return_aux) list(predictions = result, aux = aux) else result
+  out <- if (return_aux) list(predictions = result, aux = aux) else result
+  if (ic_mode && length(sel_key)) {
+    attr(out, "bs_df_selected") <- data.frame(key = sel_key, bs_df = sel_df,
+                                              stringsAsFactors = FALSE)
+  }
+  out
 }
 
 #' Estimate inverse propensities 1/p_g'(X) for all groups via cross-fitting
@@ -460,6 +596,8 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
   G_vec   <- panel_obj$unit_cohorts
   result  <- list()
   aux     <- if (return_aux) list() else NULL       # per-group M-estimator pieces for the inv_p Sigma_Omega channel
+  ic_mode <- identical(bs_df, "ic")                 # per-fit IC selection: record the selected dfs
+  sel_key <- character(0L); sel_df <- integer(0L)
 
   groups_needed <- unique(c(g, Inf, pairs$gp[is.finite(pairs$gp)]))
 
@@ -488,12 +626,20 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
       )
       if (want_aux_gp) { s_full[test_idx] <- res_ell$s_hat; aux[[as.character(gp)]] <- res_ell }
       else             s_full[test_idx] <- res_ell
+      if (ic_mode) {                                 # selected df (per fit; K = 1 in edid())
+        dfk <- if (want_aux_gp) res_ell$bs_df else attr(res_ell, "edid_bs_df")
+        if (!is.null(dfk)) { sel_key <- c(sel_key, as.character(gp)); sel_df <- c(sel_df, dfk) }
+      }
     }
 
     result[[as.character(gp)]] <- s_full
   }
 
   if (return_aux) attr(result, "aux") <- aux
+  if (ic_mode && length(sel_key)) {
+    attr(result, "bs_df_selected") <- data.frame(key = sel_key, bs_df = sel_df,
+                                                 stringsAsFactors = FALSE)
+  }
   result
 }
 
@@ -523,6 +669,8 @@ estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
   t1_col      <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
   result      <- list()
   aux         <- list()
+  ic_mode     <- identical(bs_df, "ic")   # per-fit IC selection: record the selected dfs
+  sel_key     <- character(0L); sel_df <- integer(0L)
 
   # Collect unique (gp, period) combinations needed
   # We need m_{gp, t_val, 1}(X) and m_{gp, tpre, 1}(X) for each pair
@@ -578,10 +726,19 @@ estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
       } else {
         m_full[test_idx] <- out_m
       }
+      if (ic_mode) {                                 # selected df (per fit; K = 1 in edid())
+        dfk <- if (return_aux) out_m$bs_df else attr(out_m, "edid_bs_df")
+        if (!is.null(dfk)) { sel_key <- c(sel_key, key); sel_df <- c(sel_df, dfk) }
+      }
     }
 
     result[[key]] <- m_full
   }
 
-  if (return_aux) list(predictions = result, aux = aux) else result
+  out <- if (return_aux) list(predictions = result, aux = aux) else result
+  if (ic_mode && length(sel_key)) {
+    attr(out, "bs_df_selected") <- data.frame(key = sel_key, bs_df = sel_df,
+                                              stringsAsFactors = FALSE)
+  }
+  out
 }

@@ -26,12 +26,14 @@ of per-observation pointwise weights \eqn{w(X_i)}}
 
 \item{g}{scalar: target treatment cohort (unused; kept for API compatibility)}
 
-\item{trim_keep_mat}{optional n x H matrix of the per-pair kept-treated masks \eqn{keep_{j}} that
-\code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output);
+\item{trim_keep_mat}{optional n x H matrix of the kept-treated masks that
+\code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output;
+under the cell-level common-overlap convention every surviving column equals the cell's COMMON mask);
 NULL (no overlap trimming) selects the byte-identical \eqn{G_g/\pi_g} centering below.}
 
-\item{m_kept}{optional length-H vector of the per-pair kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
-that \code{.renorm} divided by; required (non-NULL) iff \code{trim_keep_mat} is non-NULL.}
+\item{m_kept}{optional length-H vector of the kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
+the renormalization divided by (all equal to the common mass for surviving pairs); required
+(non-NULL) iff \code{trim_keep_mat} is non-NULL.}
 }
 \value{
 numeric vector length n, mean approximately 0

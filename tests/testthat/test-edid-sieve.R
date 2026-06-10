@@ -110,8 +110,9 @@ test_that("misspec_robust weight channel cannot blow up the SE in poor-overlap /
   old <- options(edid_omega_method = "sieve"); on.exit(options(old))
   # Poor-overlap covariate panel: steep propensity => some cohorts have near-zero propensity over part of the X
   # support (huge inverse-propensity prefactors) + sparse sieve groups (near-singular basis Gram). Pre-treatment
-  # placebo cells (t < g) are where the sieve weight-channel psi can explode (SE ~1e14, non-mean-zero EIF) unless
-  # guarded. The credibility guard must drop the channel there and report the finite weight-channel-free SE.
+  # placebo cells (t < g) are where the sieve weight-channel psi exploded (SE ~1e14, non-mean-zero EIF) before
+  # the Eq.(3.12) Term-1 restoration; the SEs must stay sane here whether the channel folds (credible IF, the
+  # current behavior) or the credibility guard drops it (the pre-fix fallback).
   set.seed(20260609L); n <- 120L; Tn <- 4L
   x1 <- rnorm(n); x2 <- rnorm(n); eta <- 2.2 * x1 + 1.6 * x2 - 0.4
   P <- exp(cbind(0, eta, 0.7 * eta)); P <- P / rowSums(P)
@@ -131,8 +132,14 @@ test_that("misspec_robust weight channel cannot blow up the SE in poor-overlap /
     expect_true(all(fin))                                                    # no 1e14 SEs
     expect_lt(max(abs(f_mr$eif)), 1e6)                                       # EIF not blown (pre-guard: ~1e16)
     expect_lt(max(f_mr$att_gt$se[fin] / f_pl$att_gt$se[fin]), 5)             # SE within a sane multiple (pre-guard: ~1e14)
-    # the guard must have ACTUALLY FIRED (>=1 cell fell back): asserts the fix is the mechanism, and pins the
-    # warning wording + that the per-cell count is surfaced (not a symptom-absent test that a different change could pass).
-    expect_true(any(grepl("weight-estimation channel was numerically unstable", w)))
+    # Mechanism pin, updated with the Eq.(3.12) Term-1 restoration: the pre-fix channel SKIPPED Term 1 (valid
+    # only for the smooth adjoint, 1'C1 = 0; for the Daleckii-Krein coupling 1'C1 != 0 where the floor binds),
+    # which made psi non-mean-zero and exploded it in exactly these placebo/poor-overlap cells -- the guard then
+    # fired and fell back per cell. With Term 1 added the channel is a credible IF here (measured per-cell
+    # variance inflation <= ~6x, far under the EDID_PSI_VAR_RATIO = 100 ceiling), so it FOLDS rather than falls
+    # back: assert no instability fallback occurred AND the channel genuinely moved the SE. The guard machinery
+    # itself stays covered by the psi_channel_credible_edid unit test above (it remains defense-in-depth).
+    expect_false(any(grepl("weight-estimation channel was numerically unstable", w)))
+    expect_gt(max(abs(f_mr$att_gt$se[fin] / f_pl$att_gt$se[fin] - 1)), 1e-3) # the channel folded (SE moved)
   }
 })

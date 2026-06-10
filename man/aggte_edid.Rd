@@ -21,8 +21,11 @@ aggte_edid(
 average over post-treatment cells), \code{"dynamic"} (event-study: average of \eqn{ES(e)} over
 \eqn{e \ge 0}), \code{"group"} (cohort-level overalls), or \code{"calendar"} (calendar-period overalls).}
 
-\item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, restricts the dynamic aggregation to
-relative times in \eqn{[-\text{balance\_e}, \text{balance\_e}]}.}
+\item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, balances the cohort composition of
+the dynamic aggregation (as in \code{did::aggte}): cohorts observed for fewer than
+\code{balance_e} post-treatment periods are dropped, and event times
+\eqn{e \in [\text{balance\_e} - (T_{\max} - T_{\min}),\ \text{balance\_e}]} are reported, so
+every reported \eqn{e} averages over the same set of cohorts.}
 
 \item{min_e, max_e}{Numeric: minimum/maximum relative time to include in dynamic output.}
 

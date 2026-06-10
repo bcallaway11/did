@@ -3,6 +3,67 @@
 # Implements Chen, Sant'Anna & Xie (2025) Eq. (3.9), (3.10), (3.12), (4.4).
 
 # ---------------------------------------------------------------------------
+# Cell-level common-overlap trim structure
+# ---------------------------------------------------------------------------
+
+#' Cell-level common-overlap trim structure (dead pairs + common keep mask)
+#'
+#' Derives, for one (g, t) cell, the overlap-trim structure shared by the generated-outcome builder and the
+#' analytic ACH correction so both consume the IDENTICAL masks/masses (no drift):
+#' \itemize{
+#'   \item \code{dead}: pair j's OWN overlap mask (\code{keep_inf} for self/two-period pairs,
+#'     \code{keep_inf * keep_gp} for cross pairs) retains no treated mass. Such a pair identifies
+#'     nothing -- its Hajek mean has an empty numerator -- and must be DROPPED from the cell's moment
+#'     set (keeping it as a zero column under nonzero weight biases the cell ATT toward 0).
+#'   \item \code{keep_common} / \code{m_common}: the cell's kept population is the INTERSECTION of the
+#'     SURVIVING pairs' own masks, with kept-treated mass \code{m_common = E_n[G_g keep_common]}. Every
+#'     surviving moment is built and renormalized on this ONE common sub-population, so all moments
+#'     identify the SAME common-overlap ATT(g,t) -- the paper's common-target overidentification logic
+#'     (Lemma 2.2). Per-pair masks would make each moment target a DIFFERENT kept subpopulation, so the
+#'     weighted combination would mix estimands and the estimand would move with the moment set.
+#'   \item \code{full_trim}: every pair is dead, or the surviving intersection retains no treated mass;
+#'     the cell is unidentified at this trim level (caller returns an NA cell).
+#' }
+#' With \code{trim_keep = NULL} (trimming inactive) this is the all-ones fast path: \code{dead} all
+#' FALSE, \code{keep_common = 1}, \code{m_common = mean(G_g)} -- the byte-identical no-trim convention.
+#'
+#' @param panel_obj panel object (needs \code{cohort_masks}, \code{n})
+#' @param g scalar: treatment cohort
+#' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
+#' @param trim_keep named list of \{0,1\}/logical n-vectors keyed by comparison cohort, or NULL
+#' @param pt_assumption \code{"all"} or \code{"post"}
+#' @return list with \code{dead} (logical H), \code{keep_common} (numeric n), \code{m_common} (scalar),
+#'   \code{full_trim} (logical), \code{active} (trimming requested)
+#' @keywords internal
+#' @noRd
+edid_cell_trim_structure <- function(panel_obj, g, pairs, trim_keep, pt_assumption) {
+  n  <- panel_obj$n
+  H  <- nrow(pairs)
+  Ig <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  .keep <- function(key) {
+    if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
+  }
+  keep_inf    <- .keep("Inf")
+  is_self     <- (is.finite(pairs$gp) & pairs$gp == g) | identical(pt_assumption, "post")
+  dead        <- rep(FALSE, H)
+  keep_common <- rep(1, n)
+  if (!is.null(trim_keep)) {
+    own <- vector("list", H)
+    for (j in seq_len(H)) {
+      own[[j]] <- if (is_self[j]) keep_inf else keep_inf * .keep(as.character(pairs$gp[j]))
+      dead[j]  <- mean(Ig * own[[j]]) <= .Machine$double.eps
+    }
+    for (j in which(!dead)) keep_common <- keep_common * own[[j]]
+  }
+  m_common <- mean(Ig * keep_common)
+  list(dead        = dead,
+       keep_common = keep_common,
+       m_common    = m_common,
+       full_trim   = (H > 0L && all(dead)) || m_common <= .Machine$double.eps,
+       active      = !is.null(trim_keep))
+}
+
+# ---------------------------------------------------------------------------
 # Generated outcomes (doubly-robust, n x H matrix)
 # ---------------------------------------------------------------------------
 
@@ -39,10 +100,15 @@
 #' @param pt_assumption \code{"all"} or \code{"post"}
 #' @param trim_keep optional named list of \{0,1\} n-vectors keyed by comparison cohort (\code{"Inf"} /
 #'   \code{as.character(gp)}): DRDID-style overlap-trim masks; NULL or a missing key keeps all units for that
-#'   comparison. A pair's mask is the product of the masks of the comparisons it uses.
-#' @param return_trim_info logical: if TRUE return \code{list(gen_out, keep, m_kept)} carrying the per-pair
-#'   kept-treated masks + masses (\code{keep}/\code{m_kept} NULL when no unit was trimmed) for the EIF's
-#'   kept-treated-mass centering; if FALSE (default) return the bare n x H generated-outcome matrix.
+#'   comparison. A pair's OWN mask is the product of the masks of the comparisons it uses; the cell's
+#'   COMMON mask is the intersection of the surviving pairs' own masks (see
+#'   \code{edid_cell_trim_structure}), and every surviving column is built/renormalized with that one
+#'   common mask and one common kept mass.
+#' @param return_trim_info logical: if TRUE return \code{list(gen_out, keep, m_kept, dead)} carrying the
+#'   common kept-treated mask + mass per surviving pair (\code{keep}/\code{m_kept} NULL when no unit was
+#'   trimmed) for the EIF's kept-treated-mass centering, plus \code{dead} (logical H, or NULL when no pair
+#'   is dead): pairs whose own mask retains no treated mass, which the caller must DROP from the cell's
+#'   moment set (their columns are zeroed here); if FALSE (default) return the bare n x H matrix.
 #'
 #' @return numeric matrix n x H (entries may be NA if nuisances are NA), or the list above when
 #'   \code{return_trim_info = TRUE}
@@ -72,37 +138,50 @@ compute_generated_outcomes_cov_edid <- function(
   # Overlap-trimming keep mask (DRDID-style, UNIT-level): at non-overlap X (propensity ratio or inverse
   # propensity extreme) the WHOLE per-pair generated outcome is zeroed -- not just a comparison observation's
   # reweighting term, but ALSO the treated term1, whose conditional means are extrapolated there and whose
-  # efficient weight w(X)=Omega*(X)^{-1}1/... is built from a 1/p-blown-up Omega. Zeroing the whole phi_j drops
-  # the unit from this pair's moment AND its EIF, so a corrupted weight multiplies zero; the estimand becomes
-  # the ATT on the overlap sub-population (as in DRDID). The trimmed obs STILL contributes to nuisance
-  # estimation (Omega/m/r are unaffected). trim_keep is a named list of {0,1} n-vectors keyed by comparison
-  # cohort ("Inf" / as.character(gp)); NULL or a missing key => keep all (no trimming). A pair's overlap mask
-  # is the product of the masks of the comparisons it uses (never-treated, and g' for cross-cohort pairs).
-  .keep <- function(key) {
-    if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
-  }
-  keep_inf <- .keep("Inf")
+  # efficient weight w(X)=Omega*(X)^{-1}1/... is built from a 1/p-blown-up Omega. Zeroing the whole phi drops
+  # the unit from the moment AND its EIF, so a corrupted weight multiplies zero; the estimand becomes the ATT
+  # on the overlap sub-population (as in DRDID). The trimmed obs STILL contributes to nuisance estimation
+  # (Omega/m/r are unaffected). trim_keep is a named list of {0,1} n-vectors keyed by comparison cohort
+  # ("Inf" / as.character(gp)); NULL or a missing key => keep all (no trimming).
+  #
+  # CELL-LEVEL common-overlap structure (edid_cell_trim_structure):
+  #   (1) DEAD pairs -- a pair whose own mask (keep_inf, or keep_inf*keep_gp for cross pairs) retains no
+  #       treated mass identifies nothing; its column is zeroed here and flagged in `dead` so the caller
+  #       DROPS it from pairs/weights/Omega (a zero column under nonzero weight biases the ATT toward 0).
+  #   (2) COMMON mask -- every SURVIVING pair is masked and renormalized on the INTERSECTION of the
+  #       survivors' own masks, with the ONE common kept-treated mass m_common = E_n[G_g keep_common]. All
+  #       surviving moments then identify the SAME common-overlap ATT(g,t) (Lemma 2.2's common-target
+  #       overidentification logic); per-pair masks/masses would make each moment target a DIFFERENT kept
+  #       subpopulation, mixing estimands across the weighted combination.
+  #   (3) FULL trim -- all pairs dead, or the surviving intersection has no treated mass: every column is
+  #       zeroed and `keep` is returned all-zero (the caller's NA-cell detection).
+  # With trim_keep = NULL everything below is the all-ones fast path, byte-identical to no trimming.
+  trim_info   <- edid_cell_trim_structure(panel_obj, g, pairs, trim_keep, pt_assumption)
+  dead        <- trim_info$dead
+  keep_common <- trim_info$keep_common
+  m_common    <- trim_info$m_common
+  full_trim   <- trim_info$full_trim
 
-  # DRDID-style renormalization (per pair). After the whole phi_j is zeroed at non-overlap X, the kept treated
-  # units must form a proper Hajek mean: rescale by pi_g / (kept-treated mass). Zeroing ALONE under-weights the
-  # trimmed-treated term1 and biases the ATT toward 0 (verified); this rescale restores the overlap-ATT scale.
-  # The treated and the r-reweighted comparison masses coincide (E[keep p_g]), so one per-pair rescale
-  # renormalizes all components consistently. With no trimming m_kept == pi_g => factor 1 (byte-identical).
-  .renorm <- function(phi, keep) {
-    m_kept <- mean(Ig * keep)
-    if (m_kept > .Machine$double.eps) phi * (pi_g / m_kept) else rep(0, n)
-  }
+  # DRDID-style renormalization, now with the CELL-COMMON kept-treated mass. After the whole phi is zeroed at
+  # non-overlap X, the kept treated units must form a proper Hajek mean: rescale by pi_g / m_common. Zeroing
+  # ALONE under-weights the trimmed-treated term1 and biases the ATT toward 0 (verified); this rescale
+  # restores the common-overlap-ATT scale. The treated and the r-reweighted comparison masses coincide
+  # (E[keep p_g]), so one rescale renormalizes all components consistently. With no trimming
+  # m_common == pi_g => factor 1 (byte-identical).
+  renorm_fac <- if (!full_trim) pi_g / m_common else 0
 
   # Never-treated indicator (used in all pairs)
   I_inf   <- as.numeric(panel_obj$never_treated_mask)
 
   gen_out_mat <- matrix(NA_real_, nrow = n, ncol = H)
 
-  # Per-pair overlap-trim record for the EIF's kept-treated-mass centering. After .renorm divides pair j's
-  # generated outcome by m_kept_j = E_n[G_g keep_j] (the pi_g in the 1/pi_g terms CANCELS), the estimator is a
-  # Hajek ratio in m_kept_j -- NOT in pi_g. The EIF therefore centers on (G_g keep_j / m_kept_j), not (G_g/pi_g);
-  # see compute_eif_cov_edid. keep_mat[, j] / m_kept_vec[j] record the EXACT mask + mass .renorm used for pair j so
-  # the EIF reuses them (no re-deriving the per-pair masks => no drift). Defaults (keep=1, mass=pi_g) = no trimming.
+  # Overlap-trim record for the EIF's kept-treated-mass centering. The renorm divides every surviving pair's
+  # generated outcome by m_common = E_n[G_g keep_common] (the pi_g in the 1/pi_g terms CANCELS), so the
+  # estimator is a Hajek ratio in m_common -- NOT in pi_g. The EIF therefore centers on
+  # (G_g keep_common / m_common), not (G_g/pi_g); see compute_eif_cov_edid. keep_mat / m_kept_vec record the
+  # EXACT mask + mass the renorm used so the EIF reuses them (no re-deriving => no drift). Defaults
+  # (keep=1, mass=pi_g) = no trimming; dead / fully-trimmed pairs store the sentinel (keep=0, mass=1) so the
+  # centering basis stays well-defined.
   keep_mat   <- matrix(1, nrow = n, ncol = H)
   m_kept_vec <- rep(pi_g, H)
 
@@ -110,6 +189,15 @@ compute_generated_outcomes_cov_edid <- function(
     gp_j    <- pairs$gp[j]
     tpre_j  <- pairs$tpre[j]
     col_tp  <- panel_obj$period_to_col[[as.character(tpre_j)]]
+
+    # Dead pair (own mask retains no treated mass) or fully-trimmed cell: the moment identifies nothing.
+    # Zero the column and store the sentinel record; the caller drops dead pairs (full-trim => NA cell).
+    if (full_trim || dead[j]) {
+      gen_out_mat[, j] <- 0
+      keep_mat[, j]    <- 0
+      m_kept_vec[j]    <- 1
+      next
+    }
 
     # Determine if this is a self-comparison / two-period DiD pair.
     # Under PT-Post the single moment pair is (gp = Inf, tpre = g-1-anticipation): it is the
@@ -144,11 +232,10 @@ compute_generated_outcomes_cov_edid <- function(
       m_inf_diff <- m_inf_t - m_inf_tp  # m_{Inf,t,tpre}(X)
       y_diff     <- ow[, col_t] - ow[, col_tp]  # Y_t - Y_tpre
 
-      # Self-pair (only comparison is never-treated): keep_inf is this pair's overlap mask; zero the WHOLE
-      # phi_j (incl. the treated Ig term) at non-overlap X so a corrupted efficient weight there multiplies
-      # zero, then renormalize by the kept-treated mass.
-      keep_used <- keep_inf
-      phi_j <- .renorm(keep_inf * (Ig / pi_g - r_inf * I_inf / pi_g) * (y_diff - m_inf_diff), keep_inf)
+      # Self-pair: zero the WHOLE phi_j (incl. the treated Ig term) at non-overlap X -- using the CELL-COMMON
+      # mask, so this moment is masked exactly like every other surviving moment in the cell -- so a corrupted
+      # efficient weight there multiplies zero, then renormalize by the common kept-treated mass.
+      phi_j <- (keep_common * (Ig / pi_g - r_inf * I_inf / pi_g) * (y_diff - m_inf_diff)) * renorm_fac
 
     } else {
       # -----------------------------------------------------------------
@@ -201,8 +288,6 @@ compute_generated_outcomes_cov_edid <- function(
       # Y_tilde = (G_g/pi_g)(Y_t - Y_1 - m_{inf,t,t'}(X) - m_{g',t',1}(X))
       #         - r_{g,inf}(G_inf/pi_g)(Y_t - Y_t' - m_{inf,t,t'}(X))
       #         - r_{g,g'}(G_{g'}/pi_g)(Y_t' - Y_1 - m_{g',t',1}(X))
-      keep_gp   <- .keep(gp_key)
-      keep_pair <- keep_inf * keep_gp                  # overlap for THIS pair: never-treated AND comparison g'
       term1 <- (Ig / pi_g) * (Y_t - Y_1 - m_inf_diff - m_gp_tp)
       term2 <- r_inf * (I_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
       term3 <- r_gp * (I_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
@@ -210,31 +295,33 @@ compute_generated_outcomes_cov_edid <- function(
       # Overlap trim is UNIT-level (the WHOLE generated outcome), not per comparison term: at non-overlap X the
       # treated term1's conditional means are extrapolated AND the efficient weight w(X) = Omega*(X)^{-1}1/... is
       # built from a 1/p-blown-up Omega, so the entire phi_j (incl. the treated term1) must be zeroed there --
-      # otherwise the treated unit stays in the estimand carrying a corrupted weight. keep_pair = 0 drops the
-      # unit from this pair's moment AND its EIF, so any corrupted weight multiplies zero. .renorm then rescales
-      # by the kept-treated mass (DRDID-style) so the kept units form a proper Hajek mean.
-      keep_used <- keep_pair
-      phi_j <- .renorm(keep_pair * (term1 - term2 - term3), keep_pair)
+      # otherwise the treated unit stays in the estimand carrying a corrupted weight. keep_common = 0 drops the
+      # unit from EVERY surviving moment AND its EIF, so any corrupted weight multiplies zero; the common
+      # rescale (DRDID-style) then makes the kept units a proper Hajek mean on the shared kept population.
+      phi_j <- (keep_common * (term1 - term2 - term3)) * renorm_fac
     }
 
-    # Record the per-pair kept-treated mask + mass that .renorm used (mirrors its m_kept guard EXACTLY): a
-    # degenerate pair (entire treated cohort trimmed, m_kept <= eps) zeroed phi_j, so its centering basis must be 0.
-    mk_j <- mean(Ig * keep_used)
-    if (mk_j <= .Machine$double.eps) { keep_mat[, j] <- 0; m_kept_vec[j] <- 1 }
-    else                            { keep_mat[, j] <- keep_used; m_kept_vec[j] <- mk_j }
+    # Record the common kept-treated mask + mass the renorm used (the dead/full-trim sentinel was stored at
+    # the top of the loop): the EIF centering basis reads EXACTLY these.
+    keep_mat[, j] <- keep_common
+    m_kept_vec[j] <- m_common
 
     gen_out_mat[, j] <- phi_j
   }
 
   if (isTRUE(return_trim_info)) {
-    # keep/m_kept are non-NULL ONLY when at least one unit was actually trimmed in this cell (trim_keep requested
-    # AND some keep entry is 0). If trimming was requested but bit nothing (all keep == 1, m_kept == pi_g exactly),
-    # return NULL so compute_eif_cov_edid takes its BYTE-IDENTICAL no-trim path (G_g/pi_g) -- the per-pair centering
-    # is mathematically equal there but differs at ~1e-15 in FP, which would needlessly perturb good-overlap baselines.
-    trimmed <- !is.null(trim_keep) && any(keep_mat < 0.5)
+    # keep/m_kept are non-NULL ONLY when the trim actually bit (trim_keep requested AND the common mask --
+    # or a dead/full-trim sentinel column -- has a zero). If trimming was requested but bit nothing
+    # (keep_common == 1 everywhere, no dead pair), return NULL so compute_eif_cov_edid takes its
+    # BYTE-IDENTICAL no-trim path (G_g/pi_g) -- the centering is mathematically equal there but differs at
+    # ~1e-15 in FP, which would needlessly perturb good-overlap baselines. `dead` is reported independently
+    # (non-NULL iff some pair died) so the caller can drop dead pairs even when the SURVIVORS' common mask
+    # is all-ones (keep = NULL then: the surviving moments are effectively untrimmed).
+    trimmed <- !is.null(trim_keep) && (full_trim || any(keep_common < 0.5))
     return(list(gen_out = gen_out_mat,
                 keep    = if (trimmed) keep_mat   else NULL,
-                m_kept  = if (trimmed) m_kept_vec else NULL))
+                m_kept  = if (trimmed) m_kept_vec else NULL,
+                dead    = if (!is.null(trim_keep) && any(dead)) dead else NULL))
   }
   gen_out_mat
 }
@@ -439,33 +526,73 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   kp_inf <- get_kp(mask_inf, "Inf")
   term1_const <- inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_t_minus_Y1, kp_g)
 
-  # ---- Weight-estimation channel (Sigma_Omega), DATA channel, opt-in via psi_qw = list(q=, w=) (pooled q,w). ----
+  # ---- Weight-estimation channel (Sigma_Omega), DATA channel, opt-in via psi_qw. ----
   # psi_Omega,l = -sum_{terms} coup * sum_i pref_i * omega^c_il * [(A_l-muA_i)(B_l-muB_i) - C_i] : the NW local-cov
-  # influence function of the kernel-averaged Omega-bar (04_psiomega_fiveterm_spec.md), where coup for entry (j,k) is
-  # q_j w_k (+ q_k w_j off-diagonal). Term 1 cancels globally (sum_{j,k} coup = (q'1)(w'1) = 0, and q'1 = 0), so it is
-  # skipped. Vectorized: with KK[i,l] = pref_i Kg[i,l]/Ks_i, the inner sum_i is
+  # influence function of the kernel Omega estimator (04_psiomega_fiveterm_spec.md). The per-entry coupling coup
+  # is the eigen-floor-aware Daleckii-Krein gradient C = dtheta/dOmega of the FLOORED inverse when psi_qw$C is
+  # supplied (per-unit n x H x H array for "efficient", pooled H x H for "averaged"), else the smooth adjoint
+  # q_j w_k (+ q_k w_j off-diagonal). The smooth adjoint is exact only while no eigenvalue floors; the floor
+  # demonstrably binds in high-H cells (most eigenvalues at the relative floor), where the floored directions do
+  # not respond to dOmega and the smooth coupling mis-scales the channel. Eq.(3.12) Term 1 (cell-constant) sums
+  # to (q'1)(w'1) = 0 under the smooth adjoint and is skipped there; under the DK coupling 1'C1 != 0 wherever
+  # the floor binds, so its contribution is added explicitly below (exactly zero when nothing floors).
+  # Vectorized: with KK[i,l] = pref_i Kg[i,l]/Ks_i, the inner sum_i is
   #   A_c_l B_c_l S0[l] - A_c_l SB[l] - B_c_l SA[l] + SC[l],  S0=colSums(KK), SA=mu_A'KK, SB=mu_B'KK, SC=(mu_A mu_B - C)'KK.
-  # Inert + Omega byte-identical when psi_qw is NULL.
-  # Sigma_Omega accumulation: averaged (pooled q,w; return_pointwise=FALSE) OR efficient (pointwise per-unit Q,W;
-  # rides the return_pointwise array pass). Inert + Omega/array byte-identical when psi_qw is NULL.
+  # Sigma_Omega accumulation: averaged (pooled; return_pointwise=FALSE) OR efficient (pointwise per-unit; rides
+  # the return_pointwise array pass). Inert + Omega/array byte-identical when psi_qw is NULL.
   do_psi <- !is.null(psi_qw)
   pw_psi <- do_psi && isTRUE(psi_qw$pointwise)
   psi_omega <- if (do_psi) numeric(n) else NULL
   cpl <- if (do_psi) new.env(parent = emptyenv()) else NULL   # coupled_C per inv_p group, for the analytic inv_p Gamma
+  C_arr <- NULL; C_pooled <- FALSE; .shr <- 1
   if (do_psi) {
     if (pw_psi) { Q_mat <- psi_qw$Q; W_mat <- psi_qw$W } else { q_vec <- psi_qw$q; w_vec <- psi_qw$w }
+    # Eigen-floor-aware coupling gradient: preferred over the smooth Q/W or q/w adjoint when present. A 3D array
+    # (n x H x H) is the per-unit (efficient) gradient; a 2D matrix (H x H) is the pooled (averaged) gradient,
+    # broadcast as a constant coupling across cells (same convention as the sieve channel).
+    C_arr    <- psi_qw$C
+    C_pooled <- !is.null(C_arr) && length(dim(C_arr)) == 2L
+    # Leading-order shrinkage correction. The per-unit Omega is regularized to Omega^shrunk = (1-lam)Omega_i +
+    # lam*Omega_bar before inversion, and the adjoint/coupling is computed on Omega^shrunk; the covariance term
+    # enters Omega_i with coefficient (1-lam), so dtheta = (1-lam) * coup : dOmega_i. Omitting the factor
+    # over-states the channel wherever lam is non-negligible (lam ~ 0.5 is common in floored designs). The
+    # data-driven dlam and dOmega_bar terms are higher-order and omitted, as in the sieve channel. Pooled
+    # (averaged) callers pass no lambda => .shr = 1.
+    .lam_shr <- suppressWarnings(as.numeric(psi_qw$lambda))
+    if (length(.lam_shr) != 1L || !is.finite(.lam_shr)) .lam_shr <- 0
+    .shr <- min(1, max(0, 1 - .lam_shr))
   }
   # Per-(vector, group) conditional-mean cache: each centered difference vector's E_K[.|X] is recomputed for
   # EVERY (j,k) it appears in (e.g. Y_t-Y_1 in group g recurs in every self pair). Memoize the centered vector and
   # its raw kernel mean once per (vkey, gkey) -- the SAME caching kernel_fast already uses -- then term_psi reads
   # them. The raw mu is cached (NOT bad-zeroed); the bad-handling stays inside term_psi, so the arithmetic and
   # accumulation order are byte-identical to the per-call form (only the redundant H^2 -> H mu matmuls are removed).
-  .muc <- new.env(parent = emptyenv())
+  # When fit_edid_cells supplies the per-cell kp_cache it ALREADY carries the array pass's "mu:"/"cov:" entries
+  # (compute_omega_star_kernel_fast_edid caches the SAME expressions on the SAME shared kp slices, so the values
+  # are byte-identical); read those instead of recomputing, falling back to the local computation on a miss
+  # (e.g. the "kernel_orig" array build, the averaged pass's BLAS-batched term-2/5, or a standalone call).
+  .muc <- if (is.null(kp_cache)) new.env(parent = emptyenv()) else kp_cache
   cmean_psi <- function(v, vkey, kp, gkey) {
-    key <- paste0(vkey, "@@", gkey)
-    if (exists(key, envir = .muc, inherits = FALSE)) return(get(key, envir = .muc))
+    key <- paste0("mu:", vkey, "@", gkey)
+    if (exists(key, envir = .muc, inherits = FALSE)) {
+      hit <- get(key, envir = .muc)   # array-pass entries store the centered vector as $vc, local ones as $v_c
+      return(list(v_c = if (!is.null(hit$vc)) hit$vc else hit$v_c, mu = hit$mu))
+    }
     idx <- kp$idx; v_c <- v[idx] - mean(v[idx]); mu <- drop(kp$Kg %*% v_c) / kp$Ks
     out <- list(v_c = v_c, mu = mu); assign(key, out, envir = .muc); out
+  }
+  # Kernel conditional covariance for term_psi, memoized under the array pass's "cov:" keys: T3/T4 recur across
+  # the (j,k) loop (each depends on a single index), and under the default fast build every five-term covariance
+  # was ALREADY computed by the array pass. cv is exactly ccov's value (raw-mu cross-moment, then NA -> 0); the
+  # bad-row zeroing of mu_A/mu_B stays in term_psi, so accumulation is byte-identical to the inline form.
+  .cov_psi <- function(A_c, B_c, mu_A, mu_B, kp, akey, bkey, gkey) {
+    ck  <- paste0("cov:", akey, "@", gkey, "|", bkey, "@", gkey)
+    if (exists(ck, envir = .muc, inherits = FALSE)) return(get(ck, envir = .muc))
+    ck2 <- paste0("cov:", bkey, "@", gkey, "|", akey, "@", gkey)   # cov is FP-symmetric in (A, B): A_c*B_c == B_c*A_c exactly
+    if (exists(ck2, envir = .muc, inherits = FALSE)) return(get(ck2, envir = .muc))
+    cv <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks - mu_A * mu_B
+    cv[is.na(cv)] <- 0
+    assign(ck, cv, envir = .muc); cv
   }
   term_psi <- function(A, B, kp, pref_vec, coup, akey, bkey, gkey, grp_sign = 1) {
     if (!isTRUE(kp$ok)) return(invisible(NULL))
@@ -473,8 +600,8 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     idx <- kp$idx; grp_key <- gkey
     ca <- cmean_psi(A, akey, kp, gkey); cb <- cmean_psi(B, bkey, kp, gkey)
     A_c <- ca$v_c; B_c <- cb$v_c; mu_A <- ca$mu; mu_B <- cb$mu
-    cov_vals <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks - mu_A * mu_B
-    bad <- is.na(kp$Ks); mu_A[bad] <- 0; mu_B[bad] <- 0; cov_vals[is.na(cov_vals)] <- 0
+    cov_vals <- .cov_psi(A_c, B_c, mu_A, mu_B, kp, akey, bkey, gkey)
+    bad <- is.na(kp$Ks); mu_A[bad] <- 0; mu_B[bad] <- 0
     scal <- pref_vec / kp$Ks; scal[bad] <- 0
     # coup is SCALAR (pooled/averaged: q_j w_k, constant across units) or LENGTH-n (pointwise/efficient: Q[,j] W[,k],
     # per-unit). For the pointwise case fold the per-unit coup into scal so each unit i carries its own q_i,w_i; the
@@ -497,6 +624,19 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     invisible(NULL)
   }
 
+  # Eq.(3.12) Term 1 channel (cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), prefactor +1/p_g(X)): it appears in
+  # EVERY (j,k) entry, so its coupling is the SUM of the per-entry couplings -- 0 exactly under the smooth
+  # adjoint ((q'1)(w'1) = 0, the cancellation this channel used to rely on), but -1'C1 != 0 under the DK
+  # coupling wherever the eigen floor binds (measured |1'C1|/||C||_F ~ 0.2-0.5 there). Added ONCE with the
+  # summed coupling; the relative gate makes it an exact no-op when nothing floors (1'C1 = 0 then, up to FP).
+  if (do_psi && !is.null(C_arr)) {
+    tot_coup <- if (C_pooled) -sum(C_arr) * .shr else -rowSums(C_arr, dims = 1L) * .shr
+    mxC <- suppressWarnings(max(abs(C_arr)))
+    if (is.finite(mxC) && mxC > 0 && max(abs(tot_coup)) > 1e-10 * mxC)
+      term_psi(Y_t_minus_Y1, Y_t_minus_Y1, kp_g, inv_pg_vec, tot_coup,
+               "w", "w", as.character(g), 1)                                  # T1 channel
+  }
+
   for (j in seq_len(H)) {
     gp_j   <- pairs$gp[j]
     tpre_j <- pairs$tpre[j]
@@ -517,13 +657,21 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       Y_t_minus_Ytk <- ow[, col_t] - ow[, col_tk]
       Y_tk_minus_Y1 <- ow[, col_tk] - ow[, col_1]
 
-      # Sigma_Omega entry coupling for (j,k): coup = q_j w_k (+ q_k w_j off-diagonal, since entry (k,j) shares the IF).
-      # Pooled (averaged): scalar. Pointwise (efficient): per-unit length-n vector Q[,j] W[,k] (+ Q[,k] W[,j]).
-      coup <- if (!do_psi) 0 else if (pw_psi) {
+      # Sigma_Omega entry coupling for (j,k); entry (k,j) shares the IF, hence the doubled off-diagonal.
+      # Preferred: the eigen-floor-aware Daleckii-Krein gradient C (pooled scalar -C[j,k] or per-unit length-n
+      # -C[,j,k]; the sign maps dtheta = C : dOmega onto this channel's +sym(q w') convention, to which it
+      # reduces exactly when nothing floors). Fallback (no C): the smooth adjoint q_j w_k. The (1-lam)
+      # shrinkage-IF factor .shr scales every term (1 when the caller passes no lambda).
+      coup <- if (!do_psi) 0 else if (C_pooled) {
+        if (j == k) -C_arr[j, j] else -2 * C_arr[j, k]
+      } else if (!is.null(C_arr)) {
+        if (j == k) -C_arr[, j, j] else -2 * C_arr[, j, k]
+      } else if (pw_psi) {
         if (j == k) Q_mat[, j] * W_mat[, j] else Q_mat[, j] * W_mat[, k] + Q_mat[, k] * W_mat[, j]
       } else {
         if (j == k) q_vec[j] * w_vec[j] else q_vec[j] * w_vec[k] + q_vec[k] * w_vec[j]
       }
+      if (do_psi) coup <- coup * .shr
 
       # Eq. (3.12) term by term, using conditional 1/p_g(X):
       # Term 1: cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), hoisted above the loops.
@@ -637,6 +785,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
       for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
         Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
+    attr(Omega_array, "omega_bar") <- Omega_hat   # pooled: target for the per-unit PD-blend (parity with the fast build)
     return(Omega_array)   # (do_psi already returned above; the efficient psi rides the FIRST array call's lambda)
   }
 
@@ -650,8 +799,14 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
   mx      <- max(eig$values)
   floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
+  lam_raw <- eig$values                                       # raw (pre-floor) eigenvalues, for the coupling IF
   eig$values <- pmax(eig$values, floor_v)
   Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  # Raw eigendecomposition for the AVERAGED weight channel's eigen-floor-aware coupling (Daleckii-Krein
+  # derivative of the FLOORED inverse) -- same attachment as the sieve and fast-kernel pooled builders. The
+  # pooled floor binds in high-H cells; the smooth -sym(q w') adjoint mis-scales psi_Omega there. Inert for the
+  # estimate (attributes are stripped by solve/%*%); read only by compute_obar_coupling_edid.
+  attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
 
   Omega_hat   # (do_psi returns its list above)
 }
@@ -678,11 +833,13 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
 #'   of per-observation pointwise weights \eqn{w(X_i)}
 #' @param att_gt scalar point estimate (= sum_j w_j * colMeans(gen_out_mat))
 #' @param g scalar: target treatment cohort (unused; kept for API compatibility)
-#' @param trim_keep_mat optional n x H matrix of the per-pair kept-treated masks \eqn{keep_{j}} that
-#'   \code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output);
+#' @param trim_keep_mat optional n x H matrix of the kept-treated masks that
+#'   \code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output;
+#'   under the cell-level common-overlap convention every surviving column equals the cell's COMMON mask);
 #'   NULL (no overlap trimming) selects the byte-identical \eqn{G_g/\pi_g} centering below.
-#' @param m_kept optional length-H vector of the per-pair kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
-#'   that \code{.renorm} divided by; required (non-NULL) iff \code{trim_keep_mat} is non-NULL.
+#' @param m_kept optional length-H vector of the kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
+#'   the renormalization divided by (all equal to the common mass for surviving pairs); required
+#'   (non-NULL) iff \code{trim_keep_mat} is non-NULL.
 #'
 #' @return numeric vector length n, mean approximately 0
 #' @keywords internal
@@ -705,14 +862,17 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
     return(wY - (Gg / pi_g) * att_gt)
   }
 
-  # Overlap trimming active. .renorm divided pair j's generated outcome by m_kept_j = E_n[G_g keep_j], and the
-  # 1/pi_g in each term CANCELS against the pi_g in the renorm factor -- so the estimator is a Hajek ratio in
-  # m_kept_j (= pi_g,kept), NOT in pi_g. Each pair contributes att_j = E_n[w_j Ytilde_j] (sum_j att_j = att_gt),
-  # and the delta method for sum_j N_j/m_kept_j gives the per-pair centering
-  #     EIF_i = wY_i - sum_j att_j * (G_{g,i} keep_{j,i} / m_kept_j).
-  # The omitted pi_g-only centering used above mis-states the variance under trimming with no shrinkage; this
-  # restores it (and reduces EXACTLY to the no-trim line when keep_j == 1 and m_kept_j == pi_g). Mean-zero is
-  # preserved exactly: E_n[G_g keep_j]/m_kept_j = 1 => E_n[EIF] = att_gt - sum_j att_j = 0.
+  # Overlap trimming active. The builder divided every surviving pair's generated outcome by the cell-common
+  # kept mass m_common = E_n[G_g keep_common], and the 1/pi_g in each term CANCELS against the pi_g in the
+  # renorm factor -- so the estimator is a Hajek ratio in m_common (= pi_g,kept), NOT in pi_g. Each pair
+  # contributes att_j = E_n[w_j Ytilde_j] (sum_j att_j = att_gt), and the delta method for sum_j N_j/m_kept_j
+  # gives the centering
+  #     EIF_i = wY_i - sum_j att_j * (G_{g,i} keep_{j,i} / m_kept_j),
+  # which under the common-mask convention (keep_j == keep_common, m_kept_j == m_common for every surviving
+  # pair) collapses to wY_i - (G_{g,i} keep_common,i / m_common) * att_gt. The omitted pi_g-only centering
+  # used above mis-states the variance under trimming with no shrinkage; this restores it (and reduces
+  # EXACTLY to the no-trim line when keep == 1 and m_kept == pi_g). Mean-zero is preserved exactly:
+  # E_n[G_g keep_j]/m_kept_j = 1 => E_n[EIF] = att_gt - sum_j att_j = 0.
   WY_mat <- if (is.matrix(weights)) gen_out_mat * weights else sweep(gen_out_mat, 2L, weights, "*")
   att_j  <- colMeans(WY_mat)                                   # per-pair weighted contribution; sum_j att_j = att_gt
   cbasis <- sweep(trim_keep_mat, 2L, m_kept, "/") * Gg         # n x H: G_g * keep_j / m_kept_j (Gg recycled down cols)
@@ -728,8 +888,9 @@ compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
 #' coefficients compute_generated_outcomes_cov_edid uses (so d phi/d pred is correct by construction; FD-cross-
 #' checked in test-edid-ach-correction). Replaces the per-COEFFICIENT finite difference (sum_K ncol(B_K) generated-
 #' outcome rebuilds) with a few crossprods -- exact (no eps), no rebuilds. The frozen-trim scale
-#' sc_j = (pi_g / m_kept_j) * keep_j[,i] is folded into the weight, reproducing .renorm; keep/m_kept are derived
-#' from trim_keep exactly as in compute_generated_outcomes_cov_edid, so the signature is unchanged (no keep_mat arg).
+#' sc = (pi_g / m_common) * keep_common[i] is folded into the weight, reproducing the builder's COMMON-mask
+#' renormalization; the trim structure is derived from trim_keep via the SAME edid_cell_trim_structure the
+#' builder uses (so masks/masses cannot drift), and the signature is unchanged (no keep_mat arg).
 #' @keywords internal
 #' @noRd
 compute_ach_correction_analytic_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
@@ -742,20 +903,22 @@ compute_ach_correction_analytic_cov_edid <- function(panel_obj, g, t, pairs, pro
   col_t <- panel_obj$period_to_col[[as.character(t)]]
   col_1 <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
   Y_t   <- ow[, col_t]; Y_1 <- ow[, col_1]
-  .keep <- function(key) if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
-  keep_inf <- .keep("Inf")
+  # Cell-common overlap-trim scale (frozen at theta_hat), identical to the builder's: every surviving pair is
+  # rescaled by sc = (pi_g / m_common) * keep_common. Dead pairs are dropped by the caller before this
+  # correction runs; the defensive skip below zeroes any that slip through (their phi is identically 0, so
+  # they carry no nuisance sensitivity).
+  trim_info <- edid_cell_trim_structure(panel_obj, g, pairs, trim_keep, pt_assumption)
+  sc <- if (!trim_info$full_trim) (pi_g / trim_info$m_common) * trim_info$keep_common else numeric(n)
   # per-key per-unit sensitivity s_K = sum_j W_ij d phi_ij / d pred_K  (mirror of the phi construction, term by term)
   svec <- new.env(parent = emptyenv())
   adds <- function(key, v) { cur <- if (exists(key, envir = svec, inherits = FALSE)) get(key, envir = svec) else numeric(n)
                              assign(key, cur + v, envir = svec) }
   for (j in seq_len(nrow(pairs))) {
     gp_j <- pairs$gp[j]; tpre_j <- pairs$tpre[j]; col_tp <- panel_obj$period_to_col[[as.character(tpre_j)]]
+    if (trim_info$dead[j]) next                                                               # dead pair: phi == 0, no sensitivity
     wj   <- if (is.matrix(weights)) weights[, j] else rep(weights[j], n)
     is_self <- (is.finite(gp_j) && gp_j == g) || identical(pt_assumption, "post")
-    keep_used <- if (is_self) keep_inf else keep_inf * .keep(as.character(gp_j))
-    m_kept_j  <- mean(Ig * keep_used)
-    sc <- if (m_kept_j > .Machine$double.eps) (pi_g / m_kept_j) * keep_used else numeric(n)   # == .renorm scale
-    wj <- wj * sc                                                                             # W_ij * sc_ij
+    wj <- wj * sc                                                                             # W_ij * sc_i (common renorm)
     r_inf  <- prop_ratios[["Inf"]]
     md_inf <- cond_means[[paste0("Inf_", t)]] - cond_means[[paste0("Inf_", tpre_j)]]          # m_{Inf,t} - m_{Inf,tpre}
     if (is_self) {                                                                            # phi = sc (Ig/pi_g - r_inf I_inf/pi_g)(yd - md_inf)
@@ -1004,9 +1167,10 @@ edid_nuisance_blocks <- function(m_aux, r_aux) {
 #' Hessian blocks are H[r_block, m_block] = (1/n) B_r' diag(s) B_m with s_i = sum_j W_ij coef_ij -- a few
 #' crossprods, NO finite differences and NO att_fun rebuilds.
 #'
-#' Overlap-trim regime: with \code{trim_keep} held FIXED at theta_hat (so att(theta) stays exactly quadratic), pair
-#' j's generated outcome is \code{.renorm(keep_j * phi_j, keep_j)} = (pi_g / m_kept_j) * keep_j * phi_j, a per-pair
-#' CONSTANT rescale times a per-unit 0/1 mask. Folding sc_j = (pi_g / m_kept_j) * keep_j[,i] into the per-pair weight
+#' Overlap-trim regime: with \code{trim_keep} held FIXED at theta_hat (so att(theta) stays exactly quadratic),
+#' every surviving pair's generated outcome is (pi_g / m_common) * keep_common * phi_j -- the cell-COMMON
+#' constant rescale times the cell-COMMON 0/1 mask (keep_mat columns all equal the common mask; m_kept entries
+#' all equal the common mass). Folding sc_j = (pi_g / m_kept[j]) * keep_mat[, i, j] into the per-pair weight
 #' reproduces that scaling EXACTLY -- the closed-form Hessian is therefore valid under trimming too (it was the only
 #' reason the slow finite-difference fallback existed). \code{keep_mat = NULL} (no trimming) gives sc_j == 1, i.e. the
 #' byte-identical no-trim closed form.

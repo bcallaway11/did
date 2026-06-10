@@ -116,63 +116,73 @@ sigma_quad_edid <- function(cells, cluster_indices, n) {
   P_tot <- sum(Pk)
   if (P_tot == 0L) return(Sigma_quad)                       # no covariate cell -> Sigma_quad = 0
 
-  cstart <- cumsum(c(0L, Pk[-K]))                            # 0-based joint-coef offset of each cell
-
-  # HC2 leverage-corrected stacked scores S_all (n x P_tot). H^{-1} is block-diagonal: keep it as a LIST of
-  # (index-range, H_inv) blocks rather than a dense P_tot x P_tot matrix -- the dense form makes the V build below
-  # an O(P_tot^3) matmul of a mostly-zero matrix (the measured hotspot at large cell counts).
-  S_all   <- matrix(0, n, P_tot)
-  blk_idx <- list(); blk_Hinv <- list(); bi <- 0L
+  # DEDUPLICATED stacked space. The same nuisance block recurs across cells with IDENTICAL content: m-blocks
+  # come from fit_edid_cells' single global (gp, period) conditional-mean cache (every cell's m_aux subsets the
+  # SAME fitted objects), and r-blocks from the per-cohort nuisance cache (shared by all of a cohort's cells) --
+  # so the stacked P_tot is ~10x the number of DISTINCT coefficients. Build the HC2 scores and the score
+  # covariance once per DISTINCT block (identity key: m -> "m|<key>", r -> "r|<cell group>|<key>", unique within
+  # their caches by construction; the block DIMENSION p is appended defensively so a same-key fit of a different
+  # dimension -- e.g. a hypothetical per-cell bs_df = "ic" re-selection -- can never silently alias) and address
+  # V through a per-cell index map. Every V entry is the same dot product as the stacked form -> identical
+  # Sigma_quad up to BLAS summation blocking (<= ~1e-15 relative on the SE).
+  bkey_of <- function(cell, b) paste0(if (isTRUE(b$is_prop)) paste0("r|", cell$group, "|") else "m|", b$key, "|p", b$p)
+  cmap  <- vector("list", K)                                 # cell k -> distinct-space column indices (stacked order)
+  dkeys <- character(0); dblocks <- list(); doffs <- integer(0); Pd <- 0L
   for (k in seq_len(K)) {
     if (Pk[k] == 0L) next
-    blocks <- cells[[k]]$ho$blocks
-    o2 <- 0L
-    for (b in blocks) {
-      # leverage h = diag(B (B'B)^{-1} B') = diag(B (H_inv/n) B'); in-sample (score nonzero) units only.
-      h  <- rowSums((b$B %*% (b$H_inv / n)) * b$B)
-      nz <- rowSums(b$score_mat^2) > 0
-      h  <- ifelse(nz, pmin(pmax(h, 0), 0.5), 0)             # cap at 0.5 (HC blow-up guard)
-      jj <- cstart[k] + o2 + seq_len(b$p)
-      S_all[, jj] <- b$score_mat / sqrt(1 - h)               # HC2 correction
-      bi <- bi + 1L; blk_idx[[bi]] <- jj; blk_Hinv[[bi]] <- b$H_inv
-      o2 <- o2 + b$p
+    for (b in cells[[k]]$ho$blocks) {
+      gk <- bkey_of(cells[[k]], b)
+      if (!gk %in% dkeys) { dkeys <- c(dkeys, gk); dblocks[[length(dkeys)]] <- b; doffs <- c(doffs, Pd); Pd <- Pd + b$p }
     }
   }
-
-  # Cluster-robust joint coefficient covariance V (G/(G-1) finite-cluster correction).
+  names(doffs) <- dkeys
+  for (k in seq_len(K)) {
+    if (Pk[k] == 0L) { cmap[[k]] <- integer(0); next }
+    cmap[[k]] <- unlist(lapply(cells[[k]]$ho$blocks, function(b) {
+      gk <- bkey_of(cells[[k]], b); doffs[[gk]] + seq_len(b$p)
+    }), use.names = FALSE)
+  }
+  # HC2 leverage-corrected scores, ONCE per distinct block (identical expression and inputs as the stacked form).
+  S_d <- matrix(0, n, Pd)
+  for (d in seq_along(dblocks)) {
+    b  <- dblocks[[d]]
+    # leverage h = diag(B (B'B)^{-1} B') = diag(B (H_inv/n) B'); in-sample (score nonzero) units only.
+    h  <- rowSums((b$B %*% (b$H_inv / n)) * b$B)
+    nz <- rowSums(b$score_mat^2) > 0
+    h  <- ifelse(nz, pmin(pmax(h, 0), 0.5), 0)               # cap at 0.5 (HC blow-up guard)
+    S_d[, doffs[d] + seq_len(b$p)] <- b$score_mat / sqrt(1 - h)   # HC2 correction
+  }
+  # Cluster-robust joint coefficient covariance V on the DISTINCT space (G/(G-1) finite-cluster correction).
+  # V[cmap_k, cmap_j] equals the stacked-space V[idx_k, idx_j] entrywise: each entry is the same score dot
+  # product, computed once instead of once per (cell-instance, cell-instance) duplicate pair.
   if (is.null(cluster_indices)) {
-    Ssum  <- S_all
-    cfac  <- 1
+    Ssum <- S_d; cfac <- 1
   } else {
-    Ssum  <- rowsum(S_all, cluster_indices)
-    G     <- length(unique(cluster_indices))
-    cfac  <- if (G > 1L) G / (G - 1) else 1
+    Ssum <- rowsum(S_d, cluster_indices)
+    G    <- length(unique(cluster_indices))
+    cfac <- if (G > 1L) G / (G - 1) else 1
   }
   # V = cfac * D C D / n^2 with D = blockdiag(H_inv). Since D is block-diagonal, D %*% C %*% D scales C's block
-  # rows then block cols by the per-block H_inv -- no dense P_tot x P_tot Hinv matmul. (Hinv_blk %*% C)[jj, ] =
-  # H_inv_jj %*% C[jj, ]; identical arithmetic, O(P_tot^2 * p) instead of O(P_tot^3).
-  V <- crossprod(Ssum)                                       # C (P_tot x P_tot score covariance)
-  for (bi in seq_along(blk_idx)) { jj <- blk_idx[[bi]]; V[jj, ] <- blk_Hinv[[bi]] %*% V[jj, , drop = FALSE] }
-  for (bi in seq_along(blk_idx)) { jj <- blk_idx[[bi]]; V[, jj] <- V[, jj, drop = FALSE] %*% blk_Hinv[[bi]] }
+  # rows then block cols by the per-block H_inv -- no dense Pd x Pd Hinv matmul.
+  V <- crossprod(Ssum)                                       # C (Pd x Pd score covariance)
+  for (d in seq_along(dblocks)) { jj <- doffs[d] + seq_len(dblocks[[d]]$p); V[jj, ] <- dblocks[[d]]$H_inv %*% V[jj, , drop = FALSE] }
+  for (d in seq_along(dblocks)) { jj <- doffs[d] + seq_len(dblocks[[d]]$p); V[, jj] <- V[, jj, drop = FALSE] %*% dblocks[[d]]$H_inv }
   V <- V * (cfac / (n^2))
 
-  # 0.5 tr(H_k V H_j V), exploiting that H_k is nonzero ONLY in its own cell block idx_k. The original embedded
-  # each H_k in a dense P_tot x P_tot Hbig and formed Hbig %*% V (a P_tot^3 matmul of a mostly-zero matrix) per
-  # cell, then a dense t(HV) transpose per (k,j) -- O(K * P_tot^3) + O(K^2 * P_tot^2), quartic in the cell count.
-  # Equivalent block-sparse form: HVb_k = H_k %*% V[idx_k, ] is Pk x P_tot (the only nonzero rows of H_k V), and
-  #   tr(H_k V H_j V) = sum( HVb_k[, idx_j] * t(HVb_j[, idx_k]) )   (Pk x Pj small blocks).
-  # Bit-identical arithmetic; no P_tot x P_tot allocations, matmuls, or transposes.
-  idxs <- lapply(seq_len(K), function(k) if (Pk[k] == 0L) integer(0) else cstart[k] + seq_len(Pk[k]))
-  HVb  <- vector("list", K)
+  # 0.5 tr(H_k V H_j V), exploiting that H_k is nonzero ONLY in its own cell block: HVb_k = H_k %*% V[cmap_k, ]
+  # is Pk x Pd (the only nonzero rows of H_k V), and
+  #   tr(H_k V H_j V) = sum( HVb_k[, cmap_j] * t(HVb_j[, cmap_k]) )   (Pk x Pj small blocks),
+  # where V[cmap_k, cmap_j] (distinct space) == V[idx_k, idx_j] (stacked space) entrywise.
+  HVb <- vector("list", K)
   for (k in seq_len(K)) {
     if (Pk[k] == 0L) next
-    HVb[[k]] <- cells[[k]]$ho$H %*% V[idxs[[k]], , drop = FALSE]   # Pk x P_tot
+    HVb[[k]] <- cells[[k]]$ho$H %*% V[cmap[[k]], , drop = FALSE]   # Pk x Pd
   }
   for (k in seq_len(K)) {
     if (is.null(HVb[[k]])) next
     for (j in k:K) {
       if (is.null(HVb[[j]])) next
-      val <- 0.5 * sum(HVb[[k]][, idxs[[j]], drop = FALSE] * t(HVb[[j]][, idxs[[k]], drop = FALSE]))
+      val <- 0.5 * sum(HVb[[k]][, cmap[[j]], drop = FALSE] * t(HVb[[j]][, cmap[[k]], drop = FALSE]))
       Sigma_quad[k, j] <- val
       Sigma_quad[j, k] <- val
     }

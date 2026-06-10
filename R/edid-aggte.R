@@ -15,8 +15,11 @@
 #' @param type Character scalar, mirroring \code{did::aggte()}: \code{"simple"} (cohort-share-weighted
 #'   average over post-treatment cells), \code{"dynamic"} (event-study: average of \eqn{ES(e)} over
 #'   \eqn{e \ge 0}), \code{"group"} (cohort-level overalls), or \code{"calendar"} (calendar-period overalls).
-#' @param balance_e Integer or \code{NULL}: if not \code{NULL}, restricts the dynamic aggregation to
-#'   relative times in \eqn{[-\text{balance\_e}, \text{balance\_e}]}.
+#' @param balance_e Integer or \code{NULL}: if not \code{NULL}, balances the cohort composition of
+#'   the dynamic aggregation (as in \code{did::aggte}): cohorts observed for fewer than
+#'   \code{balance_e} post-treatment periods are dropped, and event times
+#'   \eqn{e \in [\text{balance\_e} - (T_{\max} - T_{\min}),\ \text{balance\_e}]} are reported, so
+#'   every reported \eqn{e} averages over the same set of cohorts.
 #' @param min_e,max_e Numeric: minimum/maximum relative time to include in dynamic output.
 #' @param na.rm Logical: drop \code{NA} ATT entries before aggregating. Default \code{FALSE}.
 #' @param seed Integer or \code{NULL}: RNG seed for the multiplier-bootstrap path (\code{cband_method =
@@ -41,6 +44,23 @@ aggte_edid <- function(
   type <- match.arg(type)
   if (!inherits(edid_fit_obj, "edid_fit")) {
     stop("`edid_fit_obj` must be an object of class `edid_fit` returned by edid().")
+  }
+  # Feasibility of balance_e: did::aggte keeps only cohorts observed for >= balance_e
+  # post-treatment periods; past the longest available window no cohort qualifies and
+  # compute.aggte fails with an opaque subscript error.
+  if (!is.null(balance_e) && identical(type, "dynamic")) {
+    g_fin <- edid_fit_obj$treatment_groups[is.finite(edid_fit_obj$treatment_groups) &
+                                           edid_fit_obj$treatment_groups != 0]
+    if (length(g_fin) > 0L) {
+      max_e <- max(edid_fit_obj$time_periods) - min(g_fin)
+      if (balance_e > max_e) {
+        stop(sprintf(paste0(
+          "`balance_e` = %s exceeds the longest available post-treatment window: the earliest ",
+          "cohort (g = %s) is observed for at most e = %s post-treatment periods. ",
+          "Choose balance_e <= %s."),
+          format(balance_e), format(min(g_fin)), format(max_e), format(max_e)), call. = FALSE)
+      }
+    }
   }
   # Inference path follows how the fit was produced:
   #  - cband_method = "analytic" (default): aggregate analytically (bstrap = FALSE), then replace the
@@ -92,6 +112,20 @@ aggte_edid <- function(
 # with A the (finite-difference-recovered) cell -> aggregate linear map; the crit then matches the SEs that
 # the cell-level path inflated, keeping the aggregate band higher-order-aware too.
 .edid_analytic_cband_agg <- function(a, fit, reaggregate = NULL) {
+  # Align the clustered finite-sample convention with the cell-level SEs: edid's cell SEs and
+  # vcov() apply the G/(G-1) finite-cluster factor (cluster_cov_edid), while did's getSE() does
+  # not, so without this the aggregate SEs (and the uniform bands built on them) contradict the
+  # cell-level convention of the same fit by sqrt(G/(G-1)). Applied before the higher-order
+  # increment below, which is already in the corrected convention (it comes from sigma_quad's
+  # cluster-robust V).
+  if (!is.null(fit$cluster_indices)) {
+    G_cl <- length(unique(fit$cluster_indices))
+    if (G_cl > 1L) {
+      cl_fac <- sqrt(G_cl / (G_cl - 1))
+      if (!is.null(a$se.egt))     a$se.egt     <- a$se.egt * cl_fac
+      if (!is.null(a$overall.se)) a$overall.se <- a$overall.se * cl_fac
+    }
+  }
   g <- .edid_agg_if(a)
   if (is.null(g$egt) && !is.null(g$overall) && isTRUE(fit$higher_order) &&
       !is.null(reaggregate) && !is.null(fit$cells) && !is.null(a$overall.se)) {
@@ -123,10 +157,13 @@ aggte_edid <- function(
         if (length(he_inc) == length(a$se.egt))
           a$se.egt <- sqrt(pmax(a$se.egt^2 + he_inc, 0))
         # The overall summary SE too: the overall IF is an EXACT linear combo of the per-element IFs (overall =
-        # weighted mean of the dynamic effects). Recover the weights w (overall = egt %*% w) and add only the
-        # higher-order term w'(A Sigma_quad A')w to the existing analytic overall.se (same byte-identity property).
+        # weighted mean of the dynamic effects). Recover the weights w (overall = egt %*% w) by a RANK-SAFE
+        # least-squares solve and add only the higher-order term w'(A Sigma_quad A')w to the existing analytic
+        # overall.se (same byte-identity property). A rank-deficient or inconsistent system (collinear
+        # event-study influence columns) warns and skips the increment -- never silently (the previous plain
+        # solve() swallowed the error and dropped the increment without a trace).
         if (!is.null(g$overall) && !is.null(a$overall.se) && is.matrix(g$egt) && ncol(g$egt) == nrow(HO)) {
-          w <- tryCatch(drop(solve(crossprod(g$egt), crossprod(g$egt, g$overall))), error = function(e) NULL)
+          w <- .edid_recover_overall_weights(g$egt, g$overall)
           if (!is.null(w) && length(w) == nrow(HO))
             a$overall.se <- sqrt(max(a$overall.se^2 + drop(crossprod(w, HO %*% w)), 0))
         }
@@ -134,9 +171,51 @@ aggte_edid <- function(
     }
     if (isTRUE(fit$cband)) {
       a$crit.val.egt <- supt_crit_edid(Sig, alp = fit$alpha %||% 0.05, seed = fit$seed)
+      # Record that a simultaneous crit is in force so summary.AGGTEobj labels the band
+      # correctly (it would otherwise print "Pointwise" because bstrap/cband are FALSE on
+      # the analytic path).
+      a$DIDparams$cband <- TRUE
     }
   }
   a
+}
+
+# Rank-safe recovery of the overall-aggregate weights w solving overall = egt %*% w, by a DIRECT SVD
+# least squares on egt (not the normal equations, whose condition number is cond(egt)^2 and whose solve
+# can leave a spuriously large residual on strongly correlated influence columns; no new dependencies).
+# The overall influence function is an exact linear combination of the per-element event-study influence
+# functions, so the system is consistent in exact arithmetic; but the egt columns can be COLLINEAR
+# (e.g. duplicated cells feeding one event time, or a degenerate 2-period design), where the previous
+# plain solve(crossprod(egt), .) threw and the increment was SILENTLY skipped. Returns w when the
+# (full-rank) solution reproduces `overall`; on a rank-deficient system or a non-negligible recovery
+# residual ||egt %*% w - overall|| it warns and returns NULL (the caller then SKIPS the higher-order
+# overall.se increment -- a deliberate, audible skip: with collinear columns w is not unique and the
+# quadratic increment w' HO w is not identified from the least-squares fit alone).
+.edid_recover_overall_weights <- function(egt, overall) {
+  .skip <- function(why) {
+    warning(paste0(
+      "higher_order: could not recover the overall-aggregate weights from the per-element influence ",
+      "columns (", why, "); the higher-order increment to the OVERALL SE of this aggregation is skipped ",
+      "(the per-element SEs and the uniform band keep their increment). This is expected for the 'group' ",
+      "aggregation, whose overall influence function carries the estimated cohort-share weights and is ",
+      "genuinely outside the column span."), call. = FALSE)
+    NULL
+  }
+  sv <- tryCatch(svd(egt), error = function(e) NULL)
+  if (is.null(sv) || !all(is.finite(sv$d))) return(.skip("SVD of the influence columns failed"))
+  d_max <- max(sv$d)
+  if (!is.finite(d_max) || d_max <= 0) return(.skip("the influence columns are zero"))
+  tol      <- d_max * max(dim(egt)) * .Machine$double.eps
+  pos      <- sv$d > tol
+  rank_def <- any(!pos)
+  d_inv    <- ifelse(pos, 1 / sv$d, 0)
+  w        <- drop(sv$v %*% (d_inv * drop(crossprod(sv$u, overall))))
+  resid    <- sqrt(sum((egt %*% w - overall)^2))
+  scale_o  <- sqrt(sum(overall^2))
+  if (rank_def) return(.skip("the columns are collinear: the weight vector is not unique"))
+  if (!all(is.finite(w)) || resid > 1e-6 * max(scale_o, .Machine$double.eps))
+    return(.skip("the recovery residual is non-negligible: the overall IF is not in the column span"))
+  w
 }
 
 # Recover the constant cell -> aggregate linear map A (n_agg x K) by finite-differencing the aggregation:

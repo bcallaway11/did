@@ -4,20 +4,13 @@
 \alias{as_MP_edid}
 \title{Build a \code{did::MP} object from an \code{edid} fit}
 \usage{
-as_MP_edid(
-  fit,
-  bstrap = NULL,
-  biters = NULL,
-  clustervars = NULL,
-  cband = NULL
-)
+as_MP_edid(fit, bstrap = NULL, biters = NULL, clustervars = NULL, cband = NULL)
 }
 \arguments{
 \item{fit}{an \code{edid_fit} object returned by \code{\link{edid}}.}
 
 \item{bstrap, biters, clustervars, cband}{optional overrides; default to the fit's effective
-settings. Clustered or
-bootstrap inference in \code{aggte()} then follows the did conventions.}
+settings. Clustered or bootstrap inference in \code{aggte()} then follows the did conventions.}
 }
 \value{
 a \code{did::MP} object (\code{group}, \code{t}, \code{att}, \code{inffunc}, \code{DIDparams}, ...).

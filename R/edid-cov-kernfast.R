@@ -45,24 +45,33 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
   }
   # cached conditional mean of a difference vector over a group: returns mu (length n) and centered vc (over idx).
   # SAME arithmetic as kernel_cond_cov_kp's mu_A: A_c = A[idx]-mean(A[idx]); mu = drop(Kg %*% A_c)/Ks.
-  mu_cache <- new.env(parent = emptyenv())
+  # mu/cov entries live in the SHARED kp_cache under "mu:"/"cov:"-prefixed keys (no collision with the plain
+  # group keys of get_kp) so the psi_Omega pass (compute_omega_star_cov_edid's term_psi, same cell, same
+  # kp_cache) can READ them instead of recomputing the identical kernel means and covariances.
+  mu_cache <- if (is.null(kp_cache)) new.env(parent = emptyenv()) else kp_cache
   cmean <- function(v, vkey, kp, gkey) {
     if (!isTRUE(kp$ok)) return(list(ok = FALSE))
-    key <- paste0(vkey, "@", gkey)
+    key <- paste0("mu:", vkey, "@", gkey)
     if (exists(key, envir = mu_cache, inherits = FALSE)) return(get(key, envir = mu_cache))
     vc <- v[kp$idx] - mean(v[kp$idx]); mu <- drop(kp$Kg %*% vc) / kp$Ks
-    out <- list(ok = TRUE, mu = mu, vc = vc, kp = kp); assign(key, out, envir = mu_cache); out
+    out <- list(ok = TRUE, mu = mu, vc = vc, kp = kp, ckey = paste0(vkey, "@", gkey))
+    assign(key, out, envir = mu_cache); out
   }
-  # conditional covariance from two cached means (cross-moment computed here; the O(H^2) per-pair part)
+  # conditional covariance from two cached means (cross-moment computed here; the O(H^2) per-pair part),
+  # memoized per (akey, bkey, group): repeated (tpre_j, tpre_k) combos are exact repeats, and the psi pass
+  # consumes the same five (A, B, group) covariances this pass builds (byte-identical values by construction).
   ccov <- function(a, b) {
     if (!isTRUE(a$ok) || !isTRUE(b$ok)) return(rep(0, n))
+    ck <- paste0("cov:", a$ckey, "|", b$ckey)
+    if (exists(ck, envir = mu_cache, inherits = FALSE)) return(get(ck, envir = mu_cache))
     cv <- drop(a$kp$Kg %*% (a$vc * b$vc)) / a$kp$Ks - a$mu * b$mu
-    cv[is.na(cv)] <- 0; cv
+    cv[is.na(cv)] <- 0
+    assign(ck, cv, envir = mu_cache); cv
   }
 
   kp_g <- get_kp(mask_g, as.character(g)); kp_inf <- get_kp(mask_inf, "Inf")
   w_vec <- ow[, col_t] - ow[, col_1]                                   # Y_t - Y_1
-  cm_w_g <- cmean(w_vec, paste0("w", col_t), kp_g, as.character(g))    # mu_w in group g
+  cm_w_g <- cmean(w_vec, "w", kp_g, as.character(g))    # mu_w in group g ("w" = the psi pass's label; col_t is cell-fixed and the cache is per-cell
   term1_const <- inv_pg_vec * ccov(cm_w_g, cm_w_g)                     # cell-constant term 1
 
   # Precompute per-pair info + cached means: u_j (=Y_t-Y_tpre_j) in Inf; v_j (=Y_tpre_j-Y_1) in g (self) and in gp_j.
@@ -155,6 +164,15 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
   eig <- eigen(Omega_hat, symmetric = TRUE)
   d_cov <- ncol(X_mat); a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
   mx <- max(eig$values); floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
+  lam_raw <- eig$values                                       # raw (pre-floor) eigenvalues, for the coupling IF
   eig$values <- pmax(eig$values, floor_v)
-  eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  # Attach the raw eigendecomposition so the AVERAGED weight channel can build the eigen-floor-aware coupling
+  # (Daleckii-Krein derivative of the FLOORED inverse), exactly as the sieve builder does. The pooled kernel
+  # Omega-bar floor BINDS in high-H cells (the H moments are strongly correlated, so most eigenvalues sit at the
+  # relative floor mx * n^-a); there the smooth -sym(q w') adjoint mis-scales psi_Omega (the floored directions
+  # do not respond to dOmega-bar). Inert for the estimate itself (attributes are stripped by solve/%*%); read
+  # only by compute_obar_coupling_edid.
+  attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+  out
 }

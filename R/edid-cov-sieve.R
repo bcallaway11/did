@@ -87,8 +87,9 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   # pref/coup/sign copied from the kernel term_psi) and IF_beta(l) = n BtB_inv B_l e_l (l in group); the 1/n and
   # n cancel, so per moment the contribution is e_l * B_l' BtB_inv (sum_i s_i dCov_i/dbeta) -- a length-p
   # accumulator summed over cells i FIRST (O(n p), no n x n), then one basis-dot per group unit. Product rule on
-  # E[A|X]E[B|X] gives the -mu_B, -mu_A weights. Term 1 (cell-constant) is skipped: q_i'1 = 0 makes its coupling
-  # sum to 0 per unit (the cancellation the kernel relies on). Centering of A,B is OLS-span-invariant => uses raw
+  # E[A|X]E[B|X] gives the -mu_B, -mu_A weights. Term 1 (cell-constant) has summed coupling (q'1)(w'1) = 0 under
+  # the smooth adjoint, but -1'C1 != 0 under the DK coupling wherever the floor binds: it is added once with the
+  # summed coupling below (exact no-op when nothing floors). Centering of A,B is OLS-span-invariant => uses raw
   # fits. Returns list(psi, coupled_C); the inv-p correction and the eif fold (psi - corr) are smoother-agnostic.
   if (!is.null(psi_qw)) {
     pw_psi <- isTRUE(psi_qw$pointwise)
@@ -142,6 +143,17 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
       gpk <- as.character(gp[j])
       if (!is.null(inv_propensities) && !is.null(inv_propensities[[gpk]])) return(inv_propensities[[gpk]])
       pi_gp <- panel_obj$cohort_fractions[[gpk]]; if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n)
+    }
+    # Eq.(3.12) Term 1 channel (cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), prefactor +1/p_g(X)): it appears
+    # in EVERY (j,k) entry, so its coupling is the SUM of the per-entry couplings -- 0 exactly under the smooth
+    # adjoint ((q'1)(w'1) = 0, the cancellation the skip used to rely on), but -1'C1 != 0 under the DK coupling
+    # wherever the eigen floor binds (measured |1'C1|/||C||_F ~ 0.2-0.5 there). Added ONCE with the summed
+    # coupling; the relative gate makes it an exact no-op when nothing floors (1'C1 = 0 then, up to FP).
+    if (!is.null(C_arr)) {
+      tot_coup <- if (C_pooled) -sum(C_arr) * .shr else -rowSums(C_arr, dims = 1L) * .shr
+      mxC <- suppressWarnings(max(abs(C_arr)))
+      if (is.finite(mxC) && mxC > 0 && max(abs(tot_coup)) > 1e-10 * mxC)
+        add_term(Wg, Wg, pc_g, inv_pg_vec, tot_coup, 1, as.character(g), "w", "w")              # T1
     }
     for (j in seq_len(H)) {
       ctj <- panel_obj$period_to_col[[as.character(tpre[j])]]

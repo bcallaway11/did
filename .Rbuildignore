@@ -38,3 +38,4 @@ Icon?
 ^spec\.md$
 ^test-spec\.md$
 ^CLAUDE\.md$
+^data-raw$

@@ -25,10 +25,15 @@ estimate_propensity_ratio_edid(
 
 \item{gp}{scalar: comparison cohort (may be Inf for never-treated)}
 
-\item{bs_df}{integer: B-spline degrees of freedom (default 4)}
+\item{bs_df}{integer B-spline degrees of freedom (default 4), or \code{"ic"}
+for the per-fit information-criterion selection of
+\code{\link{select_bs_df_ic_edid}} (the paper's BIC-flavored rule)}
 }
 \value{
-numeric vector length n_test: estimated r(X) values
+numeric vector length n_test: estimated r(X) values. Under
+\code{bs_df = "ic"} the selected df is attached as attribute
+\code{"edid_bs_df"} (or list element \code{bs_df} when
+\code{return_aux = TRUE}).
 }
 \description{
 Implements the sieve (B-spline) estimator for the propensity ratio from

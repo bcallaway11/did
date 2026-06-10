@@ -84,10 +84,11 @@ print.edid_fit <- function(x, ...) {
 
   alp <- x$alpha
   cband_text1a <- paste0(100 * (1 - alp), "% ")
-  # Simultaneous iff a > qnorm crit was actually applied: the multiplier bootstrap ran (bstrap with the
-  # multiplier cband) OR the analytic sup-t band was built (analytic cband with cband = TRUE).
-  simult <- (isTRUE(x$bstrap) && identical(x$cband_method, "multiplier")) ||
-            (identical(x$cband_method, "analytic") && isTRUE(x$cband))
+  # Simultaneous iff a > qnorm crit was actually applied: cband = TRUE with either the multiplier
+  # bootstrap or the analytic sup-t construction. bstrap = TRUE with cband = FALSE keeps pointwise CIs.
+  simult <- isTRUE(x$cband) &&
+            ((isTRUE(x$bstrap) && identical(x$cband_method, "multiplier")) ||
+             identical(x$cband_method, "analytic"))
   cband_text1b <- ifelse(simult, "Simult. ", "Pointwise ")
   cband_text1  <- paste0("[", cband_text1a, cband_text1b)
 
@@ -164,7 +165,10 @@ coef.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
       df <- object$att_gt
       stats::setNames(df$att, paste0("ATT(", df$group, ",", df$time, ")"))
     },
-    overall = c(overall = object$overall$overall.att),
+    overall = {
+      if (is.null(object$overall)) return(numeric(0L))
+      c(overall = object$overall$overall.att)
+    },
     event_study = {
       a <- object$event_study
       if (is.null(a)) return(numeric(0L))
@@ -257,10 +261,19 @@ as.data.frame.edid_fit <- function(x, row.names = NULL, optional = FALSE, ...,
                                     which = c("att_gt", "overall", "event_study", "group")) {
   which <- match.arg(which)
   z <- stats::qnorm(1 - x$alpha / 2)
+  # Per-element aggregation CIs reuse the stored crit (sup-t when cband = TRUE), so the
+  # column semantics match `which = "att_gt"` (which returns the stored bands) instead of
+  # silently downgrading the aggregations to pointwise.
+  .agg_crit <- function(a) {
+    cv <- a$crit.val.egt
+    if (length(cv) == 1L && is.finite(cv)) cv else z
+  }
   switch(which,
     att_gt = x$att_gt,
     overall = {
       a <- x$overall
+      if (is.null(a)) return(data.frame(att = numeric(0L), se = numeric(0L),
+                                        ci_lower = numeric(0L), ci_upper = numeric(0L)))
       data.frame(att = a$overall.att, se = a$overall.se,
                  ci_lower = a$overall.att - z * a$overall.se,
                  ci_upper = a$overall.att + z * a$overall.se, stringsAsFactors = FALSE)
@@ -269,16 +282,18 @@ as.data.frame.edid_fit <- function(x, row.names = NULL, optional = FALSE, ...,
       a <- x$event_study
       if (is.null(a)) return(data.frame(e = numeric(0L), att = numeric(0L), se = numeric(0L),
                                         ci_lower = numeric(0L), ci_upper = numeric(0L)))
+      cv <- .agg_crit(a)
       data.frame(e = a$egt, att = a$att.egt, se = a$se.egt,
-                 ci_lower = a$att.egt - z * a$se.egt, ci_upper = a$att.egt + z * a$se.egt,
+                 ci_lower = a$att.egt - cv * a$se.egt, ci_upper = a$att.egt + cv * a$se.egt,
                  stringsAsFactors = FALSE)
     },
     group = {
       a <- x$group
       if (is.null(a)) return(data.frame(group = numeric(0L), att = numeric(0L), se = numeric(0L),
                                         ci_lower = numeric(0L), ci_upper = numeric(0L)))
+      cv <- .agg_crit(a)
       data.frame(group = a$egt, att = a$att.egt, se = a$se.egt,
-                 ci_lower = a$att.egt - z * a$se.egt, ci_upper = a$att.egt + z * a$se.egt,
+                 ci_lower = a$att.egt - cv * a$se.egt, ci_upper = a$att.egt + cv * a$se.egt,
                  stringsAsFactors = FALSE)
     }
   )

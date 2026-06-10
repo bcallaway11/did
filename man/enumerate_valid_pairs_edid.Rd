@@ -11,7 +11,8 @@ enumerate_valid_pairs_edid(
   period_1,
   pt_assumption,
   anticipation = 0L,
-  never_treated_val = Inf
+  never_treated_val = Inf,
+  moment_set = NULL
 )
 }
 \arguments{
@@ -29,6 +30,10 @@ enumerate_valid_pairs_edid(
 
 \item{never_treated_val}{value used to represent the never-treated cohort
 (default \code{Inf})}
+
+\item{moment_set}{\code{NULL} (default: no restriction) or a data.frame with
+columns \code{g}, \code{gp}, \code{tpre} restricting the enumerated pairs
+per target cohort (intersection semantics).}
 }
 \value{
 data.frame with columns \code{gp} (comparison cohort) and
@@ -39,9 +44,11 @@ Constructs the set \eqn{H_{gt}} of valid \code{(gp, tpre)} pairs used to
 form identifying DiD moments for cohort \code{target_g} at time \code{target_t}.
 }
 \details{
-Under \strong{PT-Post}: returns exactly one pair \code{(Inf, target_g - 1 - anticipation)},
-or a 0-row data.frame if that pre-period does not exist in \code{time_periods} or
-equals \code{period_1}.
+Under \strong{PT-Post}: returns exactly one pair \code{(Inf, tpre)} with \code{tpre}
+the most recent observed period strictly before \code{target_g - anticipation}
+(\code{= target_g - 1 - anticipation} on a unit-spaced grid), or a 0-row data.frame
+if no observed period precedes the (anticipation-adjusted) treatment onset. When
+\code{tpre == period_1} the pair is the standard 2x2 DiD moment.
 
 Under \strong{PT-All}: iterates over treated cohorts \code{gp} only (the
 never-treated group is the time control inside every moment, not a comparison
@@ -52,5 +59,12 @@ For \code{gp != target_g}: valid \code{tpre} are periods strictly between
 \code{period_1} and \code{gp - anticipation} (exclusive on both ends).
 Returns a 0-row data.frame if no valid pairs exist (e.g., single cohort with
 only one pre-period equal to \code{period_1}).
+
+When \code{moment_set} is supplied (advanced; see \code{\link{edid}}), the
+enumerated pairs for \code{target_g} are intersected with the user-supplied
+\code{(gp, tpre)} rows for that cohort: rows of \code{moment_set} that are
+not part of the enumeration are silently ignored (the mechanism can only
+restrict, never extend, the set of valid identifying moments). With
+\code{moment_set = NULL} (default) the enumeration is unchanged.
 }
 \keyword{internal}

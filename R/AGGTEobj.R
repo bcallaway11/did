@@ -106,9 +106,11 @@ summary.AGGTEobj <- function(object, ...) {
 
     cat("\n")
     cband_text1a <- paste0(100*(1-object$DIDparams$alp),"% ")
-    cband_text1b <- ifelse(object$DIDparams$bstrap,
-                           ifelse(object$DIDparams$cband, "Simult. ", "Pointwise "),
-                           "Pointwise ")
+    # DIDparams$cband stores the effective band type: did's bootstrap path coerces it to FALSE
+    # whenever the simultaneous crit falls back to pointwise, and edid's analytic sup-t path sets
+    # it to TRUE when it installs a simultaneous crit without the bootstrap. Label from it directly
+    # (the old bstrap && cband rule mislabeled edid's analytic simultaneous bands as pointwise).
+    cband_text1b <- ifelse(isTRUE(object$DIDparams$cband), "Simult. ", "Pointwise ")
     cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
     cband_lower <- object$att.egt - object$crit.val.egt*object$se.egt

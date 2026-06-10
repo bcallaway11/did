@@ -37,11 +37,16 @@ cross-fitted propensity ratios. Must include key \code{"Inf"} for
 
 \item{trim_keep}{optional named list of \{0,1\} n-vectors keyed by comparison cohort (\code{"Inf"} /
 \code{as.character(gp)}): DRDID-style overlap-trim masks; NULL or a missing key keeps all units for that
-comparison. A pair's mask is the product of the masks of the comparisons it uses.}
+comparison. A pair's OWN mask is the product of the masks of the comparisons it uses; the cell's
+COMMON mask is the intersection of the surviving pairs' own masks (see
+\code{edid_cell_trim_structure}), and every surviving column is built/renormalized with that one
+common mask and one common kept mass.}
 
-\item{return_trim_info}{logical: if TRUE return \code{list(gen_out, keep, m_kept)} carrying the per-pair
-kept-treated masks + masses (\code{keep}/\code{m_kept} NULL when no unit was trimmed) for the EIF's
-kept-treated-mass centering; if FALSE (default) return the bare n x H generated-outcome matrix.}
+\item{return_trim_info}{logical: if TRUE return \code{list(gen_out, keep, m_kept, dead)} carrying the
+common kept-treated mask + mass per surviving pair (\code{keep}/\code{m_kept} NULL when no unit was
+trimmed) for the EIF's kept-treated-mass centering, plus \code{dead} (logical H, or NULL when no pair
+is dead): pairs whose own mask retains no treated mass, which the caller must DROP from the cell's
+moment set (their columns are zeroed here); if FALSE (default) return the bare n x H matrix.}
 }
 \value{
 numeric matrix n x H (entries may be NA if nuisances are NA), or the list above when

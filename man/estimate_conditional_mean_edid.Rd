@@ -25,10 +25,15 @@ estimate_conditional_mean_edid(
 
 \item{gp}{scalar: cohort to regress on (may be Inf)}
 
-\item{bs_df}{integer: B-spline degrees of freedom (default 4)}
+\item{bs_df}{integer B-spline degrees of freedom (default 4), or \code{"ic"}
+for the per-fit information-criterion selection (see
+\code{\link{select_bs_df_ic_edid}}; least-squares loss
+\eqn{\mathbb{E}_n[G_{g'} (Y_\Delta - m)^2]})}
 }
 \value{
-numeric vector length n_test
+numeric vector length n_test. Under \code{bs_df = "ic"} the selected
+df is attached as attribute \code{"edid_bs_df"} (or list element
+\code{bs_df} when \code{return_aux = TRUE}).
 }
 \description{
 Fits an OLS B-spline regression of \code{Y_delta} on \code{B(X)} using only

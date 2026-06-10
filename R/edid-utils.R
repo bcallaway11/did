@@ -118,16 +118,21 @@ compute_pseudoinverse_edid <- function(mat, tol = NULL) {
 
 #' Condition number of a matrix via SVD
 #'
+#' Singular values at or below \code{tol * max(d)} (\code{tol = 100 * .Machine$double.eps}) are treated as
+#' structural zeros: an exactly (or numerically) singular matrix returns \code{Inf}, not the large-but-finite
+#' ratio \code{max(d) / min(d[d > 0])} of its FP-noise smallest singular value -- which would let a caller
+#' compare a rank-deficient matrix against a finite condition threshold and wrongly take the \code{solve()} path.
+#'
 #' @param mat numeric matrix
-#' @return scalar: max singular value / min positive singular value.
-#'   Returns \code{Inf} if min singular value is 0.
+#' @return scalar: max singular value / min singular value above the relative tolerance.
+#'   Returns \code{Inf} if any singular value is a structural zero (or the matrix is all zero).
 #' @keywords internal
 check_condition_edid <- function(mat) {
   d <- svd(mat, nu = 0L, nv = 0L)$d
   if (length(d) == 0L || max(d) == 0) return(Inf)
-  min_pos <- min(d[d > 0])
-  if (length(min_pos) == 0L) return(Inf)
-  max(d) / min_pos
+  tol <- 100 * .Machine$double.eps * max(d)
+  if (any(d <= tol)) return(Inf)
+  max(d) / min(d)
 }
 
 #' Weighted OLS helper

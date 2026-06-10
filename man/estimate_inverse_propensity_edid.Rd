@@ -22,10 +22,14 @@ estimate_inverse_propensity_edid(
 
 \item{gp}{scalar: cohort whose inverse propensity to estimate}
 
-\item{bs_df}{integer: B-spline degrees of freedom (default 4)}
+\item{bs_df}{integer B-spline degrees of freedom (default 4), or \code{"ic"}
+for the per-fit information-criterion selection (see
+\code{\link{select_bs_df_ic_edid}}; loss \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]})}
 }
 \value{
-numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0
+numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0.
+Under \code{bs_df = "ic"} the selected df is attached as attribute
+\code{"edid_bs_df"} (or list element \code{bs_df} when \code{return_aux = TRUE}).
 }
 \description{
 Implements the sieve estimator for the inverse propensity from

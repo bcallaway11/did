@@ -1,0 +1,57 @@
+COPYRIGHTS for the did package
+==============================
+
+All code and documentation in this package is Copyright (c) the package
+authors (see the Authors@R field of DESCRIPTION) and distributed under the
+GPL-2 license stated in DESCRIPTION, with the exception noted below.
+
+---------------------------------------------------------------------------
+inst/extdata/aks_lookup/ -- MissAdapt lookup tables (MIT License)
+---------------------------------------------------------------------------
+
+The files
+
+    inst/extdata/aks_lookup/policy.mat
+    inst/extdata/aks_lookup/thresholds.mat
+    inst/extdata/aks_lookup/emse_corr.mat
+    inst/extdata/aks_lookup/aks_lookup.rds   (a conversion of the above;
+                                              see data-raw/aks_lookup.R)
+
+contain the pre-tabulated adaptive-estimator lookup tables of
+
+    Armstrong, T. B., Kline, P., & Sun, L. (2025). Adapting to
+    Misspecification. Econometrica, 93(6), 1981-2005.
+
+vendored unmodified (byte-identical) from the MissAdapt repository,
+https://github.com/lsun20/MissAdapt (commit
+98d823a0818eebbec37ce7d1acf9ca0b78aee46b; also archived as Zenodo record
+16890198), where they are distributed under the following license:
+
+    MIT License
+
+    Copyright (c) 2023 Sophie Sun
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including
+    without limitation the rights to use, copy, modify, merge, publish,
+    distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to
+    the following conditions:
+
+    The above copyright notice and this permission notice shall be included
+    in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+The MIT license is GPL-compatible; the package as a whole is distributed
+under GPL-2. The MIT notice above is additionally embedded as the "license"
+attribute of aks_lookup.rds, and the conversion script
+(data-raw/aks_lookup.R) documents the provenance, grid conventions, and
+sanity checks in full.

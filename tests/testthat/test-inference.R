@@ -28,16 +28,21 @@ same_matrix_elem <- function(A, B) {
   all.equal(dense_sort(A), dense_sort(B))
 }
 
-temp_lib <- tempfile()
-dir.create(temp_lib)
-withr::defer(unlink(temp_lib, recursive = TRUE), teardown_env())
-
 old_did_available <- FALSE
-# Skip the did 2.1.2 reference install under coverage instrumentation (R_COVR=true): the callr
-# sub-processes that load the old version are fragile under covr. Leaving old_did_available = FALSE
-# makes every test below hit its existing skip_if(!old_did_available) guard, so test-coverage stays
-# green; full installs still run under R CMD check / R-Package-Test (no regression there).
-if (!identical(Sys.getenv("NOT_CRAN"), "false") && !identical(Sys.getenv("R_COVR"), "true")) {
+# The did 2.1.2 reference comparison needs a live CRAN install at test-collection time, which is
+# slow, network-dependent, and pulls a dependency chain into a temp library on every ordinary
+# `testthat::test_local()` run. Opt in explicitly with DID_TEST_REFERENCE_INSTALL=true (CI can set
+# it); everything below degrades to its skip_if(!old_did_available) guard otherwise. Also skipped
+# under coverage instrumentation (R_COVR=true): the callr sub-processes that load the old version
+# are fragile under covr.
+if (identical(Sys.getenv("DID_TEST_REFERENCE_INSTALL"), "true") &&
+    !identical(Sys.getenv("NOT_CRAN"), "false") &&
+    !identical(Sys.getenv("R_COVR"), "true") &&
+    requireNamespace("remotes", quietly = TRUE) &&
+    requireNamespace("withr", quietly = TRUE)) {
+  temp_lib <- tempfile()
+  dir.create(temp_lib)
+  withr::defer(unlink(temp_lib, recursive = TRUE), teardown_env())
   old_did_available <- tryCatch({
     remotes::install_version("did", version = "2.1.2", lib = temp_lib,
                              repos = "https://cloud.r-project.org", quiet = TRUE)

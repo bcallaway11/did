@@ -20,7 +20,9 @@ fit_edid_cells(
   higher_order_explicit = TRUE,
   misspec_robust_explicit = TRUE,
   trim_level = Inf,
-  mc_cores = getOption("edid_mc_cores", 1L)
+  mc_cores = getOption("edid_mc_cores", 1L),
+  moment_set = NULL,
+  bs_df = 4L
 )
 }
 \arguments{
@@ -38,6 +40,13 @@ is non-NULL)}
 
 \item{need_eif}{logical: if TRUE, always store EIF regardless of store_eif
 (used internally when \code{n_bootstrap > 0})}
+
+\item{moment_set}{NULL (default) or a data.frame (g, gp, tpre) restricting the
+enumerated pairs per target cohort; forwarded to
+\code{enumerate_valid_pairs_edid()} (see \code{\link{edid}})}
+
+\item{bs_df}{integer >= 3 (default \code{4L}) or \code{"ic"}: B-spline df for
+the sieve nuisances, or the per-fit IC selection (see \code{\link{edid}})}
 }
 \value{
 list with elements:
@@ -45,6 +54,8 @@ list with elements:
 \item{\code{cells}}{list of \code{edid_cell_result} objects}
 \item{\code{eif_matrix}}{n x n_valid_cells numeric matrix, or NULL}
 \item{\code{cell_index}}{data.frame: group, time, cell_id, is_pre}
+\item{\code{bs_df_selected}}{data.frame of IC-selected dfs per nuisance fit
+(only under \code{bs_df = "ic"} on the covariate path), or NULL}
 }
 }
 \description{

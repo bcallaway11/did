@@ -66,6 +66,16 @@ validate_edid_inputs <- function(
     stop("`yname`, `idname`, `tname`, and `gname` must name distinct columns.")
   }
 
+  # Reserved internal names: as_MP_edid() builds a per-unit frame with a `.w` sampling-weight
+  # column and a `.edid_cluster` cluster column; a user column with one of these names would be
+  # silently shadowed there and corrupt aggregation weights.
+  reserved <- c(".w", ".edid_cluster")
+  bad_reserved <- intersect(col_names, reserved)
+  if (length(bad_reserved) > 0L) {
+    stop(sprintf("Column name(s) %s are reserved for internal use; rename the column.",
+                 paste(sprintf("`%s`", bad_reserved), collapse = ", ")))
+  }
+
   # ------------------------------------------------------------------
   # 3. yname column is numeric; no NA; all finite
   # ------------------------------------------------------------------
@@ -110,6 +120,17 @@ validate_edid_inputs <- function(
   if (!any(is.finite(ft_col))) {
     stop(sprintf(paste0("Column `%s` (gname) has no finite (treated) cohort: every unit is never-treated ",
          "(Inf). edid() needs at least one treated cohort to estimate ATT(g,t)."), gname))
+  }
+
+  # ------------------------------------------------------------------
+  # 5b. No NA unit ids
+  # ------------------------------------------------------------------
+  # An NA id passes the balance arithmetic below (unique() keeps NA) but
+  # prepare_edid_panel()'s sort(unique(.)) drops it, so the unit's data would
+  # silently vanish from the fit; two NA-id units trip the duplicate-rows error
+  # with a misleading message. Reject explicitly.
+  if (anyNA(data[[idname]])) {
+    stop(sprintf("Column `%s` (idname) contains NA values.", idname))
   }
 
   # ------------------------------------------------------------------
@@ -330,6 +351,14 @@ validate_edid_inputs <- function(
     }
     if (!clustervars %in% names(data)) {
       stop(sprintf("`clustervars` = \"%s\" is not a column in `data`.", clustervars))
+    }
+    # Clustering on a design column corrupts downstream aggregation: as_MP_edid()'s per-unit
+    # frame would have its cohort/id/time column overwritten by cluster codes (silently wrong
+    # group shares), and clustering on the outcome is never meaningful.
+    if (clustervars %in% col_names) {
+      stop(sprintf(
+        "`clustervars` = \"%s\" coincides with yname/idname/tname/gname. Clustering at the unit level is the default (no `clustervars` needed); to cluster at the cohort level, add a copy of the cohort column under a different name.",
+        clustervars))
     }
     cl_col <- data[[clustervars]]
     if (anyNA(cl_col)) {

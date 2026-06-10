@@ -29,7 +29,9 @@ edid(
   higher_order = FALSE,
   misspec_robust = TRUE,
   trim_level = 200,
-  cores = getOption("edid_mc_cores", 1L)
+  cores = getOption("edid_mc_cores", 1L),
+  moment_set = NULL,
+  bs_df = 4L
 )
 }
 \arguments{
@@ -96,9 +98,11 @@ averages \eqn{ATT(g,t)} across the cohorts treated by each calendar period;
 \code{"overall"} returns the simple cohort-share aggregate over all
 post-treatment cells. \code{"all"} computes every aggregation.}
 
-\item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, restricts the
-event-study aggregation to relative times in
-\eqn{[-\text{balance\_e}, \text{balance\_e}]}.}
+\item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, balances the cohort
+composition of the event-study aggregation (as in \code{did::aggte}): cohorts
+observed for fewer than \code{balance_e} post-treatment periods are dropped, and
+event times \eqn{e \in [\text{balance\_e} - (T_{\max} - T_{\min}),\ \text{balance\_e}]}
+are reported, so every reported \eqn{e} averages over the same set of cohorts.}
 
 \item{survey_design}{Always \code{NULL}. Survey designs are not yet
 implemented; passing a non-NULL value triggers an error.}
@@ -181,9 +185,11 @@ nuisances, \code{K > 1}, are not supported and error). For \code{"gmm"} the weig
 sample covariance \eqn{C}, a second moment that (unlike the linear ATT moment) is not protected by Neyman
 orthogonality, so the channel includes an Ackerberg-Chen-Hahn correction for the first-step (\eqn{r}, \eqn{m})
 nuisance estimation entering \eqn{C}. It is \emph{not} available for \code{"uniform"} (fixed weights have no
-estimation channel; warns and falls back to the plug-in SE). In weak-overlap / small-\eqn{n} cells where the
-efficient pointwise shrinkage \eqn{\lambda} is non-negligible the efficient channel omits an \eqn{O(\lambda)}
-term and the SE there is a (warned) approximation to the weight-channel variance.
+estimation channel; warns and falls back to the plug-in SE). Under both smoothers the channel uses the
+eigen-floor-aware coupling (the Daleckii-Krein derivative of the regularized inverse, which reduces to the
+smooth adjoint when no eigenvalue is floored) and applies the leading-order \eqn{(1-\lambda)} factor for the
+pointwise shrinkage, so the weak-overlap / small-\eqn{n} regularized regime is covered rather than warned
+about; only the data-driven \eqn{d\lambda} / floor-level derivatives (higher-order) are omitted.
 \strong{What the SE includes (no fudge factor):} \code{misspec_robust = TRUE} (default, with its bundled
 \code{estimation_effect} / \code{higher_order}) reports \eqn{\mathrm{Var}(\mathrm{EIF} + \psi_\Omega +
 \mathrm{ACH} + \mathrm{Wick})} -- it \emph{adds back the genuine influence-function terms for the first-step
@@ -193,15 +199,35 @@ estimate is unchanged. \code{misspec_robust = FALSE} omits those terms and repor
 efficient-influence-function SE: valid as \eqn{n \to \infty} but \emph{anti-conservative in small samples}
 (the dropped first-step estimation variance is real and non-negligible there), so its intervals can
 under-cover at small \eqn{n}. A Monte-Carlo audit finds the default's coverage close to and converging to
-nominal across all weight schemes and both \code{edid_omega_method} smoothers; it is the recommended default.}
+nominal across all weight schemes and both \code{edid_omega_method} smoothers; it is the recommended default.
+For small samples (n in the hundreds) with weak-overlap long-horizon cells, two standalone post-fit
+bootstrap tools provide finite-sample inference beyond any analytic SE option:
+\code{\link{edid_refit_bootstrap}} (a nonparametric cluster bootstrap that re-runs the full pipeline per
+draw) and \code{\link{edid_perturbation_bootstrap}} (a cheap no-refit sieve-coefficient perturbation).
+Neither changes \code{edid()}'s defaults or output; both consume a fitted \code{edid_fit}.}
 
 \item{trim_level}{Numeric (default \code{200}). Overlap-trimming threshold (covariate path only). A
-comparison observation is dropped from an \eqn{(g,t)} cell's moment and efficient weights when its
+unit is dropped from an \eqn{(g,t)} cell's moments and efficient weights when its
 estimated propensity ratio \eqn{r(X)} OR inverse propensity \eqn{1/p_{g'}(X)} has absolute value
 \eqn{\ge} \code{trim_level} -- mirroring DRDID's \code{trim.level = 0.995} (a control IPW-weight cap of
 \eqn{\approx 200}). The observation still contributes to nuisance estimation; only its outcome-side
 weight is zeroed. This guards against severe lack of overlap and redefines the target to the overlap
-sub-population (as in DRDID). \code{trim_level = Inf} disables trimming. No effect on the no-covariate path.}
+sub-population (as in DRDID). \code{trim_level = Inf} disables trimming (byte-identical to no
+trimming). No effect on the no-covariate path.
+
+\strong{Estimand under binding trimming (cell-common overlap).} When trimming binds in a cell, all of
+the cell's moments are masked and renormalized on ONE common kept population -- the \emph{intersection}
+of the surviving comparison pairs' overlap masks (a pair's own mask combines the never-treated mask
+with the comparison cohort's mask for cross-cohort pairs) -- with one common kept-treated mass. Every
+moment in the cell therefore identifies the \emph{same} cell-specific common-overlap \eqn{ATT(g,t)}
+(the common-target overidentification logic of the paper's Lemma 2.2 is preserved under trimming); the
+weight scheme and the moment set affect efficiency, not the estimand. Two boundary cases:
+(i) a pair whose own mask retains \emph{no} treated mass identifies nothing and is \emph{dropped} from
+the cell's moment set before any weight is computed (counted in \code{$cells[[k]]$n_pairs_dropped} and
+reported once as a warning; \code{$cells[[k]]$n_pairs} is the surviving count); (ii) if every pair is
+dropped, or the surviving intersection retains no treated mass, the cell is unidentified at this
+\code{trim_level} and is returned as \code{NA} (with a warning). Results differ from per-pair trimming
+only where trimming binds AND the overlap masks differ across a cell's pairs.}
 
 \item{cores}{Positive integer (default \code{getOption("edid_mc_cores", 1L)}). Number of forked workers
 for the embarrassingly-parallel \eqn{(g,t)} cell loop and the per-cohort nuisance prebuild, via
@@ -209,6 +235,43 @@ for the embarrassingly-parallel \eqn{(g,t)} cell loop and the per-cohort nuisanc
 and is numerically \emph{identical} to the serial path (the cells are independent). It is fork-based, so
 it has no effect on Windows (leave at \code{1L}); peak memory grows roughly linearly in the number of
 workers. The \code{edid_mc_cores} option sets a session-wide default that \code{cores} overrides.}
+
+\item{moment_set}{\code{NULL} (default), or a data.frame with numeric columns
+\code{g}, \code{gp}, \code{tpre} restricting, for each target cohort \code{g}, the
+enumerated comparison pairs \eqn{(g', t_{pre})} to the listed rows (intersection
+semantics: rows that are not valid pairs under \code{pt_assumption} are silently
+ignored, so the mechanism can only \emph{restrict} the moment set, never extend it;
+cells whose pair set becomes empty are returned as \code{NA}). \strong{Advanced /
+diagnostic interface}: it is the refitting mechanism behind the incremental Sargan
+moment-selection procedure (\code{\link{edid_sargan}}, Section 5.1 of Chen,
+Sant'Anna & Xie 2025) and supports specification-curve diagnostics over the family
+of admissible \eqn{(g', t_{pre})} choices. It is intended for
+\code{pt_assumption = "all"}, whose moment set it subsets. With
+\code{moment_set = NULL} the estimator is byte-identical to previous behavior.}
+
+\item{bs_df}{B-spline degrees of freedom for the first-step sieve nuisances
+(the propensity ratios \eqn{r_{g,g'}(X)}, inverse propensities
+\eqn{s_{g'}(X) = 1/p_{g'}(X)}, and conditional means \eqn{m_{g',s,1}(X)}) on
+the covariate path. Either a single integer \code{>= 3} (cubic B-spline df
+per covariate; default \code{4L}, the package's long-standing dimension), or
+\code{"ic"} to select the df \emph{per nuisance fit} over the grid
+\code{3:8} by the information criterion of Chen, Sant'Anna & Xie (2025) (the
+display after their Eq. (4.2)):
+\eqn{\widehat K = \arg\min_K 2\,\mathbb{E}_n[\ell_K] + C_n K/n} with
+\eqn{C_n = \log(n)} (the BIC flavor; the paper's appendix shows consistency
+of the selected-\eqn{K} estimator following Chen & Liao 2014), where
+\eqn{\ell_K} is each estimator's own convex loss
+(\eqn{\mathbb{E}_n[r^2 G_{g'} - 2 r G_g]} for the ratio,
+\eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]} for the inverse propensity, the
+least-squares loss for the conditional mean) and \eqn{K} is the total basis
+dimension. Under \code{"ic"} the selected dfs are stored on the fit as
+\code{$bs_df_selected} (a tidy data.frame: \code{g}, \code{nuisance} in
+\code{c("r", "s", "m")}, \code{key}, \code{bs_df}); all downstream variance
+channels (\code{estimation_effect}, \code{higher_order},
+\code{misspec_robust}) read the basis dimension from the fitted objects, so
+they work unchanged. The conditional-covariance smoother for
+\eqn{\Omega^*(X)} is a separate object (kernel by default) and is \emph{not}
+affected by \code{bs_df}. No effect on the no-covariate path.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:
@@ -228,6 +291,9 @@ is requested.}
 \item{\code{calendar}}{A \code{did::AGGTEobj} for the per-calendar-period averages of
 \eqn{ATT(g,t)}, or \code{NULL} when not requested.}
 \item{\code{eif}}{The \eqn{n \times K} efficient-influence-function matrix (always stored).}
+\item{\code{bs_df_selected}}{Under \code{bs_df = "ic"} on the covariate path, a tidy
+data.frame of the IC-selected sieve dimensions, one row per nuisance fit
+(\code{g}, \code{nuisance}, \code{key}, \code{bs_df}); otherwise \code{NULL}.}
 \item{\code{bstrap}}{Logical: whether the multiplier bootstrap was requested. \code{bstrap = TRUE}
 with \code{cband_method} left at its default selects the multiplier bootstrap, so the cell SEs and
 the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} / \code{\link[did]{aggte}});
@@ -256,14 +322,14 @@ where noted, they change only the reported standard errors / bands, not the poin
 original per-pair build (a reference that agrees with \code{"kernel"} to roughly \code{1e-13});
 \code{"sieve"} is an \eqn{O(np)} series build that avoids the \eqn{n \times n} kernel matrix and so
 scales past its memory wall at large \eqn{n}. \strong{Note:} the sieve uses a different smoother (it
-changes the point estimate slightly). The \code{misspec_robust} weight-estimation channel \emph{is}
-supported under the sieve for \code{weight_scheme} in \code{c("efficient", "averaged")}: the influence
-function of the series conditional-covariance estimator uses the eigen-floor-aware coupling (the
-Daleckii-Krein derivative of the regularized inverse) -- per-unit \eqn{\Omega^*(X_i)} for
-\code{"efficient"}, the pooled \eqn{\bar\Omega^*} for \code{"averaged"} -- so the reported SE is
-calibrated rather than the several-fold-inflated value a smooth-inverse adjoint gives. \code{"gmm"} is
-smoother-agnostic (sample-covariance channel); \code{estimation_effect} and \code{higher_order} apply
-under either smoother.}
+changes the point estimate slightly). The \code{misspec_robust} weight-estimation channel is supported
+under both smoothers for \code{weight_scheme} in \code{c("efficient", "averaged")}: the influence
+function of the conditional-covariance estimator (kernel local IF or series OLS-projection IF) uses the
+eigen-floor-aware coupling (the Daleckii-Krein derivative of the regularized inverse) -- per-unit
+\eqn{\Omega^*(X_i)} for \code{"efficient"}, the pooled \eqn{\bar\Omega^*} for \code{"averaged"} -- so the
+reported SE is calibrated rather than the mis-scaled value a smooth-inverse adjoint gives where the
+eigenvalue floor binds. \code{"gmm"} is smoother-agnostic (sample-covariance channel);
+\code{estimation_effect} and \code{higher_order} apply under either smoother.}
 \item{\code{edid_pd_blend}}{Logical (default \code{FALSE}). When \code{TRUE}, a per-unit
 \eqn{\Omega^*(X_i)} that is genuinely indefinite is blended toward the pooled \eqn{\bar\Omega^*} by the
 minimum amount that restores positive-definiteness (closed form via Weyl's inequality), instead of
@@ -317,8 +383,8 @@ fit <- edid(
   gname         = "first_treat",
   pt_assumption = "all"
 )
-# View overall ATT
-fit$overall$att
+# View overall ATT (use the full name: `$att` would partial-match `att.egt`)
+fit$overall$overall.att
 # Extract cell-level estimates
 head(fit$att_gt)
 
@@ -330,5 +396,13 @@ for Two-Step Semiparametric Estimators. \emph{Review of Economics and Statistics
 Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025).
 \emph{Efficient Difference-in-Differences and Event Study Estimators}.
 Working paper.
+}
+\seealso{
+\code{\link{aggte_edid}}, \code{\link{edid_weights}} and
+\code{\link{edid_weight_plot}} (the paper's weight-decomposition diagnostic),
+\code{\link{edid_refit_bootstrap}} and
+\code{\link{edid_perturbation_bootstrap}} (standalone finite-sample bootstrap inference for a fitted
+model), \code{\link{edid_hausman}}, \code{\link{edid_sargan}}, \code{\link{edid_frontier}},
+\code{\link{edid_adaptive}}.
 }
 \keyword{models}
