@@ -94,16 +94,23 @@ compute.aggte <- function(MP,
     cband <- dp$cband
   }
   if (isTRUE(dp$faster_mode)) {
-    dt <- dp$data
-    set(dt, i = which(dt[[gname]] == Inf), j = gname, value = 0) # going back to the old way
-    data <- as.data.frame(dt)
-    rm(dt)
     tlist <- dp$time_periods
     glist <- dp$treated_groups
   } else {
     data <- as.data.frame(dp$data)
     tlist <- dp$tlist
     glist <- dp$glist
+  }
+
+  # In faster_mode, the full long data is only needed on the two branches below that
+  # actually consume `data` (most faster-mode panel calls use time_invariant_data
+  # instead). Materialize it lazily there, recoding gname Inf -> 0 (the old
+  # convention) on the converted copy so the data.table stored inside the user's
+  # MP object is never modified by reference.
+  faster_mode_long_data <- function() {
+    data <- as.data.frame(dp$data)
+    data[data[, gname] == Inf, gname] <- 0
+    data
   }
 
   # overwrite MP objects (so we can actually compute bootstrap)
@@ -179,10 +186,12 @@ compute.aggte <- function(MP,
       # map Inf back to 0 for gname to match the old convention
       dta[dta[, gname] == Inf, gname] <- 0
     } else {
+      if (isTRUE(dp$faster_mode)) data <- faster_mode_long_data()
       # data from first period
       dta <- data[data[, tname] == tlist[1], ]
     }
   } else {
+    if (isTRUE(dp$faster_mode)) data <- faster_mode_long_data()
     # Aggregate to one row per unit. aggregate() returns rows sorted by idname, but the influence
     # function (inffunc1) is in the data's *first-appearance* unit order -- which differs from sorted for
     # unbalanced panels under faster_mode. Restore that order so the estimated-weight influence term (wif)
