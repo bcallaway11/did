@@ -140,7 +140,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
   # the type = 1 quantiles are exactly the order statistics x_(ceil(B * p)), so a
   # single sort per column replaces the quantile() calls bit-identically (the
   # post-sort length is the per-column non-NA count, preserving na.rm = TRUE;
-  # sort() drops NAs by default).
+  # sort.int() drops NAs by default (na.last = NA)).
   iqr_norm <- qnorm(.75) - qnorm(.25)
   bSigma <- apply(bres, 2, function(b) {
     b <- sort.int(b)

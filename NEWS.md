@@ -50,7 +50,7 @@ except where a bug fix is explicitly noted.
 
   * The cluster-robust multiplier bootstrap (`mboot`) now follows Callaway & Sant'Anna (2021), Remark 10: it draws one multiplier per cluster and aggregates the influence function to cluster sums. Identical to before for equal-sized clusters; correct cluster-sum aggregation for unbalanced clusters and repeated cross sections.
 
-  * Clustered inference (bootstrap and analytical) is supported for panel data, unbalanced panels, and repeated cross sections, whether or not `idname` is supplied, and is identical under `faster_mode = TRUE` and `faster_mode = FALSE`.
+  * Clustered inference (bootstrap and analytical) is supported for panel data, unbalanced panels, and repeated cross sections, and is identical under `faster_mode = TRUE` and `faster_mode = FALSE`. For repeated cross sections without an `idname`, the internal observation id is used to align the cluster identifiers with the influence function (`idname` itself is required whenever `panel = TRUE`; see below).
 
   * `aggte()` no longer silently ignores a `clustervars` request it cannot honor (the aggregation can only use the cluster information `att_gt()` retained). It now warns -- including when an override names a different variable than `att_gt()` clustered on -- and falls back to non-clustered standard errors, instead of silently returning the i.i.d. error or crashing in `mboot()`.
 
@@ -74,6 +74,8 @@ except where a bug fix is explicitly noted.
 
   * Fixed an `aggte()` crash ("Error in get(gname): invalid first argument") when the group column is literally named `gname` and `dreamerr >= 1.5.0` is installed (data.table's `get()` was intercepted; replaced with `set()`).
 
+  * `aggte()` no longer modifies the data stored inside the `MP` object by reference: under `faster_mode = TRUE` it previously recoded the never-treated `gname` value `Inf` to `0` in `MP$DIDparams$data` as a side effect. The input object is now left untouched; all results are unchanged.
+
   * Fixed groups treated after the last observed period but within the anticipation window being coerced to never-treated (contaminating the control group with anticipation effects), and a data-filter inconsistency for always-treated units when `anticipation > 0`. Added an informative message clarifying that never-treated units are unaffected by `anticipation`.
 
   * When internal 2x2 estimation fails for a specific (g,t) cell (e.g. a singular design), `att_gt()` now warns and sets that cell's ATT to `NA` instead of crashing, in both `faster_mode = TRUE` and `FALSE` (#185, #190).
@@ -83,6 +85,10 @@ except where a bug fix is explicitly noted.
 ## Validation and clearer errors
 
   * Misspelled `yname`, `idname`, `tname`, `gname`, `weightsname`, or `clustervars` now produce a clear message listing the missing columns (#203).
+
+  * Column names reserved for internal use by `did` (`.w`, `.rowid`, `.G`, `.C`, `post`, `asif_never_treated`, `treated_first_period`) are now rejected with a clear error when used as `yname`, `tname`, `idname`, `gname`, `weightsname`, or `clustervars`, or referenced in `xformla`. Previously they could silently collide with the columns `did` creates internally; rename such columns before calling `att_gt()`.
+
+  * `control_group` and `base_period` must now exactly match one of their documented values, in both modes. Previously `faster_mode = TRUE` accepted partial and case-insensitive abbreviations (e.g. `control_group = "never"`), and `faster_mode = FALSE` silently treated any unrecognized `base_period` value as `"varying"`.
 
   * An invalid `est_method` (an unrecognized string or an unquoted variable) now errors clearly instead of silently defaulting to `"dr"` (#194).
 

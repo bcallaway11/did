@@ -124,13 +124,10 @@ conditional_did_pretest <- function(yname,
   X <- model.matrix(xformla, dta)
   X1 <- X
 
-  #for debugging:
-  # X <- as.matrix(X[1:100,])
-
   # Internal compute.att_gt speedups for the per-unit loop below:
   #  (1) pretreatment_cells_only -- post-treatment (g,t) cells are dropped
   #      right after the loop (the keepers filter retains only group > t), so
-  #      compute.att_gt never computes them (this was the TODO below).
+  #      compute.att_gt never computes them.
   #  (2) setup_precomp / y_override -- compute.att_gt's per-call setup (data
   #      copy, design matrix, per-period slicing, alignment check) depends on
   #      the outcome only through the per-period outcome slices, and the loop

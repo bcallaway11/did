@@ -28,5 +28,8 @@ documentation with many plots). The source tarball is about 4.5 Mb.
 There are 12 reverse dependencies on CRAN: cdid, did2s, etwfe, fastdid, fect,
 fetwfe, fixes, modelsummary, NonlinearDiD, optic, parameters, ptetools.
 
-[TO BE COMPLETED BEFORE SUBMISSION: re-run revdepcheck against this release
-and replace this placeholder with the actual results.]
+All 12 were checked with `R CMD check` twice -- once against the current CRAN
+release of 'did' (2.3.0) and once against this release (2.5.0). Every package
+passed with 0 ERRORs, 0 WARNINGs, and 0 NOTEs under both versions, and each
+package's check log is line-for-line identical across the two runs.
+No regressions.

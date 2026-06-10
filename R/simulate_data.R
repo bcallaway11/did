@@ -148,8 +148,12 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   Y0tdf <- as.data.frame(Y0tmat)
   
   # generate treated potential outcomes
+  # te.e[pmax(t-Gt+1, 1)] is the event-time treatment effect: event time
+  # t - Gt is stored 1-based, so te.e[1] is the on-impact (t = Gt) effect.
+  # pmax() clamps the index at 1 so it stays valid in pre-treatment periods
+  # (t < Gt), where the (Gt <= t) factor zeroes the term anyway.
   Y1tdf <- sapply(1:time.periods, function(t) {
-    te.t[t] + te.bet.ind[Gt]*Ct + Xt*te.bet.X[t] + (Gt <= t)*te.e[pmax(t-Gt+1, 1)] + te + rnorm(nt) # hack for the dynamic effects but ok
+    te.t[t] + te.bet.ind[Gt]*Ct + Xt*te.bet.X[t] + (Gt <= t)*te.e[pmax(t-Gt+1, 1)] + te + rnorm(nt)
   })
 
   # generate observed data

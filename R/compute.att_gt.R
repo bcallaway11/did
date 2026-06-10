@@ -102,9 +102,9 @@ compute.att_gt <- function(dp) {
   # Internal pretest-only flag (set by conditional_did_pretest): skip
   # post-treatment (g,t) cells entirely -- the pretest immediately discards
   # them (its keepers filter retains only group > t cells), so computing them
-  # is pure waste (this was the TODO in conditional_did_pretest). attgt.list
-  # and the influence-function columns stay aligned with the reduced cell set
-  # because the counters only increment when a cell is appended.
+  # is pure waste. attgt.list and the influence-function columns stay aligned
+  # with the reduced cell set because the counters only increment when a cell
+  # is appended.
   pretreatment_only <- isTRUE(dp$pretreatment_cells_only)
 
   if (!is.null(setup_precomp)) {
