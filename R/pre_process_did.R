@@ -72,6 +72,19 @@ pre_process_did <- function(yname,
          "Please check the spelling of yname, tname, idname, gname, weightsname, and clustervars.")
   }
 
+  # At most one cluster variable beyond idname is supported (clustering at the
+  # unit level via idname is implicit). Enforced here -- mirroring the fast path
+  # (pre_process_did2) and mboot(), with identical wording -- so every
+  # faster_mode x bstrap combination rejects the input up front; the analytical
+  # (bstrap = FALSE) path used to silently cluster on the first extra variable only.
+  cv_check <- clustervars
+  if (!is.null(cv_check) && !is.null(idname) && (idname %in% cv_check)) {
+    cv_check <- setdiff(cv_check, idname)
+  }
+  if (length(cv_check) > 1) {
+    stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
+  }
+
   # make sure time periods are numeric
   if (! (is.numeric(data[, tname])) ) stop("The time variable '", tname, "' must be numeric. Please convert it.")
 
@@ -299,6 +312,20 @@ pre_process_did <- function(yname,
       if (any(same_id & (to[-1L] == to[-nn]))) {
         stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
       }
+
+      # Check that cluster variables are time-invariant within each unit, mirroring
+      # the fast path (validate_args) and mboot() -- with identical wording -- so
+      # invalid clustering inputs are rejected up front regardless of bstrap.
+      # Without this, the analytical (bstrap = FALSE) path fell back to i.i.d.
+      # standard errors with a warning advising bstrap = TRUE, advice that then
+      # fails in mboot() for the very same input. Reuses the (id, t) radix order
+      # and adjacency scan above.
+      for (cvar in setdiff(clustervars, idname)) {
+        cvo <- data[o, cvar]
+        if (any(same_id & (cvo[-1L] != cvo[-nn]))) {
+          stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
+        }
+      }
     }
   }
 
@@ -367,7 +394,9 @@ pre_process_did <- function(yname,
       if (!all(keep_bal)) data <- data[keep_bal, , drop = FALSE]
       n <- length(unique(data[,idname]))
       if (n < n.old) {
-        warning(paste0("Dropped ", n.old-n, " observations while converting to balanced panel."))
+        # n.old - n counts dropped UNITS (unique ids), not unit-time rows; word the
+        # warning accordingly, with the same text as the fast path (pre_process_did2)
+        warning(n.old - n, " units are missing in some periods. Converting to balanced panel by dropping them.")
       }
 
       # If drop all data, you do not have a panel.

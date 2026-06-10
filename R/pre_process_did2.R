@@ -27,6 +27,14 @@ validate_args <- function(args, data){
     if (length(args$clustervars) == 0L) args$clustervars <- NULL
   }
 
+  # At most one cluster variable beyond idname is supported (clustering at the
+  # unit level via idname is implicit). Checked before the dreamerr scalar check
+  # below so the error wording matches the slow path (pre_process_did) and
+  # mboot(), instead of a dreamerr message exposing internal argument names.
+  if (length(args$clustervars) > 1) {
+    stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
+  }
+
   # Flag for clustervars and weightsname
   checkvar_message <- "__ARG__ must be NULL or a character scalar that is a name of a column from the dataset."
   dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
@@ -71,13 +79,9 @@ validate_args <- function(args, data){
   dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
 
   # Flags for cluster variable
-  # Note: idname was already stripped from clustervars above (before dreamerr check)
+  # Note: idname was already stripped from clustervars and the at-most-one check
+  # was enforced above (before the dreamerr check)
   if (!is.null(args$clustervars)) {
-    # check if user is providing more than 1 cluster variable (beyond idname)
-    if (length(args$clustervars) > 1) {
-      stop("You can only provide 1 cluster variable additionally to the one provided in idname. Please check your arguments.")
-    }
-
     # Check that cluster variables do not vary over time within each unit. For true repeated cross-sections
     # the user may omit idname (an internal ".rowid" is created later, one observation per row), so there is
     # no within-unit time variation to check and idname is not yet available here -- skip the check then.
@@ -85,8 +89,9 @@ validate_args <- function(args, data){
       # Efficiently check for time-varying cluster variables
       clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = get(args$idname), .SDcols = args$clustervars]
       # If any cluster variable varies over time within any unit, stop execution
+      # (same wording as the slow path and mboot())
       if (!all(unlist(clust_tv[, -1, with = FALSE]))) {
-        stop("did cannot handle time-varying cluster variables at the moment. Please check your cluster variable.")
+        stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
       }
     }
   }
@@ -221,10 +226,11 @@ did_standardization <- function(data, args){
     cutoff_t  <- latest_g - args$anticipation
 
     if (args$control_group == "nevertreated") {
-      # Warn the user
+      # Warn the user (same wording as the slow path, pre_process_did: the
+      # filtering sentence matters -- periods >= cutoff_t are dropped just below)
       warning(
         "No never-treated group is available. ",
-        "The last treated cohort is being coerced as 'never-treated' units."
+        "The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups)."
       )
 
       # Drop all periods ≥ (latest_g - anticipation)

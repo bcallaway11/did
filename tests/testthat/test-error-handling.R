@@ -324,13 +324,70 @@ test_that("att_gt messages on time-varying weights (panel)", {
   )
 })
 
-test_that("att_gt errors on more than 1 extra cluster variable (faster_mode)", {
-  expect_error(
-    att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
-           gname = "G", clustervars = c("id", "G", "period"),
-           bstrap = FALSE, faster_mode = TRUE),
-    "cluster|length 1"
-  )
+test_that("clustervars contract enforced in all faster_mode x bstrap combinations", {
+  # ?att_gt promises an error for more than two cluster variables (one of which
+  # must be idname). Both pre-processors must reject the input with identical
+  # wording (also matching mboot()) regardless of bstrap -- the analytical
+  # (bstrap = FALSE) slow path used to silently cluster on the first extra
+  # variable only.
+  d <- data_eh
+  d$cl1 <- d$id %% 10  # time-invariant within unit
+  d$cl2 <- d$id %% 7
+  msg <- "At most one cluster variable \\(beyond 'idname'\\) is supported"
+  for (fm in c(FALSE, TRUE)) {
+    for (bs in c(FALSE, TRUE)) {
+      # three cluster variables (idname + two extras)
+      expect_error(
+        att_gt(yname = "Y", data = d, tname = "period", idname = "id",
+               gname = "G", clustervars = c("id", "cl1", "cl2"),
+               bstrap = bs, faster_mode = fm),
+        msg
+      )
+      # two cluster variables, neither of which is idname
+      expect_error(
+        att_gt(yname = "Y", data = d, tname = "period", idname = "id",
+               gname = "G", clustervars = c("cl1", "cl2"),
+               bstrap = bs, faster_mode = fm),
+        msg
+      )
+    }
+  }
+})
+
+test_that("one extra cluster variable still works in all faster_mode x bstrap combinations", {
+  # clustered DGP: units within a cluster share a common per-period shock, so
+  # the clustered SE genuinely differs from the unclustered one
+  set.seed(20260609)
+  n_cl <- 40L
+  sz <- rep(c(2L, 4L), length.out = n_cl)
+  N <- sum(sz)
+  cl <- rep(seq_len(n_cl), times = sz)
+  gC <- sample(c(2L, 3L, 0L), n_cl, replace = TRUE)[cl]
+  eta <- matrix(rnorm(n_cl * 4L, 0, 1.5), n_cl, 4L)
+  d <- data.frame(id = rep(seq_len(N), each = 4L), period = rep(1:4, N),
+                  cl = rep(cl, each = 4L), G = rep(gC, each = 4L))
+  d$Y <- eta[cbind(d$cl, d$period)] + 0.3 * d$period +
+    (d$G != 0 & d$period >= d$G) + rnorm(nrow(d))
+  for (fm in c(FALSE, TRUE)) {
+    se_cl <- NULL
+    for (bs in c(FALSE, TRUE)) {
+      res <- suppressWarnings(
+        att_gt(yname = "Y", data = d, tname = "period", idname = "id",
+               gname = "G", clustervars = c("id", "cl"), bstrap = bs,
+               biters = 100, cband = FALSE, faster_mode = fm)
+      )
+      expect_s3_class(res, "MP")
+      expect_true(any(is.finite(res$se)))
+      if (!bs) se_cl <- res$se
+    }
+    # the analytical (bstrap = FALSE) path actually clusters: the SE differs
+    # from the unclustered analytical SE
+    res_iid <- att_gt(yname = "Y", data = d, tname = "period", idname = "id",
+                      gname = "G", bstrap = FALSE, faster_mode = fm)
+    ok <- is.finite(se_cl) & is.finite(res_iid$se)
+    expect_true(any(ok))
+    expect_gt(max(abs(se_cl[ok] - res_iid$se[ok])), 1e-8)
+  }
 })
 
 # =============================================================================
@@ -441,4 +498,77 @@ test_that("att_gt warns when no pre-treatment periods for Wald test", {
            gname = "G", bstrap = FALSE),
     "pre-treatment|Wald"
   )
+})
+
+test_that("empty-cell warning names the actually-empty base period under base_period='universal' in both modes", {
+  # Group 3's universal base period is 2; group 3 has observations in every
+  # OTHER period. The slow path used to name the cell's current period
+  # (1/3/4) -- periods where the group does have units -- instead of the empty
+  # base period (2), which the fast path reported correctly.
+  set.seed(20260610)
+  d <- expand.grid(rep = 1:30, period = 1:4, G = c(0, 3))
+  d$Y <- rnorm(nrow(d)) + 0.1 * d$period + (d$G > 0 & d$period >= d$G)
+  d <- d[!(d$G == 3 & d$period == 2), ]  # group 3 empty only in its base period
+  for (fm in c(FALSE, TRUE)) {
+    w <- capture_warnings(suppressMessages(
+      att_gt(yname = "Y", data = d, tname = "period", gname = "G",
+             panel = FALSE, base_period = "universal", bstrap = FALSE,
+             faster_mode = fm)
+    ))
+    # one warning per non-base cell (t = 1, 3, 4), each naming period 2
+    expect_identical(
+      sum(grepl("No units in group 3 in time period 2", w, fixed = TRUE)), 3L,
+      info = paste("faster_mode =", fm)
+    )
+    expect_false(any(grepl("No units in group 3 in time period [134]", w)),
+                 info = paste("faster_mode =", fm))
+  }
+})
+
+# =============================================================================
+# pre-processing warning parity across modes
+# =============================================================================
+
+test_that("'no never-treated group' warning is identical across modes and discloses the period filtering", {
+  # Both modes drop all periods >= (latest cohort - anticipation); the fast-mode
+  # warning used to omit that a chunk of the data was discarded.
+  set.seed(20260609)
+  d <- data.frame(
+    id = rep(1:60, each = 4),
+    period = rep(1:4, 60),
+    G = rep(c(rep(2, 30), rep(4, 30)), each = 4)
+  )
+  d$Y <- rnorm(nrow(d))
+  msgs <- list()
+  for (fm in c(FALSE, TRUE)) {
+    w <- capture_warnings(suppressMessages(
+      att_gt(yname = "Y", data = d, tname = "period", idname = "id",
+             gname = "G", control_group = "nevertreated", bstrap = FALSE,
+             faster_mode = fm)
+    ))
+    m <- grep("No never-treated group", w, value = TRUE)
+    expect_length(m, 1L)
+    expect_match(m, "filtered out", fixed = TRUE)
+    msgs[[as.character(fm)]] <- m
+  }
+  expect_identical(msgs[["FALSE"]], msgs[["TRUE"]])
+})
+
+test_that("balanced-panel coercion warning counts dropped units identically in both modes", {
+  # 5 units each miss one period's row: 5 UNITS (20 rows) are dropped while
+  # coercing to a balanced panel. The slow path used to report the unit count
+  # as 'observations' (a 4x undercount of the rows actually removed).
+  drop_ids <- unique(data_eh$id)[1:5]
+  d <- data_eh[!(data_eh$id %in% drop_ids & data_eh$period == max(data_eh$period)), ]
+  expected <- "5 units are missing in some periods. Converting to balanced panel by dropping them."
+  for (fm in c(FALSE, TRUE)) {
+    w <- capture_warnings(suppressMessages(
+      att_gt(yname = "Y", data = d, tname = "period", idname = "id",
+             gname = "G", panel = TRUE, allow_unbalanced_panel = FALSE,
+             bstrap = FALSE, faster_mode = fm)
+    ))
+    expect_true(any(w == expected), info = paste("faster_mode =", fm))
+    expect_false(any(grepl("observations while converting", w)),
+                 info = paste("faster_mode =", fm))
+  }
 })

@@ -815,7 +815,10 @@ compute.att_gt <- function(dp) {
           skip_this_att_gt <- TRUE
         }
         if (sum(G * (1 - post)) == 0) {
-          warning(paste0("No units in group ", glist[g], " in time period ", tlist[t]))
+          # the empty period is the base (pre) period tlist[pret], not tlist[t]
+          # (they differ under base_period = "universal" and for post-treatment
+          # cells under "varying"); matches the fast path's pret_val
+          warning(paste0("No units in group ", glist[g], " in time period ", tlist[pret]))
           skip_this_att_gt <- TRUE
         }
         if (sum(C * post) == 0) {
@@ -823,7 +826,8 @@ compute.att_gt <- function(dp) {
           skip_this_att_gt <- TRUE
         }
         if (sum(C * (1 - post)) == 0) {
-          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[t]))
+          # same base-period indexing fix as the group check above
+          warning(paste0("No available control units for group ", glist[g], " in time period ", tlist[pret]))
           skip_this_att_gt <- TRUE
         }
 
