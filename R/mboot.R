@@ -30,8 +30,18 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   panel <- DIDparams$panel
   true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
   unbalanced_panel <- DIDparams$allow_unbalanced_panel
-  # Avoid full data copy when possible; only needed for clustering
-  need_data <- length(clustervars) > 0
+  # Reuse the per-unit cluster vector that att_gt() stored in DIDparams when it
+  # aligns with the influence-function rows: it was already derived and validated
+  # (time invariance) there, so the data load, the aggregate() check, and the
+  # unique() derivation below can all be skipped. Fall back to deriving the
+  # clusters from the data for (older) DIDparams objects lacking an aligned
+  # cluster_vector -- the fallback keeps the time-varying-cluster stop.
+  cluster_vector <- DIDparams$cluster_vector
+  use_cluster_vector <- !is.null(cluster_vector) &&
+    length(cluster_vector) == NROW(inf.func)
+  # Avoid full data copy when possible; only needed for clustering without an
+  # aligned cluster_vector
+  need_data <- length(clustervars) > 0 && !use_cluster_vector
   if (need_data) {
     if (isTRUE(DIDparams$faster_mode) && !is.null(DIDparams$time_invariant_data)) {
       dta <- as.data.frame(DIDparams$time_invariant_data)
@@ -69,10 +79,10 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
     stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
   }
 
-  if (length(clustervars) > 0) {
+  if (length(clustervars) > 0 && !use_cluster_vector) {
     if(!DIDparams$faster_mode){
       # check that cluster variable does not vary over time within unit
-      # reuse 'data' already loaded above (need_data is TRUE when clustervars > 0)
+      # reuse 'data' already loaded above (need_data is TRUE on this fallback path)
       clust_tv <- aggregate(data[,clustervars], by=list(data[,idname]), function(rr) length(unique(rr))==1)
       if (!all(clust_tv[,2])) {
         stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
@@ -90,8 +100,16 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
     # *sums*, consistent with the (1/n) empirical average that defines the estimator. For
     # equal-sized clusters this coincides with the previous aggregation; for unbalanced clusters and
     # repeated cross-sections it keeps the bootstrap aligned with the cluster-robust variance.
-    n_clusters <- length(unique(dta[,clustervars]))
-    cluster <- unique(dta[,c(idname,clustervars)])[,2]
+    if (use_cluster_vector) {
+      # att_gt() already built this vector aligned with the inf.func rows (and
+      # validated time invariance when doing so); reusing it avoids reloading
+      # the data and re-deriving the clusters on every call.
+      cluster <- cluster_vector
+      n_clusters <- length(unique(cluster))
+    } else {
+      n_clusters <- length(unique(dta[,clustervars]))
+      cluster <- unique(dta[,c(idname,clustervars)])[,2]
+    }
     cluster_sum_if <- rowsum(inf.func, cluster, reorder=TRUE)
     bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_sum_if, biters, pl, cores)
   }
