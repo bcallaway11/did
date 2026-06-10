@@ -216,17 +216,18 @@ test_that("aggte group with na.rm and finite max_e excludes (not errors on) grou
   g_first <- sort(unique(mp$group))[1]
   # NA-out that group's earliest post-treatment cells, leaving only a late one (e large)
   post_g <- which(mp$group == g_first & mp$t >= g_first)
-  if (length(post_g) >= 2) {
-    mp$att[post_g[-length(post_g)]] <- NA   # keep only the last (largest event-time) cell
-    last_e <- (mp$t[post_g[length(post_g)]] - g_first)
-    me <- max(0, last_e - 1)                # max_e below the only surviving cell's event-time
-    expect_error(
-      suppressWarnings(suppressMessages(aggte(mp, type = "group", na.rm = TRUE, max_e = me))),
-      NA)                                   # must NOT error
-    agg <- suppressWarnings(suppressMessages(aggte(mp, type = "group", na.rm = TRUE, max_e = me)))
-    expect_s3_class(agg, "AGGTEobj")
-    expect_false(g_first %in% agg$egt)      # the offending group is excluded
-  }
+  # Hard precondition (not a silent if-guard): if the fixture ever drifts below
+  # two post-treatment cells, the regression coverage must fail loudly.
+  expect_gte(length(post_g), 2)
+  mp$att[post_g[-length(post_g)]] <- NA   # keep only the last (largest event-time) cell
+  last_e <- (mp$t[post_g[length(post_g)]] - g_first)
+  me <- max(0, last_e - 1)                # max_e below the only surviving cell's event-time
+  expect_error(
+    suppressWarnings(suppressMessages(aggte(mp, type = "group", na.rm = TRUE, max_e = me))),
+    NA)                                   # must NOT error
+  agg <- suppressWarnings(suppressMessages(aggte(mp, type = "group", na.rm = TRUE, max_e = me)))
+  expect_s3_class(agg, "AGGTEobj")
+  expect_false(g_first %in% agg$egt)      # the offending group is excluded
 })
 
 test_that("aggte group default (max_e = Inf) is unchanged by the gnotna max_e filter", {

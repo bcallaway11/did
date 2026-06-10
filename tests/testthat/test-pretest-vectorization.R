@@ -57,3 +57,31 @@ test_that("test.mboot equals the explicit clustered multiplier bootstrap", {
   set.seed(7); got <- test.mboot(arr, dp)$bres
   expect_equal(unname(got), ref, tolerance = 1e-9)
 })
+
+test_that("test.mboot multi-chunk tiling accumulates across chunks correctly", {
+  # test.mboot tiles over the X dimension with chunk = max(1L, 5e6 %/% (n*k))
+  # and accumulates bout across iterations. Every other test in the suite has
+  # n*k small enough that the loop runs exactly once; this is the only test
+  # where the multi-chunk accumulation (chunk = 1, three iterations) is hit --
+  # the regime real large-n pre-test runs land in.
+  skip_on_cran()   # ~60 MB transient influence array
+  set.seed(123)
+  n <- 50; k <- 50010; nX <- 3
+  expect_identical(max(1L, as.integer(5e6 %/% (as.numeric(n) * k))), 1L)  # multi-chunk path is exercised
+  arr <- array(rnorm(n * k * nX), c(n, k, nX))
+  dp <- list(data = data.frame(id = 1:n, period = 1L), idname = "id",
+             clustervars = NULL, biters = 50, tname = "period", alp = 0.05, panel = TRUE)
+  # Per-draw reference: Jb[x,j] = mean_i(Ub[i] * inf[i,j,x]); CvMb = (n/nX) * sum(Jb^2).
+  # colMeans on the n x (k*nX) reshape is the same statistic as the apply-style
+  # reference above, just fast enough for k = 50010.
+  M <- matrix(arr, nrow = n)
+  ref_boot <- function(M, n, nX, biters) {
+    sapply(1:biters, function(b) {
+      Ub <- sample(c(-1, 1), n, replace = TRUE)
+      (n / nX) * sum(colMeans(Ub * M)^2)
+    })
+  }
+  set.seed(42); ref <- ref_boot(M, n, nX, 50)
+  set.seed(42); got <- test.mboot(arr, dp)$bres
+  expect_equal(unname(got), ref, tolerance = 1e-9)
+})

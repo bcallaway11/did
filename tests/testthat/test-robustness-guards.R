@@ -16,6 +16,17 @@ test_that("duplicate (id, period) rows are rejected identically by both modes", 
     tname = "period", idname = "id", gname = "G", faster_mode = TRUE)), msg)
   expect_error(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = ddup,
     tname = "period", idname = "id", gname = "G", faster_mode = FALSE)), msg)
+  # The guard is intentionally unconditional on panel: with idname supplied it
+  # also rejects duplicated (id, period) rows on repeated cross sections and
+  # unbalanced panels (the slow path used to silently accept them there).
+  for (fm in c(TRUE, FALSE)) {
+    expect_error(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = ddup,
+      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      faster_mode = fm)), msg)
+    expect_error(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = ddup,
+      tname = "period", idname = "id", gname = "G", allow_unbalanced_panel = TRUE,
+      faster_mode = fm)), msg)
+  }
 })
 
 test_that("negative / zero-mean weights are rejected identically by both modes", {
@@ -156,6 +167,33 @@ test_that("slow RC path NA-cells a throwing preliminary logit instead of abortin
   expect_equal(is.na(slow$att), is.na(fast$att))
   expect_equal(slow$att, fast$att, tolerance = 1e-10)
   expect_equal(slow$se, fast$se, tolerance = 1e-10)
+})
+
+test_that("overlap_logit_fit matches fastglm::fastglm exactly, including the 0.999 decision", {
+  # overlap_logit_fit() (fastglmPure with method = 0L, tol = 1e-8, maxit = 100L)
+  # replaced fastglm::fastglm(x, y, family = binomial()) at every overlap-check
+  # call site with a docstring claim of bit-identical fitted values. Lock that
+  # contract -- and the max(fitted) >= 0.999 decision that drives the
+  # att = NA-with-warning behavior -- on the degenerate designs where IRLS is
+  # most fragile: near separation, complete separation, rank deficiency, and an
+  # all-zero column (the sparse-factor-level case).
+  set.seed(20260610)
+  n <- 200
+  x <- rnorm(n)
+  designs <- list(
+    near_sep = list(X = cbind(1, x), D = rbinom(n, 1, plogis(8 * x))),
+    comp_sep = list(X = cbind(1, x), D = as.numeric(x > 0)),
+    rank_def = list(X = cbind(1, x, x), D = rbinom(n, 1, plogis(2 * x))),
+    zero_col = list(X = cbind(1, x, 0), D = rbinom(n, 1, plogis(2 * x)))
+  )
+  for (nm in names(designs)) {
+    X <- designs[[nm]]$X; D <- designs[[nm]]$D
+    # expected "fitted probabilities numerically 0 or 1" noise under separation
+    f1 <- suppressWarnings(fastglm::fastglm(X, D, family = binomial()))
+    f2 <- suppressWarnings(did:::overlap_logit_fit(X, D))
+    expect_identical(f1$fitted.values, f2$fitted.values)
+    expect_identical(max(f1$fitted.values) >= 0.999, max(f2$fitted.values) >= 0.999)
+  }
 })
 
 test_that("slow panel path converts estimator NaN cells to NA like fast mode", {
