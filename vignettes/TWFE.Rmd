@@ -686,7 +686,7 @@ run_CS_never <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group = "never_treated",
+                     control_group = "nevertreated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)
@@ -1090,7 +1090,7 @@ run_CS_never_het <- function(...) {
                      tname = "year",
                      idname = "unit",
                      gname = "cohort_year",
-                     control_group = "never_treated",
+                     control_group = "nevertreated",
                      bstrap = FALSE,
                      data = data,
                      print_details = FALSE)

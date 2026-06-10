@@ -193,7 +193,7 @@ In this figure, the x-axis is the time period and the estimates along the y-axis
 
 ### Small Group Sizes
 
-Small group sizes can sometimes cause estimation problems in the `did` package.  To give an example, if there are any groups that have fewer observations than the number of covariates in the model, the code will error.  The `did` package reports a warning if there are any groups that have fewer than 5 observations. 
+Small group sizes can sometimes cause estimation problems in the `did` package.  If a group-time average treatment effect cannot be estimated (e.g., because a group has too few observations relative to the number of covariates in the model, the covariate matrix for some comparison is singular, or there are overlap violations), `att_gt` issues a warning for the affected $(g,t)$ cell and reports `NA` for that $ATT(g,t)$ rather than erroring.  (The exception is when the never-treated comparison group itself is too small, in which case `att_gt` stops and suggests setting `control_group = "notyettreated"`.)  The `did` package also reports a warning if any group has fewer observations than the number of covariates in the model plus five.
 
 In addition, statistical inference, particularly on group-time average treatment may become more tenuous with small groups.  For example, the effective sample size for estimating the change in outcomes over time for individuals in a particular group is equal to the number of observations in that group and asymptotic results are unlikely to provide good approximations to the sampling distribution of group-time average treatment effects when the number of units in a group is small. In these cases, one should be very cautious about interpreting the $ATT(g,t)$ results for these small groups.
 
@@ -217,7 +217,7 @@ summary(example_attgt_altcontrol)
 
 ### Repeated cross sections
 
-The `did` package can also work with repeated cross section rather than panel data.  If the data is repeated cross sections, simply set the option `panel = FALSE`.  In this case, `idname` is also ignored.  From a usage standpoint, everything else is identical to the case with panel data.
+The `did` package can also work with repeated cross section rather than panel data.  If the data is repeated cross sections, simply set the option `panel = FALSE`.  In this case, `idname` may be omitted.  If `idname` is supplied, it is still validated -- it must be numeric, the treatment timing variable (`gname`) must not vary within unit, and each unit can appear at most once per time period -- so for genuine repeated cross sections (where, for example, the same household or region code may appear multiple times in the same period) it is best to omit `idname`.  Aside from this, usage is nearly identical to the case with panel data, although a few panel-only options (e.g., `fix_weights = "base_period"` or `fix_weights = "first_period"`) are not available when `panel = FALSE`.
 
 ### Unbalanced Panel Data
 
@@ -233,7 +233,7 @@ example_attgt_reg <- att_gt(yname = "Y",
                             idname = "id",
                             gname = "G",
                             xformla = ~X,
-                            data = data,
+                            data = dta,
                             est_method = "reg"
                             )
 summary(example_attgt_reg)
@@ -266,7 +266,7 @@ In particular applications, the dataset should look like this with the key parts
 
 * There needs to be a group variable.  In `mpdta`, it is the variable `first.treat`.  This is the time period when an individual first becomes treated.   *For individuals that are never treated, this variable should be set equal to 0.*  The name of this variable is passed to methods in the `did` package by setting, for example, `gname = "first.treat"`
 
-* The `did` package allows for incorporating covariates so that the parallel trends assumption holds only after conditioning on these covariates.  In `mpdta`, `lpop` is the log of county population.  The `did` package requires that covariates be time-invariant.  For time varying covariates, the `did` package sets the value of the covariate to be equal to the value of the covariate in the "base period" where, in post-treatment periods the base period is the period immediately before observations in a particular group become treated (when there is anticipation, it is before anticipation effects start too), and in pre-treatment periods the base period is the period right before the current period.  Covariates are passed as a formula to the `did` package by setting, for example, `xformla = ~lpop`.  For estimators under unconditional parallel trends, the `xformla` argument can be left blank or can be set as `xformla = ~1` to only include a constant.
+* The `did` package allows for incorporating covariates so that the parallel trends assumption holds only after conditioning on these covariates.  In `mpdta`, `lpop` is the log of county population.  Covariates may be time-invariant or time-varying.  With balanced panel data, the `did` package sets the value of a time-varying covariate to be equal to the value of the covariate in the "base period" where, in post-treatment periods the base period is the period immediately before observations in a particular group become treated (when there is anticipation, it is before anticipation effects start too), and in pre-treatment periods the base period is the period right before the current period.  With repeated cross sections data or unbalanced panel data, the covariates are instead taken from each time period (see the discussion of `xformla` in the `att_gt` documentation for details).  Covariates are passed as a formula to the `did` package by setting, for example, `xformla = ~lpop`; the formula may also include transformations of covariates (e.g., `~ I(lpop^2)`, `~ log(lpop)`, interactions) as well as factor variables.  For estimators under unconditional parallel trends, the `xformla` argument can be left blank or can be set as `xformla = ~1` to only include a constant.
 
 ### The Effect of the Minimum Wage on Youth Employment
 
