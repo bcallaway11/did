@@ -77,6 +77,46 @@ test_that("panel precompute also bit-identical with time-varying sampling weight
   }
 })
 
+test_that("panel precompute bit-identical with fix_weights base_period/first_period", {
+  # the precompute gate admits fix_weights = "base_period"/"first_period": only the
+  # weight vector differs (weights_by_period[[pret_g]] / [[1L]] instead of
+  # period_w[[earlier_idx]]), so the assembly must match the get_wide_data fallback
+  # exactly; time-varying weights are the only sim quantity that can expose a
+  # wrong-period weight index
+  old_opt <- getOption("did.disable_precompute")
+  withr::defer(options(did.disable_precompute = old_opt))
+  set.seed(808)
+  sp <- did::reset.sim(time.periods = 4)
+  d <- did::build_sim_dataset(sp)
+  d$tvw <- d$period + runif(nrow(d), -0.1, 0.1)
+  configs <- list()
+  for (fw in c("base_period", "first_period")) {
+    for (bp in c("varying", "universal"))
+    for (cg in c("nevertreated", "notyettreated")) {
+      configs[[length(configs) + 1]] <- list(fw = fw, bp = bp, cg = cg, em = "dr")
+    }
+    for (em in c("reg", "ipw")) {
+      configs[[length(configs) + 1]] <- list(fw = fw, bp = "varying",
+                                             cg = "nevertreated", em = em)
+    }
+  }
+  for (cfg in configs) {
+    run <- function() suppressWarnings(suppressMessages(att_gt(yname = "Y",
+      xformla = ~X, data = d, tname = "period", idname = "id", gname = "G",
+      weightsname = "tvw", fix_weights = cfg$fw, faster_mode = FALSE, bstrap = FALSE,
+      est_method = cfg$em, base_period = cfg$bp, control_group = cfg$cg)))
+    options(did.disable_precompute = TRUE)
+    ref <- run()
+    options(did.disable_precompute = FALSE)
+    new <- run()
+    lab <- paste(cfg$fw, cfg$bp, cfg$cg, cfg$em)
+    expect_equal(ref$att, new$att, tolerance = 0, label = paste(lab, "ATT"))
+    expect_equal(ref$se,  new$se,  tolerance = 0, label = paste(lab, "se"))
+    expect_equal(as.matrix(ref$inffunc), as.matrix(new$inffunc), tolerance = 0,
+                 label = paste(lab, "IF"))
+  }
+})
+
 test_that("RC/unbalanced precompute is bit-identical to the legacy subset path", {
   # the positional assembly (per-period row indices + plain vectors) must equal
   # the legacy rightids/%in%/data.table-subset construction exactly; the escape

@@ -168,17 +168,21 @@ compute.att_gt <- function(dp) {
       period_w[[tp]]  <- w_col[rows_tp]
     }
     # Precompute fast path: when the panel is balanced with every period sharing the
-    # same units in the same (id-sorted) row order and default weights are used, each
-    # 2x2 cell can be assembled by position from these per-period blocks -- skipping
-    # the per-cell data[time_mask] subset + get_wide_data() reshape (the dominant
-    # cost on the slow path). Falls through to the original get_wide_data() code,
-    # bit-identically, for fix_weights / unaligned panels.
+    # same units in the same (id-sorted) row order, each 2x2 cell can be assembled by
+    # position from these per-period blocks -- skipping the per-cell data[time_mask]
+    # subset + get_wide_data() reshape (the dominant cost on the slow path).
+    # fix_weights = "base_period"/"first_period" only changes WHICH period's weight
+    # vector each cell uses (selected from weights_by_period below, mirroring the
+    # fallback), so the precompute applies there too. Falls through to the original
+    # get_wide_data() code, bit-identically, for fix_weights = "varying" (which needs
+    # the long-format RC data) / unaligned panels.
     panel_units_aligned <- all(vapply(period_id, function(x)
       length(x) == length(period_id[[1L]]) && all(x == period_id[[1L]]), logical(1)))
     g_unit_panel <- g_col[which(t_col == tlist[1L])]
     # options(did.disable_precompute = TRUE) forces the original get_wide_data() path
     # (escape hatch / used to verify bit-identical equivalence).
-    use_precompute_panel <- is.null(fix_weights) && panel_units_aligned &&
+    use_precompute_panel <- (is.null(fix_weights) ||
+      fix_weights %in% c("base_period", "first_period")) && panel_units_aligned &&
       !isTRUE(getOption("did.disable_precompute"))
     # Never-treated control cohort is invariant across every (g,t) cell, so build
     # it once here; notyettreated rebuilds C_full per cell inside the loops.
@@ -329,8 +333,8 @@ compute.att_gt <- function(dp) {
       # per-cell cost); the legacy escape-hatch paths still build disdat as before.
       # time_mask is only read here and in the fix_weights == "varying" branch,
       # which always runs with use_precompute_panel == FALSE (the panel precompute
-      # requires is.null(fix_weights)) and panel == TRUE (so use_precompute_rc is
-      # FALSE), so it is computed on every path that consumes it.
+      # excludes fix_weights == "varying") and panel == TRUE (so use_precompute_rc
+      # is FALSE), so it is computed on every path that consumes it.
       if (!(panel && use_precompute_panel) && !use_precompute_rc) {
         target_times <- c(tlist[t + tfac], tlist[pret])
         time_mask <- t_col %in% target_times
@@ -340,7 +344,7 @@ compute.att_gt <- function(dp) {
 
       if (panel) {
         if (use_precompute_panel) {
-          # ---- precompute fast path (balanced, id-aligned panel; default weights) --
+          # ---- precompute fast path (balanced, id-aligned panel; non-varying weights) --
           # Build the 2x2 cell directly from the per-period blocks. g is time-invariant
           # so .G / .C are unit-level; Ypost is always period (t+tfac) and Ypre always
           # period pret because get_wide_data's .y1/.y0 (later/earlier) swap exactly
@@ -362,7 +366,19 @@ compute.att_gt <- function(dp) {
           Ypost <- period_y[[t + tfac]][kept]
           Ypre  <- period_y[[pret]][kept]
           earlier_idx <- min(t + tfac, pret)
-          w <- period_w[[earlier_idx]][kept]
+          # Select weights based on fix_weights, mirroring the fallback's
+          # weights_by_period[[...]][disidx] selection bit-identically:
+          # weights_by_period[[tp]] and period_w[[tp]] share the same within-period
+          # data order, and kept == which(disidx) under panel_units_aligned.
+          if (is.null(fix_weights)) {
+            # Default: the earlier period's weights (what get_wide_data retains)
+            w <- period_w[[earlier_idx]][kept]
+          } else if (fix_weights == "base_period") {
+            w <- weights_by_period[[pret_g]][kept]
+          } else {
+            # fix_weights == "first_period" ("varying" never reaches the precompute)
+            w <- weights_by_period[[1L]][kept]
+          }
           covariates <- period_mm[[earlier_idx]][kept, , drop = FALSE]
           dimnames(covariates) <- list(NULL, colnames(covariates))
         } else {
