@@ -137,10 +137,13 @@ pre_process_did <- function(yname,
   if (".w" %in% colnames(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
   data$.w <- w
 
-  # Check for time-varying weights in panel data
+  # Check for time-varying weights in panel data. Grouped max/min via data.table
+  # (GForce-optimized) is much faster than tapply() with a per-unit closure and
+  # produces the same per-unit ranges as diff(range(x)) on the raw weights.
   if (!is.null(weightsname) && panel) {
-    w_by_id <- tapply(data[, weightsname], data[, idname], function(x) diff(range(x)))
-    if (any(w_by_id > .Machine$double.eps^0.5, na.rm = TRUE)) {
+    dtw <- data.table(id = data[[idname]], .w = data[[weightsname]])
+    w_rng <- dtw[, .(mx = max(.w), mn = min(.w)), by = "id"]
+    if (any((w_rng$mx - w_rng$mn) > .Machine$double.eps^0.5, na.rm = TRUE)) {
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
         "behavior uses the weight from the earlier of the two time periods in ",
@@ -307,20 +310,13 @@ pre_process_did <- function(yname,
   # Check if data is a balanced panel if panel = TRUE and allow_unbalanced_panel = TRUE
   bal_panel_test <- panel*allow_unbalanced_panel
   if (bal_panel_test) {
-    # First, focus on complete cases
-    keepers <- complete.cases(data)
-    data_comp <- data[keepers,]
-    # make it a balanced data set
-    n_all <- length(unique(data_comp[,idname]))
-    data_bal <- BMisc::makeBalancedPanel(data_comp, idname, tname)
-    n_bal <- length(unique(data_bal[,idname]))
-    if (n_bal < n_all) {
-      # message(paste0("You have an unbalanced panel. Proceeding as such."))
-      allow_unbalanced_panel <- TRUE
-    } else {
-      # message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
-      allow_unbalanced_panel <- FALSE
-    }
+    # data is already complete-case filtered above and (id, period) uniqueness has
+    # been validated, so the panel is balanced iff every unit appears in every
+    # period, i.e. nrow(data) equals (number of units) x (number of periods). This
+    # replaces a BMisc::makeBalancedPanel() round-trip that built a balanced copy
+    # of the data just to compare unit counts and then threw it away.
+    allow_unbalanced_panel <-
+      nrow(data) != length(unique(data[[idname]])) * as.numeric(length(unique(data[[tname]])))
   }
 
 
@@ -338,18 +334,30 @@ pre_process_did <- function(yname,
 
       # this is the case where we coerce balanced panel
 
-      # check for complete cases
-      keepers <- complete.cases(data)
-      n <- length(unique(data[,idname]))
-      n.keep <- length(unique(data[keepers,idname]))
-      if (nrow(data[keepers,]) < nrow(data)) {
-        warning(paste0("Dropped ", (n-n.keep), " observations that had missing data."))
-        data <- data[keepers,]
+      # check for complete cases (rows with missing data were already dropped
+      # above, so anyNA() short-circuits the redundant complete.cases() pass and
+      # full-table subset copies in the common case)
+      if (anyNA(data)) {
+        keepers <- complete.cases(data)
+        n <- length(unique(data[,idname]))
+        n.keep <- length(unique(data[keepers,idname]))
+        if (!all(keepers)) {
+          warning(paste0("Dropped ", (n-n.keep), " observations that had missing data."))
+          data <- data[keepers,]
+        }
       }
 
-      # make it a balanced data set
-      n.old <- length(unique(data[,idname]))
-      data <- BMisc::makeBalancedPanel(data, idname, tname)
+      # make it a balanced data set: keep only units observed in every period.
+      # A unit is fully observed iff its row count equals the number of distinct
+      # periods ((id, period) uniqueness was validated above), so this
+      # count-and-filter keeps exactly the same rows as BMisc::makeBalancedPanel()
+      # without the per-group .SD materialization; any row-order difference is
+      # normalized by the (id, period) sort below.
+      uid <- unique(data[[idname]])
+      n.old <- length(uid)
+      cnt <- tabulate(match(data[[idname]], uid))
+      keep_bal <- data[[idname]] %in% uid[cnt == length(unique(data[[tname]]))]
+      if (!all(keep_bal)) data <- data[keep_bal, , drop = FALSE]
       n <- length(unique(data[,idname]))
       if (n < n.old) {
         warning(paste0("Dropped ", n.old-n, " observations while converting to balanced panel."))
@@ -378,11 +386,15 @@ pre_process_did <- function(yname,
   #-----------------------------------------------------------------------------
   if (!panel) {
 
-    # check for complete cases
-    keepers <- complete.cases(data)
-    if (nrow(data[keepers,]) < nrow(data)) {
-      warning(paste0("Dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data."))
-      data <- data[keepers,]
+    # check for complete cases (rows with missing data were already dropped
+    # above, so anyNA() short-circuits the redundant complete.cases() pass and
+    # full-table subset copies in the common case)
+    if (anyNA(data)) {
+      keepers <- complete.cases(data)
+      if (!all(keepers)) {
+        warning(paste0("Dropped ", sum(!keepers), " observations that had missing data."))
+        data <- data[keepers,]
+      }
     }
 
     # If drop all data, you do not have a panel.
@@ -432,8 +444,13 @@ pre_process_did <- function(yname,
   #-----------------------------------------------------------------------------
   # more error handling after we have balanced the panel
 
-  # check against very small groups
-  gsize <- aggregate(data[,gname], by=list(data[,gname]), function(x) length(x)/length(tlist))
+  # check against very small groups. tabulate(match(.)) yields the same per-group
+  # row counts as the previous aggregate() call without invoking an R closure per
+  # group; sorted gvals reproduces aggregate()'s ascending group order, and the
+  # Group.1/x column names are kept for the subset()/paste logic below.
+  gvals <- sort(unique(data[[gname]]))
+  gcnt <- tabulate(match(data[[gname]], gvals), nbins = length(gvals))
+  gsize <- data.frame(Group.1 = gvals, x = gcnt / length(tlist))
 
   # how many in each group before give warning
   # 5 is just a buffer, could pick something else, but seems to work fine
@@ -458,13 +475,16 @@ pre_process_did <- function(yname,
   # How many treated groups
   nG <- length(glist)
 
-  # order dataset wrt idname and tname
-  data <- data[order(data[,idname], data[,tname]),]
-
-  # ensure a plain data.frame for downstream consumers, but avoid a redundant full
-  # copy when `data` is already a plain data.frame (the common case). Equivalent to
-  # the previous unconditional as.data.frame(data) in the DIDparams() call below.
-  if (!all(class(data) == "data.frame")) data <- as.data.frame(data)
+  # order dataset wrt idname and tname, in place. The sort keys are tie-free
+  # ((id, period) uniqueness was validated above; .rowid is 1:n for repeated cross
+  # sections), so the permutation is unique and the row order matches the previous
+  # order()-based subset without a full-table copy. `data` is function-local (it
+  # was subset/copied above), so the by-reference conversion cannot touch the
+  # user's input; setDF() returns a plain data.frame for downstream consumers
+  # (DIDparams, compute.att_gt).
+  setDT(data)
+  setorderv(data, c(idname, tname))
+  setDF(data)
 
   # store parameters for passing around later
   dp <- DIDparams(yname=yname,
