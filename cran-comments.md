@@ -1,15 +1,38 @@
 ## Test environments
 
-* local Ubuntu 24.04, R 4.4.1
+* local macOS 26.5 (aarch64-apple-darwin), R 4.6.0
 * GitHub Actions (macOS-latest): R release
 * GitHub Actions (windows-latest): R release
 * GitHub Actions (ubuntu-latest): R devel, R release, R oldrel-1
 
 ## R CMD check results
 
-0 ERRORs | 0 WARNINGs | 0 NOTEs
+0 ERRORs | 0 WARNINGs | 1 NOTE
+
+* checking CRAN incoming feasibility ... NOTE
+  Unknown, possibly misspelled, fields in DESCRIPTION: 'Remotes'
+
+This release requires 'DRDID' (>= 1.3.0). The temporary `Remotes` field lets
+continuous integration install 'DRDID' 1.3.0 from GitHub until that version
+is available on CRAN. We will submit only after 'DRDID' 1.3.0 is accepted on
+CRAN, and the `Remotes` field is removed from DESCRIPTION before the
+submission tarball is built, which also removes this NOTE.
+
+## Notable changes
+
+did 2.5.0 is a large release that consolidates all development since 2.3.0
+(see NEWS.md) and bumps the required version of 'DRDID' to (>= 1.3.0).
+
+## Package size
+
+The installed size is about 5.3 Mb, of which 4.4 Mb is the `doc` directory
+holding the package's six pre-built vignettes (long-form methodological
+documentation with many plots). The source tarball is about 4.5 Mb.
 
 ## Downstream dependencies
 
-We checked 10 reverse dependencies.  No packages had any errors.  Three packages had warnings or notes, all of which were unrelated to `did`.
+There are 12 reverse dependencies on CRAN: cdid, did2s, etwfe, fastdid, fect,
+fetwfe, fixes, modelsummary, NonlinearDiD, optic, parameters, ptetools.
 
+[TO BE COMPLETED BEFORE SUBMISSION: re-run revdepcheck against this release
+and replace this placeholder with the actual results.]
