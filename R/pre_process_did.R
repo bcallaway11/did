@@ -42,6 +42,14 @@ pre_process_did <- function(yname,
   if(!(control_group %in% c("nevertreated","notyettreated"))){
     stop("control_group must be either 'nevertreated' or 'notyettreated'")
   }
+  base_period <- base_period[1]
+  if (!(base_period %in% c("universal", "varying"))) {
+    stop("base_period must be either 'universal' or 'varying'.")
+  }
+  check_reserved_did_names(yname = yname, tname = tname, idname = idname,
+                           gname = gname, xformla = xformla,
+                           weightsname = weightsname,
+                           clustervars = clustervars)
   # make sure dataset is a data.frame
   # this gets around RStudio's default of reading data as tibble
   if (!all( class(data) == "data.frame")) {

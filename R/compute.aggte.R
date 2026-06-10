@@ -223,7 +223,13 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  if (isTRUE(dp$faster_mode)) weights.ind <- dta$weights else weights.ind <- dta$.w
+  if (".w" %in% names(dta)) {
+    weights.ind <- dta$.w
+  } else if (isTRUE(dp$faster_mode)) {
+    weights.ind <- dta$weights
+  } else {
+    weights.ind <- dta$.w
+  }
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator

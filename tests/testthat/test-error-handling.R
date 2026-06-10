@@ -35,6 +35,56 @@ test_that("att_gt errors on invalid fix_weights value", {
   )
 })
 
+test_that("att_gt rejects non-exact control_group and base_period values in both modes", {
+  for (fm in c(FALSE, TRUE)) {
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", control_group = "NotYetTreated", faster_mode = fm,
+             bstrap = FALSE),
+      "control_group must be either"
+    )
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", base_period = "Universal", faster_mode = fm,
+             bstrap = FALSE),
+      "base_period must be either"
+    )
+  }
+})
+
+test_that("att_gt rejects argument-referenced internal variable names in both modes", {
+  reserved_names <- c(".w", ".rowid", ".G", ".C", "post",
+                      "asif_never_treated", "treated_first_period")
+  reserved_data <- data_eh
+  for (nm in reserved_names) {
+    reserved_data[[nm]] <- seq_len(nrow(reserved_data))
+  }
+  msg <- "reserved for internal use"
+
+  for (fm in c(FALSE, TRUE)) {
+    for (nm in reserved_names) {
+      expect_error(
+        att_gt(yname = nm, data = reserved_data, tname = "period",
+               idname = "id", gname = "G", faster_mode = fm,
+               bstrap = FALSE),
+        msg
+      )
+      expect_error(
+        att_gt(yname = "Y", xformla = as.formula(paste("~", nm)),
+               data = reserved_data, tname = "period", idname = "id",
+               gname = "G", faster_mode = fm, bstrap = FALSE),
+        msg
+      )
+      expect_error(
+        att_gt(yname = "Y", data = reserved_data, tname = "period",
+               idname = "id", gname = "G", weightsname = nm,
+               faster_mode = fm, bstrap = FALSE),
+        msg
+      )
+    }
+  }
+})
+
 test_that("att_gt errors on fix_weights with panel=FALSE", {
   expect_error(
     att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",

@@ -88,7 +88,8 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 #'
 #' @return A list containing the estimated ATT and the influence function vector.
 #' @noRd
-run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, force_rc = FALSE){
+run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
+                      pret_val = NULL, force_rc = FALSE){
 
   extra_args <- if (is.null(dp2$extra_args)) list() else dp2$extra_args
   gt_label <- if (!is.null(g_val) && !is.null(t_val)) paste0(" for group ", g_val, " in time period ", t_val) else ""
@@ -233,6 +234,32 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
 
     covariates <- as.matrix(covariates)
 
+    # determine correct inf_func length for early returns
+    n_inf <- if (dp2$allow_unbalanced_panel) dp2$id_count else n
+
+    skip_this_att_gt <- FALSE
+    if (sum(D * post) == 0) {
+      warning(paste0("No units in group ", g_val, " in time period ", t_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (sum(D * (1 - post)) == 0) {
+      warning(paste0("No units in group ", g_val, " in time period ", pret_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (sum((1 - D) * post) == 0) {
+      warning(paste0("No available control units for group ", g_val,
+                     " in time period ", t_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (sum((1 - D) * (1 - post)) == 0) {
+      warning(paste0("No available control units for group ", g_val,
+                     " in time period ", pret_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (skip_this_att_gt) {
+      return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
+    }
+
     #-----------------------------------------------------------------------------
     # check for overlap and regression problems
     #-----------------------------------------------------------------------------
@@ -240,9 +267,6 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
 
     if (!custom_est_method) {
       D_vec <- D
-
-      # determine correct inf_func length for early returns
-      n_inf <- if (dp2$allow_unbalanced_panel) dp2$id_count else n
 
       # checks for pscore based methods
       if (dp2$est_method %in% c("dr", "ipw")) {
@@ -456,7 +480,7 @@ run_att_gt_estimation <- function(g, t, dp2){
       tid <- dp2$time_invariant_data
       target_mask <- tid[[dp2$tname]] == target_period
       target_ids <- tid[[dp2$idname]][target_mask]
-      target_ws <- tid[["weights"]][target_mask]
+      target_ws <- tid[[".w"]][target_mask]
       # Map each observation's weight from the target period by integer id matching.
       # Equivalent to the previous named-character lookup (first match wins on any
       # duplicate id; unmatched ids -> NA) but avoids coercing every id to character.
@@ -478,7 +502,7 @@ run_att_gt_estimation <- function(g, t, dp2){
     } else {
       cohort_data <- list(D = did_cohort_index, y = dp2$time_invariant_data[[dp2$yname]],
                           post = dp2$time_invariant_data$post,
-                          i.weights = dp2$time_invariant_data$weights,
+                          i.weights = dp2$time_invariant_data[[".w"]],
                           .rowid = dp2$time_invariant_data$.rowid)
     }
     covariates <- dp2$covariates_matrix
@@ -486,7 +510,10 @@ run_att_gt_estimation <- function(g, t, dp2){
 
   # run estimation
   force_rc <- !is.null(dp2$fix_weights) && dp2$fix_weights == "varying" && dp2$panel
-  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g], t_val = dp2$time_periods[t+tfac], force_rc = force_rc),
+  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g],
+                                   t_val = dp2$time_periods[t + tfac],
+                                   pret_val = dp2$time_periods[pret],
+                                   force_rc = force_rc),
                          error = function(e) {
                            warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
                            return(NULL)

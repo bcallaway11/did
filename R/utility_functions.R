@@ -55,6 +55,26 @@ overlap_logit_fit <- function(x, y) {
                        method = 0L, tol = 1e-8, maxit = 100L)
 }
 
+#' @title Check User-Supplied Names Against Internal Names
+#' @description Stop if user arguments reference names that `did` creates and
+#' mutates internally.
+#' @noRd
+check_reserved_did_names <- function(yname, tname, idname, gname, xformla,
+                                     weightsname = NULL, clustervars = NULL) {
+  reserved_names <- c(".w", ".rowid", ".G", ".C", "post",
+                      "asif_never_treated", "treated_first_period")
+  xvars <- if (is.null(xformla)) character(0) else all.vars(xformla)
+  used_names <- unique(c(yname, tname, idname, gname, weightsname,
+                         clustervars, xvars))
+  used_names <- used_names[!is.na(used_names) & nzchar(used_names)]
+  bad_names <- intersect(used_names, reserved_names)
+  if (length(bad_names) > 0L) {
+    stop("The following variable name(s) are reserved for internal use by `did`: ",
+         paste(bad_names, collapse = ", "), ". Please rename these column(s) ",
+         "before calling att_gt().")
+  }
+}
+
 #' @title get_wide_data
 #' @description A utility function to convert long data to wide data, i.e., takes a 2 period dataset and turns it into a cross sectional dataset.
 #'

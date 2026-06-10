@@ -458,6 +458,12 @@ compute.att_gt <- function(dp) {
               res$att.inf.func <- (n / n1) * res$att.inf.func
             }
           }
+
+          # If ATT is NaN, replace it with NA, and mark influence function as missing.
+          if (is.nan(res$ATT)) {
+            res$ATT <- NA
+            if (do_inf) res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
+          }
           res
         }, error = function(e) {
           warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
@@ -721,8 +727,8 @@ compute.att_gt <- function(dp) {
         # matching stats::aggregate() but ~40x faster (see test-slowpath-rowsum).
         current_ids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
         rs <- rowsum(attgt$att.inf.func, current_ids, reorder = TRUE)
-        rs_ids <- as.numeric(rownames(rs))
-        idx <- which(unique(data$.rowid) %in% rs_ids)
+        rs_ids <- sort(unique(current_ids))
+        idx <- match(rs_ids, unique(data$.rowid))
         inffunc_updates[[update_counter]] <- list(
           indices = idx,
           values = as.numeric(rs[, 1])

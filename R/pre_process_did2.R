@@ -148,11 +148,12 @@ did_standardization <- function(data, args){
     stop("The weights variable '", args$weightsname, "' must be non-negative with a positive mean.")
   # enforcing normalization of weights. At this point we already drop any missing values in weights.
   weights <- weights/mean(weights)
-  data$weights <- weights
+  if (".w" %in% names(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
+  data.table::set(data, j = ".w", value = weights)
 
   # Check for time-varying weights in panel data
   if (!is.null(args$weightsname) && args$panel) {
-    w_range <- data[, .(w_range = max(weights) - min(weights)), by = c(args$idname)]
+    w_range <- data[, .(w_range = max(.w) - min(.w)), by = c(args$idname)]
     if (any(w_range$w_range > .Machine$double.eps^0.5, na.rm = TRUE)) {
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
@@ -398,11 +399,12 @@ did_standardization <- function(data, args){
 
   # Warn if some groups are small
   if (nrow(gsize) > 0) {
-    gpaste <- paste(gsize[,1], collapse = ",")
+    small_groups <- gsize[[1L]]
+    gpaste <- paste(ifelse(is.infinite(small_groups), 0, small_groups), collapse = ",")
     warning(paste0("Some groups in your dataset have very few observations, which may cause estimation problems.\n  Check groups: ", gpaste, "."))
 
     # Check if the never treated group is too small
-    if ((Inf %in% gsize[,1]) & (args$control_group == "nevertreated")) {
+    if ((Inf %in% small_groups) & (args$control_group == "nevertreated")) {
       stop("The never-treated group is too small to serve as a reliable control. Try setting `control_group = 'notyettreated'` to include not-yet-treated units as controls.")
     }
   }
@@ -453,7 +455,7 @@ get_did_tensors <- function(data, args){
       outcomes_tensor[[time]] <- y_vec[start:(start + n - 1L)]
     }
     # Build weights tensor: one weight vector per time period
-    w_vec <- data[["weights"]]
+    w_vec <- data[[".w"]]
     weights_tensor <- vector("list", nT)
     for(time in seq_len(nT)){
       start <- (time - 1L) * n + 1L
@@ -474,7 +476,7 @@ get_did_tensors <- function(data, args){
   }
 
   # Getting the time invariant data
-  time_invariant_cols <-  c(args$idname, args$gname, "weights", args$clustervars)
+  time_invariant_cols <-  c(args$idname, args$gname, ".w", args$clustervars)
   #if(!args$allow_unbalanced_panel){
   if(args$panel){
     # We can do this filtering because the data is already sorted appropriately
@@ -561,7 +563,7 @@ get_did_tensors <- function(data, args){
   }
 
   # Get the weights only
-  weights <- invariant_data[["weights"]]
+  weights <- invariant_data[[".w"]]
 
   # Gather all the arguments to return
   return(list(outcomes_tensor = outcomes_tensor,
@@ -627,6 +629,18 @@ pre_process_did2 <- function(yname,
 
   # pick a control_group by default
   args$control_group <- control_group[1]
+  if (!(args$control_group %in% c("nevertreated", "notyettreated"))) {
+    stop("control_group must be either 'nevertreated' or 'notyettreated'")
+  }
+  args$base_period <- base_period[1]
+  if (!(args$base_period %in% c("universal", "varying"))) {
+    stop("base_period must be either 'universal' or 'varying'.")
+  }
+  check_reserved_did_names(yname = args$yname, tname = args$tname,
+                           idname = args$idname, gname = args$gname,
+                           xformla = args$xformla,
+                           weightsname = args$weightsname,
+                           clustervars = args$clustervars)
 
   # run error checking on arguments
   validate_args(args, data)

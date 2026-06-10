@@ -47,3 +47,105 @@ test_that("valid positive weights are still accepted in both modes", {
     expect_true(any(is.finite(r$att)))
   }
 })
+
+test_that("fast RC path returns NA instead of crashing when a cell has no treated post observations", {
+  set.seed(43)
+  ids <- 1:90
+  d <- expand.grid(id = ids, period = 1:4)
+  d$G <- ifelse(d$id <= 40, 0, ifelse(d$id <= 65, 2, 3))
+  d <- d[!(d$G == 2 & d$period >= 3), ]
+  d$X <- rnorm(nrow(d))
+  d$Y <- 0.5 * d$X + 0.2 * d$period + (d$G > 0 & d$period >= d$G) +
+    rnorm(nrow(d), 0, 0.2)
+
+  expect_warning(
+    res <- suppressMessages(att_gt(yname = "Y", xformla = ~X, data = d,
+      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      faster_mode = TRUE, est_method = "dr", bstrap = FALSE)),
+    "No units in group 2 in time period 3")
+  expect_s3_class(res, "MP")
+  expect_true(any(is.na(res$att[res$group == 2])))
+})
+
+test_that("never-treated small-group stop fires in both modes when multiple groups are small", {
+  set.seed(44)
+  d <- expand.grid(id = 1:6, period = 1:3)
+  d$G <- ifelse(d$id <= 3, 0, 2)
+  d$Y <- rnorm(nrow(d))
+  for (j in 1:6) d[[paste0("X", j)]] <- rnorm(nrow(d))
+  xf <- ~X1 + X2 + X3 + X4 + X5 + X6
+  msg <- "never-treated group is too small"
+
+  expect_error(suppressWarnings(att_gt(yname = "Y", xformla = xf, data = d,
+    tname = "period", idname = "id", gname = "G", faster_mode = FALSE,
+    bstrap = FALSE)), msg)
+  expect_error(suppressWarnings(att_gt(yname = "Y", xformla = xf, data = d,
+    tname = "period", idname = "id", gname = "G", faster_mode = TRUE,
+    bstrap = FALSE)), msg)
+})
+
+test_that("slow unbalanced influence aggregation handles fractional numeric ids", {
+  set.seed(45)
+  sp <- did::reset.sim(time.periods = 4)
+  d <- did::build_sim_dataset(sp)
+  d <- d[-sample(seq_len(nrow(d)), floor(0.05 * nrow(d))), ]
+  d$id <- d$id + 0.123456789012345
+
+  slow <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~X,
+    data = d, tname = "period", idname = "id", gname = "G",
+    allow_unbalanced_panel = TRUE, faster_mode = FALSE, bstrap = FALSE)))
+  fast <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~X,
+    data = d, tname = "period", idname = "id", gname = "G",
+    allow_unbalanced_panel = TRUE, faster_mode = TRUE, bstrap = FALSE)))
+
+  expect_equal(slow$att, fast$att, tolerance = 1e-10)
+  expect_equal(slow$se, fast$se, tolerance = 1e-8)
+})
+
+test_that("fast path preserves user columns named weights", {
+  set.seed(46)
+  sp <- did::reset.sim(time.periods = 4)
+  d <- did::build_sim_dataset(sp)
+
+  d$weights <- d$Y
+  slow_y <- suppressWarnings(suppressMessages(att_gt(yname = "weights", xformla = ~X,
+    data = d, tname = "period", idname = "id", gname = "G",
+    faster_mode = FALSE, bstrap = FALSE)))
+  fast_y <- suppressWarnings(suppressMessages(att_gt(yname = "weights", xformla = ~X,
+    data = d, tname = "period", idname = "id", gname = "G",
+    faster_mode = TRUE, bstrap = FALSE)))
+  expect_equal(slow_y$att, fast_y$att, tolerance = 1e-10)
+  expect_false(all(abs(fast_y$att) < 1e-12))
+
+  d$weights <- d$X
+  slow_x <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~weights,
+    data = d, tname = "period", idname = "id", gname = "G",
+    faster_mode = FALSE, bstrap = FALSE)))
+  fast_x <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~weights,
+    data = d, tname = "period", idname = "id", gname = "G",
+    faster_mode = TRUE, bstrap = FALSE)))
+  expect_equal(slow_x$att, fast_x$att, tolerance = 1e-10)
+  expect_equal(slow_x$se, fast_x$se, tolerance = 1e-8)
+})
+
+test_that("slow panel path converts estimator NaN cells to NA like fast mode", {
+  set.seed(47)
+  d <- expand.grid(id = 1:90, period = 1:4)
+  d$G <- ifelse(d$id <= 30, 0, ifelse(d$id <= 60, 2, 3))
+  unit_x <- rnorm(90)
+  d$X <- unit_x[d$id]
+  d$Y <- 0.5 * d$X + 0.2 * d$period + (d$G > 0 & d$period >= d$G) +
+    rnorm(nrow(d), 0, 0.2)
+  d$w <- ifelse(d$G == 3, 0, 1)
+
+  slow <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~X,
+    data = d, tname = "period", idname = "id", gname = "G",
+    weightsname = "w", faster_mode = FALSE, bstrap = FALSE)))
+  fast <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~X,
+    data = d, tname = "period", idname = "id", gname = "G",
+    weightsname = "w", faster_mode = TRUE, bstrap = FALSE)))
+
+  expect_true(any(is.na(slow$att[slow$group == 3])))
+  expect_false(any(is.nan(slow$att)))
+  expect_equal(is.na(slow$att), is.na(fast$att))
+})
