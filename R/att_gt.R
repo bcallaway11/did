@@ -327,6 +327,25 @@ att_gt <- function(yname,
     }
   }
 
+  # Require idname for panel data: without it the pre-processors fail with
+  # confusing internal errors instead of pointing at the missing argument
+  if (panel && is.null(idname)) {
+    stop("Must provide idname when panel = TRUE. Set panel = FALSE for repeated cross sections.")
+  }
+
+  # Validate alp (significance level)
+  if (!is.numeric(alp) || length(alp) != 1 || is.na(alp) || alp <= 0 || alp >= 1) {
+    stop("alp must be a single number strictly between 0 and 1.")
+  }
+
+  # Validate biters (number of bootstrap iterations) when the bootstrap is used
+  if (bstrap) {
+    if (!is.numeric(biters) || length(biters) != 1 || is.na(biters) ||
+        biters < 1 || biters != round(biters)) {
+      stop("biters must be a single positive whole number.")
+    }
+  }
+
   # Warn users about anticipation and never-treated units
   if (anticipation > 0) {
     message("Note: anticipation = ", anticipation, ". Never-treated units (with group status 0 or Inf) ",

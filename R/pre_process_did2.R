@@ -37,6 +37,9 @@ validate_args <- function(args, data){
   # Check if gname is numeric
   if(!data[, is.numeric(get(args$gname))]){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
 
+  # Check if yname is numeric (logical 0/1 outcomes are also allowed)
+  if(!data[, is.numeric(get(args$yname)) || is.logical(get(args$yname))]){stop("The outcome variable '", args$yname, "' must be numeric. Please convert it.")}
+
   # Flag for idname
   if(!is.null(args$idname)){
     # Check if idname is in the data

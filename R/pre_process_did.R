@@ -71,6 +71,9 @@ pre_process_did <- function(yname,
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("The group variable '", gname, "' must be numeric. Please convert it.")
 
+  #  make sure the outcome is numeric (logical 0/1 outcomes are also allowed)
+  if (! (is.numeric(data[, yname]) || is.logical(data[, yname])) ) stop("The outcome variable '", yname, "' must be numeric. Please convert it.")
+
   # put in blank xformla if no covariates or check whether all variables are in data
   if (is.null(xformla)) {
     xformla <- ~1

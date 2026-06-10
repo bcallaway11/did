@@ -85,6 +85,54 @@ test_that("att_gt rejects argument-referenced internal variable names in both mo
   }
 })
 
+test_that("att_gt errors on panel=TRUE without idname in both modes", {
+  for (fm in c(FALSE, TRUE)) {
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period",
+             gname = "G", bstrap = FALSE, faster_mode = fm),
+      "Must provide idname when panel = TRUE"
+    )
+  }
+})
+
+test_that("att_gt still runs with panel=FALSE and no idname in both modes", {
+  res <- list()
+  for (fm in c(FALSE, TRUE)) {
+    res[[as.character(fm)]] <- suppressWarnings(
+      att_gt(yname = "Y", data = data_eh, tname = "period", gname = "G",
+             panel = FALSE, bstrap = FALSE, faster_mode = fm)
+    )
+    expect_true(all(is.finite(res[[as.character(fm)]]$att)))
+  }
+  expect_equal(res[["FALSE"]]$att, res[["TRUE"]]$att, tolerance = 1e-10)
+})
+
+test_that("att_gt errors on invalid alp", {
+  for (bad_alp in list(1.5, 0, 1, -0.05, c(0.05, 0.1), "0.05", NA_real_)) {
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", bstrap = FALSE, alp = bad_alp),
+      "alp must be a single number strictly between 0 and 1"
+    )
+  }
+})
+
+test_that("att_gt errors on invalid biters when bootstrapping", {
+  for (bad_biters in list(-5, 0, 2.5, c(100, 200), "100", NA_real_)) {
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", bstrap = TRUE, biters = bad_biters),
+      "biters must be a single positive whole number"
+    )
+  }
+  # biters is not used (and so not validated) when bstrap = FALSE
+  res <- suppressWarnings(
+    att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+           gname = "G", bstrap = FALSE, biters = -5)
+  )
+  expect_s3_class(res, "MP")
+})
+
 test_that("att_gt errors on fix_weights with panel=FALSE", {
   expect_error(
     att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
@@ -163,6 +211,44 @@ test_that("att_gt errors on non-numeric gname", {
            gname = "G", bstrap = FALSE),
     "must be numeric"
   )
+})
+
+test_that("att_gt errors on non-numeric outcome variable in both modes", {
+  bad_chr <- data_eh
+  bad_chr$Y <- as.character(bad_chr$Y)
+  bad_fac <- data_eh
+  bad_fac$Y <- factor(ifelse(bad_fac$Y > 0, "hi", "lo"))
+  for (fm in c(FALSE, TRUE)) {
+    expect_error(
+      att_gt(yname = "Y", data = bad_chr, tname = "period", idname = "id",
+             gname = "G", bstrap = FALSE, faster_mode = fm),
+      "The outcome variable 'Y' must be numeric"
+    )
+    expect_error(
+      att_gt(yname = "Y", data = bad_fac, tname = "period", idname = "id",
+             gname = "G", bstrap = FALSE, faster_mode = fm),
+      "The outcome variable 'Y' must be numeric"
+    )
+  }
+})
+
+test_that("att_gt still accepts logical and integer outcomes in both modes", {
+  log_data <- data_eh
+  log_data$Y <- log_data$Y > median(log_data$Y)
+  int_data <- data_eh
+  int_data$Y <- as.integer(round(int_data$Y))
+  for (fm in c(FALSE, TRUE)) {
+    res_log <- suppressWarnings(
+      att_gt(yname = "Y", data = log_data, tname = "period", idname = "id",
+             gname = "G", bstrap = FALSE, faster_mode = fm)
+    )
+    expect_true(all(is.finite(res_log$att)))
+    res_int <- suppressWarnings(
+      att_gt(yname = "Y", data = int_data, tname = "period", idname = "id",
+             gname = "G", bstrap = FALSE, faster_mode = fm)
+    )
+    expect_true(all(is.finite(res_int$att)))
+  }
 })
 
 test_that("att_gt errors on treatment reversals (faster_mode)", {

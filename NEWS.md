@@ -82,6 +82,12 @@ except where a bug fix is explicitly noted.
 
   * `fix_weights = "base_period"`/`"first_period"` are blocked for repeated cross sections (`panel = FALSE`); `fix_weights = "varying"` is blocked with a custom `est_method` function (whose signature differs from the internal RC path). Both with clear messages.
 
+  * `panel = TRUE` (the default) without `idname` now errors with "Must provide idname when panel = TRUE. Set panel = FALSE for repeated cross sections." Previously this failed with a cryptic internal `data.table` error (`faster_mode = TRUE`) or a misleading "All observations dropped while converting data to balanced panel" message (`faster_mode = FALSE`).
+
+  * A non-numeric outcome variable (`yname`) is now rejected up front with a clear message in both code paths (logical 0/1 outcomes remain allowed). Previously a character or factor outcome "ran" to completion with all-`NA` ATTs and misleading per-cell warnings, and a list-column outcome failed with a cryptic `complete.cases()` error.
+
+  * `alp` must now be a single number strictly between 0 and 1 (e.g. `alp = 1.5` previously inverted the confidence bands silently or errored deep inside `quantile()`), and `biters` must be a single positive whole number when `bstrap = TRUE` (a negative value previously crashed inside the bootstrap's linear-algebra code with no hint about the cause).
+
 ## Documentation, namespace, and internals
 
   * Reduced namespace pollution: replaced blanket `import(stats)`, `import(utils)`, and `import(BMisc)` with selective `importFrom()` calls. `did` no longer re-exports `stats::filter`/`stats::lag` (which previously masked `dplyr::filter`/`dplyr::lag`). `R CMD check` passes with 0 code-related NOTEs.
