@@ -106,9 +106,11 @@ summary.AGGTEobj <- function(object, ...) {
 
     cat("\n")
     cband_text1a <- paste0(100*(1-object$DIDparams$alp),"% ")
-    cband_text1b <- ifelse(object$DIDparams$bstrap,
-                           ifelse(object$DIDparams$cband, "Simult. ", "Pointwise "),
-                           "Pointwise ")
+    cband_text1b <- if (object$DIDparams$bstrap) {
+      if (object$DIDparams$cband) "Simult. " else "Pointwise "
+    } else {
+      "Pointwise "
+    }
     cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
     cband_lower <- object$att.egt - object$crit.val.egt*object$se.egt

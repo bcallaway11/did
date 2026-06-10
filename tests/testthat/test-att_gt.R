@@ -566,7 +566,7 @@ test_that("small comparison group", {
               gname="G", est_method="dr", faster_mode = FALSE), "very few observations")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="reg", faster_mode = FALSE), "Not enough control units")
+              gname="G", est_method="reg", faster_mode = FALSE), "singular or numerically ill-conditioned")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
               gname="G", est_method="ipw", faster_mode = FALSE), "overlap condition violated")
@@ -1090,15 +1090,19 @@ test_that("clustered standard errors", {
 
   #-----------------------------------------------------------------------------
   # also, check that we error when clustering variable varies within unit
-  # over time
+  # over time -- identically in both modes (the slow path used to accept this
+  # input and fall back to i.i.d. SEs with bstrap = FALSE)
   set.seed(09142024)
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
   data$cluster <- as.numeric(data$cluster)
   data[1,]$cluster <- data[1,]$cluster+1
 
-  expect_error(res_vc <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-                        gname="G", est_method="dr", clustervars="cluster"), "handle time-varying cluster variables")
+  for (fm in c(TRUE, FALSE)) {
+    expect_error(res_vc <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
+                          gname="G", est_method="dr", clustervars="cluster", faster_mode=fm),
+                 "Time-varying cluster variables are not supported")
+  }
 
   #-----------------------------------------------------------------------------
   # clustered standard errors with repeated cross sections data

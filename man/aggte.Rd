@@ -67,10 +67,17 @@ the value set in the MP object}
 
 \item{alp}{the significance level, default is value set in the MP object.}
 
-\item{clustervars}{A vector of variables to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level. Default is the variables set in the MP object}
+\item{clustervars}{A vector of variables to cluster on.  The default is
+the cluster variables set in the MP object (i.e., the ones passed to
+\code{\link[=att_gt]{att_gt()}}).  Clustering at the aggregation stage reuses the per-unit
+cluster information stored by \code{\link[=att_gt]{att_gt()}}, so \code{aggte} can only cluster
+on \code{idname} and/or the variable that was passed to \code{\link[=att_gt]{att_gt()}} via its
+\code{clustervars} argument.  If a requested cluster variable cannot be
+honored -- because \code{clustervars} was not supplied to \code{\link[=att_gt]{att_gt()}}, or
+because it names a different variable than the one \code{\link[=att_gt]{att_gt()}} clustered
+on -- \code{aggte} issues a warning and reports standard errors that do NOT
+account for clustering.  To obtain clustered standard errors for the
+aggregated parameters, re-run \code{\link[=att_gt]{att_gt()}} with the desired \code{clustervars}.}
 }
 \value{
 An \code{\link{AGGTEobj}} object that holds the results from the

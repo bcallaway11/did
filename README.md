@@ -6,7 +6,7 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue)](https://cran.r-project.org/package=did)
 [![](http://cranlogs.r-pkg.org/badges/last-month/did?color=blue)](https://cran.r-project.org/package=did)
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
-[![](https://img.shields.io/badge/devel%20version-2.3.0-blue.svg)](https://github.com/bcallaway11/did)
+[![](https://img.shields.io/badge/devel%20version-2.5.0-blue.svg)](https://github.com/bcallaway11/did)
 [![CRAN
 checks](https://badges.cranchecks.info/summary/did.svg)](https://cran.r-project.org/web/checks/check_results_did.html)
 [![](https://img.shields.io/github/last-commit/bcallaway11/did.svg)](https://github.com/bcallaway11/did/commits/master)
@@ -75,7 +75,7 @@ devtools::install_github("bcallaway11/did")
 The following is a simplified example of the effect of states increasing
 their minimum wages on county-level teen employment rates which comes
 from [Callaway and Sant’Anna
-(2021)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+(2021)](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 - [More detailed examples are also
   available](https://bcallaway11.github.io/did/articles/did-basics.html)

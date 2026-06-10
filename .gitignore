@@ -18,3 +18,4 @@ CLAUDE.md
 .vscode/
 .revdep_manual/
 vignettes/*_cache/
+benchmark-results/

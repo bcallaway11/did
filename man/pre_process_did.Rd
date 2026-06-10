@@ -150,11 +150,10 @@ for repeated cross sections (\code{panel = FALSE}).}
 \item{alp}{the significance level, default is 0.05}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier bootstrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is \code{TRUE} (in addition, cband
+the multiplier bootstrap.  Default is \code{TRUE} (in addition, cband
 is also by default \code{TRUE} indicating that uniform confidence bands
-will be returned.  If bstrap is \code{FALSE}, then analytical
-standard errors are reported.}
+will be returned).  If \code{bstrap=FALSE}, analytical standard errors are
+reported; these are cluster-robust when \code{clustervars} is supplied.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
 band that covers all of the group-time average treatment effects
@@ -168,7 +167,8 @@ and this is only applicable if \code{bstrap=TRUE}.}
 \item{clustervars}{A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
+level. Clustered standard errors are available with the multiplier bootstrap
+(\code{bstrap=TRUE}) or analytically (\code{bstrap=FALSE}).}
 
 \item{est_method}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the \code{DRDID} package.  Other built-in methods
@@ -196,8 +196,12 @@ In both cases the function should return a list that includes
 \code{att.inf.func} (an \verb{n x 1} influence function — one entry per
 observation passed into the estimator).
 The function can return other things as well, but these are
-the only two that are required. \code{est_method} is only used
-if covariates are included.}
+the only two that are required. With no covariates
+(\code{xformla = NULL}), the built-in methods ("dr", "ipw", "reg") all
+reduce to the unconditional difference-in-differences estimator, so
+the choice among them is irrelevant; a custom \code{est_method} function
+is still called (with an intercept-only \code{covariates} matrix) and
+determines the estimates.}
 
 \item{base_period}{Whether to use a "varying" base period or a
 "universal" base period.  Either choice results in the same
@@ -229,8 +233,9 @@ Default is \code{FALSE}.}
 
 \item{faster_mode}{This option enables a faster version of \code{did}, optimizing
 computation time for large datasets by improving data management within the package.
-The default is set to \code{FALSE}. While the difference is minimal for small datasets,
-it is recommended for use with large datasets.}
+The default is set to \code{TRUE}. Both modes produce identical results up to
+numerical precision; while the difference is minimal for small datasets,
+the speedup is substantial for large ones.}
 
 \item{pl}{Whether or not to use parallel processing}
 

@@ -27,6 +27,14 @@ validate_args <- function(args, data){
     if (length(args$clustervars) == 0L) args$clustervars <- NULL
   }
 
+  # At most one cluster variable beyond idname is supported (clustering at the
+  # unit level via idname is implicit). Checked before the dreamerr scalar check
+  # below so the error wording matches the slow path (pre_process_did) and
+  # mboot(), instead of a dreamerr message exposing internal argument names.
+  if (length(args$clustervars) > 1) {
+    stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
+  }
+
   # Flag for clustervars and weightsname
   checkvar_message <- "__ARG__ must be NULL or a character scalar that is a name of a column from the dataset."
   dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
@@ -36,6 +44,9 @@ validate_args <- function(args, data){
 
   # Check if gname is numeric
   if(!data[, is.numeric(get(args$gname))]){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
+
+  # Check if yname is numeric (logical 0/1 outcomes are also allowed)
+  if(!data[, is.numeric(get(args$yname)) || is.logical(get(args$yname))]){stop("The outcome variable '", args$yname, "' must be numeric. Please convert it.")}
 
   # Flag for idname
   if(!is.null(args$idname)){
@@ -68,13 +79,9 @@ validate_args <- function(args, data){
   dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
 
   # Flags for cluster variable
-  # Note: idname was already stripped from clustervars above (before dreamerr check)
+  # Note: idname was already stripped from clustervars and the at-most-one check
+  # was enforced above (before the dreamerr check)
   if (!is.null(args$clustervars)) {
-    # check if user is providing more than 1 cluster variable (beyond idname)
-    if (length(args$clustervars) > 1) {
-      stop("You can only provide 1 cluster variable additionally to the one provided in idname. Please check your arguments.")
-    }
-
     # Check that cluster variables do not vary over time within each unit. For true repeated cross-sections
     # the user may omit idname (an internal ".rowid" is created later, one observation per row), so there is
     # no within-unit time variation to check and idname is not yet available here -- skip the check then.
@@ -82,8 +89,9 @@ validate_args <- function(args, data){
       # Efficiently check for time-varying cluster variables
       clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = get(args$idname), .SDcols = args$clustervars]
       # If any cluster variable varies over time within any unit, stop execution
+      # (same wording as the slow path and mboot())
       if (!all(unlist(clust_tv[, -1, with = FALSE]))) {
-        stop("did cannot handle time-varying cluster variables at the moment. Please check your cluster variable.")
+        stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
       }
     }
   }
@@ -108,19 +116,32 @@ validate_args <- function(args, data){
 #' @return A list containing ordered data and arguments
 #' @noRd
 did_standardization <- function(data, args){
-  # keep relevant columns in data
-  cols_to_keep <-  c(args$idname, args$tname, args$gname, args$yname, args$weightsname, args$clustervars)
-
-  model_frame <- model.frame(args$xformla, data = data, na.action = na.pass)
+  # keep relevant columns plus the RAW covariate variables (all.vars of xformla), so
+  # model.matrix(args$xformla, .) can be rebuilt downstream. Keeping the evaluated
+  # model.frame instead would lose the raw variable for transform formulae
+  # (~I(X^2), ~poly(X, 2), ~log(X)) and create matrix-valued columns that break the
+  # data.table coercion. For bare-variable / factor formulae this is identical.
+  xvars <- all.vars(args$xformla)
+  cols_to_keep <- unique(c(args$idname, args$tname, args$gname, args$yname,
+                           args$weightsname, args$clustervars, xvars))
   # Subset the dataset to keep only the relevant columns
   data <- data[, ..cols_to_keep]
-
-  # Column bind the model frame to the data
-  data <- cbind(data, as.data.table(model_frame))
 
   # Check if any covariates were missing
   n_orig <- data[, .N]
   data <- data[complete.cases(data)]
+  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # covariate); safe now that raw-covariate NAs are removed (so poly()/ns()/... will
+  # not error on NA input). Use model.frame (NOT model.matrix) with na.action =
+  # na.pass: model.frame keeps every row -- including NA/NaN-valued terms -- so the
+  # complete.cases() mask stays aligned with `data` (model.matrix would silently drop
+  # NaN rows, shortening the mask and letting the offending rows survive). Inf-valued
+  # terms are kept, matching the prior behavior.
+  if (length(xvars) > 0L && data[, .N] > 0L) {
+    mf_check <- suppressWarnings(model.frame(args$xformla, data = data, na.action = na.pass))
+    finite_rows <- complete.cases(mf_check)
+    if (!all(finite_rows)) data <- data[finite_rows]
+  }
   n_new <- data[, .N]
   n_diff <- n_orig - n_new
   if (n_diff != 0) {
@@ -128,14 +149,19 @@ did_standardization <- function(data, args){
   }
 
   # Set weights
-  base::ifelse(is.null(args$weightsname), weights <- rep(1, n_new), weights <- data[[args$weightsname]])
+  if (is.null(args$weightsname)) weights <- rep(1, n_new) else weights <- data[[args$weightsname]]
+  # Validate user-supplied weights: negative weights flip signs and a non-positive
+  # mean divides by ~0 during normalization, silently producing NA/NaN ATTs.
+  if (!is.null(args$weightsname) && (any(weights < 0, na.rm = TRUE) || isTRUE(mean(weights, na.rm = TRUE) <= 0)))
+    stop("The weights variable '", args$weightsname, "' must be non-negative with a positive mean.")
   # enforcing normalization of weights. At this point we already drop any missing values in weights.
   weights <- weights/mean(weights)
-  data$weights <- weights
+  if (".w" %in% names(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
+  data.table::set(data, j = ".w", value = weights)
 
   # Check for time-varying weights in panel data
   if (!is.null(args$weightsname) && args$panel) {
-    w_range <- data[, .(w_range = max(weights) - min(weights)), by = c(args$idname)]
+    w_range <- data[, .(w_range = max(.w) - min(.w)), by = c(args$idname)]
     if (any(w_range$w_range > .Machine$double.eps^0.5, na.rm = TRUE)) {
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
@@ -164,13 +190,13 @@ did_standardization <- function(data, args){
   # may already exhibit anticipatory effects during the observed time window, and should
   # not be used as controls.
   max_treatment_time <- max(tlist, na.rm = TRUE)
-  data[, asif_never_treated := (get(args$gname) > max_treatment_time + args$anticipation)]
-  # replace NA values with FALSE in the logical vector
-  data[is.na(asif_never_treated), asif_never_treated := FALSE]
-  # set gname to 0 for those groups considered as never treated
-  data[asif_never_treated == TRUE, (args$gname) := Inf]
-  # remove the temporary column
-  data[, asif_never_treated := NULL]
+  # gname has no NAs here (complete cases were enforced above), so the comparison
+  # cannot yield NA; keep it as a local vector instead of a temporary column
+  asif_never_treated <- data[[args$gname]] > max_treatment_time + args$anticipation
+  # set gname to Inf for those groups considered as never treated
+  if (any(asif_never_treated)) {
+    data.table::set(data, i = which(asif_never_treated), j = args$gname, value = Inf)
+  }
 
   # get list of treated groups (by time) from min to max
   glist <- sort(unique(data[[args$gname]]))
@@ -200,10 +226,11 @@ did_standardization <- function(data, args){
     cutoff_t  <- latest_g - args$anticipation
 
     if (args$control_group == "nevertreated") {
-      # Warn the user
+      # Warn the user (same wording as the slow path, pre_process_did: the
+      # filtering sentence matters -- periods >= cutoff_t are dropped just below)
       warning(
         "No never-treated group is available. ",
-        "The last treated cohort is being coerced as 'never-treated' units."
+        "The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups)."
       )
 
       # Drop all periods ≥ (latest_g - anticipation)
@@ -235,15 +262,16 @@ did_standardization <- function(data, args){
   glist <- glist[glist != Inf & glist > first_period + args$anticipation]
 
   # Check for groups treated in the first period (accounting for anticipation) and drop them
-  # identify groups treated in the first period
-  data[, treated_first_period := (is.finite(get(args$gname)) & get(args$gname) <= first_period + args$anticipation)]
-  data[is.na(treated_first_period), treated_first_period := FALSE]
+  # identify groups treated in the first period; gname has no NAs here, so keep a
+  # local vector instead of a temporary column (it is only read before the subset below)
+  gvec <- data[[args$gname]]
+  treated_first_period <- is.finite(gvec) & gvec <= first_period + args$anticipation
 
   # count the number of units treated in the first period
   if (args$panel) {
-    nfirstperiod <- length(unique(data[[args$idname]][data$treated_first_period == TRUE]))
+    nfirstperiod <- length(unique(data[[args$idname]][treated_first_period]))
   } else {
-    nfirstperiod <- sum(data$treated_first_period == TRUE)
+    nfirstperiod <- sum(treated_first_period)
   }
 
   # handle units treated in the first period
@@ -261,8 +289,6 @@ did_standardization <- function(data, args){
     first_period <- tlist[1]
     glist <- glist[glist != Inf & glist > first_period + args$anticipation]
   }
-  # remove the temporary column
-  data[, treated_first_period := NULL]
 
   # If user specifies repeated cross sections,
   # set that it really is repeated cross sections
@@ -278,8 +304,9 @@ did_standardization <- function(data, args){
   bal_panel_test <- (args$panel)*(args$allow_unbalanced_panel)
 
   if (bal_panel_test) {
-    # First, focus on complete cases and make a balanced dataset
-    data_comp <- data[complete.cases(data)]
+    # First, focus on complete cases. Rows with missing data were already dropped
+    # in did_standardization() above, so this is a guarded no-op in the common case.
+    data_comp <- if (anyNA(data)) data[complete.cases(data)] else data
 
     # Check if the panel is balanced
     is_balanced <- check_balance(data_comp, id_col = args$idname, time_col = args$tname)
@@ -300,23 +327,28 @@ did_standardization <- function(data, args){
     } else {
       # Coerce balanced panel
 
-      # Focus on complete cases
-      keepers <- complete.cases(data)
-      id_col <- data[[args$idname]]
-      n <- length(unique(id_col))
-      n_keep <- length(unique(id_col[keepers]))
-      if (n_keep < n) {
-        warning(paste0("Dropped ", (n - n_keep), " observations that had missing data."))
-        data <- data[keepers, ]
+      # Focus on complete cases. Rows with missing data were already dropped in
+      # did_standardization() above, so this is a guarded no-op in the common case.
+      if (anyNA(data)) {
+        keepers <- complete.cases(data)
+        id_col <- data[[args$idname]]
+        n <- length(unique(id_col))
+        n_keep <- length(unique(id_col[keepers]))
+        if (n_keep < n) {
+          warning(paste0("Dropped ", (n - n_keep), " observations that had missing data."))
+          data <- data[keepers, ]
+        }
       }
 
-      # Make balanced panel
+      # Make balanced panel. validate_args() guarantees at most one row per (id, t),
+      # so the panel is balanced iff nrow == n_ids * n_periods; the grouped count is
+      # only needed in the unbalanced case to identify the offending units.
       raw_time_size <- length(unique(data[[args$tname]]))
-      unit_count <- data[, .(count = .N), by = get(args$idname)]
-      if(any(unit_count[, count < raw_time_size])){
-        mis_unit <- unit_count[count < raw_time_size]
-        warning(nrow(mis_unit), " units are missing in some periods. Converting to balanced panel by dropping them.")
-        data <- data[!get(args$idname) %in% mis_unit$get]
+      if (nrow(data) != length(unique(data[[args$idname]])) * raw_time_size) {
+        unit_count <- data[, .(count = .N), by = c(args$idname)]
+        mis_unit_ids <- unit_count[[1L]][unit_count[[2L]] < raw_time_size]
+        warning(length(mis_unit_ids), " units are missing in some periods. Converting to balanced panel by dropping them.")
+        data <- data[!(data[[args$idname]] %in% mis_unit_ids)]
       }
 
       # If all data is dropped, stop execution
@@ -381,11 +413,12 @@ did_standardization <- function(data, args){
 
   # Warn if some groups are small
   if (nrow(gsize) > 0) {
-    gpaste <- paste(gsize[,1], collapse = ",")
+    small_groups <- gsize[[1L]]
+    gpaste <- paste(ifelse(is.infinite(small_groups), 0, small_groups), collapse = ",")
     warning(paste0("Some groups in your dataset have very few observations, which may cause estimation problems.\n  Check groups: ", gpaste, "."))
 
     # Check if the never treated group is too small
-    if ((Inf %in% gsize[,1]) & (args$control_group == "nevertreated")) {
+    if ((Inf %in% small_groups) & (args$control_group == "nevertreated")) {
       stop("The never-treated group is too small to serve as a reliable control. Try setting `control_group = 'notyettreated'` to include not-yet-treated units as controls.")
     }
   }
@@ -423,6 +456,18 @@ did_standardization <- function(data, args){
 #' @noRd
 get_did_tensors <- function(data, args){
 
+  # Drop globally-empty factor levels from the covariates referenced by xformla
+  # before any design matrix is built: model.matrix() emits a dummy column for
+  # every declared level, so a level absent from the ENTIRE estimation sample
+  # (common after users subset their data) would produce an all-zero column in
+  # every (g,t) cell and NA-fail the whole estimation. Done before invariant_data
+  # is derived below so both model.matrix() calls see the same levels. Levels
+  # absent only from a particular 2x2 cell are unaffected. Mirrors the identical
+  # fix in compute.att_gt() (slow path).
+  for (v in all.vars(args$xformla)) {
+    if (is.factor(data[[v]])) set(data, j = v, value = droplevels(data[[v]]))
+  }
+
   # Getting the outcome tensor: a vector of outcome variables per time period of dimension id_count x 1 x time_periods_count
   #if(!args$allow_unbalanced_panel){
   if(args$panel){
@@ -436,7 +481,7 @@ get_did_tensors <- function(data, args){
       outcomes_tensor[[time]] <- y_vec[start:(start + n - 1L)]
     }
     # Build weights tensor: one weight vector per time period
-    w_vec <- data[["weights"]]
+    w_vec <- data[[".w"]]
     weights_tensor <- vector("list", nT)
     for(time in seq_len(nT)){
       start <- (time - 1L) * n + 1L
@@ -457,7 +502,7 @@ get_did_tensors <- function(data, args){
   }
 
   # Getting the time invariant data
-  time_invariant_cols <-  c(args$idname, args$gname, "weights", args$clustervars)
+  time_invariant_cols <-  c(args$idname, args$gname, ".w", args$clustervars)
   #if(!args$allow_unbalanced_panel){
   if(args$panel){
     # We can do this filtering because the data is already sorted appropriately
@@ -473,19 +518,35 @@ get_did_tensors <- function(data, args){
     }
   }
 
-  # Get cohort counts
+  # Get cohort, period and crosstable counts. In the balanced-panel case
+  # invariant_data is exactly the first-period slice of the (t, g, id)-sorted data,
+  # so the by-period and by-(period, cohort) tables are degenerate one-period shapes
+  # derivable from cohort_counts without re-grouping the table; in the RCS/unbalanced
+  # case the cohort and period margins are rollups of a single (t, g) pass.
   cohorts <- c(args$treated_groups, Inf)
-  cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
-  names(cohort_counts)[1] <- "cohort" # changing the name
+  if (args$panel) {
+    # Get cohort counts
+    cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
+    names(cohort_counts)[1] <- "cohort" # changing the name
 
-  # Get period counts
-  period_counts <- invariant_data[, .(period_size = .N), by = get(args$tname)]
-  names(period_counts)[1] <- "period" # changing the name
+    # Get period counts: all invariant_data rows share the first time period
+    period_counts <- data.table(period = args$time_periods[1],
+                                period_size = nrow(invariant_data))
 
-  # Get crosstable counts
-  crosstable_counts <- invariant_data[, .N, by = .(get(args$tname), get(args$gname))]   # Directly count occurrences by tname and gname
-  names(crosstable_counts)[1] <- "period" # changing the name
-  names(crosstable_counts)[2] <- "cohort" # changing the name
+    # Get crosstable counts (long form): one row per cohort, all in the first period
+    crosstable_counts <- data.table(period = args$time_periods[1],
+                                    cohort = cohort_counts$cohort,
+                                    N = cohort_counts$cohort_size)
+  } else {
+    # Get crosstable counts (long form): count occurrences by tname and gname
+    crosstable_counts <- invariant_data[, .N, by = .(get(args$tname), get(args$gname))]
+    names(crosstable_counts)[1] <- "period" # changing the name
+    names(crosstable_counts)[2] <- "cohort" # changing the name
+
+    # Get cohort and period counts as rollups of the (t, g) pass
+    cohort_counts <- crosstable_counts[, .(cohort_size = sum(N)), by = cohort]
+    period_counts <- crosstable_counts[, .(period_size = sum(N)), by = period]
+  }
   crosstable_counts <- dcast(crosstable_counts, period ~ cohort, value.var = "N", fill = 0)  # Reshape
 
 
@@ -544,7 +605,7 @@ get_did_tensors <- function(data, args){
   }
 
   # Get the weights only
-  weights <- invariant_data[["weights"]]
+  weights <- invariant_data[[".w"]]
 
   # Gather all the arguments to return
   return(list(outcomes_tensor = outcomes_tensor,
@@ -599,8 +660,21 @@ pre_process_did2 <- function(yname,
                             call = NULL) {
 
 
-  # coerce data to data.table first
-  if (!is.data.table(data)) {
+  # coerce data to data.table first, keeping only the columns the pipeline uses
+  # (id/time/group/outcome/weights/cluster plus the raw xformla variables) so wide
+  # inputs do not pay a full-table copy. If any referenced name is missing, fall
+  # back to coercing everything so the downstream checks (dreamerr/validate_args/
+  # xformla) fire with their usual messages and precedence.
+  keep_cols <- unique(c(idname, tname, gname, yname, weightsname, clustervars,
+                        if (!is.null(xformla)) all.vars(xformla)))
+  if (is.data.frame(data) && is.character(keep_cols) && all(keep_cols %in% names(data))) {
+    if (is.data.table(data)) {
+      data <- data[, ..keep_cols]
+    } else {
+      # selecting columns from a data.frame is shallow; only kept columns are copied
+      data <- as.data.table(data[keep_cols])
+    }
+  } else if (!is.data.table(data)) {
     data <- as.data.table(data)
   }
 
@@ -610,6 +684,18 @@ pre_process_did2 <- function(yname,
 
   # pick a control_group by default
   args$control_group <- control_group[1]
+  if (!(args$control_group %in% c("nevertreated", "notyettreated"))) {
+    stop("control_group must be either 'nevertreated' or 'notyettreated'")
+  }
+  args$base_period <- base_period[1]
+  if (!(args$base_period %in% c("universal", "varying"))) {
+    stop("base_period must be either 'universal' or 'varying'.")
+  }
+  check_reserved_did_names(yname = args$yname, tname = args$tname,
+                           idname = args$idname, gname = args$gname,
+                           xformla = args$xformla,
+                           weightsname = args$weightsname,
+                           clustervars = args$clustervars)
 
   # run error checking on arguments
   validate_args(args, data)

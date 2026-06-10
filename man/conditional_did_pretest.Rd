@@ -88,33 +88,15 @@ eventually participate in the treatment, but have not
 participated yet.}
 
 \item{weightsname}{The name of the column containing the sampling weights.
-If not set, all observations have same weight. When weights are
-time-invariant (constant within each unit across periods), all
-\code{fix_weights} options produce identical results and no special
-handling is needed.
-
-When weights vary across time (e.g., time-varying population sizes),
-the default behavior differs by panel type:
-\describe{
-\item{Balanced panel}{Each 2x2 DiD comparison uses the weight from the
-earlier of the two time periods involved. For post-treatment cells,
-this is the base period (g-1). For pre-treatment cells with
-\code{base_period="varying"}, this is the pre-treatment period itself.
-The panel DRDID estimators are used.}
-\item{Repeated cross sections and unbalanced panels}{Both periods'
-per-observation weights are passed directly to the RC DRDID estimators,
-so each observation carries its own period-specific weight.}
-}
-Use the \code{fix_weights} argument to override the default behavior.}
+If not set, all observations have same weight.}
 
 \item{alp}{the significance level, default is 0.05}
 
-\item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier bootstrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is \code{TRUE} (in addition, cband
-is also by default \code{TRUE} indicating that uniform confidence bands
-will be returned.  If bstrap is \code{FALSE}, then analytical
-standard errors are reported.}
+\item{bstrap}{Not used by the pre-test.  Critical values and p-values
+for the Cramer von Mises and Kolmogorov-Smirnov test statistics are
+always computed with the multiplier bootstrap (using \code{biters}
+iterations), regardless of this argument, and no standard errors are
+reported.}
 
 \item{cband}{Boolean for whether or not to compute a uniform confidence
 band that covers all of the group-time average treatment effects
@@ -122,49 +104,30 @@ with fixed probability \code{1-alp}.  In order to compute uniform confidence
 bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \code{TRUE}.}
 
-\item{biters}{The number of bootstrap iterations to use.  The default is 1000,
-and this is only applicable if \code{bstrap=TRUE}.}
+\item{biters}{The number of multiplier bootstrap iterations used to
+simulate the limiting distribution of the test statistics.  The
+default is 1000.}
 
-\item{clustervars}{A vector of variables names to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
+\item{clustervars}{A vector of variables names to cluster on (the
+multiplier bootstrap then draws cluster-level multipliers).  At most,
+there can be two variables (otherwise will throw an error) and one of
+these must be the same as idname which allows for clustering at the
+individual level.}
 
-\item{est_method}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
-approach in the \code{DRDID} package.  Other built-in methods
-include "ipw" for inverse probability weighting and "reg" for
-first step regression estimators.  The user can also pass their
-own function for estimating group time average treatment
-effects.  The required signature depends on the data structure:
-
-\strong{Panel data} (\code{panel=TRUE}): \code{f(y1, y0, D, covariates, i.weights, inffunc, ...)} where \code{y1} is an \verb{n x 1} vector of
-post-treatment outcomes, \code{y0} is an \verb{n x 1} vector of
-pre-treatment outcomes, \code{D} is a binary vector indicating
-treatment group membership, \code{covariates} is an \verb{n x k} matrix,
-\code{i.weights} is a vector of sampling weights, and \code{inffunc} is a
-logical requesting influence-function computation.
-
-\strong{Repeated cross sections / unbalanced panel} (\code{panel=FALSE}):
-\code{f(y, post, D, covariates, i.weights, inffunc, ...)} where \code{y} is
-the outcome vector (length \code{n}), \code{post} is a binary indicator for
-the post-treatment period, \code{D} is a binary treatment indicator,
-\code{covariates} is an \verb{n x k} matrix, \code{i.weights} is a vector of
-sampling weights, and \code{inffunc} is a logical.
-
-In both cases the function should return a list that includes
-\code{ATT} (the estimated group-time average treatment effect) and
-\code{att.inf.func} (an \verb{n x 1} influence function — one entry per
-observation passed into the estimator).
-The function can return other things as well, but these are
-the only two that are required. \code{est_method} is only used
-if covariates are included.}
+\item{est_method}{the method to compute group-time average treatment
+effects.  The default for \code{conditional_did_pretest} is "ipw" for
+inverse probability weighting.  Other built-in methods include "dr"
+which uses the doubly robust approach in the \code{DRDID} package and "reg"
+for first step regression estimators.}
 
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
 
 \item{pl}{Whether or not to use parallel processing}
 
-\item{cores}{The number of cores to use for parallel processing}
+\item{cores}{The number of cores to use for parallel processing. This
+parallelizes Step 1 (computing the test statistic); Step 2's multiplier
+bootstrap is vectorized and runs in a single process.}
 }
 \value{
 an \code{\link{MP.TEST}} object

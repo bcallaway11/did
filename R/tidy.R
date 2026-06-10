@@ -25,7 +25,7 @@ nobs.MP <- function(object, ...) {
 #' @return Integer. The number of unique cross-sectional units in the data.
 #' @export
 nobs.AGGTEobj <- function(object, ...) {
-  if (object$DIDparams$faster_mode) {
+  if (isTRUE(object$DIDparams$faster_mode)) {
     as.integer(object$DIDparams$id_count)
   } else {
     as.integer(object$DIDparams$n)
@@ -85,20 +85,21 @@ tidy.MP <- function(x, ...) {
 #' @export
 glance.MP <- function(x, ...) {
   dp <- x$DIDparams
+  est.method <- if (is.function(dp$est_method)) "custom" else dp$est_method
   if (isTRUE(dp$faster_mode)) {
     out <- data.frame(
       nobs          = x$n,
       ngroup        = dp$treated_groups_count,
       ntime         = dp$time_periods_count,
       control.group = dp$control_group,
-      est.method    = dp$est_method)
+      est.method    = est.method)
   } else {
     out <- data.frame(
       nobs          = x$n,
       ngroup        = dp$nG,
       ntime         = dp$nT,
       control.group = dp$control_group,
-      est.method    = dp$est_method)
+      est.method    = est.method)
   }
   out
 }
@@ -211,14 +212,15 @@ tidy.AGGTEobj<- function(x, ...) {
 #' @param ... other arguments passed to methods
 #' @export
 glance.AGGTEobj<- function(x, ...) {
-  if(x$DIDparams$faster_mode) {
+  est.method <- if (is.function(x$DIDparams$est_method)) "custom" else x$DIDparams$est_method
+  if(isTRUE(x$DIDparams$faster_mode)) {
     out <- data.frame(
       type          = x$type,
       nobs          = x$DIDparams$id_count,
       ngroup        = x$DIDparams$treated_groups_count,
       ntime         = x$DIDparams$time_periods_count,
       control.group = x$DIDparams$control_group,
-      est.method    = x$DIDparams$est_method)  
+      est.method    = est.method)
   } else {
     out <- data.frame(
       type          = x$type,
@@ -226,7 +228,7 @@ glance.AGGTEobj<- function(x, ...) {
       ngroup        = x$DIDparams$nG,
       ntime         = x$DIDparams$nT,
       control.group = x$DIDparams$control_group,
-      est.method    = x$DIDparams$est_method)
+      est.method    = est.method)
   }
 
   out

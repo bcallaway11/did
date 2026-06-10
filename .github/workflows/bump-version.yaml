@@ -1,5 +1,13 @@
 name: Bump dev version on PR merge
 
+# Release convention: every merged PR bumps the 4th (dev) version component,
+# EXCEPT PRs carrying the 'release' label. Label a CRAN release PR with
+# 'release' so that, after merge, master HEAD keeps the exact 3-component
+# release version (e.g. 2.5.0) from which the CRAN tarball is built. The
+# first regular PR merged afterwards starts the next dev series (e.g. 2.5.0.1).
+# Do NOT skip based on the version having 3 components: post-release master
+# stays 3-component, which would permanently disable dev bumps.
+
 on:
   pull_request:
     types: [closed]
@@ -11,7 +19,9 @@ concurrency:
 
 jobs:
   bump-version:
-    if: github.event.pull_request.merged == true
+    if: >-
+      github.event.pull_request.merged == true &&
+      !contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
 
     permissions:

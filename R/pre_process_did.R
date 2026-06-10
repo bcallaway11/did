@@ -42,6 +42,21 @@ pre_process_did <- function(yname,
   if(!(control_group %in% c("nevertreated","notyettreated"))){
     stop("control_group must be either 'nevertreated' or 'notyettreated'")
   }
+  base_period <- base_period[1]
+  if (!(base_period %in% c("universal", "varying"))) {
+    stop("base_period must be either 'universal' or 'varying'.")
+  }
+  # Check if anticipation is numeric and non-negative (same contract as the fast path)
+  if (!is.numeric(anticipation)) {
+    stop("anticipation must be numeric. Please convert it.")
+  }
+  if (anticipation < 0) {
+    stop("anticipation must be non-negative. Please check your arguments.")
+  }
+  check_reserved_did_names(yname = yname, tname = tname, idname = idname,
+                           gname = gname, xformla = xformla,
+                           weightsname = weightsname,
+                           clustervars = clustervars)
   # make sure dataset is a data.frame
   # this gets around RStudio's default of reading data as tibble
   if (!all( class(data) == "data.frame")) {
@@ -57,11 +72,27 @@ pre_process_did <- function(yname,
          "Please check the spelling of yname, tname, idname, gname, weightsname, and clustervars.")
   }
 
+  # At most one cluster variable beyond idname is supported (clustering at the
+  # unit level via idname is implicit). Enforced here -- mirroring the fast path
+  # (pre_process_did2) and mboot(), with identical wording -- so every
+  # faster_mode x bstrap combination rejects the input up front; the analytical
+  # (bstrap = FALSE) path used to silently cluster on the first extra variable only.
+  cv_check <- clustervars
+  if (!is.null(cv_check) && !is.null(idname) && (idname %in% cv_check)) {
+    cv_check <- setdiff(cv_check, idname)
+  }
+  if (length(cv_check) > 1) {
+    stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
+  }
+
   # make sure time periods are numeric
   if (! (is.numeric(data[, tname])) ) stop("The time variable '", tname, "' must be numeric. Please convert it.")
 
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("The group variable '", gname, "' must be numeric. Please convert it.")
+
+  #  make sure the outcome is numeric (logical 0/1 outcomes are also allowed)
+  if (! (is.numeric(data[, yname]) || is.logical(data[, yname])) ) stop("The outcome variable '", yname, "' must be numeric. Please convert it.")
 
   # put in blank xformla if no covariates or check whether all variables are in data
   if (is.null(xformla)) {
@@ -79,27 +110,60 @@ pre_process_did <- function(yname,
     }
   }
 
-  # drop irrelevant columns from data
-  data <- cbind.data.frame(data[,c(idname, tname, yname, gname, weightsname, clustervars)], model.frame(xformla, data=data, na.action=na.pass))
+  # drop irrelevant columns from data. Keep the RAW covariate variables (all.vars of
+  # xformla), NOT the evaluated model.frame, so model.matrix(xformla, .) can be
+  # rebuilt downstream. This is what makes transform formulae work (e.g. ~I(X^2),
+  # ~poly(X, 2), ~log(X)): the evaluated model.frame would store columns named by the
+  # transformed expression -- losing the raw variable that model.matrix needs -- and,
+  # for matrix-valued terms like poly(), a matrix column that later breaks the
+  # data.table coercion in compute.att_gt(). For bare-variable formulae (e.g. ~X,
+  # ~X1+X2) and factor covariates the kept columns are identical to before.
+  xvars <- all.vars(xformla)
+  keep_cols <- unique(c(idname, tname, yname, gname, weightsname, clustervars, xvars))
+  data <- data[, keep_cols, drop = FALSE]
 
   # check if any covariates were missing
   n_orig <- nrow(data)
-  data <- data[complete.cases(data),]
+  # drop rows with any missing id / time / outcome / group / weight / cluster or any
+  # missing RAW covariate value
+  data <- data[complete.cases(data), ]
+  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # covariate), preserving the previous model.frame-based row dropping. We use
+  # model.frame (NOT model.matrix) with na.action = na.pass: model.frame keeps EVERY
+  # row -- including those where a term evaluates to NA/NaN -- so complete.cases()
+  # flags them and the indicator stays aligned with `data`. (model.matrix would
+  # instead silently drop the NaN rows, making the mask shorter than `data` and the
+  # offending rows survive.) Inf-valued terms are kept, matching the prior behavior.
+  # Safe to evaluate now that raw-covariate NAs have been removed (so poly()/ns()/...
+  # will not error on NA input).
+  if (length(xvars) > 0L && nrow(data) > 0L) {
+    mf_check <- suppressWarnings(model.frame(xformla, data = data, na.action = na.pass))
+    finite_rows <- complete.cases(mf_check)
+    if (!all(finite_rows)) data <- data[finite_rows, ]
+  }
   n_diff <- n_orig - nrow(data)
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
   }
 
   # weights if null
-  ifelse(is.null(weightsname), w <- rep(1, nrow(data)), w <- data[,weightsname])
+  if (is.null(weightsname)) w <- rep(1, nrow(data)) else w <- data[,weightsname]
+
+  # Validate user-supplied weights: negative weights flip signs and a non-positive
+  # mean divides by ~0 during normalization, silently producing NA/NaN ATTs.
+  if (!is.null(weightsname) && (any(w < 0, na.rm = TRUE) || isTRUE(mean(w, na.rm = TRUE) <= 0)))
+    stop("The weights variable '", weightsname, "' must be non-negative with a positive mean.")
 
   if (".w" %in% colnames(data)) stop("Your data already contains a column named '.w', which is reserved for internal use by `did`. Please rename this column before calling att_gt().")
   data$.w <- w
 
-  # Check for time-varying weights in panel data
+  # Check for time-varying weights in panel data. Grouped max/min via data.table
+  # (GForce-optimized) is much faster than tapply() with a per-unit closure and
+  # produces the same per-unit ranges as diff(range(x)) on the raw weights.
   if (!is.null(weightsname) && panel) {
-    w_by_id <- tapply(data[, weightsname], data[, idname], function(x) max(x) - min(x))
-    if (any(w_by_id > .Machine$double.eps^0.5, na.rm = TRUE)) {
+    dtw <- data.table(id = data[[idname]], .w = data[[weightsname]])
+    w_rng <- dtw[, .(mx = max(.w), mn = min(.w)), by = "id"]
+    if (any((w_rng$mx - w_rng$mn) > .Machine$double.eps^0.5, na.rm = TRUE)) {
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
         "behavior uses the weight from the earlier of the two time periods in ",
@@ -115,7 +179,7 @@ pre_process_did <- function(yname,
 
   # figure out the dates
   # list of dates from smallest to largest
-  tlist <- unique(data[,tname])[order(unique(data[,tname]))]
+  tlist <- sort(unique(data[,tname]))
 
   # Groups with treatment time bigger than max time period + anticipation are considered to be never treated.
   # We account for anticipation because units treated shortly after the last observed period
@@ -126,7 +190,7 @@ pre_process_did <- function(yname,
   data[asif_never_treated, gname] <- 0
 
   # list of treated groups (by time) from smallest to largest
-  glist <- unique(data[,gname], )[order(unique(data[,gname]))]
+  glist <- sort(unique(data[,gname]))
 
 
   # Check if there is a never treated group
@@ -195,15 +259,17 @@ pre_process_did <- function(yname,
   # nfirstperiod <- length(unique(data[ !((data[,gname] > first.period) | (data[,gname]==0)), ] )[,idname])
   treated_first_period <- ( data[,gname] <= first.period + anticipation ) & ( !(data[,gname]==0) )
   treated_first_period[is.na(treated_first_period)] <- FALSE
-  nfirstperiod <- ifelse(panel, length(unique(data[treated_first_period,][,idname])), nrow(data[treated_first_period,]))
+  # if/else (not ifelse) so the data subset is built only for the relevant branch;
+  # the result is identical to the previous ifelse(panel, ...) expression.
+  nfirstperiod <- if (panel) length(unique(data[treated_first_period, idname])) else sum(treated_first_period)
   if ( nfirstperiod > 0 ) {
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
                     if (anticipation > 0) paste0(" (accounting for anticipation = ", anticipation, ")") else "",
                     "."))
     data <- data[ data[,gname] %in% c(0,glist), ]
     # update tlist and glist
-    tlist <- unique(data[,tname])[order(unique(data[,tname]))]
-    glist <- unique(data[,gname], )[order(unique(data[,gname]))]
+    tlist <- sort(unique(data[,tname]))
+    glist <- sort(unique(data[,gname]))
     glist <- glist[glist>0]
 
     # drop groups treated in the first period or before
@@ -217,11 +283,49 @@ pre_process_did <- function(yname,
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("The id variable '", idname, "' must be numeric. Please convert it.")
 
-    # Check that gname is time-invariant within each unit (treatment irreversibility).
-    # Uses unique() + anyDuplicated() for O(n) performance.
-    id_g_unique <- unique(data[, c(idname, gname)])
-    if (anyDuplicated(id_g_unique[[idname]]) != 0L) {
-      stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+    # Validate treatment irreversibility and (id, period) uniqueness with a single
+    # radix order over (id, t) plus O(n) adjacent-element scans, instead of the much
+    # slower unique.data.frame()/anyDuplicated.data.frame() row-key machinery. After
+    # ordering, each unit's rows are contiguous, so g varying within a unit shows up
+    # as adjacent rows with equal id but differing g, and a duplicated (id, period)
+    # pair as adjacent rows with equal id and equal t. All three columns are numeric
+    # and NA-free at this point, so the comparisons are exact.
+    idv <- data[, idname]
+    nn <- length(idv)
+    if (nn >= 2L) {
+      tv <- data[, tname]
+      o <- order(idv, tv, method = "radix")
+      io <- idv[o]
+      same_id <- io[-1L] == io[-nn]
+
+      # Check that gname is time-invariant within each unit (treatment irreversibility).
+      go <- data[, gname][o]
+      if (any(same_id & (go[-1L] != go[-nn]))) {
+        stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+      }
+
+      # Check that (idname, tname) is unique: each unit observed at most once per
+      # period. Mirrors the fast path (pre_process_did2.R) so both code paths reject
+      # duplicated (id, period) rows identically -- without this guard the slow path
+      # silently produced incorrect estimates on long-format data with duplicates.
+      to <- tv[o]
+      if (any(same_id & (to[-1L] == to[-nn]))) {
+        stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
+      }
+
+      # Check that cluster variables are time-invariant within each unit, mirroring
+      # the fast path (validate_args) and mboot() -- with identical wording -- so
+      # invalid clustering inputs are rejected up front regardless of bstrap.
+      # Without this, the analytical (bstrap = FALSE) path fell back to i.i.d.
+      # standard errors with a warning advising bstrap = TRUE, advice that then
+      # fails in mboot() for the very same input. Reuses the (id, t) radix order
+      # and adjacency scan above.
+      for (cvar in setdiff(clustervars, idname)) {
+        cvo <- data[o, cvar]
+        if (any(same_id & (cvo[-1L] != cvo[-nn]))) {
+          stop("Time-varying cluster variables are not supported. Please provide a time-invariant cluster variable.")
+        }
+      }
     }
   }
 
@@ -240,20 +344,13 @@ pre_process_did <- function(yname,
   # Check if data is a balanced panel if panel = TRUE and allow_unbalanced_panel = TRUE
   bal_panel_test <- panel*allow_unbalanced_panel
   if (bal_panel_test) {
-    # First, focus on complete cases
-    keepers <- complete.cases(data)
-    data_comp <- data[keepers,]
-    # make it a balanced data set
-    n_all <- length(unique(data_comp[,idname]))
-    data_bal <- BMisc::makeBalancedPanel(data_comp, idname, tname)
-    n_bal <- length(unique(data_bal[,idname]))
-    if (n_bal < n_all) {
-      # message(paste0("You have an unbalanced panel. Proceeding as such."))
-      allow_unbalanced_panel <- TRUE
-    } else {
-      # message(paste0("You have a balanced panel. Setting the allow_unbalanced_panel = FALSE."))
-      allow_unbalanced_panel <- FALSE
-    }
+    # data is already complete-case filtered above and (id, period) uniqueness has
+    # been validated, so the panel is balanced iff every unit appears in every
+    # period, i.e. nrow(data) equals (number of units) x (number of periods). This
+    # replaces a BMisc::makeBalancedPanel() round-trip that built a balanced copy
+    # of the data just to compare unit counts and then threw it away.
+    allow_unbalanced_panel <-
+      nrow(data) != length(unique(data[[idname]])) * as.numeric(length(unique(data[[tname]])))
   }
 
 
@@ -271,21 +368,35 @@ pre_process_did <- function(yname,
 
       # this is the case where we coerce balanced panel
 
-      # check for complete cases
-      keepers <- complete.cases(data)
-      n <- length(unique(data[,idname]))
-      n.keep <- length(unique(data[keepers,idname]))
-      if (nrow(data[keepers,]) < nrow(data)) {
-        warning(paste0("Dropped ", (n-n.keep), " observations that had missing data."))
-        data <- data[keepers,]
+      # check for complete cases (rows with missing data were already dropped
+      # above, so anyNA() short-circuits the redundant complete.cases() pass and
+      # full-table subset copies in the common case)
+      if (anyNA(data)) {
+        keepers <- complete.cases(data)
+        n <- length(unique(data[,idname]))
+        n.keep <- length(unique(data[keepers,idname]))
+        if (!all(keepers)) {
+          warning(paste0("Dropped ", (n-n.keep), " observations that had missing data."))
+          data <- data[keepers,]
+        }
       }
 
-      # make it a balanced data set
-      n.old <- length(unique(data[,idname]))
-      data <- BMisc::makeBalancedPanel(data, idname, tname)
+      # make it a balanced data set: keep only units observed in every period.
+      # A unit is fully observed iff its row count equals the number of distinct
+      # periods ((id, period) uniqueness was validated above), so this
+      # count-and-filter keeps exactly the same rows as BMisc::makeBalancedPanel()
+      # without the per-group .SD materialization; any row-order difference is
+      # normalized by the (id, period) sort below.
+      uid <- unique(data[[idname]])
+      n.old <- length(uid)
+      cnt <- tabulate(match(data[[idname]], uid))
+      keep_bal <- data[[idname]] %in% uid[cnt == length(unique(data[[tname]]))]
+      if (!all(keep_bal)) data <- data[keep_bal, , drop = FALSE]
       n <- length(unique(data[,idname]))
       if (n < n.old) {
-        warning(paste0("Dropped ", n.old-n, " observations while converting to balanced panel."))
+        # n.old - n counts dropped UNITS (unique ids), not unit-time rows; word the
+        # warning accordingly, with the same text as the fast path (pre_process_did2)
+        warning(n.old - n, " units are missing in some periods. Converting to balanced panel by dropping them.")
       }
 
       # If drop all data, you do not have a panel.
@@ -311,11 +422,15 @@ pre_process_did <- function(yname,
   #-----------------------------------------------------------------------------
   if (!panel) {
 
-    # check for complete cases
-    keepers <- complete.cases(data)
-    if (nrow(data[keepers,]) < nrow(data)) {
-      warning(paste0("Dropped ", nrow(data) - nrow(data[keepers,]), " observations that had missing data."))
-      data <- data[keepers,]
+    # check for complete cases (rows with missing data were already dropped
+    # above, so anyNA() short-circuits the redundant complete.cases() pass and
+    # full-table subset copies in the common case)
+    if (anyNA(data)) {
+      keepers <- complete.cases(data)
+      if (!all(keepers)) {
+        warning(paste0("Dropped ", sum(!keepers), " observations that had missing data."))
+        data <- data[keepers,]
+      }
     }
 
     # If drop all data, you do not have a panel.
@@ -365,8 +480,13 @@ pre_process_did <- function(yname,
   #-----------------------------------------------------------------------------
   # more error handling after we have balanced the panel
 
-  # check against very small groups
-  gsize <- aggregate(data[,gname], by=list(data[,gname]), function(x) length(x)/length(tlist))
+  # check against very small groups. tabulate(match(.)) yields the same per-group
+  # row counts as the previous aggregate() call without invoking an R closure per
+  # group; sorted gvals reproduces aggregate()'s ascending group order, and the
+  # Group.1/x column names are kept for the subset()/paste logic below.
+  gvals <- sort(unique(data[[gname]]))
+  gcnt <- tabulate(match(data[[gname]], gvals), nbins = length(gvals))
+  gsize <- data.frame(Group.1 = gvals, x = gcnt / length(tlist))
 
   # how many in each group before give warning
   # 5 is just a buffer, could pick something else, but seems to work fine
@@ -391,8 +511,16 @@ pre_process_did <- function(yname,
   # How many treated groups
   nG <- length(glist)
 
-  # order dataset wrt idname and tname
-  data <- data[order(data[,idname], data[,tname]),]
+  # order dataset wrt idname and tname, in place. The sort keys are tie-free
+  # ((id, period) uniqueness was validated above; .rowid is 1:n for repeated cross
+  # sections), so the permutation is unique and the row order matches the previous
+  # order()-based subset without a full-table copy. `data` is function-local (it
+  # was subset/copied above), so the by-reference conversion cannot touch the
+  # user's input; setDF() returns a plain data.frame for downstream consumers
+  # (DIDparams, compute.att_gt).
+  setDT(data)
+  setorderv(data, c(idname, tname))
+  setDF(data)
 
   # store parameters for passing around later
   dp <- DIDparams(yname=yname,
@@ -400,7 +528,7 @@ pre_process_did <- function(yname,
                   idname=idname,
                   gname=gname,
                   xformla=xformla,
-                  data=as.data.frame(data),
+                  data=data,
                   control_group=control_group,
                   anticipation=anticipation,
                   weightsname=weightsname,

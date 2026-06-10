@@ -202,3 +202,36 @@ test_that("aggte with cband=TRUE and bstrap=TRUE returns simultaneous critical v
   # Simultaneous critical value should be at least as large as pointwise z
   expect_true(agg$crit.val.egt >= qnorm(0.975))
 })
+
+# =============================================================================
+# Regression: type = "group" with na.rm = TRUE and a finite max_e
+# =============================================================================
+
+test_that("aggte group with na.rm and finite max_e excludes (not errors on) groups whose only non-NA cell is past max_e", {
+  # A group whose only non-NA ATT(g,t) lies PAST max_e used to pass the group filter
+  # (which ignored max_e) but then have an all-NA, na.rm-emptied selection in the
+  # estimate -> stop("No valid att_gt() estimates ..."). The group should instead be
+  # dropped from the group aggregation.
+  mp <- mp_agg
+  g_first <- sort(unique(mp$group))[1]
+  # NA-out that group's earliest post-treatment cells, leaving only a late one (e large)
+  post_g <- which(mp$group == g_first & mp$t >= g_first)
+  # Hard precondition (not a silent if-guard): if the fixture ever drifts below
+  # two post-treatment cells, the regression coverage must fail loudly.
+  expect_gte(length(post_g), 2)
+  mp$att[post_g[-length(post_g)]] <- NA   # keep only the last (largest event-time) cell
+  last_e <- (mp$t[post_g[length(post_g)]] - g_first)
+  me <- max(0, last_e - 1)                # max_e below the only surviving cell's event-time
+  expect_error(
+    suppressWarnings(suppressMessages(aggte(mp, type = "group", na.rm = TRUE, max_e = me))),
+    NA)                                   # must NOT error
+  agg <- suppressWarnings(suppressMessages(aggte(mp, type = "group", na.rm = TRUE, max_e = me)))
+  expect_s3_class(agg, "AGGTEobj")
+  expect_false(g_first %in% agg$egt)      # the offending group is excluded
+})
+
+test_that("aggte group default (max_e = Inf) is unchanged by the gnotna max_e filter", {
+  a1 <- suppressWarnings(suppressMessages(aggte(mp_agg, type = "group")))
+  expect_s3_class(a1, "AGGTEobj")
+  expect_false(is.na(a1$overall.att))
+})

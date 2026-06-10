@@ -22,6 +22,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Brantly Callaway \email{brantly.callaway@uga.edu}
   \item Pedro H. C. Sant'Anna \email{pedro.santanna@emory.edu}
 }
 
