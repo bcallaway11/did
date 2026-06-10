@@ -260,19 +260,35 @@ pre_process_did <- function(yname,
     #  make sure id is numeric
     if (! (is.numeric(data[, idname])) ) stop("The id variable '", idname, "' must be numeric. Please convert it.")
 
-    # Check that gname is time-invariant within each unit (treatment irreversibility).
-    # Uses unique() + anyDuplicated() for O(n) performance.
-    id_g_unique <- unique(data[, c(idname, gname)])
-    if (anyDuplicated(id_g_unique[[idname]]) != 0L) {
-      stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
-    }
+    # Validate treatment irreversibility and (id, period) uniqueness with a single
+    # radix order over (id, t) plus O(n) adjacent-element scans, instead of the much
+    # slower unique.data.frame()/anyDuplicated.data.frame() row-key machinery. After
+    # ordering, each unit's rows are contiguous, so g varying within a unit shows up
+    # as adjacent rows with equal id but differing g, and a duplicated (id, period)
+    # pair as adjacent rows with equal id and equal t. All three columns are numeric
+    # and NA-free at this point, so the comparisons are exact.
+    idv <- data[, idname]
+    nn <- length(idv)
+    if (nn >= 2L) {
+      tv <- data[, tname]
+      o <- order(idv, tv, method = "radix")
+      io <- idv[o]
+      same_id <- io[-1L] == io[-nn]
 
-    # Check that (idname, tname) is unique: each unit observed at most once per
-    # period. Mirrors the fast path (pre_process_did2.R) so both code paths reject
-    # duplicated (id, period) rows identically -- without this guard the slow path
-    # silently produced incorrect estimates on long-format data with duplicates.
-    if (anyDuplicated(data[, c(idname, tname)]) != 0L) {
-      stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
+      # Check that gname is time-invariant within each unit (treatment irreversibility).
+      go <- data[, gname][o]
+      if (any(same_id & (go[-1L] != go[-nn]))) {
+        stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
+      }
+
+      # Check that (idname, tname) is unique: each unit observed at most once per
+      # period. Mirrors the fast path (pre_process_did2.R) so both code paths reject
+      # duplicated (id, period) rows identically -- without this guard the slow path
+      # silently produced incorrect estimates on long-format data with duplicates.
+      to <- tv[o]
+      if (any(same_id & (to[-1L] == to[-nn]))) {
+        stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
+      }
     }
   }
 
