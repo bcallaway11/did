@@ -19,7 +19,12 @@ compute.att_gt <- function(dp) {
   #-----------------------------------------------------------------------------
   # unpack DIDparams
   #-----------------------------------------------------------------------------
-  data <- data.table::as.data.table(dp$data)
+  # Internal pretest hook (set only by conditional_did_pretest): when a
+  # y-invariant setup bundle is supplied (dp$setup_precomp, built once per
+  # pretest call via dp$return_setup below), the bundle replaces the whole
+  # per-call setup, including this data.table copy, so skip it.
+  setup_precomp <- dp$setup_precomp
+  if (is.null(setup_precomp)) data <- data.table::as.data.table(dp$data)
   yname <- dp$yname
   tname <- dp$tname
   idname <- dp$idname
@@ -94,128 +99,186 @@ compute.att_gt <- function(dp) {
   # cost. The att estimates are identical either way.
   do_inf <- is.null(dp$compute_inffunc) || isTRUE(dp$compute_inffunc)
 
-  # Pre-extract columns to avoid repeated get() inside data.table (which is slow)
-  g_col <- data[[gname]]
-  t_col <- data[[tname]]
+  # Internal pretest-only flag (set by conditional_did_pretest): skip
+  # post-treatment (g,t) cells entirely -- the pretest immediately discards
+  # them (its keepers filter retains only group > t cells), so computing them
+  # is pure waste (this was the TODO in conditional_did_pretest). attgt.list
+  # and the influence-function columns stay aligned with the reduced cell set
+  # because the counters only increment when a cell is appended.
+  pretreatment_only <- isTRUE(dp$pretreatment_cells_only)
 
-  # Build weight lookup by period for fix_weights options (balanced panel only)
-  if (!is.null(fix_weights) && panel) {
-    weights_by_period <- list()
-    for (tp in seq_along(tlist)) {
-      weights_by_period[[tp]] <- data[t_col == tlist[tp], .w]
-    }
-  }
-
-  # Positional precompute for the repeated-cross-section / unbalanced-panel path:
-  # each (g,t) cell is assembled from plain vectors and per-period row indices
-  # precomputed once per call, instead of two full data.table subsets plus a
-  # full-data %in% per cell (the dominant per-cell cost on this path). Bit-identical
-  # to the legacy construction (see the per-cell comments below);
-  # options(did.disable_precompute = TRUE) forces the legacy path (escape hatch /
-  # used to verify bit-identical equivalence), mirroring the panel precompute.
-  use_precompute_rc <- !panel && !isTRUE(getOption("did.disable_precompute"))
-
-  # The precompute paths never read data$.C / data$.G (cohort indicators are
-  # rebuilt from plain vectors), so skip the full-length column writes there.
-  if (nevertreated && !use_precompute_rc) {
-    set(data, j = ".C", value = as.integer(g_col == 0))
-  }
-
-  # -- design matrix: built ONCE over the full data, then row-subset per (g,t) cell --
-  # This (a) avoids rebuilding model.matrix() nG*nT times, and (b) gives every cell the
-  # GLOBAL factor levels / GLOBAL transform basis -- exactly what the repeated-cross-
-  # section path, the fast path, and manually-constructed dummy columns use. As a
-  # result a factor covariate behaves identically to adding its dummies by hand: a
-  # level absent from a particular 2x2 comparison becomes an all-zero column (handled
-  # by the estimator's overlap/rank check, giving the same NA + warning as the manual
-  # dummies) rather than a dropped contrast that changes the design across cells.
-  #
-  # For purely row-wise numeric formulae (e.g. ~X, ~X1+X2, ~X1*X2, ~I(X^2)) the slice
-  # is bit-identical to a per-cell model.matrix(xformla, disdat); for factors it equals
-  # the manual-dummy design; for data-dependent bases (poly/scale/ns/...) it uses the
-  # global basis, which yields the same ATT/SE as a per-cell fit (the estimator is
-  # invariant to a full-rank reparameterization of the covariates).
-  #
-  # `data` is already complete-cases and finite (see pre_process_did), so na.pass adds
-  # no NA rows and full_mm aligns 1:1 (by row position) with `data`.
-  #
-  # Drop globally-empty factor levels first: model.matrix() emits a dummy column for
-  # every declared level, so a level absent from the ENTIRE estimation sample (common
-  # after users subset their data) would produce an all-zero column in every cell and
-  # NA-fail the whole estimation. Levels absent only from a particular 2x2 cell are
-  # unaffected (still all-zero in that cell only, as documented above). Mirrors the
-  # identical fix in get_did_tensors() (fast path).
-  for (v in all.vars(xformla)) {
-    if (is.factor(data[[v]])) set(data, j = v, value = droplevels(data[[v]]))
-  }
-  full_mm <- model.matrix(xformla, data = data, na.action = na.pass)
-  if (panel) {
-    # per-period row slices keyed by idname, for the earlier-period covariates that
-    # get_wide_data() retains. (idname is used rather than .rowid because .rowid is
-    # only created on the RC/unbalanced path; in a balanced panel idname is unique
-    # within each period.)
-    period_mm <- vector("list", length(tlist))
-    period_id <- vector("list", length(tlist))
-    period_y  <- vector("list", length(tlist))
-    period_w  <- vector("list", length(tlist))
-    y_col <- data[[yname]]
-    w_col <- data[[".w"]]
-    for (tp in seq_along(tlist)) {
-      rows_tp <- which(t_col == tlist[tp])
-      period_mm[[tp]] <- full_mm[rows_tp, , drop = FALSE]
-      period_id[[tp]] <- data[[idname]][rows_tp]
-      period_y[[tp]]  <- y_col[rows_tp]
-      period_w[[tp]]  <- w_col[rows_tp]
-    }
-    # Precompute fast path: when the panel is balanced with every period sharing the
-    # same units in the same (id-sorted) row order, each 2x2 cell can be assembled by
-    # position from these per-period blocks -- skipping the per-cell data[time_mask]
-    # subset + get_wide_data() reshape (the dominant cost on the slow path).
-    # fix_weights = "base_period"/"first_period" only changes WHICH period's weight
-    # vector each cell uses (selected from weights_by_period below, mirroring the
-    # fallback), so the precompute applies there too. Falls through to the original
-    # get_wide_data() code, bit-identically, for fix_weights = "varying" (which needs
-    # the long-format RC data) / unaligned panels.
-    panel_units_aligned <- all(vapply(period_id, function(x)
-      length(x) == length(period_id[[1L]]) && all(x == period_id[[1L]]), logical(1)))
-    g_unit_panel <- g_col[which(t_col == tlist[1L])]
-    # options(did.disable_precompute = TRUE) forces the original get_wide_data() path
-    # (escape hatch / used to verify bit-identical equivalence).
-    use_precompute_panel <- (is.null(fix_weights) ||
-      fix_weights %in% c("base_period", "first_period")) && panel_units_aligned &&
-      !isTRUE(getOption("did.disable_precompute"))
-    # Never-treated control cohort is invariant across every (g,t) cell, so build
-    # it once here; notyettreated rebuilds C_full per cell inside the loops.
-    if (use_precompute_panel && nevertreated) {
-      C_full <- as.numeric(g_unit_panel == 0)
-    }
+  if (!is.null(setup_precomp)) {
+    # ---- internal pretest path: reuse the y-invariant setup bundle -----------
+    # conditional_did_pretest() calls compute.att_gt once per unit with only
+    # the outcome column changed, so the whole per-call setup below (column
+    # extraction, design matrix, per-period slicing, alignment check) is built
+    # once via dp$return_setup and reused; each per-unit call passes only
+    # dp$y_override (that unit's modified outcome, aligned 1:1 with dp$data
+    # rows). The bundle is consumed only when the balanced, id-aligned panel
+    # precompute applies (conditional_did_pretest keeps its legacy data-copy
+    # path otherwise), and that path never reads `data` / `g_col` / `t_col`
+    # inside the loops -- they are deliberately left undefined here so any
+    # accidental read fails loudly instead of silently using a stale outcome.
+    use_precompute_rc <- FALSE
+    use_precompute_panel <- isTRUE(setup_precomp$use_precompute_panel)
+    weights_by_period <- setup_precomp$weights_by_period
+    period_mm <- setup_precomp$period_mm
+    period_id <- setup_precomp$period_id
+    period_w  <- setup_precomp$period_w
+    g_unit_panel <- setup_precomp$g_unit_panel
+    if (nevertreated) C_full <- setup_precomp$C_full
+    # only the outcome differs across pretest iterations: rebuild the
+    # per-period outcome slices from the override (bit-identical to slicing a
+    # full data copy whose outcome column was overwritten, which is what the
+    # legacy pretest loop did)
+    y_override <- dp$y_override
+    period_y <- lapply(setup_precomp$rows_by_period, function(rr) y_override[rr])
   } else {
-    # repeated cross-section / unbalanced: row-subset the full design by POSITION
-    # (.rowid is not unique across periods here).
-    global_mm <- full_mm
-    use_precompute_panel <- FALSE
-    if (use_precompute_rc) {
-      # One-time positional precompute: per-period row indices into `data` plus
-      # plain copies of the columns each cell consumes. which() preserves data
-      # order within each period, so per-period vectors are bit-identical to the
-      # corresponding data.table period subsets.
-      period_rows_rc <- vector("list", length(tlist))
+    # Pre-extract columns to avoid repeated get() inside data.table (which is slow)
+    g_col <- data[[gname]]
+    t_col <- data[[tname]]
+
+    # Build weight lookup by period for fix_weights options (balanced panel only)
+    if (!is.null(fix_weights) && panel) {
+      weights_by_period <- list()
       for (tp in seq_along(tlist)) {
-        period_rows_rc[[tp]] <- which(t_col == tlist[tp])
-      }
-      rowid_col <- data$.rowid
-      y_col_rc <- data[[yname]]
-      w_col_rc <- data[[".w"]]
-      # loop-invariant id universe for the influence-function index lookup
-      unique_rowid <- unique(rowid_col)
-      # fix_weights base/first: per-period .rowid/.w lookup vectors replace the
-      # per-cell full-table data[t_col == target_period, ] subset; match()
-      # semantics (first match wins, unmatched -> NA) are unchanged.
-      if (!is.null(fix_weights) && fix_weights %in% c("base_period", "first_period")) {
-        target_rowid_by_period <- lapply(period_rows_rc, function(rr) rowid_col[rr])
-        target_w_by_period <- lapply(period_rows_rc, function(rr) w_col_rc[rr])
+        weights_by_period[[tp]] <- data[t_col == tlist[tp], .w]
       }
     }
+
+    # Positional precompute for the repeated-cross-section / unbalanced-panel path:
+    # each (g,t) cell is assembled from plain vectors and per-period row indices
+    # precomputed once per call, instead of two full data.table subsets plus a
+    # full-data %in% per cell (the dominant per-cell cost on this path). Bit-identical
+    # to the legacy construction (see the per-cell comments below);
+    # options(did.disable_precompute = TRUE) forces the legacy path (escape hatch /
+    # used to verify bit-identical equivalence), mirroring the panel precompute.
+    use_precompute_rc <- !panel && !isTRUE(getOption("did.disable_precompute"))
+
+    # The precompute paths never read data$.C / data$.G (cohort indicators are
+    # rebuilt from plain vectors), so skip the full-length column writes there.
+    if (nevertreated && !use_precompute_rc) {
+      set(data, j = ".C", value = as.integer(g_col == 0))
+    }
+
+    # -- design matrix: built ONCE over the full data, then row-subset per (g,t) cell --
+    # This (a) avoids rebuilding model.matrix() nG*nT times, and (b) gives every cell the
+    # GLOBAL factor levels / GLOBAL transform basis -- exactly what the repeated-cross-
+    # section path, the fast path, and manually-constructed dummy columns use. As a
+    # result a factor covariate behaves identically to adding its dummies by hand: a
+    # level absent from a particular 2x2 comparison becomes an all-zero column (handled
+    # by the estimator's overlap/rank check, giving the same NA + warning as the manual
+    # dummies) rather than a dropped contrast that changes the design across cells.
+    #
+    # For purely row-wise numeric formulae (e.g. ~X, ~X1+X2, ~X1*X2, ~I(X^2)) the slice
+    # is bit-identical to a per-cell model.matrix(xformla, disdat); for factors it equals
+    # the manual-dummy design; for data-dependent bases (poly/scale/ns/...) it uses the
+    # global basis, which yields the same ATT/SE as a per-cell fit (the estimator is
+    # invariant to a full-rank reparameterization of the covariates).
+    #
+    # `data` is already complete-cases and finite (see pre_process_did), so na.pass adds
+    # no NA rows and full_mm aligns 1:1 (by row position) with `data`.
+    #
+    # Drop globally-empty factor levels first: model.matrix() emits a dummy column for
+    # every declared level, so a level absent from the ENTIRE estimation sample (common
+    # after users subset their data) would produce an all-zero column in every cell and
+    # NA-fail the whole estimation. Levels absent only from a particular 2x2 cell are
+    # unaffected (still all-zero in that cell only, as documented above). Mirrors the
+    # identical fix in get_did_tensors() (fast path).
+    for (v in all.vars(xformla)) {
+      if (is.factor(data[[v]])) set(data, j = v, value = droplevels(data[[v]]))
+    }
+    full_mm <- model.matrix(xformla, data = data, na.action = na.pass)
+    if (panel) {
+      # per-period row slices keyed by idname, for the earlier-period covariates that
+      # get_wide_data() retains. (idname is used rather than .rowid because .rowid is
+      # only created on the RC/unbalanced path; in a balanced panel idname is unique
+      # within each period.)
+      period_mm <- vector("list", length(tlist))
+      period_id <- vector("list", length(tlist))
+      period_y  <- vector("list", length(tlist))
+      period_w  <- vector("list", length(tlist))
+      # per-period row indices, kept for the pretest setup bundle (dp$return_setup)
+      rows_by_period <- vector("list", length(tlist))
+      y_col <- data[[yname]]
+      w_col <- data[[".w"]]
+      for (tp in seq_along(tlist)) {
+        rows_tp <- which(t_col == tlist[tp])
+        rows_by_period[[tp]] <- rows_tp
+        period_mm[[tp]] <- full_mm[rows_tp, , drop = FALSE]
+        period_id[[tp]] <- data[[idname]][rows_tp]
+        period_y[[tp]]  <- y_col[rows_tp]
+        period_w[[tp]]  <- w_col[rows_tp]
+      }
+      # Precompute fast path: when the panel is balanced with every period sharing the
+      # same units in the same (id-sorted) row order, each 2x2 cell can be assembled by
+      # position from these per-period blocks -- skipping the per-cell data[time_mask]
+      # subset + get_wide_data() reshape (the dominant cost on the slow path).
+      # fix_weights = "base_period"/"first_period" only changes WHICH period's weight
+      # vector each cell uses (selected from weights_by_period below, mirroring the
+      # fallback), so the precompute applies there too. Falls through to the original
+      # get_wide_data() code, bit-identically, for fix_weights = "varying" (which needs
+      # the long-format RC data) / unaligned panels.
+      panel_units_aligned <- all(vapply(period_id, function(x)
+        length(x) == length(period_id[[1L]]) && all(x == period_id[[1L]]), logical(1)))
+      g_unit_panel <- g_col[which(t_col == tlist[1L])]
+      # options(did.disable_precompute = TRUE) forces the original get_wide_data() path
+      # (escape hatch / used to verify bit-identical equivalence).
+      use_precompute_panel <- (is.null(fix_weights) ||
+        fix_weights %in% c("base_period", "first_period")) && panel_units_aligned &&
+        !isTRUE(getOption("did.disable_precompute"))
+      # Never-treated control cohort is invariant across every (g,t) cell, so build
+      # it once here; notyettreated rebuilds C_full per cell inside the loops.
+      if (use_precompute_panel && nevertreated) {
+        C_full <- as.numeric(g_unit_panel == 0)
+      }
+    } else {
+      # repeated cross-section / unbalanced: row-subset the full design by POSITION
+      # (.rowid is not unique across periods here).
+      global_mm <- full_mm
+      use_precompute_panel <- FALSE
+      if (use_precompute_rc) {
+        # One-time positional precompute: per-period row indices into `data` plus
+        # plain copies of the columns each cell consumes. which() preserves data
+        # order within each period, so per-period vectors are bit-identical to the
+        # corresponding data.table period subsets.
+        period_rows_rc <- vector("list", length(tlist))
+        for (tp in seq_along(tlist)) {
+          period_rows_rc[[tp]] <- which(t_col == tlist[tp])
+        }
+        rowid_col <- data$.rowid
+        y_col_rc <- data[[yname]]
+        w_col_rc <- data[[".w"]]
+        # loop-invariant id universe for the influence-function index lookup
+        unique_rowid <- unique(rowid_col)
+        # fix_weights base/first: per-period .rowid/.w lookup vectors replace the
+        # per-cell full-table data[t_col == target_period, ] subset; match()
+        # semantics (first match wins, unmatched -> NA) are unchanged.
+        if (!is.null(fix_weights) && fix_weights %in% c("base_period", "first_period")) {
+          target_rowid_by_period <- lapply(period_rows_rc, function(rr) rowid_col[rr])
+          target_w_by_period <- lapply(period_rows_rc, function(rr) w_col_rc[rr])
+        }
+      }
+    }
+  }
+
+  # Internal (set only by conditional_did_pretest): return the y-invariant
+  # setup bundle built above -- so the pretest can hoist it out of its
+  # per-unit loop -- instead of estimating. Balanced panel only; the pretest
+  # keeps its legacy data-copy loop for repeated cross sections, and only
+  # consumes the bundle when use_precompute_panel is TRUE.
+  if (isTRUE(dp$return_setup)) {
+    if (!panel) return(NULL)
+    return(list(
+      use_precompute_panel = use_precompute_panel,
+      weights_by_period = if (!is.null(fix_weights)) weights_by_period else NULL,
+      period_mm = period_mm,
+      period_id = period_id,
+      period_w = period_w,
+      rows_by_period = rows_by_period,
+      g_unit_panel = g_unit_panel,
+      C_full = if (use_precompute_panel && nevertreated) C_full else NULL
+    ))
   }
 
   # loop over groups
@@ -274,6 +337,11 @@ compute.att_gt <- function(dp) {
         warning(paste0("There are no pre-treatment periods for the group first treated at ", glist[g], "\nUnits from this group are dropped"))
         break
       }
+
+      # pretest-only: skip post-treatment cells entirely (see
+      # pretreatment_only above; conditional_did_pretest discards these
+      # cells unread, so none of the per-cell work below is needed)
+      if (pretreatment_only && glist[g] <= tlist[t + tfac]) next
 
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,

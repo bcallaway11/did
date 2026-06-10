@@ -104,6 +104,36 @@ conditional_did_pretest <- function(yname,
   #for debugging:
   # X <- as.matrix(X[1:100,])
 
+  # Internal compute.att_gt speedups for the per-unit loop below:
+  #  (1) pretreatment_cells_only -- post-treatment (g,t) cells are dropped
+  #      right after the loop (the keepers filter retains only group > t), so
+  #      compute.att_gt never computes them (this was the TODO below).
+  #  (2) setup_precomp / y_override -- compute.att_gt's per-call setup (data
+  #      copy, design matrix, per-period slicing, alignment check) depends on
+  #      the outcome only through the per-period outcome slices, and the loop
+  #      below only modifies the outcome column; build the y-invariant bundle
+  #      once and pass each unit's modified outcome as a plain vector instead
+  #      of copying the whole data.frame n times. Used only when the balanced,
+  #      id-aligned panel precompute applies; otherwise the legacy data-copy
+  #      path inside the loop is kept.
+  # Both are bit-identical to the legacy loop (same kept cells, same inputs to
+  # every 2x2 estimator, and compute.att_gt consumes no RNG).
+  basedp <- dp
+  basedp$print_details <- FALSE
+  basedp$pretreatment_cells_only <- TRUE
+  use_y_override <- FALSE
+  if (dp$panel) {
+    setupdp <- basedp
+    setupdp$return_setup <- TRUE
+    setup_precomp <- compute.att_gt(setupdp)
+    if (!is.null(setup_precomp) && isTRUE(setup_precomp$use_precompute_panel)) {
+      basedp$setup_precomp <- setup_precomp
+      use_y_override <- TRUE
+      id_col <- data[, idname]
+      y_col <- data[, yname]
+    }
+  }
+
   cat("Step 1 of 2: Computing test statistic....\n")
   out <- pbapply::pblapply(1:nrow(X), function(i) {
     # these are the weights for the conditional moment test
@@ -112,18 +142,27 @@ conditional_did_pretest <- function(yname,
     # for indicator weights, just choose rows where weights = 1
     rightids <- dta[,idname][www==1]
 
-    # create a new dataset and set the outcome to be the outcomes multiplied by the
-    # weighting function (***this *trick* is only going to work for indicator
-    # weights*** (otherwise you will multiply by www twice))
-    thisdata <- data
-    thisdata[,yname] <- 0
-    thisdata[ thisdata[,idname] %in% rightids,yname] <- data[ thisdata[,idname] %in% rightids,yname]
-    thisdata$y <- thisdata[,yname]
-
     # set new parameters to pass to call to compute.att_gt
-    thisdp <- dp
-    thisdp$data <- thisdata
-    thisdp$print_details <- FALSE
+    thisdp <- basedp
+
+    # set the outcome to be the outcomes multiplied by the weighting function
+    # (***this *trick* is only going to work for indicator weights***
+    # (otherwise you will multiply by www twice))
+    if (use_y_override) {
+      # pass only the modified outcome vector; the y-invariant setup bundle
+      # built above is reused by compute.att_gt
+      ynew <- numeric(length(y_col))
+      sel <- id_col %in% rightids
+      ynew[sel] <- y_col[sel]
+      thisdp$y_override <- ynew
+    } else {
+      # legacy path: copy the whole dataset and overwrite the outcome column
+      thisdata <- data
+      thisdata[,yname] <- 0
+      thisdata[ thisdata[,idname] %in% rightids,yname] <- data[ thisdata[,idname] %in% rightids,yname]
+      thisdata$y <- thisdata[,yname]
+      thisdp$data <- thisdata
+    }
 
     # compute the test statistic with call to compute.att_gt
     Jres <- compute.att_gt(thisdp)
@@ -139,9 +178,9 @@ conditional_did_pretest <- function(yname,
     list(J=att, group=group, t=tt, inf.func=inf.func)
   }, cl=cores)
 
-  # drop post-treatment (g,t); ***TODO: this is an obvious place
-  # to make the code faster -- instead of dropping these, never
-  # compute them***
+  # drop post-treatment (g,t). compute.att_gt now skips these cells entirely
+  # (pretreatment_cells_only above), so this filter is a no-op retained as a
+  # safety net in case a code path reintroduces post-treatment cells.
   out <- lapply(out, function(Js) {
     # which elements of results to keep
     keepers <- Js$group > Js$t
