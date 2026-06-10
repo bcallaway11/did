@@ -16,6 +16,55 @@
   )
 }
 
+.edid_sigma_quad <- function(fit) {
+  if (!isTRUE(fit$higher_order)) return(NULL)
+  K <- nrow(fit$att_gt)
+  Sig <- fit$sigma_quad
+  if (is.null(Sig) && !is.null(fit$cells)) {
+    Sig <- sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
+  }
+  if (is.null(Sig)) return(NULL)
+  Sig <- as.matrix(Sig)
+  if (length(dim(Sig)) != 2L || any(dim(Sig) != c(K, K))) return(NULL)
+  Sig
+}
+
+.edid_agg_na_rm <- function(a) {
+  if (!is.null(a$call) && !is.null(a$call$na.rm)) {
+    val <- tryCatch(eval(a$call$na.rm), error = function(e) NULL)
+    if (is.logical(val) && length(val) == 1L && !is.na(val)) return(val)
+  }
+  TRUE
+}
+
+.edid_agg_reaggregate <- function(fit, a) {
+  type <- a$type %||% NULL
+  if (is.null(type) || !(type %in% c("simple", "dynamic", "group", "calendar"))) return(NULL)
+  balance_e <- a$balance_e %||% NULL
+  min_e     <- a$min_e %||% -Inf
+  max_e     <- a$max_e %||% Inf
+  na.rm     <- .edid_agg_na_rm(a)
+  function(att_vec) {
+    f2 <- fit
+    f2$att_gt$att <- att_vec
+    aa <- aggte(as_MP_edid(f2, bstrap = FALSE, cband = FALSE), type = type, balance_e = balance_e,
+                min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = FALSE)
+    aa$att.egt %||% aa$overall.att
+  }
+}
+
+.edid_agg_higher_order_cov <- function(a, fit) {
+  if (!isTRUE(fit$higher_order) || is.null(a)) return(NULL)
+  g <- .edid_agg_if(a)
+  if (is.null(g$egt) && is.null(g$overall)) return(NULL)
+  Sig_quad <- .edid_sigma_quad(fit)
+  reaggregate <- .edid_agg_reaggregate(fit, a)
+  if (is.null(Sig_quad) || is.null(reaggregate)) return(NULL)
+  A <- .edid_recover_agg_map(a, fit, reaggregate)
+  if (is.null(A) || ncol(A) != nrow(Sig_quad)) return(NULL)
+  A %*% Sig_quad %*% t(A)
+}
+
 #' Print method for edid_fit objects
 #'
 #' Displays the ATT(g,t) table in the same style as \code{print.MP} / \code{summary.MP}, followed by
@@ -160,7 +209,10 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
     df  <- object$att_gt
     nms <- paste0("ATT(", df$group, ",", df$time, ")")
     if (!is.null(object$eif)) {
-      v <- .cross_mat(object$eif); dimnames(v) <- list(nms, nms); return(v)
+      v <- .cross_mat(object$eif)
+      Sig_quad <- .edid_sigma_quad(object)
+      if (!is.null(Sig_quad) && all(dim(Sig_quad) == dim(v))) v <- v + Sig_quad
+      dimnames(v) <- list(nms, nms); return(v)
     }
     v <- diag(df$se^2, nrow = nrow(df)); dimnames(v) <- list(nms, nms); return(v)
   }
@@ -168,8 +220,17 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
   if (which == "overall") {
     g <- .edid_agg_if(object$overall)
     if (is.null(g$overall)) return(matrix(NA_real_, 1L, 1L))
-    return(matrix(.cross_mat(matrix(g$overall, ncol = 1L)), 1L, 1L,
-                  dimnames = list("overall", "overall")))
+    v <- matrix(.cross_mat(matrix(g$overall, ncol = 1L)), 1L, 1L,
+                dimnames = list("overall", "overall"))
+    HO <- .edid_agg_higher_order_cov(object$overall, object)
+    if (!is.null(HO) && is.null(g$egt) && all(dim(HO) == c(1L, 1L))) {
+      v[1L, 1L] <- v[1L, 1L] + HO[1L, 1L]
+    } else if (!is.null(HO) && !is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) == nrow(HO)) {
+      w <- tryCatch(drop(solve(crossprod(g$egt), crossprod(g$egt, g$overall))),
+                    error = function(e) NULL)
+      if (!is.null(w) && length(w) == nrow(HO)) v[1L, 1L] <- v[1L, 1L] + drop(crossprod(w, HO %*% w))
+    }
+    return(v)
   }
 
   a   <- if (which == "event_study") object$event_study else object$group
@@ -177,7 +238,10 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
   if (is.null(a) || is.null(g$egt)) return(matrix(NA_real_, 0L, 0L))
   pre <- if (which == "event_study") "e=" else "g="
   nms <- paste0(pre, a$egt)
-  v   <- .cross_mat(g$egt); dimnames(v) <- list(nms, nms); v
+  v   <- .cross_mat(g$egt)
+  HO  <- .edid_agg_higher_order_cov(a, object)
+  if (!is.null(HO) && all(dim(HO) == dim(v))) v <- v + HO
+  dimnames(v) <- list(nms, nms); v
 }
 
 #' Coerce edid_fit to a data.frame

@@ -9,11 +9,11 @@
 #' did ecosystem) can aggregate edid output unchanged. edid() always stores the influence functions.
 #'
 #' @param fit an \code{edid_fit} object returned by \code{\link{edid}}.
-#' @param bstrap,biters,clustervars optional overrides; default to the fit's settings. Clustered or
-#'   bootstrap inference in \code{aggte()} then follows the did conventions.
+#' @param bstrap,biters,clustervars,cband optional overrides; default to the fit's effective
+#'   settings. Clustered or bootstrap inference in \code{aggte()} then follows the did conventions.
 #' @return a \code{did::MP} object (\code{group}, \code{t}, \code{att}, \code{inffunc}, \code{DIDparams}, ...).
 #' @export
-as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL) {
+as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL, cband = NULL) {
   if (!inherits(fit, "edid_fit")) stop("as_MP_edid() expects an 'edid_fit' object.")
   if (is.null(biters)) biters <- if (!is.null(fit$biters)) as.integer(fit$biters) else 1000L
   if (is.null(fit$eif)) {
@@ -37,7 +37,8 @@ as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL) {
   names(tinv) <- c(fit$idname, fit$tname, fit$gname, ".w")
 
   glist <- sort(fit$treatment_groups[is.finite(fit$treatment_groups) & fit$treatment_groups != 0])
-  if (is.null(bstrap))      bstrap      <- isTRUE(fit$bstrap)
+  if (is.null(bstrap))      bstrap      <- isTRUE(fit$bstrap) && identical(fit$cband_method, "multiplier")
+  if (is.null(cband))       cband       <- isTRUE(fit$cband) && isTRUE(bstrap)
   if (is.null(clustervars)) clustervars <- fit$clustervars
   # cluster column (EIF-aligned), so a clustered bootstrap through aggte() -> mboot() can find it
   if (!is.null(clustervars) && !is.null(fit$cluster_indices)) tinv[[clustervars[1L]]] <- fit$cluster_indices
@@ -47,7 +48,7 @@ as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL) {
     data = tinv, panel = TRUE, faster_mode = FALSE,
     tlist = sort(fit$time_periods), glist = glist,
     control_group = "nevertreated", anticipation = fit$anticipation,
-    bstrap = bstrap, biters = biters, alp = fit$alpha, cband = FALSE,
+    bstrap = bstrap, biters = biters, alp = fit$alpha, cband = cband,
     clustervars = clustervars, cluster_vector = fit$cluster_indices, n = n
   )
 

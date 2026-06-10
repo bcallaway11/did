@@ -61,9 +61,11 @@ aggte_edid <- function(
       set.seed(seed)
     }
   }
-  a <- aggte(as_MP_edid(edid_fit_obj), type = type, balance_e = balance_e,
+  boot_cband <- do_boot && isTRUE(edid_fit_obj$cband)
+  a <- aggte(as_MP_edid(edid_fit_obj, bstrap = do_boot, cband = boot_cband),
+             type = type, balance_e = balance_e,
              min_e = min_e, max_e = max_e, na.rm = na.rm,
-             bstrap = do_boot)
+             bstrap = do_boot, cband = boot_cband)
   if (use_analytic) {
     # Closure that replays THIS aggregation on an att(g,t) vector perturbed at one cell, returning the
     # aggregate per-element att.egt. The aggregation weights do not depend on the att VALUES, so finite-
@@ -72,9 +74,9 @@ aggte_edid <- function(
     reaggregate <- function(att_vec) {
       f2 <- edid_fit_obj
       f2$att_gt$att <- att_vec
-      aa <- aggte(as_MP_edid(f2), type = type, balance_e = balance_e,
+      aa <- aggte(as_MP_edid(f2, bstrap = FALSE, cband = FALSE), type = type, balance_e = balance_e,
                   min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = FALSE)
-      aa$att.egt
+      aa$att.egt %||% aa$overall.att
     }
     a <- .edid_analytic_cband_agg(a, edid_fit_obj, reaggregate)
   }
@@ -91,6 +93,16 @@ aggte_edid <- function(
 # the cell-level path inflated, keeping the aggregate band higher-order-aware too.
 .edid_analytic_cband_agg <- function(a, fit, reaggregate = NULL) {
   g <- .edid_agg_if(a)
+  if (is.null(g$egt) && !is.null(g$overall) && isTRUE(fit$higher_order) &&
+      !is.null(reaggregate) && !is.null(fit$cells) && !is.null(a$overall.se)) {
+    Sigma_quad <- if (!is.null(fit$sigma_quad)) fit$sigma_quad
+                  else sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
+    A <- .edid_recover_agg_map(a, fit, reaggregate)
+    if (!is.null(A) && nrow(A) == 1L && ncol(A) == nrow(Sigma_quad)) {
+      inc <- drop(A %*% Sigma_quad %*% t(A))
+      if (is.finite(inc)) a$overall.se <- sqrt(max(a$overall.se^2 + inc, 0))
+    }
+  }
   if (!is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) >= 1L) {
     Sig <- cluster_cov_edid(g$egt, fit$cluster_indices, fit$n)
     if (isTRUE(fit$higher_order) && !is.null(reaggregate) && !is.null(fit$cells)) {
@@ -133,7 +145,7 @@ aggte_edid <- function(
 # NA / non-finite columns (NA cells, or cells the aggregation drops) are set to 0. Returns NULL if the
 # baseline aggregate egt is unavailable.
 .edid_recover_agg_map <- function(a, fit, reaggregate, eps = 1e-4) {
-  base <- a$att.egt
+  base <- a$att.egt %||% a$overall.att
   if (is.null(base) || !length(base)) return(NULL)
   att0 <- fit$att_gt$att
   K    <- length(att0)

@@ -289,7 +289,8 @@ validate_edid_inputs <- function(
   # ------------------------------------------------------------------
   # 13. alp in (0, 1)
   # ------------------------------------------------------------------
-  if (!is.numeric(alp) || length(alp) != 1L || alp <= 0 || alp >= 1) {
+  if (!is.numeric(alp) || length(alp) != 1L ||
+      is.na(alp) || !is.finite(alp) || alp <= 0 || alp >= 1) {
     stop("`alp` must be a numeric scalar strictly between 0 and 1.")
   }
 
@@ -297,6 +298,7 @@ validate_edid_inputs <- function(
   # 14. biters >= 0 integer
   # ------------------------------------------------------------------
   if (!is.numeric(biters) || length(biters) != 1L ||
+      is.na(biters) || !is.finite(biters) ||
       biters < 0 || biters != floor(biters)) {
     stop("`biters` must be a non-negative integer.")
   }
@@ -305,6 +307,7 @@ validate_edid_inputs <- function(
   # 15. anticipation >= 0 integer; effective pre-treatment check
   # ------------------------------------------------------------------
   if (!is.numeric(anticipation) || length(anticipation) != 1L ||
+      is.na(anticipation) || !is.finite(anticipation) ||
       anticipation < 0 || anticipation != floor(anticipation)) {
     stop("`anticipation` must be a non-negative integer.")
   }

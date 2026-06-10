@@ -253,10 +253,14 @@ compute_generated_outcomes_cov_edid <- function(
 #' @keywords internal
 build_kernel_weights_edid <- function(X_mat, bw = NULL) {
   X_mat <- as.matrix(X_mat); n <- nrow(X_mat); d <- ncol(X_mat)
+  # Centering avoids overflow in ||x_i - x_j||^2 when all covariates are large constants
+  # (e.g., 1e308): distances are shift-invariant, so pairwise kernels are unchanged but the
+  # inner-products no longer suffer from inf - inf cancellations.
+  Xc <- sweep(X_mat, 2L, apply(X_mat, 2L, stats::median), "-")
   if (is.null(bw)) {
     bw <- numeric(d)
     for (k in seq_len(d)) {
-      h_k <- tryCatch(stats::bw.nrd0(X_mat[, k]), error = function(e) 0)
+      h_k <- tryCatch(stats::bw.nrd0(Xc[, k]), error = function(e) 0)
       if (!is.finite(h_k) || h_k < .Machine$double.eps) {
         warning(sprintf("compute_omega_star_cov_edid: bandwidth for covariate %d is 0 or NA; using h=1.", k))
         h_k <- 1
@@ -271,11 +275,13 @@ build_kernel_weights_edid <- function(X_mat, bw = NULL) {
   # outer()+dnorm passes (8-13x faster build; agrees with the per-dim form to ~1e-13, the FP
   # reassociation of exp(sum_k .) vs prod_k exp(.); the per-unit Omega inversion is well-
   # conditioned (relative eigenfloor) so this does not perturb the estimates beyond ~1e-13).
-  Xs   <- sweep(X_mat, 2L, bw, "/")
+  Xs   <- sweep(Xc, 2L, bw, "/")
   rs   <- rowSums(Xs * Xs)
   D2   <- outer(rs, rs, "+") - 2 * tcrossprod(Xs)
+  if (!all(is.finite(D2))) stop("build_kernel_weights_edid: non-finite kernel squared distances; consider rescaling xformla covariates.", call. = FALSE)
   D2[D2 < 0] <- 0                       # clamp tiny negative round-off (near-duplicate rows / diagonal)
   K_mat <- exp(-0.5 * D2) / prod(bw * sqrt(2 * pi))
+  if (!all(is.finite(K_mat))) stop("build_kernel_weights_edid: non-finite kernel weights; consider rescaling xformla covariates.", call. = FALSE)
   list(bw = bw, K = K_mat)
 }
 
@@ -1184,6 +1190,10 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
   for (i in seq_len(n)) {
     Mi <- omega_array[i, , ]
     Mi <- 0.5 * (Mi + t(Mi))
+    if (any(!is.finite(Mi))) {
+      W[i, ] <- one / H
+      next
+    }
     e  <- eigen(Mi, symmetric = TRUE)
     mx <- max(e$values)
     if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }

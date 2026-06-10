@@ -175,10 +175,12 @@ test_that("edid(higher_order = TRUE) inflates every cell SE and gives finite ord
   expect_true(all(fT$att_gt$ci_lower[ok] < fT$att_gt$ci_upper[ok]))
 })
 
-test_that("edid(higher_order = TRUE) aggregations: SEs untouched, crit finite", {
+test_that("edid(higher_order = TRUE) vcov matches reported higher-order SEs", {
   df <- make_cfs_panel(n = 300, seed = 7)
   fT <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient", aggregate = "all", bstrap = FALSE, seed = 1L,
              higher_order = TRUE)
+  expect_equal(unname(sqrt(diag(vcov(fT, which = "att_gt")))), fT$att_gt$se, tolerance = 1e-10)
+
   for (nm in c("event_study", "group", "calendar")) {
     a <- fT[[nm]]
     if (is.null(a)) next
@@ -186,7 +188,18 @@ test_that("edid(higher_order = TRUE) aggregations: SEs untouched, crit finite", 
     expect_true(all(is.finite(a$se.egt)))
     expect_true(is.finite(a$crit.val.egt))
     expect_gte(a$crit.val.egt, qnorm(1 - fT$alpha / 2) - 1e-8)
+    if (nm %in% c("event_study", "group")) {
+      expect_equal(unname(sqrt(diag(vcov(fT, which = nm)))), a$se.egt, tolerance = 1e-10)
+    }
   }
+  expect_equal(as.numeric(sqrt(vcov(fT, which = "overall")[1L, 1L])),
+               fT$overall$overall.se, tolerance = 1e-10)
+
+  fS <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient",
+             aggregate = "overall", bstrap = FALSE, seed = 1L, higher_order = TRUE)
+  expect_false(is.null(fS$simple))
+  expect_equal(as.numeric(sqrt(vcov(fS, which = "overall")[1L, 1L])),
+               fS$simple$overall.se, tolerance = 1e-10)
 })
 
 # ---- (d) guards ---------------------------------------------------------------------------------------

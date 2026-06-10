@@ -64,8 +64,8 @@
 #'   errors: when \code{TRUE}, the reported SE accounts for \emph{every} applicable estimation effect --- the
 #'   weight-estimation channel (described below), the first-step nuisance ACH correction
 #'   (\code{estimation_effect}), and the higher-order ("Wick") nuisance term (\code{higher_order}) --- each
-#'   enabled only where it applies and silently skipped where it does not (no covariates; multiplier path;
-#'   \code{weight_scheme = "uniform"}), so default calls do not warn. An explicitly-set \code{estimation_effect}
+#'   enabled only where it applies and silently skipped where it does not (no covariates; multiplier path; the
+#'   weight-estimation channel for \code{weight_scheme = "uniform"}), so default calls do not warn. An explicitly-set \code{estimation_effect}
 #'   or \code{higher_order} overrides that piece, and \code{misspec_robust = FALSE} reverts to the plug-in
 #'   efficient-IF SE. The weight-estimation channel \eqn{\psi_\Omega} is the first-step estimation effect of the
 #'   efficient weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})} (the sibling of
@@ -298,16 +298,66 @@ edid <- function(
   trim_level        = 200,
   cores             = getOption("edid_mc_cores", 1L)
 ) {
-  weight_method <- match.arg(weight_scheme)
   cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
   ee_explicit   <- !missing(estimation_effect)      # did the user set the fine-grained flags explicitly?
   ho_explicit   <- !missing(higher_order)
   mr_explicit   <- !missing(misspec_robust)
+
+  .check_logical_scalar <- function(value, name) {
+    if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+      stop(sprintf("`%s` must be a logical scalar (TRUE or FALSE).", name), call. = FALSE)
+    }
+    value
+  }
+  .check_positive_bootstrap_iters <- function(value) {
+    if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+        !is.finite(value) || value <= 0 || value != floor(value) ||
+        value > .Machine$integer.max) {
+      stop("`biters` must be a positive integer when `bstrap = TRUE`.", call. = FALSE)
+    }
+    as.integer(value)
+  }
+  .check_nonnegative_integer_scalar <- function(value, name) {
+    if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+        !is.finite(value) || value < 0 || value != floor(value) ||
+        value > .Machine$integer.max) {
+      stop(sprintf("`%s` must be a non-negative integer scalar.", name), call. = FALSE)
+    }
+    as.integer(value)
+  }
+  .check_nonnegative_integer_or_null <- function(value, name) {
+    if (is.null(value)) return(NULL)
+    if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
+        !is.finite(value) || value < 0 || value != floor(value) ||
+        value > .Machine$integer.max) {
+      stop(sprintf("`%s` must be NULL or a non-negative integer scalar.", name), call. = FALSE)
+    }
+    as.integer(value)
+  }
+  .check_positive_trim_level <- function(value) {
+    if (!is.numeric(value) || length(value) != 1L || is.na(value) || value <= 0) {
+      stop("`trim_level` must be a numeric scalar greater than 0; use Inf to disable trimming.",
+           call. = FALSE)
+    }
+    as.numeric(value)
+  }
+
+  bstrap <- .check_logical_scalar(bstrap, "bstrap")
+  cband <- .check_logical_scalar(cband, "cband")
+  estimation_effect <- .check_logical_scalar(estimation_effect, "estimation_effect")
+  higher_order <- .check_logical_scalar(higher_order, "higher_order")
+  misspec_robust <- .check_logical_scalar(misspec_robust, "misspec_robust")
+  if (bstrap) biters <- .check_positive_bootstrap_iters(biters)
+  anticipation <- .check_nonnegative_integer_scalar(anticipation, "anticipation")
+  balance_e <- .check_nonnegative_integer_or_null(balance_e, "balance_e")
+  trim_level <- .check_positive_trim_level(trim_level)
+
+  weight_method <- match.arg(weight_scheme)
   cband_method  <- match.arg(cband_method)
   estimation_effect <- isTRUE(estimation_effect)
   higher_order  <- isTRUE(higher_order)
   misspec_robust <- isTRUE(misspec_robust)
-  has_cov       <- !(is.null(xformla) || identical(deparse(xformla, width.cutoff = 500L), "~1"))
+  has_cov       <- !is.null(xformla) && inherits(xformla, "formula") && length(all.vars(xformla)) > 0L
   mc <- match.call()
 
   # ------------------------------------------------------------------
@@ -336,6 +386,12 @@ edid <- function(
     }
   }
 
+  if (cband_method == "multiplier" && !isTRUE(bstrap)) {
+    warning("cband_method = 'multiplier' requires bstrap = TRUE; using cband_method = 'analytic' instead.",
+            call. = FALSE)
+    cband_method <- "analytic"
+  }
+
   # ------------------------------------------------------------------
   # Backward-compatible bootstrap entry point
   # ------------------------------------------------------------------
@@ -353,8 +409,8 @@ edid <- function(
   # ------------------------------------------------------------------
   # misspec_robust = TRUE makes the reported SE account for EVERY applicable estimation effect: the
   # weight-estimation channel, the first-step nuisance ACH correction (estimation_effect), and the
-  # higher-order ("Wick") nuisance term. Each is enabled only where it applies and silently skipped where it
-  # does not (no covariates; multiplier path; weight_scheme = "uniform"), so default calls never warn. An
+  # higher-order ("Wick") nuisance term. Each is enabled only where it applies (the weight channel itself is
+  # skipped for fixed uniform weights), so default calls never warn. An
   # explicitly-set fine-grained flag overrides the bundle; misspec_robust = FALSE reverts to the plug-in
   # efficient-IF SE (honoring any individually-set estimation_effect / higher_order).
   if (misspec_robust) {
@@ -368,8 +424,11 @@ edid <- function(
   # ------------------------------------------------------------------
   pt_assumption     <- match.arg(pt_assumption)
   aggregate         <- match.arg(aggregate, several.ok = TRUE)
-  # When "all" is present it subsumes the others
+  # When "all" is present it subsumes the others, including the function-default vector.
   if ("all" %in% aggregate) aggregate <- "all"
+  if ("none" %in% aggregate && length(aggregate) > 1L) {
+    stop("`aggregate = \"none\"` cannot be combined with other aggregate options.", call. = FALSE)
+  }
 
   anticipation <- as.integer(anticipation)
 
@@ -524,9 +583,10 @@ edid <- function(
     }
     bb <- mboot(eif_matrix, bdp, pl = FALSE)
     ok <- is.finite(bb$se)
+    crit <- if (isTRUE(cband)) bb$crit.val else stats::qnorm(1 - alp / 2)
     att_gt_df$se[ok]       <- bb$se[ok]
-    att_gt_df$ci_lower[ok] <- att_gt_df$att[ok] - bb$crit.val * bb$se[ok]
-    att_gt_df$ci_upper[ok] <- att_gt_df$att[ok] + bb$crit.val * bb$se[ok]
+    att_gt_df$ci_lower[ok] <- att_gt_df$att[ok] - crit * bb$se[ok]
+    att_gt_df$ci_upper[ok] <- att_gt_df$att[ok] + crit * bb$se[ok]
     att_gt_df$t_stat[ok]   <- att_gt_df$att[ok] / bb$se[ok]
     att_gt_df$p_value[ok]  <- 2 * stats::pnorm(-abs(att_gt_df$t_stat[ok]))
   }
@@ -614,7 +674,9 @@ edid <- function(
   # (att.egt / egt); pre-treatment leads are dropped via na.rm. `$overall` is the headline AGGTEobj:
   # the dynamic event-study average when an event study is requested, else the cohort-share "simple"
   # aggregate. `$event_study`, `$group`, `$calendar`, `$simple` are the corresponding AGGTEobj objects.
-  .agg <- function(ty) tryCatch(aggte_edid(edid_fit, type = ty, balance_e = balance_e, na.rm = TRUE), error = function(e) NULL)
+  .agg <- function(ty) {
+    aggte_edid(edid_fit, type = ty, balance_e = balance_e, na.rm = TRUE)
+  }
   if (do_event_study) edid_fit$event_study <- .agg("dynamic")
   if (do_group)       edid_fit$group       <- .agg("group")
   if (do_calendar)    edid_fit$calendar    <- .agg("calendar")

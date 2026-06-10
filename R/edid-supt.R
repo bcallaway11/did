@@ -46,6 +46,11 @@ supt_crit_edid <- function(Sigma, alp = 0.05, B = 1e5L, seed = NULL) {
   pointwise <- stats::qnorm(1 - alp / 2)
   Sigma <- as.matrix(Sigma)
   d  <- sqrt(diag(Sigma)); ok <- is.finite(d) & d > 0; p <- sum(ok)
+  # Exclude coordinates with any non-finite covariance row/column entry so a single bad off-diagonal
+  # entry does not break the whole familywise critical-value simulation.
+  row_ok <- vapply(seq_len(nrow(Sigma)), function(i) all(is.finite(Sigma[i, ]) & is.finite(Sigma[, i])), logical(1L))
+  ok <- ok & row_ok
+  p <- sum(ok)
   if (p < 2L) return(pointwise)
   R <- Sigma[ok, ok, drop = FALSE] / tcrossprod(d[ok])
   R <- (R + t(R)) / 2                                        # symmetrize away roundoff
@@ -195,7 +200,8 @@ analytic_bands_edid <- function(att, Sigma, alp = 0.05, cband = TRUE, seed = NUL
   # coordinates than were simulated; degenerate coordinates get NA bounds rather than a spurious
   # zero-width / NaN interval. On non-degenerate input (the normal path) `good` is all-TRUE, so this is
   # a no-op: same se, same crit, same bounds.
-  good <- is.finite(se) & se > 0
+  row_ok <- vapply(seq_len(nrow(Sigma)), function(i) all(is.finite(Sigma[i, ]) & is.finite(Sigma[, i])), logical(1L))
+  good <- is.finite(se) & se > 0 & row_ok
   if (isTRUE(cband)) {
     crit <- supt_crit_edid(Sigma, alp = alp, seed = seed)
     if (any(!good)) {

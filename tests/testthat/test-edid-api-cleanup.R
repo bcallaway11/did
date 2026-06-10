@@ -21,6 +21,125 @@ make_cov_panel <- function(n = 400L, seed = 11L) {
 }
 
 # ---------------------------------------------------------------------------
+# Tier 2: user-facing scalar controls fail early with clear messages
+# ---------------------------------------------------------------------------
+test_that("edid() validates logical scalar controls before coercion", {
+  df <- make_panel_1cohort()
+  run_edid <- function(...) {
+    edid(df, "outcome", "unit", "time", "first_treat", aggregate = "none", ...)
+  }
+
+  expect_error(run_edid(bstrap = NA), "`bstrap` must be a logical scalar")
+  expect_error(run_edid(bstrap = "yes"), "`bstrap` must be a logical scalar")
+  expect_error(run_edid(cband = NA), "`cband` must be a logical scalar")
+  expect_error(run_edid(cband = "yes"), "`cband` must be a logical scalar")
+  expect_error(run_edid(estimation_effect = NA), "`estimation_effect` must be a logical scalar")
+  expect_error(run_edid(estimation_effect = "yes"), "`estimation_effect` must be a logical scalar")
+  expect_error(run_edid(higher_order = NA), "`higher_order` must be a logical scalar")
+  expect_error(run_edid(higher_order = "yes"), "`higher_order` must be a logical scalar")
+  expect_error(run_edid(misspec_robust = NA), "`misspec_robust` must be a logical scalar")
+  expect_error(run_edid(misspec_robust = "yes"), "`misspec_robust` must be a logical scalar")
+})
+
+test_that("edid() requires positive bootstrap iterations only when bootstrap is used", {
+  df <- make_panel_1cohort()
+  run_edid <- function(...) {
+    edid(df, "outcome", "unit", "time", "first_treat", aggregate = "none", ...)
+  }
+
+  expect_error(run_edid(bstrap = TRUE, biters = 0L), "`biters` must be a positive integer")
+  expect_error(run_edid(bstrap = TRUE, biters = NA_integer_), "`biters` must be a positive integer")
+  expect_s3_class(expect_no_error(run_edid(bstrap = FALSE, biters = 0L, cband = FALSE)), "edid_fit")
+})
+
+test_that("edid() validates trim_level as a positive numeric scalar", {
+  df <- make_panel_1cohort()
+  run_edid <- function(...) {
+    edid(df, "outcome", "unit", "time", "first_treat", aggregate = "none", ...)
+  }
+
+  expect_error(run_edid(trim_level = 0), "`trim_level` must be a numeric scalar greater than 0")
+  expect_error(run_edid(trim_level = -1), "`trim_level` must be a numeric scalar greater than 0")
+  expect_error(run_edid(trim_level = NA_real_), "`trim_level` must be a numeric scalar greater than 0")
+  expect_error(run_edid(trim_level = "bad"), "`trim_level` must be a numeric scalar greater than 0")
+  expect_s3_class(expect_no_error(run_edid(trim_level = Inf, cband = FALSE)), "edid_fit")
+})
+
+test_that("edid() validates balance_e before requested dynamic aggregation", {
+  df <- make_panel_2cohort()
+  run_edid <- function(...) {
+    edid(df, "outcome", "unit", "time", "first_treat", aggregate = "event_study", ...)
+  }
+
+  expect_error(run_edid(balance_e = "bad"), "`balance_e` must be NULL or a non-negative integer scalar")
+  expect_error(run_edid(balance_e = NA_integer_), "`balance_e` must be NULL or a non-negative integer scalar")
+  expect_error(run_edid(balance_e = -1L), "`balance_e` must be NULL or a non-negative integer scalar")
+  expect_error(run_edid(balance_e = 1.5), "`balance_e` must be NULL or a non-negative integer scalar")
+
+  fit <- expect_no_error(run_edid(balance_e = 1L, cband = FALSE))
+  expect_s3_class(fit$event_study, "AGGTEobj")
+  expect_s3_class(fit$overall, "AGGTEobj")
+})
+
+test_that("edid() validates anticipation before integer coercion", {
+  df <- make_panel_2cohort()
+  run_edid <- function(...) {
+    edid(df, "outcome", "unit", "time", "first_treat", aggregate = "none", ...)
+  }
+
+  expect_error(run_edid(anticipation = 1.5), "`anticipation` must be a non-negative integer scalar")
+})
+
+test_that("edid() treats zero-column formulas as no covariates for higher-order guards", {
+  df <- make_panel_1cohort()
+  expect_error(
+    edid(df, "outcome", "unit", "time", "first_treat",
+         xformla = ~ 1 + 0, higher_order = TRUE, aggregate = "none"),
+    "higher_order = TRUE requires a covariate formula"
+  )
+  fit <- edid(df, "outcome", "unit", "time", "first_treat",
+              xformla = ~ 1 + 0, aggregate = "none", cband = FALSE)
+  expect_false(isTRUE(fit$estimation_effect))
+  expect_false(isTRUE(fit$higher_order))
+  expect_false(isTRUE(fit$misspec_robust))
+})
+
+test_that("validate_edid_inputs() rejects non-finite numeric scalars clearly", {
+  df <- make_panel_1cohort()
+  run_validate <- function(alp = 0.05, biters = 0L, anticipation = 0L) {
+    validate_edid_inputs(
+      data = df, yname = "outcome", idname = "unit",
+      tname = "time", gname = "first_treat",
+      covariates = NULL, pt_assumption = "all",
+      alp = alp, clustervars = NULL, biters = biters,
+      anticipation = anticipation, survey_design = NULL
+    )
+  }
+
+  for (bad in list(NA_real_, NaN, Inf)) {
+    expect_error(run_validate(alp = bad), "`alp` must be a numeric scalar strictly between 0 and 1")
+    expect_error(run_validate(biters = bad), "`biters` must be a non-negative integer")
+    expect_error(run_validate(anticipation = bad), "`anticipation` must be a non-negative integer")
+  }
+})
+
+test_that("edid() rejects aggregate none when combined with requested outputs", {
+  df <- make_panel_2cohort()
+  run_edid <- function(...) {
+    edid(df, "outcome", "unit", "time", "first_treat", ...)
+  }
+
+  expect_error(
+    run_edid(aggregate = c("none", "group")),
+    "`aggregate = \"none\"` cannot be combined"
+  )
+  expect_error(
+    run_edid(aggregate = c("none", "event_study")),
+    "`aggregate = \"none\"` cannot be combined"
+  )
+})
+
+# ---------------------------------------------------------------------------
 # Tier 2: weight_scheme rename + control_group removal
 # ---------------------------------------------------------------------------
 test_that("weight_scheme is the weighting argument; the old `weights` arg is gone", {
