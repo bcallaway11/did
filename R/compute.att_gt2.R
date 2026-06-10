@@ -86,7 +86,10 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 #' @param covariates Matrix of covariates to be used in the estimation
 #' @param dp2 DiD parameters v2.0.
 #'
-#' @return A list containing the estimated ATT and the influence function vector.
+#' @return A list containing the estimated ATT and the influence function as
+#'  sparse triplets (`if_i` row indices, `if_x` values), except on the force_rc
+#'  path which returns the dense stacked vector (`inf_func`) for the caller's
+#'  half-fold. `if_i`/`if_x` (or `inf_func`) are NULL for point estimates only.
 #' @noRd
 run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
                       pret_val = NULL, force_rc = FALSE, check_cache_key = NULL){
@@ -155,11 +158,13 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 
       if (guard$overlap_fail) {
         warning(paste0("overlap condition violated", gt_label))
-        return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
+        return(list(att = NA, if_i = if (do_inf) seq_len(n) else NULL,
+                    if_x = if (do_inf) rep(NA_real_, n) else NULL))
       }
       if (guard$rcond_fail) {
         warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
-        return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
+        return(list(att = NA, if_i = if (do_inf) seq_len(n) else NULL,
+                    if_x = if (do_inf) rep(NA_real_, n) else NULL))
       }
     }
 
@@ -204,13 +209,16 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
     }
 
     # adjust influence function to account for only using
-    # subgroup to estimate att(g,t)
+    # subgroup to estimate att(g,t). Stored as sparse triplets (if_i row
+    # indices / if_x values) rather than a dense length-n vector: the assembly
+    # in compute.att_gt2() concatenates the triplets directly, mirroring the
+    # slow path, instead of rescanning dense columns with which().
     if (do_inf) {
-      inf_func_vector <- rep(0, n)
-      inf_func_not_na <- (n/n1)*attgt$att.inf.func
-      inf_func_vector[valid_obs] <- inf_func_not_na
+      if_i <- valid_obs
+      if_x <- (n/n1)*attgt$att.inf.func
     } else {
-      inf_func_vector <- NULL   # point estimates only
+      if_i <- NULL   # point estimates only
+      if_x <- NULL
     }
 
   } else {
@@ -246,8 +254,11 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 
     covariates <- as.matrix(covariates)
 
-    # determine correct inf_func length for early returns
-    n_inf <- if (dp2$allow_unbalanced_panel) dp2$id_count else n
+    # number of rows of the final influence-function column for early returns:
+    # the unbalanced-panel branch aggregates observations to units; force_rc
+    # failure triplets are already at unit level (the caller's half-fold only
+    # applies to the dense success vector); plain RC has one row per observation
+    n_inf <- if (dp2$allow_unbalanced_panel || force_rc) dp2$id_count else n
 
     skip_this_att_gt <- FALSE
     if (sum(D * post) == 0) {
@@ -269,7 +280,8 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       skip_this_att_gt <- TRUE
     }
     if (skip_this_att_gt) {
-      return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
+      return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                  if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
     }
 
     #-----------------------------------------------------------------------------
@@ -285,7 +297,8 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       if (dp2$est_method %in% c("dr", "ipw")) {
         if (overlap_check_fail(covariates, D_vec, intercept_only)) {
           warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
+          return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                      if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }
 
@@ -293,7 +306,8 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       if (dp2$est_method %in% c("dr", "reg")) {
         if (rcond_check_fail(covariates, D_vec, intercept_only)) {
           warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
-          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
+          return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                      if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }
     }
@@ -341,27 +355,40 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
     # att_gt only using observations from groups
     # G and C
     # adjust influence function to account for only using
-    # subgroup to estimate att(g,t)
+    # subgroup to estimate att(g,t). Stored as sparse triplets (if_i/if_x),
+    # mirroring the slow path; the dense vector is kept only where it is still
+    # needed (unbalanced-panel rowsum aggregation, force_rc half-fold).
     if (!do_inf) {
-      inf_func_vector <- NULL   # point estimates only
+      if_i <- NULL   # point estimates only
+      if_x <- NULL
     } else if(dp2$allow_unbalanced_panel){
       # since this is technically a panel data but ran as RCS, we need to adjust the
       # influence function by aggregating influence value by .rowid (several obs of one
       # unit can be used to estimate ATT in each 2x2). rowsum(..., reorder = FALSE)
       # reproduces the data.table `by = .rowid` first-appearance group order exactly.
+      # The aggregated dense vector is then converted to triplets with the same
+      # is.na | != 0 scan the assembly previously applied to dense columns.
       inf_func_long <- numeric(n)
       inf_func_long[valid_obs] <- (dp2$id_count / n1) * attgt$att.inf.func
       inf_func_vector <- rowsum(inf_func_long, rowid_all, reorder = FALSE)[, 1L]
+      if_i <- which(is.na(inf_func_vector) | inf_func_vector != 0)
+      if_x <- inf_func_vector[if_i]
 
-    } else {
+    } else if (force_rc) {
+      # balanced panel run as RC (fix_weights = "varying"): return the dense
+      # stacked [all pre, all post] vector; run_att_gt_estimation() half-folds
+      # it to unit level and converts it to triplets there.
       inf_func_vector <- rep(0, n)
-      inf_func_not_na <- (n/n1)*attgt$att.inf.func
-      inf_func_vector[valid_obs] <- inf_func_not_na
+      inf_func_vector[valid_obs] <- (n/n1)*attgt$att.inf.func
+      return(list(att = attgt$ATT, inf_func = inf_func_vector))
+    } else {
+      if_i <- valid_obs
+      if_x <- (n/n1)*attgt$att.inf.func
     }
 
   }
 
-  return(list(att = attgt$ATT, inf_func = inf_func_vector))
+  return(list(att = attgt$ATT, if_i = if_i, if_x = if_x))
 
 }
 
@@ -544,10 +571,15 @@ run_att_gt_estimation <- function(g, t, dp2){
   # When force_rc on balanced panel, the influence function has 2*n_units rows.
   # Half-split is safe here: cohort_data is explicitly stacked as
   # [all pre, all post] via rep(c(0L, 1L), each = n_units) in construction above.
+  # The folded dense vector is converted to sparse triplets (if_i/if_x) with the
+  # same is.na | != 0 scan the assembly previously applied to dense columns.
   if (force_rc && !is.null(did_result) && dp2$panel && !is.null(did_result$inf_func)) {
     inf <- did_result$inf_func
     n_half <- length(inf) %/% 2L
-    did_result$inf_func <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
+    inf_folded <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
+    did_result$if_i <- which(is.na(inf_folded) | inf_folded != 0)
+    did_result$if_x <- inf_folded[did_result$if_i]
+    did_result$inf_func <- NULL
   }
 
   return(did_result)
@@ -629,38 +661,46 @@ compute.att_gt2 <- function(dp2) {
     post.treat <- as.integer(dp2$treated_groups[g] <= dp2$time_periods[t+tfac])
 
     # Check for NULL first (estimation failed or was skipped). When do_inf = FALSE
-    # (point estimates only) no influence-function vector is stored (saving memory).
+    # (point estimates only) no influence-function triplets are stored (saving memory).
+    # Failed cells propagate NA to every row of their column: if_i = seq_len(n),
+    # if_x = NA, exactly the triplets the dense-column scan used to produce.
     if (is.null(gt_result)) {
-      inffunc_updates <- if (do_inf) rep(NA_real_, n) else NULL
-      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat,
+                        if_i = if (do_inf) seq_len(n) else NULL,
+                        if_x = if (do_inf) rep(NA_real_, n) else NULL)
       return(gt_result)
     }
 
-    # Base period normalization: ATT is 0 by construction
+    # Base period normalization: ATT is 0 by construction (empty triplet column)
     if (!is.null(gt_result$base_period_norm)) {
-      inffunc_updates <- if (do_inf) rep(0, n) else NULL
-      gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat,
+                        if_i = if (do_inf) integer(0) else NULL,
+                        if_x = if (do_inf) numeric(0) else NULL)
       return(gt_result)
     }
 
     if (is.null(gt_result$att)) {
       # Estimation returned a result but without an ATT
-      inffunc_updates <- if (do_inf) rep(NA_real_, n) else NULL
-      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat,
+                        if_i = if (do_inf) seq_len(n) else NULL,
+                        if_x = if (do_inf) rep(NA_real_, n) else NULL)
       return(gt_result)
     } else {
       att <- gt_result$att
-      inf_func <- gt_result$inf_func
+      if_i <- gt_result$if_i
+      if_x <- gt_result$if_x
 
       # Handle NaN ATT: treat as estimation failure
       if (is.nan(att)) {
         att <- NA
-        if (do_inf) inf_func <- rep(NA_real_, n)
+        if (do_inf) {
+          if_i <- seq_len(n)
+          if_x <- rep(NA_real_, n)
+        }
       }
 
-      # Save ATT and influence function (inf_func is NULL when do_inf = FALSE)
-      inffunc_updates <- inf_func
-      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      # Save ATT and influence triplets (if_i/if_x are NULL when do_inf = FALSE)
+      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, if_i = if_i, if_x = if_x)
       return(gt_result)
     }
   }
@@ -684,27 +724,23 @@ compute.att_gt2 <- function(dp2) {
   if (!do_inf) {
     inffunc <- NULL
   } else {
-    n_rows <- length(gt_results[[1]]$inffunc_updates)
     n_cols <- length(gt_results)
 
-    # Collect non-zero (and NA) entries as sparse triplets. Gather per-column
-    # results into lists and concatenate once, rather than growing the triplet
-    # vectors with c() on every iteration (which reallocates O(n_cols^2) in total).
-    # The triplet order is unchanged (column-major, original within-column order),
-    # so the resulting sparse matrix is identical.
-    nz_list <- vector("list", n_cols)
-    val_list <- vector("list", n_cols)
-    for (j in seq_len(n_cols)) {
-      vec <- gt_results[[j]]$inffunc_updates
-      nz <- which(is.na(vec) | vec != 0)
-      nz_list[[j]] <- nz
-      val_list[[j]] <- vec[nz]
-    }
+    # Each cell already carries its influence column as sparse triplets
+    # (if_i row indices / if_x values), mirroring the slow path; concatenate
+    # them once instead of rescanning dense per-cell vectors with which().
+    # The triplet order is unchanged (column-major, original within-column
+    # order), so the resulting sparse matrix is identical. Every code path
+    # produces columns with dp2$id_count rows (panel units, RC observations,
+    # unbalanced-panel units after the rowsum aggregation, force_rc units
+    # after the half-fold).
+    nz_list <- lapply(gt_results, `[[`, "if_i")
+    val_list <- lapply(gt_results, `[[`, "if_x")
     trip_i <- unlist(nz_list, use.names = FALSE)
     trip_x <- unlist(val_list, use.names = FALSE)
     trip_j <- rep.int(seq_len(n_cols), lengths(nz_list))
     inffunc <- Matrix::sparseMatrix(i = trip_i, j = trip_j, x = trip_x,
-                                    dims = c(n_rows, n_cols))
+                                    dims = c(n, n_cols))
   }
 
   return(list(attgt.list=gt_results, inffunc=inffunc))
