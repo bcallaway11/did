@@ -4,6 +4,9 @@
 #'  assumption holding in all pre-treatment time periods for all groups
 #'
 #' @inheritParams att_gt
+#' @param cores The number of cores to use for parallel processing. This
+#'  parallelizes Step 1 (computing the test statistic); Step 2's multiplier
+#'  bootstrap is vectorized and runs in a single process.
 #'
 #' @examples
 #' \dontrun{
@@ -332,9 +335,11 @@ indicator <- function(X, u) {
 #'  for the pre-test of the conditional parallel trends assumption
 #'
 #' @inheritParams mboot
-#' @param cores The number of cores to use to bootstrap the test
-#'  statistic in parallel.  Default is \code{cores=1} which
-#'  corresponds to not running parallel.
+#' @param cores Unused; retained for backward compatibility. The
+#'  multiplier bootstrap is computed with vectorized matrix operations
+#'  in a single process, so this argument has no effect here. In
+#'  \code{conditional_did_pretest}, \code{cores} parallelizes only
+#'  Step 1 (computing the test statistic).
 #'
 #' @return list
 #' \item{bres}{CvM test statistics for each bootstrap iteration}

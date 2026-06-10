@@ -54,11 +54,10 @@ all lengths of exposure are computed.}
 \item{na.rm}{Logical value if we are to remove missing Values from analyses. Defaults is FALSE.}
 
 \item{bstrap}{Boolean for whether or not to compute standard errors using
-the multiplier bootstrap.  If standard errors are clustered, then one
-must set \code{bstrap=TRUE}. Default is \code{TRUE} (in addition, cband
+the multiplier bootstrap.  Default is \code{TRUE} (in addition, cband
 is also by default \code{TRUE} indicating that uniform confidence bands
-will be returned.  If bstrap is \code{FALSE}, then analytical
-standard errors are reported.}
+will be returned).  If \code{bstrap=FALSE}, analytical standard errors are
+reported; these are cluster-robust when \code{clustervars} is supplied.}
 
 \item{biters}{The number of bootstrap iterations to use.  The default is 1000,
 and this is only applicable if \code{bstrap=TRUE}.}
@@ -74,7 +73,8 @@ bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
 \item{clustervars}{A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level. By default, we cluster at individual level (when \code{bstrap=TRUE}).}
+level. Clustered standard errors are available with the multiplier bootstrap
+(\code{bstrap=TRUE}) or analytically (\code{bstrap=FALSE}).}
 
 \item{call}{The function call to aggte}
 }

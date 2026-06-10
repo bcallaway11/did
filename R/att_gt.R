@@ -171,8 +171,9 @@
 #'  treatment and therefore it can affect their untreated potential outcomes
 #' @param faster_mode This option enables a faster version of `did`, optimizing
 #' computation time for large datasets by improving data management within the package.
-#' The default is set to `FALSE`. While the difference is minimal for small datasets,
-#' it is recommended for use with large datasets.
+#' The default is set to `TRUE`. Both modes produce identical results up to
+#' numerical precision; while the difference is minimal for small datasets,
+#' the speedup is substantial for large ones.
 #' @param base_period Whether to use a "varying" base period or a
 #'  "universal" base period.  Either choice results in the same
 #'  post-treatment estimates of ATT(g,t)'s.  In pre-treatment
@@ -201,6 +202,14 @@
 #' @param ... Additional arguments to be passed to a custom `est_method`
 #'  function. These are ignored when using built-in estimation methods
 #'  (`"dr"`, `"ipw"`, `"reg"`).
+#'
+#' @section Options:
+#'  When `faster_mode = FALSE`, setting `options(did.disable_precompute = TRUE)`
+#'  disables the one-time positional precompute and assembles every 2x2
+#'  comparison from the long data per cell, as in earlier versions. The
+#'  covariate design matrix is still built once over the full sample under
+#'  both settings, so results are identical either way; the option exists
+#'  only as a debugging escape hatch.
 #'
 #' @references Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. \doi{10.1016/j.jeconom.2020.12.001}, <https://arxiv.org/abs/1803.09015>
 #'

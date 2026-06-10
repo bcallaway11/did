@@ -22,7 +22,6 @@ Imports:
     data.table (>= 1.15.4),
     dreamerr (>= 1.4.0)
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Suggests:
     rmarkdown,
@@ -34,3 +33,4 @@ Suggests:
     broom
 Remotes:
     pedrohcgs/DRDID@v1.3.0
+Config/roxygen2/version: 8.0.0

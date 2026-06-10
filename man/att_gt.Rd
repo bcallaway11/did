@@ -227,8 +227,9 @@ extra estimate in an earlier period.}
 
 \item{faster_mode}{This option enables a faster version of \code{did}, optimizing
 computation time for large datasets by improving data management within the package.
-The default is set to \code{FALSE}. While the difference is minimal for small datasets,
-it is recommended for use with large datasets.}
+The default is set to \code{TRUE}. Both modes produce identical results up to
+numerical precision; while the difference is minimal for small datasets,
+the speedup is substantial for large ones.}
 
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
@@ -272,6 +273,16 @@ treatment to occur at different points in time and allowing for
 treatment effect heterogeneity and dynamics.
 See Callaway and Sant'Anna (2021) for a detailed description.
 }
+\section{Options}{
+
+When \code{faster_mode = FALSE}, setting \code{options(did.disable_precompute = TRUE)}
+disables the one-time positional precompute and assembles every 2x2
+comparison from the long data per cell, as in earlier versions. The
+covariate design matrix is still built once over the full sample under
+both settings, so results are identical either way; the option exists
+only as a debugging escape hatch.
+}
+
 \section{Examples:}{
 \strong{Basic \code{\link[=att_gt]{att_gt()}} call:}
 

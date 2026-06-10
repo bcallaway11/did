@@ -7,12 +7,12 @@
 "_PACKAGE"
 
 #' @importFrom stats pnorm qnorm pchisq quantile cov aggregate setNames
-#'   model.frame model.matrix na.pass complete.cases binomial rnorm var
-#'   ecdf glm predict
+#' @importFrom stats model.frame model.matrix na.pass complete.cases binomial
+#' @importFrom stats rnorm var ecdf glm predict
 #' @importFrom utils globalVariables
 #' @import ggplot2
 #' @importFrom BMisc toformula rhs.vars makeBalancedPanel getListElement
-#'   multiplier_bootstrap TorF
+#' @importFrom BMisc multiplier_bootstrap TorF
 #' @import data.table
 #' @import fastglm
 #' @importFrom tidyr gather

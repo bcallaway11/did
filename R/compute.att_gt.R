@@ -151,8 +151,9 @@ compute.att_gt <- function(dp) {
     # precomputed once per call, instead of two full data.table subsets plus a
     # full-data %in% per cell (the dominant per-cell cost on this path). Bit-identical
     # to the legacy construction (see the per-cell comments below);
-    # options(did.disable_precompute = TRUE) forces the legacy path (escape hatch /
-    # used to verify bit-identical equivalence), mirroring the panel precompute.
+    # options(did.disable_precompute = TRUE) forces the legacy per-cell assembly
+    # (escape hatch / used to verify bit-identical cell assembly; both sub-paths
+    # still slice the hoisted global design matrix), mirroring the panel precompute.
     use_precompute_rc <- !panel && !isTRUE(getOption("did.disable_precompute"))
 
     # The precompute paths never read data$.C / data$.G (cohort indicators are
@@ -222,8 +223,13 @@ compute.att_gt <- function(dp) {
       panel_units_aligned <- all(vapply(period_id, function(x)
         length(x) == length(period_id[[1L]]) && all(x == period_id[[1L]]), logical(1)))
       g_unit_panel <- g_col[which(t_col == tlist[1L])]
-      # options(did.disable_precompute = TRUE) forces the original get_wide_data() path
-      # (escape hatch / used to verify bit-identical equivalence).
+      # options(did.disable_precompute = TRUE) disables only this per-cell positional
+      # assembly, falling back to the per-cell get_wide_data() reshape below (escape
+      # hatch / used to verify bit-identical cell assembly). It does NOT bypass the
+      # design-matrix hoist: BOTH sub-paths slice the global full_mm/period_mm built
+      # above, so a hoist regression would be invisible to this option -- the hoist
+      # itself is validated by the master-comparison tests in
+      # test-modelmatrix-hoist.R, not by this escape hatch.
       use_precompute_panel <- (is.null(fix_weights) ||
         fix_weights %in% c("base_period", "first_period")) && panel_units_aligned &&
         !isTRUE(getOption("did.disable_precompute"))
