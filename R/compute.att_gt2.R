@@ -56,19 +56,23 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 
     dat <- dp2$time_invariant_data          # shortcut
 
-    # flags for treated and control units
-    Gflag <- dat[[dp2$gname]] == dp2$treated_groups[group]
+    # flags for treated and control units. The per-group flag, the
+    # never-treated flag and the per-period masks are loop-invariant across
+    # (g,t) cells, so they are pre-computed once in compute.att_gt2() instead
+    # of rescanning every row per cell (complete.cases() ran upstream in
+    # pre_process_did2, so == has no NA hazard relative to %in%).
+    Gflag <- dp2$.gflag_by_group[[group]]
 
     if (dp2$control_group == "nevertreated") {
-      Cflag <- dat[[dp2$gname]] == Inf
-    } else {  # not-yet-treated
-      Cflag <- (dat[[dp2$gname]] == Inf) |
+      Cflag <- dp2$.never_treated
+    } else {  # not-yet-treated: the cutoff varies with t, so this comparison stays per cell
+      Cflag <- dp2$.never_treated |
         (dat[[dp2$gname]] > dp2$time_periods[max(time, pret) + tfac] + dp2$anticipation &
-           dat[[dp2$gname]] != dp2$treated_groups[group])
+           !Gflag)
     }
 
     # keep only rows observed in pret or t
-    keep <- dat[[dp2$tname]] %in% c(dp2$time_periods[time + tfac], dp2$time_periods[pret])
+    keep <- dp2$.period_masks[[time + tfac]] | dp2$.period_masks[[pret]]
 
     did_cohort_index <- rep(NA_integer_, nrow(dat))
     did_cohort_index[keep & Cflag] <- 0L
@@ -513,7 +517,8 @@ run_att_gt_estimation <- function(g, t, dp2){
     }
   } else {
 
-    log_vec <- dp2$time_invariant_data[[ dp2$tname ]] == dp2$time_periods[t+tfac]
+    # post indicator reuses the pre-computed period mask (see compute.att_gt2)
+    log_vec <- dp2$.period_masks[[t + tfac]]
     # convert TRUE/FALSE to 1/0 in place (fastest)
     set(dp2$time_invariant_data, j = "post", value = as.integer(log_vec))
 
@@ -615,6 +620,17 @@ compute.att_gt2 <- function(dp2) {
   # Pre-compute cumulative cohort sizes for fast indexing in get_did_cohort_index
   if (dp2$panel) {
     dp2$.cohort_cum_sizes <- cumsum(dp2$cohort_counts$cohort_size)
+  } else {
+    # Pre-compute the loop-invariant row masks used by get_did_cohort_index()
+    # and the post indicator in run_att_gt_estimation(): per-period membership,
+    # the never-treated flag, and per-group treated flags. Each was previously
+    # recomputed with full O(rows) scans for every (g,t) cell on the RC /
+    # unbalanced-panel path. Memory: (T + n_groups + 1) logical vectors of
+    # length nrow(time_invariant_data).
+    dat <- dp2$time_invariant_data
+    dp2$.period_masks <- lapply(time_periods, function(tp) dat[[dp2$tname]] == tp)
+    dp2$.never_treated <- dat[[dp2$gname]] == Inf
+    dp2$.gflag_by_group <- lapply(dp2$treated_groups, function(gval) dat[[dp2$gname]] == gval)
   }
 
   # Cache for the per-cell overlap/rcond guard booleans. For panel data with
