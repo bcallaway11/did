@@ -146,8 +146,8 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       # check if can run regression using control units
       if (dp2$est_method %in% c("dr", "reg")) {
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
-        if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-          warning(paste0("Not enough control units", gt_label, " to run specified regression"))
+        if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
+          warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
           return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
         }
       }
@@ -281,8 +281,8 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       # check if can run regression using control units
       if (dp2$est_method %in% c("dr", "reg")) {
         control_covs <- covariates[D_vec == 0, , drop = FALSE]
-        if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-          warning(paste0("Not enough control units", gt_label, " to run specified regression"))
+        if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
+          warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
           return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }

@@ -86,6 +86,8 @@ except where a bug fix is explicitly noted.
 
   * A non-numeric outcome variable (`yname`) is now rejected up front with a clear message in both code paths (logical 0/1 outcomes remain allowed). Previously a character or factor outcome "ran" to completion with all-`NA` ATTs and misleading per-cell warnings, and a list-column outcome failed with a cryptic `complete.cases()` error.
 
+  * The per-(g,t) regression-feasibility check now reports the real cause when it fails: "Covariate matrix for control units is singular or numerically ill-conditioned ... consider centering/rescaling covariates or removing collinear terms" instead of the misleading "Not enough control units ... to run specified regression" (which fired even with thousands of control units, e.g. for a quadratic in a year-scale covariate). The check itself is unchanged (and now uses `crossprod()`); affected cells still return `NA` with a warning.
+
   * `alp` must now be a single number strictly between 0 and 1 (e.g. `alp = 1.5` previously inverted the confidence bands silently or errored deep inside `quantile()`), and `biters` must be a single positive whole number when `bstrap = TRUE` (a negative value previously crashed inside the bootstrap's linear-algebra code with no hint about the cause).
 
 ## Documentation, namespace, and internals

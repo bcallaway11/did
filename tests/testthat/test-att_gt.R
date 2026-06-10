@@ -566,7 +566,7 @@ test_that("small comparison group", {
               gname="G", est_method="dr", faster_mode = FALSE), "very few observations")
   # reg
   expect_warning(res_reg <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
-              gname="G", est_method="reg", faster_mode = FALSE), "Not enough control units")
+              gname="G", est_method="reg", faster_mode = FALSE), "singular or numerically ill-conditioned")
   # ipw
   expect_warning(res_ipw <- att_gt(yname="Y", xformla=~X, data=data, tname="period", idname="id", control_group="notyettreated",
               gname="G", est_method="ipw", faster_mode = FALSE), "overlap condition violated")

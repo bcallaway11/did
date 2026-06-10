@@ -375,8 +375,8 @@ compute.att_gt <- function(dp) {
               }
               if (est_method %in% c("dr", "reg")) {
                 control_covs_rc <- covariates_rc[G_rc == 0, , drop = FALSE]
-                if (rcond(t(control_covs_rc) %*% control_covs_rc) < .Machine$double.eps) {
-                  warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+                if (rcond(crossprod(control_covs_rc)) < .Machine$double.eps) {
+                  warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                   stop("singular")
                 }
               }
@@ -413,8 +413,8 @@ compute.att_gt <- function(dp) {
               }
               if (est_method %in% c("dr", "reg")) {
                 control_covs <- covariates[G == 0, , drop = FALSE]
-                if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-                  warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+                if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
+                  warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                   stop("singular")
                 }
               }
@@ -618,8 +618,8 @@ compute.att_gt <- function(dp) {
             # check if can run regression using control units
             if (est_method %in% c("dr", "reg")) {
               control_covs <- covariates[G == 0, , drop = FALSE]
-              if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-                warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+              if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
+                warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                 stop("singular")
               }
             }
