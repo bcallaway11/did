@@ -343,7 +343,7 @@ compute.aggte <- function(MP,
       if (dp$bstrap == FALSE) {
         warning("Used bootstrap procedure to compute simultaneous confidence band")
       }
-      selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
+      selective.crit.val <- mboot(selective.inf.func.g, dp, return_V = FALSE)$crit.val
 
       if (is.na(selective.crit.val) | is.infinite(selective.crit.val)) {
         warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
@@ -478,7 +478,7 @@ compute.aggte <- function(MP,
       if (dp$bstrap == FALSE) {
         warning("Used bootstrap procedure to compute simultaneous confidence band")
       }
-      dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
+      dynamic.crit.val <- mboot(dynamic.inf.func.e, dp, return_V = FALSE)$crit.val
 
       if (is.na(dynamic.crit.val) | is.infinite(dynamic.crit.val)) {
         warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
@@ -590,7 +590,7 @@ compute.aggte <- function(MP,
       if (dp$bstrap == FALSE) {
         warning("Used bootstrap procedure to compute simultaneous confidence band")
       }
-      calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
+      calendar.crit.val <- mboot(calendar.inf.func.t, dp, return_V = FALSE)$crit.val
 
       if (is.na(calendar.crit.val) | is.infinite(calendar.crit.val)) {
         warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
@@ -757,7 +757,7 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
   }
 
   if (bstrap) {
-    bout <- mboot(thisinffunc, DIDparams)
+    bout <- mboot(thisinffunc, DIDparams, return_V = FALSE)
     return(bout$se)
   } else {
     # Analytical cluster-robust SE (no bootstrap): cluster sums of the aggregated influence function,

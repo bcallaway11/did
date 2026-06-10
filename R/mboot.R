@@ -10,15 +10,19 @@
 #'  bootstrap, default=FALSE
 #' @param cores the number of cores to use with parallel processing,
 #'  default=1
+#' @param return_V whether to compute and return the bootstrap variance
+#'  matrix `V`. Default is `TRUE`. Internal callers that only consume
+#'  `bres`, `se`, or `crit.val` set this to `FALSE` to skip the computation
+#'  (it is the only O(biters x k^2) step in the function).
 #'
 #' @return list with elements
 #' \item{bres}{results from each bootstrap iteration}
-#' \item{V}{variance matrix}
+#' \item{V}{variance matrix (`NULL` when `return_V = FALSE`)}
 #' \item{se}{standard errors}
 #' \item{crit.val}{a critical value for computing uniform confidence bands}
 #'
 #' @export
-mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
+mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
 
   # setup needed variables according to faster_mode; This returns different type of objects
   # depending on whether we are in faster_mode or not that has to be handled in the code below
@@ -127,15 +131,21 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1) {
   #ndg.dim[is.na(ndg.dim)] <- FALSE
   bres <- as.matrix(bres[ , ndg.dim])
 
-  # bootstrap variance matrix (this matrix can be defective because of degenerate cases)
-  V <- cov(bres)
+  # bootstrap variance matrix (this matrix can be defective because of degenerate cases).
+  # Computed only on request: no internal caller consumes it, and it is the only
+  # O(biters * k^2) term in mboot.
+  V <- if (return_V) cov(bres) else NULL
   # bootstrap standard error: IQR-based scale normalized to the SD of a normal.
   # The qnorm difference is a constant (hoisted out of the per-column loop), and
-  # both quantiles are taken in a single call so each column is sorted only once.
+  # the type = 1 quantiles are exactly the order statistics x_(ceil(B * p)), so a
+  # single sort per column replaces the quantile() calls bit-identically (the
+  # post-sort length is the per-column non-NA count, preserving na.rm = TRUE;
+  # sort() drops NAs by default).
   iqr_norm <- qnorm(.75) - qnorm(.25)
   bSigma <- apply(bres, 2, function(b) {
-    qs <- quantile(b, c(.25, .75), type = 1, na.rm = TRUE)
-    (qs[2L] - qs[1L]) / iqr_norm
+    b <- sort.int(b)
+    nb <- length(b)
+    (b[ceiling(.75 * nb)] - b[ceiling(.25 * nb)]) / iqr_norm
   })
 
   # critical value for uniform confidence band: per bootstrap draw, the max over

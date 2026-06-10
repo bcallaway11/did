@@ -551,7 +551,7 @@ att_gt <- function(yname,
 
   # bootstrap variance matrix
   if (bstrap) {
-    bout <- mboot(inffunc, DIDparams = dp, pl = pl, cores = cores)
+    bout <- mboot(inffunc, DIDparams = dp, pl = pl, cores = cores, return_V = FALSE)
     bres <- bout$bres
 
     if (length(zero_na_sd_entry) > 0) {
@@ -666,18 +666,31 @@ att_gt <- function(yname,
       # for uniform confidence band
       # compute new critical value
       # see paper for details
-      bSigma <- apply(
-        bres, 2,
-        function(b) {
-          (quantile(b, .75, type = 1, na.rm = T) -
-            quantile(b, .25, type = 1, na.rm = T)) / (qnorm(.75) - qnorm(.25))
-        }
-      )
+      # Vectorized like mboot(): both quantiles of each bootstrap column are
+      # taken in a single type = 1 call (one sort per column instead of two),
+      # with the qnorm normalization hoisted out of the per-column loop.
+      iqr_norm <- qnorm(.75) - qnorm(.25)
+      bSigma <- apply(bres, 2, function(b) {
+        qs <- quantile(b, c(.25, .75), type = 1, na.rm = TRUE)
+        (qs[2L] - qs[1L]) / iqr_norm
+      })
 
       bSigma[bSigma <= sqrt(.Machine$double.eps) * 10] <- NA
 
-      # sup-t confidence band
-      bT <- apply(bres, 1, function(b) max(abs(b / bSigma), na.rm = TRUE))
+      # sup-t confidence band: per bootstrap draw, the max over columns of
+      # |b / bSigma|, as a pmax column-fold (equivalent to the previous row-wise
+      # apply(max, na.rm = TRUE): NA entries are ignored via -Inf, and an all-NA
+      # row yields -Inf, exactly as before).
+      if (ncol(bres) == 0L) {
+        # every bootstrap dimension was degenerate (mboot dropped all columns):
+        # the previous row-wise apply(max, na.rm = TRUE) returned -Inf per row
+        bT <- rep(-Inf, nrow(bres))
+      } else {
+        scaled <- abs(bres / rep(bSigma, each = nrow(bres)))
+        scaled[is.na(scaled)] <- -Inf
+        bT <- scaled[, 1L]
+        for (j in seq_len(ncol(scaled))[-1L]) bT <- pmax(bT, scaled[, j])
+      }
       cval <- quantile(bT, 1 - alp, type = 1, na.rm = T)
       if (cval >= 7) {
         warning("Simultaneous critical value is arguably `too large' to be reliable. This usually happens when the number of observations per group is small and/or there is not much variation in outcomes.")

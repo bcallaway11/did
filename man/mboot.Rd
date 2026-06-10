@@ -4,7 +4,7 @@
 \alias{mboot}
 \title{Multiplier Bootstrap}
 \usage{
-mboot(inf.func, DIDparams, pl = FALSE, cores = 1)
+mboot(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE)
 }
 \arguments{
 \item{inf.func}{an influence function}
@@ -16,11 +16,16 @@ bootstrap, default=FALSE}
 
 \item{cores}{the number of cores to use with parallel processing,
 default=1}
+
+\item{return_V}{whether to compute and return the bootstrap variance
+matrix \code{V}. Default is \code{TRUE}. Internal callers that only consume
+\code{bres}, \code{se}, or \code{crit.val} set this to \code{FALSE} to skip the computation
+(it is the only O(biters x k^2) step in the function).}
 }
 \value{
 list with elements
 \item{bres}{results from each bootstrap iteration}
-\item{V}{variance matrix}
+\item{V}{variance matrix (\code{NULL} when \code{return_V = FALSE})}
 \item{se}{standard errors}
 \item{crit.val}{a critical value for computing uniform confidence bands}
 }
