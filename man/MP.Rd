@@ -36,7 +36,13 @@ period \code{t}}
 bands. Otherwise it reports the critical value based on pointwise normal
 approximation.}
 
-\item{inffunc}{the influence function for estimating group-time average treatment effects}
+\item{inffunc}{the influence function for estimating group-time average
+treatment effects: one column per ATT(g,t) and one row per cross-sectional
+unit (one row per observation with repeated cross sections). The rownames
+hold the unit ids and are the authoritative link between rows and units --
+the row order differs across \code{faster_mode = TRUE} (internal
+(period, cohort, id) ordering) and \code{faster_mode = FALSE} (id-sorted), so
+align rows by rowname, never by position.}
 
 \item{n}{the number of unique cross-sectional units (unique values of idname)}
 

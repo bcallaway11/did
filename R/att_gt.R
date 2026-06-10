@@ -207,6 +207,16 @@
 #' @return an [`MP`] object containing all the results for group-time average
 #'  treatment effects
 #'
+#'  The returned `inffunc` matrix collects the estimated influence functions,
+#'  with one column per ATT(g,t) and one row per cross-sectional unit (one row
+#'  per observation with repeated cross sections). Its rownames hold the unit
+#'  ids (`idname`; an internal observation index for repeated cross sections)
+#'  and are the authoritative link between rows and units: the row ORDER is
+#'  mode-specific (`faster_mode = FALSE` sorts units by id, while
+#'  `faster_mode = TRUE` uses an internal (period, cohort, id) ordering), so
+#'  external consumers of the influence functions must align rows by rowname,
+#'  never by position.
+#'
 #' @details # Examples:
 #'
 #' **Basic [att_gt()] call:**
@@ -433,6 +443,23 @@ att_gt <- function(yname,
   # extract ATT(g,t) and influence functions
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc
+
+  # Label the influence-function rows with the internal unit ids (the user's idname
+  # for panels; ".rowid", one per observation, for repeated cross sections). The ROW
+  # ORDER of inffunc is mode-specific: faster_mode = FALSE sorts units by id, while
+  # faster_mode = TRUE keeps the internal (period, cohort, id) ordering -- so row
+  # POSITIONS are not comparable across modes. The rownames attached here are the
+  # authoritative unit labels; external consumers (e.g. sensitivity analyses or
+  # custom cluster aggregation) must align rows by rowname, never by position.
+  # Values are unchanged; only dimnames are added.
+  if (!is.null(inffunc) && !is.null(dp$idname)) {
+    inffunc_ids <- if (faster_mode) dp$time_invariant_data[[dp$idname]] else dp$data[[dp$idname]]
+    # collapse per-observation ids (panel: one per period; unbalanced panel: one per
+    # observation) to one label per influence-function row; unique() preserves the
+    # first-appearance order, which is exactly each mode's inffunc row order.
+    if (anyDuplicated(inffunc_ids)) inffunc_ids <- unique(inffunc_ids)
+    if (length(inffunc_ids) == nrow(inffunc)) rownames(inffunc) <- as.character(inffunc_ids)
+  }
 
   # process results
   # attgt.results <- process_attgt(attgt.list)
