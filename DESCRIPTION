@@ -32,5 +32,5 @@ Suggests:
     backports,
     broom
 Remotes:
-    pedrohcgs/DRDID@v1.3.0
+    url::https://github.com/pedrohcgs/DRDID/archive/refs/tags/v1.3.0.tar.gz
 Config/roxygen2/version: 8.0.0
