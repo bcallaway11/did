@@ -128,6 +128,36 @@ test_that("fast path preserves user columns named weights", {
   expect_equal(slow_x$se, fast_x$se, tolerance = 1e-8)
 })
 
+test_that("slow RC path NA-cells a throwing preliminary logit instead of aborting att_gt", {
+  # Regression test: a -Inf covariate (log(0), reachable via transform-formula
+  # support) makes overlap_logit_fit() throw. The slow RC branch used to run the
+  # overlap/rcond guards OUTSIDE the per-cell tryCatch, hard-aborting the whole
+  # att_gt() call while the fast path and the slow panel path degraded to NA
+  # cells with a warning. Both modes must now fail identically, cell by cell.
+  set.seed(20260609)
+  sp <- did::reset.sim(time.periods = 4, n = 400)
+  d <- did::build_sim_dataset(sp)
+  d$Xpos <- exp(d$X)
+  d$Xpos[d$id == unique(d$id)[1]] <- 0  # log(0) = -Inf for one unit
+
+  w_slow <- capture_warnings(
+    slow <- suppressMessages(att_gt(yname = "Y", xformla = ~log(Xpos), data = d,
+      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      est_method = "dr", faster_mode = FALSE, bstrap = FALSE)))
+  w_fast <- capture_warnings(
+    fast <- suppressMessages(att_gt(yname = "Y", xformla = ~log(Xpos), data = d,
+      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      est_method = "dr", faster_mode = TRUE, bstrap = FALSE)))
+
+  expect_true(any(grepl("Error computing internal 2x2 DiD", w_slow)))
+  expect_true(any(grepl("Error computing internal 2x2 DiD", w_fast)))
+  expect_true(any(is.na(slow$att)))      # affected cells degrade to NA
+  expect_true(any(is.finite(slow$att)))  # healthy cells still estimated
+  expect_equal(is.na(slow$att), is.na(fast$att))
+  expect_equal(slow$att, fast$att, tolerance = 1e-10)
+  expect_equal(slow$se, fast$se, tolerance = 1e-10)
+})
+
 test_that("slow panel path converts estimator NaN cells to NA like fast mode", {
   set.seed(47)
   d <- expand.grid(id = 1:90, period = 1:4)

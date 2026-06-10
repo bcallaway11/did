@@ -597,53 +597,34 @@ compute.att_gt <- function(dp) {
         dimnames(covariates) <- list(NULL, colnames(covariates))
 
         #-----------------------------------------------------------------------------
-        # more checks for enough observations in each group
-
-        # if using custom estimation method, skip this part
-        custom_est_method <- is.function(est_method)
-
-        if (!custom_est_method) {
-          pscore_problems_likely <- FALSE
-          reg_problems_likely <- FALSE
-
-          # checks for pscore based methods
-          if (est_method %in% c("dr", "ipw")) {
-            preliminary_logit <- overlap_logit_fit(covariates, G)
-            preliminary_pscores <- preliminary_logit$fitted.values
-            if (max(preliminary_pscores) >= 0.999) {
-              pscore_problems_likely <- TRUE
-              warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
-            }
-          }
-
-          # check if can run regression using control units
-          if (est_method %in% c("dr", "reg")) {
-            control_covs <- covariates[G == 0, , drop = FALSE]
-            if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-              reg_problems_likely <- TRUE
-              warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
-            }
-          }
-
-          if (reg_problems_likely | pscore_problems_likely) {
-            attgt.list[[counter]] <- list(att = NA, group = glist[g], year = tlist[(t + tfac)], post = post.treat)
-            if (do_inf) inffunc_updates[[update_counter]] <- list(
-              indices = seq_len(n),
-              values = rep(NA_real_, n)
-            )
-
-            # Update the counters
-            update_counter <- update_counter + 1
-            counter <- counter + 1
-            next
-          }
-        }
-
-        #-----------------------------------------------------------------------------
         # code for actually computing att(g,t)
         #-----------------------------------------------------------------------------
 
         attgt <- tryCatch({
+          # more checks for enough observations in each group; run inside the
+          # tryCatch (with the same stop("overlap")/stop("singular") sentinels
+          # as the panel branch) so that a failing preliminary fit degrades to
+          # an NA cell with a warning instead of aborting the entire att_gt()
+          if (!is.function(est_method)) {
+            # checks for pscore based methods
+            if (est_method %in% c("dr", "ipw")) {
+              preliminary_logit <- overlap_logit_fit(covariates, G)
+              if (max(preliminary_logit$fitted.values) >= 0.999) {
+                warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+                stop("overlap")
+              }
+            }
+
+            # check if can run regression using control units
+            if (est_method %in% c("dr", "reg")) {
+              control_covs <- covariates[G == 0, , drop = FALSE]
+              if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
+                warning(paste0("Not enough control units for group ", glist[g], " in time period ", tlist[t + tfac], " to run specified regression"))
+                stop("singular")
+              }
+            }
+          }
+
           if (inherits(est_method, "function")) {
             # user-specified function
             res <- do.call(est_method, c(list(
