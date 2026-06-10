@@ -185,13 +185,13 @@ did_standardization <- function(data, args){
   # may already exhibit anticipatory effects during the observed time window, and should
   # not be used as controls.
   max_treatment_time <- max(tlist, na.rm = TRUE)
-  data[, asif_never_treated := (get(args$gname) > max_treatment_time + args$anticipation)]
-  # replace NA values with FALSE in the logical vector
-  data[is.na(asif_never_treated), asif_never_treated := FALSE]
-  # set gname to 0 for those groups considered as never treated
-  data[asif_never_treated == TRUE, (args$gname) := Inf]
-  # remove the temporary column
-  data[, asif_never_treated := NULL]
+  # gname has no NAs here (complete cases were enforced above), so the comparison
+  # cannot yield NA; keep it as a local vector instead of a temporary column
+  asif_never_treated <- data[[args$gname]] > max_treatment_time + args$anticipation
+  # set gname to Inf for those groups considered as never treated
+  if (any(asif_never_treated)) {
+    data.table::set(data, i = which(asif_never_treated), j = args$gname, value = Inf)
+  }
 
   # get list of treated groups (by time) from min to max
   glist <- sort(unique(data[[args$gname]]))
@@ -256,15 +256,16 @@ did_standardization <- function(data, args){
   glist <- glist[glist != Inf & glist > first_period + args$anticipation]
 
   # Check for groups treated in the first period (accounting for anticipation) and drop them
-  # identify groups treated in the first period
-  data[, treated_first_period := (is.finite(get(args$gname)) & get(args$gname) <= first_period + args$anticipation)]
-  data[is.na(treated_first_period), treated_first_period := FALSE]
+  # identify groups treated in the first period; gname has no NAs here, so keep a
+  # local vector instead of a temporary column (it is only read before the subset below)
+  gvec <- data[[args$gname]]
+  treated_first_period <- is.finite(gvec) & gvec <= first_period + args$anticipation
 
   # count the number of units treated in the first period
   if (args$panel) {
-    nfirstperiod <- length(unique(data[[args$idname]][data$treated_first_period == TRUE]))
+    nfirstperiod <- length(unique(data[[args$idname]][treated_first_period]))
   } else {
-    nfirstperiod <- sum(data$treated_first_period == TRUE)
+    nfirstperiod <- sum(treated_first_period)
   }
 
   # handle units treated in the first period
@@ -282,8 +283,6 @@ did_standardization <- function(data, args){
     first_period <- tlist[1]
     glist <- glist[glist != Inf & glist > first_period + args$anticipation]
   }
-  # remove the temporary column
-  data[, treated_first_period := NULL]
 
   # If user specifies repeated cross sections,
   # set that it really is repeated cross sections
@@ -299,8 +298,9 @@ did_standardization <- function(data, args){
   bal_panel_test <- (args$panel)*(args$allow_unbalanced_panel)
 
   if (bal_panel_test) {
-    # First, focus on complete cases and make a balanced dataset
-    data_comp <- data[complete.cases(data)]
+    # First, focus on complete cases. Rows with missing data were already dropped
+    # in did_standardization() above, so this is a guarded no-op in the common case.
+    data_comp <- if (anyNA(data)) data[complete.cases(data)] else data
 
     # Check if the panel is balanced
     is_balanced <- check_balance(data_comp, id_col = args$idname, time_col = args$tname)
@@ -321,23 +321,28 @@ did_standardization <- function(data, args){
     } else {
       # Coerce balanced panel
 
-      # Focus on complete cases
-      keepers <- complete.cases(data)
-      id_col <- data[[args$idname]]
-      n <- length(unique(id_col))
-      n_keep <- length(unique(id_col[keepers]))
-      if (n_keep < n) {
-        warning(paste0("Dropped ", (n - n_keep), " observations that had missing data."))
-        data <- data[keepers, ]
+      # Focus on complete cases. Rows with missing data were already dropped in
+      # did_standardization() above, so this is a guarded no-op in the common case.
+      if (anyNA(data)) {
+        keepers <- complete.cases(data)
+        id_col <- data[[args$idname]]
+        n <- length(unique(id_col))
+        n_keep <- length(unique(id_col[keepers]))
+        if (n_keep < n) {
+          warning(paste0("Dropped ", (n - n_keep), " observations that had missing data."))
+          data <- data[keepers, ]
+        }
       }
 
-      # Make balanced panel
+      # Make balanced panel. validate_args() guarantees at most one row per (id, t),
+      # so the panel is balanced iff nrow == n_ids * n_periods; the grouped count is
+      # only needed in the unbalanced case to identify the offending units.
       raw_time_size <- length(unique(data[[args$tname]]))
-      unit_count <- data[, .(count = .N), by = get(args$idname)]
-      if(any(unit_count[, count < raw_time_size])){
-        mis_unit <- unit_count[count < raw_time_size]
-        warning(nrow(mis_unit), " units are missing in some periods. Converting to balanced panel by dropping them.")
-        data <- data[!get(args$idname) %in% mis_unit$get]
+      if (nrow(data) != length(unique(data[[args$idname]])) * raw_time_size) {
+        unit_count <- data[, .(count = .N), by = c(args$idname)]
+        mis_unit_ids <- unit_count[[1L]][unit_count[[2L]] < raw_time_size]
+        warning(length(mis_unit_ids), " units are missing in some periods. Converting to balanced panel by dropping them.")
+        data <- data[!(data[[args$idname]] %in% mis_unit_ids)]
       }
 
       # If all data is dropped, stop execution
@@ -507,19 +512,35 @@ get_did_tensors <- function(data, args){
     }
   }
 
-  # Get cohort counts
+  # Get cohort, period and crosstable counts. In the balanced-panel case
+  # invariant_data is exactly the first-period slice of the (t, g, id)-sorted data,
+  # so the by-period and by-(period, cohort) tables are degenerate one-period shapes
+  # derivable from cohort_counts without re-grouping the table; in the RCS/unbalanced
+  # case the cohort and period margins are rollups of a single (t, g) pass.
   cohorts <- c(args$treated_groups, Inf)
-  cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
-  names(cohort_counts)[1] <- "cohort" # changing the name
+  if (args$panel) {
+    # Get cohort counts
+    cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
+    names(cohort_counts)[1] <- "cohort" # changing the name
 
-  # Get period counts
-  period_counts <- invariant_data[, .(period_size = .N), by = get(args$tname)]
-  names(period_counts)[1] <- "period" # changing the name
+    # Get period counts: all invariant_data rows share the first time period
+    period_counts <- data.table(period = args$time_periods[1],
+                                period_size = nrow(invariant_data))
 
-  # Get crosstable counts
-  crosstable_counts <- invariant_data[, .N, by = .(get(args$tname), get(args$gname))]   # Directly count occurrences by tname and gname
-  names(crosstable_counts)[1] <- "period" # changing the name
-  names(crosstable_counts)[2] <- "cohort" # changing the name
+    # Get crosstable counts (long form): one row per cohort, all in the first period
+    crosstable_counts <- data.table(period = args$time_periods[1],
+                                    cohort = cohort_counts$cohort,
+                                    N = cohort_counts$cohort_size)
+  } else {
+    # Get crosstable counts (long form): count occurrences by tname and gname
+    crosstable_counts <- invariant_data[, .N, by = .(get(args$tname), get(args$gname))]
+    names(crosstable_counts)[1] <- "period" # changing the name
+    names(crosstable_counts)[2] <- "cohort" # changing the name
+
+    # Get cohort and period counts as rollups of the (t, g) pass
+    cohort_counts <- crosstable_counts[, .(cohort_size = sum(N)), by = cohort]
+    period_counts <- crosstable_counts[, .(period_size = sum(N)), by = period]
+  }
   crosstable_counts <- dcast(crosstable_counts, period ~ cohort, value.var = "N", fill = 0)  # Reshape
 
 
@@ -633,8 +654,21 @@ pre_process_did2 <- function(yname,
                             call = NULL) {
 
 
-  # coerce data to data.table first
-  if (!is.data.table(data)) {
+  # coerce data to data.table first, keeping only the columns the pipeline uses
+  # (id/time/group/outcome/weights/cluster plus the raw xformla variables) so wide
+  # inputs do not pay a full-table copy. If any referenced name is missing, fall
+  # back to coercing everything so the downstream checks (dreamerr/validate_args/
+  # xformla) fire with their usual messages and precedence.
+  keep_cols <- unique(c(idname, tname, gname, yname, weightsname, clustervars,
+                        if (!is.null(xformla)) all.vars(xformla)))
+  if (is.data.frame(data) && is.character(keep_cols) && all(keep_cols %in% names(data))) {
+    if (is.data.table(data)) {
+      data <- data[, ..keep_cols]
+    } else {
+      # selecting columns from a data.frame is shallow; only kept columns are copied
+      data <- as.data.table(data[keep_cols])
+    }
+  } else if (!is.data.table(data)) {
     data <- as.data.table(data)
   }
 

@@ -157,6 +157,10 @@ get_wide_data <- function(data, yname, idname, tname) {
 #' @title Check balanced panel data
 #' @description A utility function to check if your dataset is a balanced panel dataset.
 #'
+#' Precondition: at most one row per (id_col, time_col) combination -- enforced
+#' upstream by validate_args(). Under that uniqueness, every unit has at most one
+#' row per period, so the panel is balanced iff nrow == n_ids * n_periods.
+#'
 #' @param data data.table used in function
 #' @param id_col name of id column in the dataset
 #' @param time_col name of time column in the dataset
@@ -165,14 +169,9 @@ get_wide_data <- function(data, yname, idname, tname) {
 #' @noRd
 check_balance <- function(data, id_col, time_col) {
 
-  # Count the number of observations per unit (idname)
-  panel_counts <- data[, .N, by = c(id_col)]
-
-  # Determine the maximum number of time periods for any unit
-  max_time_periods <- data.table::uniqueN(data[[time_col]])
-
-  # Check if every unit has the same number of time periods as max_time_periods
-  is_balanced <- all(panel_counts$N == max_time_periods)
+  # Check if every unit is observed in every time period (no grouping needed
+  # given the (id, time) uniqueness precondition above)
+  is_balanced <- nrow(data) == data.table::uniqueN(data[[id_col]]) * data.table::uniqueN(data[[time_col]])
 
   return(is_balanced)
 }
