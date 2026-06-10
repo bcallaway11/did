@@ -55,6 +55,48 @@ overlap_logit_fit <- function(x, y) {
                        method = 0L, tol = 1e-8, maxit = 100L)
 }
 
+#' @title overlap_check_fail
+#' @description Evaluate the per-(g,t) overlap guard, i.e. whether the
+#'  preliminary propensity logit gives `max(fitted) >= 0.999`. For an
+#'  intercept-only design (`xformla = ~1`, the default) the unweighted logit MLE
+#'  fits every unit at `mean(y)`, so the guard reduces to `mean(y) >= 0.999`
+#'  with no fit at all -- except within `1e-6` of the 0.999 knife edge, where
+#'  the IRLS iterate (tol = 1e-8; observed error up to ~1.5e-9) can land on
+#'  either side of the cutoff. There we fall back to the real fit, keeping the
+#'  decision bit-identical to always fitting.
+#' @param x covariate matrix
+#' @param y treatment indicator
+#' @param intercept_only whether `x` is a single column of ones
+#' @return TRUE if the overlap condition is violated
+#' @noRd
+overlap_check_fail <- function(x, y, intercept_only = FALSE) {
+  if (intercept_only) {
+    pbar <- mean(y)
+    if (abs(pbar - 0.999) > 1e-6) return(pbar >= 0.999)
+    # knife edge: defer to the actual fit below
+  }
+  max(overlap_logit_fit(x, y)$fitted.values) >= 0.999
+}
+
+#' @title rcond_check_fail
+#' @description Evaluate the per-(g,t) regression-feasibility guard, i.e.
+#'  whether `rcond(crossprod(x[controls, ]))` is below machine epsilon. For an
+#'  intercept-only design the control-unit Gram matrix is the scalar count of
+#'  control units (n0): `rcond` is exactly 1 when n0 > 0 and exactly 0 when
+#'  n0 == 0, so the test reduces to "no control units" with no Gram matrix.
+#' @param x covariate matrix
+#' @param y treatment indicator (controls are `y == 0`)
+#' @param intercept_only whether `x` is a single column of ones
+#' @return TRUE if the control-unit design is singular or ill-conditioned
+#' @noRd
+rcond_check_fail <- function(x, y, intercept_only = FALSE) {
+  if (intercept_only) {
+    return(!any(y == 0))
+  }
+  control_covs <- x[y == 0, , drop = FALSE]
+  rcond(crossprod(control_covs)) < .Machine$double.eps
+}
+
 #' @title Check User-Supplied Names Against Internal Names
 #' @description Stop if user arguments reference names that `did` creates and
 #' mutates internally.

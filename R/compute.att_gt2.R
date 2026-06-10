@@ -89,7 +89,7 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 #' @return A list containing the estimated ATT and the influence function vector.
 #' @noRd
 run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
-                      pret_val = NULL, force_rc = FALSE){
+                      pret_val = NULL, force_rc = FALSE, check_cache_key = NULL){
 
   extra_args <- if (is.null(dp2$extra_args)) list() else dp2$extra_args
   gt_label <- if (!is.null(g_val) && !is.null(t_val)) paste0(" for group ", g_val, " in time period ", t_val) else ""
@@ -117,8 +117,10 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
+      intercept_only <- FALSE
     } else {
       covariates <- rep(1, length(valid_obs))
+      intercept_only <- TRUE
     }
     covariates <- as.matrix(covariates)
 
@@ -133,23 +135,31 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
     if (!custom_est_method) {
       D_vec <- D
 
-      # checks for pscore based methods
-      if (dp2$est_method %in% c("dr", "ipw")) {
-        preliminary_logit <- overlap_logit_fit(covariates, D_vec)
-        preliminary_pscores <- preliminary_logit$fitted.values
-        if (max(preliminary_pscores) >= 0.999) {
-          warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
-        }
+      # Guard booleans: reuse the cached result when run_att_gt_estimation()
+      # established that this cell's (covariates, D) inputs are bit-identical to
+      # an earlier cell's (panel + nevertreated + non-varying weights; see
+      # compute.att_gt2). Warnings are still emitted per cell below, so cached
+      # failures keep the per-cell warning count and text unchanged.
+      guard <- if (!is.null(check_cache_key)) dp2$.check_cache[[check_cache_key]] else NULL
+      if (is.null(guard)) {
+        # overlap check for pscore based methods; regression-feasibility check
+        # for outcome-regression methods, run only if overlap passed (matching
+        # the early return on overlap failure below)
+        overlap_fail <- (dp2$est_method %in% c("dr", "ipw")) &&
+          overlap_check_fail(covariates, D_vec, intercept_only)
+        rcond_fail <- !overlap_fail && (dp2$est_method %in% c("dr", "reg")) &&
+          rcond_check_fail(covariates, D_vec, intercept_only)
+        guard <- list(overlap_fail = overlap_fail, rcond_fail = rcond_fail)
+        if (!is.null(check_cache_key)) dp2$.check_cache[[check_cache_key]] <- guard
       }
 
-      # check if can run regression using control units
-      if (dp2$est_method %in% c("dr", "reg")) {
-        control_covs <- covariates[D_vec == 0, , drop = FALSE]
-        if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
-          warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
-          return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
-        }
+      if (guard$overlap_fail) {
+        warning(paste0("overlap condition violated", gt_label))
+        return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
+      }
+      if (guard$rcond_fail) {
+        warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
+        return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n) else NULL))
       }
     }
 
@@ -228,8 +238,10 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
+      intercept_only <- FALSE
     } else {
       covariates <- covariates[valid_obs]
+      intercept_only <- TRUE
     }
 
     covariates <- as.matrix(covariates)
@@ -268,11 +280,10 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
     if (!custom_est_method) {
       D_vec <- D
 
-      # checks for pscore based methods
+      # checks for pscore based methods (no caching on the RC branch: the
+      # cohort index varies cell by cell here)
       if (dp2$est_method %in% c("dr", "ipw")) {
-        preliminary_logit <- overlap_logit_fit(covariates, D_vec)
-        preliminary_pscores <- preliminary_logit$fitted.values
-        if (max(preliminary_pscores) >= 0.999) {
+        if (overlap_check_fail(covariates, D_vec, intercept_only)) {
           warning(paste0("overlap condition violated", gt_label))
           return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
@@ -280,8 +291,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 
       # check if can run regression using control units
       if (dp2$est_method %in% c("dr", "reg")) {
-        control_covs <- covariates[D_vec == 0, , drop = FALSE]
-        if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
+        if (rcond_check_fail(covariates, D_vec, intercept_only)) {
           warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
           return(list(att = NA, inf_func = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
@@ -420,6 +430,10 @@ run_att_gt_estimation <- function(g, t, dp2){
 
 
 
+  # key into the overlap/rcond guard cache (set on the panel non-varying branch
+  # below when the cache is active; NULL = no caching for this cell)
+  check_cache_key <- NULL
+
   if(dp2$panel){
     # Determine which weight period to use based on fix_weights
     use_rc_for_weights <- (!is.null(dp2$fix_weights) && dp2$fix_weights == "varying")
@@ -462,6 +476,13 @@ run_att_gt_estimation <- function(g, t, dp2){
                           y0 = dp2$outcomes_tensor[[pret]],
                           i.weights = dp2$weights_tensor[[w_idx]])
       covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
+      # Key for the overlap/rcond guard cache (see compute.att_gt2): under
+      # nevertreated the cohort index depends only on g, so the guards'
+      # (covariates, D) inputs are bit-identical across all cells of a group
+      # sharing a covariate (and weight) period.
+      if (!is.null(dp2$.check_cache)) {
+        check_cache_key <- paste(g, base::min(pret, t), w_idx, sep = "_")
+      }
     }
   } else {
 
@@ -513,7 +534,8 @@ run_att_gt_estimation <- function(g, t, dp2){
   did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g],
                                    t_val = dp2$time_periods[t + tfac],
                                    pret_val = dp2$time_periods[pret],
-                                   force_rc = force_rc),
+                                   force_rc = force_rc,
+                                   check_cache_key = check_cache_key),
                          error = function(e) {
                            warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
                            return(NULL)
@@ -561,6 +583,21 @@ compute.att_gt2 <- function(dp2) {
   # Pre-compute cumulative cohort sizes for fast indexing in get_did_cohort_index
   if (dp2$panel) {
     dp2$.cohort_cum_sizes <- cumsum(dp2$cohort_counts$cohort_size)
+  }
+
+  # Cache for the per-cell overlap/rcond guard booleans. For panel data with
+  # control_group = "nevertreated" and non-varying weights, the guards'
+  # (covariates, D) inputs are bit-identical across all cells of a group that
+  # share a covariate (and weight) period, so each boolean is computed once per
+  # (g, covariate-period, weight-period) key (see run_DRDID). Not used for
+  # notyettreated (the control cohort varies with t) or fix_weights = "varying"
+  # (RC estimator path). Only the booleans are stored; failure warnings are
+  # still emitted per cell. options(did.disable_check_cache = TRUE) forces the
+  # per-cell checks (escape hatch / used to verify bit-identical equivalence).
+  if (dp2$panel && dp2$control_group[1] == "nevertreated" &&
+      (is.null(dp2$fix_weights) || dp2$fix_weights != "varying") &&
+      !isTRUE(getOption("did.disable_check_cache"))) {
+    dp2$.check_cache <- new.env(parent = emptyenv())
   }
 
 

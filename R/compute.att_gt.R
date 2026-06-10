@@ -67,6 +67,26 @@ compute.att_gt <- function(dp) {
 
   fix_weights <- dp$fix_weights
 
+  # intercept-only design (xformla = ~1, the default): the per-cell overlap and
+  # rcond guards have closed forms (see overlap_check_fail / rcond_check_fail),
+  # so the preliminary logit fit and Gram matrix can be skipped.
+  intercept_only <- (xformla == ~1)
+
+  # Cache for the per-cell overlap/rcond guard booleans. For panel data with
+  # control_group = "nevertreated" and non-varying weights, the guards'
+  # (covariates, G) inputs are bit-identical across all cells of a group that
+  # share a covariate (and weight) period, so each boolean is computed once per
+  # (g, covariate-period, weight-period) key. Not used for notyettreated (the
+  # control cohort varies with t) or fix_weights = "varying" (RC estimator
+  # path). Only the booleans are stored; failure warnings are still emitted per
+  # cell. options(did.disable_check_cache = TRUE) forces the per-cell checks
+  # (escape hatch / used to verify bit-identical equivalence). Mirrors the fast
+  # path (compute.att_gt2).
+  use_check_cache <- panel && nevertreated &&
+    (is.null(fix_weights) || fix_weights != "varying") &&
+    !isTRUE(getOption("did.disable_check_cache"))
+  if (use_check_cache) check_cache <- new.env(parent = emptyenv())
+
   # Whether to compute influence functions (default TRUE; FALSE = point estimates
   # only). When FALSE we skip requesting influence functions from the 2x2 estimators,
   # skip the per-cell influence-function scaling, and skip storing inffunc_updates --
@@ -367,15 +387,13 @@ compute.att_gt <- function(dp) {
             # Run overlap/rank checks on RC data (not wide panel data)
             if (!is.function(est_method)) {
               if (est_method %in% c("dr", "ipw")) {
-                preliminary_logit <- overlap_logit_fit(covariates_rc, G_rc)
-                if (max(preliminary_logit$fitted.values) >= 0.999) {
+                if (overlap_check_fail(covariates_rc, G_rc, intercept_only)) {
                   warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
                 }
               }
               if (est_method %in% c("dr", "reg")) {
-                control_covs_rc <- covariates_rc[G_rc == 0, , drop = FALSE]
-                if (rcond(crossprod(control_covs_rc)) < .Machine$double.eps) {
+                if (rcond_check_fail(covariates_rc, G_rc, intercept_only)) {
                   warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                   stop("singular")
                 }
@@ -402,21 +420,38 @@ compute.att_gt <- function(dp) {
                 i.weights = w_rc, boot = FALSE, inffunc = do_inf)
             }
           } else {
-            # Panel path: run overlap/rank checks on panel data
+            # Panel path: run overlap/rank checks on panel data. Guard booleans
+            # are reused from the cache when this cell's (covariates, G) inputs
+            # are bit-identical to an earlier cell's (nevertreated + non-varying
+            # weights; see the cache setup above); warnings are still emitted
+            # per cell, so cached failures keep counts and texts unchanged.
             if (!is.function(est_method)) {
-              if (est_method %in% c("dr", "ipw")) {
-                preliminary_logit <- overlap_logit_fit(covariates, G)
-                if (max(preliminary_logit$fitted.values) >= 0.999) {
-                  warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
-                  stop("overlap")
-                }
+              guard <- NULL
+              if (use_check_cache) {
+                w_idx_key <- if (is.null(fix_weights)) earlier_idx
+                             else if (fix_weights == "base_period") pret_g
+                             else 1L
+                check_key <- paste(g, earlier_idx, w_idx_key, sep = "_")
+                guard <- check_cache[[check_key]]
               }
-              if (est_method %in% c("dr", "reg")) {
-                control_covs <- covariates[G == 0, , drop = FALSE]
-                if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
-                  warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
-                  stop("singular")
-                }
+              if (is.null(guard)) {
+                # overlap check for pscore based methods; regression-feasibility
+                # check for outcome-regression methods, run only if overlap
+                # passed (matching the stop("overlap") short-circuit below)
+                overlap_fail <- (est_method %in% c("dr", "ipw")) &&
+                  overlap_check_fail(covariates, G, intercept_only)
+                rcond_fail <- !overlap_fail && (est_method %in% c("dr", "reg")) &&
+                  rcond_check_fail(covariates, G, intercept_only)
+                guard <- list(overlap_fail = overlap_fail, rcond_fail = rcond_fail)
+                if (use_check_cache) check_cache[[check_key]] <- guard
+              }
+              if (guard$overlap_fail) {
+                warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
+                stop("overlap")
+              }
+              if (guard$rcond_fail) {
+                warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
+                stop("singular")
               }
             }
 
@@ -612,10 +647,10 @@ compute.att_gt <- function(dp) {
           # as the panel branch) so that a failing preliminary fit degrades to
           # an NA cell with a warning instead of aborting the entire att_gt()
           if (!is.function(est_method)) {
-            # checks for pscore based methods
+            # checks for pscore based methods (no caching on the RC branch: the
+            # cohort index varies cell by cell here)
             if (est_method %in% c("dr", "ipw")) {
-              preliminary_logit <- overlap_logit_fit(covariates, G)
-              if (max(preliminary_logit$fitted.values) >= 0.999) {
+              if (overlap_check_fail(covariates, G, intercept_only)) {
                 warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                 stop("overlap")
               }
@@ -623,8 +658,7 @@ compute.att_gt <- function(dp) {
 
             # check if can run regression using control units
             if (est_method %in% c("dr", "reg")) {
-              control_covs <- covariates[G == 0, , drop = FALSE]
-              if (rcond(crossprod(control_covs)) < .Machine$double.eps) {
+              if (rcond_check_fail(covariates, G, intercept_only)) {
                 warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                 stop("singular")
               }
