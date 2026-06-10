@@ -529,18 +529,34 @@ run_att_gt_estimation <- function(g, t, dp2){
       } else {
         target_period <- dp2$time_periods[1]
       }
-      # Build weight lookup from target period
       tid <- dp2$time_invariant_data
-      target_mask <- tid[[dp2$tname]] == target_period
-      target_ids <- tid[[dp2$idname]][target_mask]
-      target_ws <- tid[[".w"]][target_mask]
-      # Map each observation's weight from the target period by integer id matching.
-      # Equivalent to the previous named-character lookup (first match wins on any
-      # duplicate id; unmatched ids -> NA) but avoids coercing every id to character.
-      fixed_w <- target_ws[match(tid[[dp2$idname]], target_ids)]
+      # Memoize the weight lookup per target period (env set in compute.att_gt2):
+      # target_period depends only on g for "base_period" and is constant for
+      # "first_period", and tid's id/time/.w columns are never mutated in the
+      # (g,t) loop, so fixed_w/na_w are identical across all cells sharing a
+      # target period. Keying by as.character(target_period) memoizes the NA
+      # case (group with no pre-period, varying base, pre-treatment cell)
+      # under "NA" with unchanged semantics. The warning and the
+      # did_cohort_index mutation below stay per cell.
+      memo <- dp2$.fixed_w_memo
+      memo_key <- as.character(target_period)
+      cached <- if (!is.null(memo)) memo[[memo_key]] else NULL
+      if (is.null(cached)) {
+        # Build weight lookup from target period
+        target_mask <- tid[[dp2$tname]] == target_period
+        target_ids <- tid[[dp2$idname]][target_mask]
+        target_ws <- tid[[".w"]][target_mask]
+        # Map each observation's weight from the target period by integer id matching.
+        # Equivalent to the previous named-character lookup (first match wins on any
+        # duplicate id; unmatched ids -> NA) but avoids coercing every id to character.
+        fixed_w <- target_ws[match(tid[[dp2$idname]], target_ids)]
+        cached <- list(fixed_w = fixed_w, na_w = is.na(fixed_w))
+        if (!is.null(memo)) memo[[memo_key]] <- cached
+      }
+      fixed_w <- cached$fixed_w
       # Exclude units not observed in target period by setting D to NA
       # (run_DRDID filters on !is.na(D))
-      na_w <- is.na(fixed_w)
+      na_w <- cached$na_w
       if (any(na_w & !is.na(did_cohort_index))) {
         did_cohort_index[na_w] <- NA_integer_
         warning(paste0("Some units not observed in ", dp2$fix_weights,
@@ -631,6 +647,14 @@ compute.att_gt2 <- function(dp2) {
     dp2$.period_masks <- lapply(time_periods, function(tp) dat[[dp2$tname]] == tp)
     dp2$.never_treated <- dat[[dp2$gname]] == Inf
     dp2$.gflag_by_group <- lapply(dp2$treated_groups, function(gval) dat[[dp2$gname]] == gval)
+    # Memo for the fix_weights = "base_period"/"first_period" weight lookup in
+    # run_att_gt_estimation(): fixed_w/na_w depend only on the target period
+    # (one per group for "base_period", a single constant for "first_period"),
+    # so the full-table mask + match() is computed once per distinct period
+    # instead of once per (g,t) cell.
+    if (!is.null(dp2$fix_weights) && dp2$fix_weights %in% c("base_period", "first_period")) {
+      dp2$.fixed_w_memo <- new.env(parent = emptyenv())
+    }
   }
 
   # Cache for the per-cell overlap/rcond guard booleans. For panel data with
