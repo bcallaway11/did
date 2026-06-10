@@ -374,7 +374,15 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       # is.na | != 0 scan the assembly previously applied to dense columns.
       inf_func_long <- numeric(n)
       inf_func_long[valid_obs] <- (dp2$id_count / n1) * attgt$att.inf.func
-      inf_func_vector <- rowsum(inf_func_long, rowid_all, reorder = FALSE)[, 1L]
+      agg <- dp2$.rowid_agg
+      inf_func_vector <- if (!is.null(agg)) {
+        # precomputed sparse unit-aggregation operator (see compute.att_gt2):
+        # accumulates in row order within each unit, bit-identical to the
+        # rowsum() fallback but without per-cell hashing/dimnames work
+        as.vector(agg %*% inf_func_long)
+      } else {
+        rowsum(inf_func_long, rowid_all, reorder = FALSE)[, 1L]
+      }
       if_i <- which(is.na(inf_func_vector) | inf_func_vector != 0)
       if_x <- inf_func_vector[if_i]
 
@@ -654,6 +662,20 @@ compute.att_gt2 <- function(dp2) {
     # instead of once per (g,t) cell.
     if (!is.null(dp2$fix_weights) && dp2$fix_weights %in% c("base_period", "first_period")) {
       dp2$.fixed_w_memo <- new.env(parent = emptyenv())
+    }
+    # Pre-build the unit-aggregation operator for the unbalanced-panel
+    # influence function: sparse 0/1 matrix S (id_count x rows) with
+    # S[u, r] = 1 iff row r belongs to unit u, units ordered by first
+    # appearance. S %*% v accumulates v in row order within each unit,
+    # reproducing rowsum(v, .rowid, reorder = FALSE) bit-identically, while
+    # the grouping work is done once per att_gt() call instead of once per
+    # (g,t) cell (rowsum re-hashes the full .rowid vector and builds
+    # character dimnames on every call).
+    if (dp2$allow_unbalanced_panel && do_inf) {
+      rowid_all <- dat$.rowid
+      gmap <- match(rowid_all, unique(rowid_all))
+      dp2$.rowid_agg <- Matrix::sparseMatrix(i = gmap, j = seq_along(rowid_all),
+                                             x = 1, dims = c(n, length(rowid_all)))
     }
   }
 
