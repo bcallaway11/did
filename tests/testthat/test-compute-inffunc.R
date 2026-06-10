@@ -63,3 +63,107 @@ test_that("compute_inffunc must be a single logical", {
            gname = "G", compute_inffunc = "yes"),
     "compute_inffunc must be a single logical")
 })
+
+# -----------------------------------------------------------------------------
+# Non-default option matrix: the do_inf skips on the varying-weights, unbalanced,
+# universal-base, clustered, and custom-est_method branches must leave point
+# estimates identical to a full run in both modes.
+# -----------------------------------------------------------------------------
+
+test_that("compute_inffunc = FALSE matches a full run with fix_weights = 'varying'", {
+  set.seed(20260609)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data$tvw <- data$period + runif(nrow(data), -0.1, 0.1)
+  for (fm in c(TRUE, FALSE)) {
+    full <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+             gname = "G", weightsname = "tvw", fix_weights = "varying",
+             bstrap = FALSE, faster_mode = fm)))
+    pe <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+             gname = "G", weightsname = "tvw", fix_weights = "varying",
+             faster_mode = fm, compute_inffunc = FALSE)))
+    lab <- paste("fix_weights varying fm", fm)
+    expect_equal(full$att, pe$att, tolerance = 1e-12, label = paste(lab, "ATT"))
+    expect_true(identical(is.na(full$att), is.na(pe$att)), label = paste(lab, "NA pattern"))
+    expect_null(pe$inffunc, label = paste(lab, "inffunc NULL"))
+  }
+})
+
+test_that("compute_inffunc = FALSE matches a full run with anticipation, universal base period, not-yet-treated controls, and clustering", {
+  set.seed(20260609)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  for (fm in c(TRUE, FALSE)) {
+    full <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+             gname = "G", anticipation = 1, base_period = "universal",
+             control_group = "notyettreated", clustervars = "cluster",
+             bstrap = FALSE, faster_mode = fm)))
+    pe <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+             gname = "G", anticipation = 1, base_period = "universal",
+             control_group = "notyettreated", clustervars = "cluster",
+             faster_mode = fm, compute_inffunc = FALSE)))
+    lab <- paste("anticipation/universal/nyt/cluster fm", fm)
+    expect_equal(full$att, pe$att, tolerance = 1e-12, label = paste(lab, "ATT"))
+    expect_true(identical(is.na(full$att), is.na(pe$att)), label = paste(lab, "NA pattern"))
+    expect_null(pe$inffunc, label = paste(lab, "inffunc NULL"))
+  }
+})
+
+test_that("compute_inffunc = FALSE matches a full run on an unbalanced panel", {
+  set.seed(20260609)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  data_ub <- data[-sample(nrow(data), 150), ]
+  for (fm in c(TRUE, FALSE)) {
+    full <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data_ub, tname = "period", idname = "id",
+             gname = "G", allow_unbalanced_panel = TRUE, bstrap = FALSE,
+             faster_mode = fm)))
+    pe <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data_ub, tname = "period", idname = "id",
+             gname = "G", allow_unbalanced_panel = TRUE, faster_mode = fm,
+             compute_inffunc = FALSE)))
+    lab <- paste("unbalanced panel fm", fm)
+    expect_equal(full$att, pe$att, tolerance = 1e-12, label = paste(lab, "ATT"))
+    expect_true(identical(is.na(full$att), is.na(pe$att)), label = paste(lab, "NA pattern"))
+    expect_null(pe$inffunc, label = paste(lab, "inffunc NULL"))
+  }
+})
+
+test_that("custom est_method receives inffunc = FALSE and may return a NULL influence function", {
+  set.seed(20260609)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  seen <- new.env(parent = emptyenv())
+  my_panel_est <- function(y1, y0, D, covariates, i.weights, inffunc, ...) {
+    seen$inffunc <- c(seen$inffunc, isTRUE(inffunc))
+    delta <- y1 - y0
+    att <- weighted.mean(delta[D == 1], i.weights[D == 1])
+    inf <- if (isTRUE(inffunc)) (D / mean(D)) * (delta - att) else NULL
+    list(ATT = att, att.inf.func = inf)
+  }
+  for (fm in c(TRUE, FALSE)) {
+    seen$inffunc <- logical(0)
+    full <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+             gname = "G", est_method = my_panel_est, bstrap = FALSE,
+             faster_mode = fm)))
+    expect_true(length(seen$inffunc) > 0 && all(seen$inffunc),
+                label = paste("full run passes inffunc = TRUE, fm", fm))
+    seen$inffunc <- logical(0)
+    pe <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+             gname = "G", est_method = my_panel_est, faster_mode = fm,
+             compute_inffunc = FALSE)))
+    expect_true(length(seen$inffunc) > 0 && !any(seen$inffunc),
+                label = paste("point-estimate run passes inffunc = FALSE, fm", fm))
+    lab <- paste("custom est_method fm", fm)
+    expect_s3_class(pe, "MP")
+    expect_equal(full$att, pe$att, tolerance = 1e-12, label = paste(lab, "ATT"))
+    expect_null(pe$inffunc, label = paste(lab, "inffunc NULL"))
+  }
+})
