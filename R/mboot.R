@@ -164,7 +164,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
     for (j in seq_len(ncol(scaled))[-1L]) bT <- pmax(bT, scaled[, j])
     bT <- bT[is.finite(bT)]
   }
-  crit.val <- quantile(bT, 1-alp, type=1, na.rm = T)
+  crit.val <- quantile(bT, 1-alp, type=1, na.rm = TRUE)
 
   #se <- rep(0, length(ndg.dim))
   se <- rep(NA, length(ndg.dim))

@@ -242,7 +242,7 @@ This vignette has covered basic background issues on DiD with multiple periods. 
 
 ## References
 
-* [Borusyak, Kirill, and Xavier Jaravel. "Revisiting Event Study Designs". Available at SSRN 2826228 (2018)](https://scholar.harvard.edu/files/borusyak/files/borusyak_jaravel_event_studies.pdf)
+* [Borusyak, Kirill, Jaravel, Xavier and Spiess, Jann. "Revisiting Event Study Designs: Robust and Efficient Estimation". The Review of Economic Studies, Vol. 91, No 6, pp. 3253-3285](https://doi.org/10.1093/restud/rdae007)
 
 * [Callaway, Brantly, and Pedro H. C. Sant'Anna. "Difference-in-differences with multiple time periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021](https://doi.org/10.1016/j.jeconom.2020.12.001).
 

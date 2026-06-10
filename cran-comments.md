@@ -20,7 +20,7 @@ did 2.5.0 is a large release that consolidates all development since 2.3.0
 ## Package size
 
 The installed size is about 5.3 Mb, of which 4.4 Mb is the `doc` directory
-holding the package's six pre-built vignettes (long-form methodological
+holding the package's five pre-built vignettes (long-form methodological
 documentation with many plots). The source tarball is about 4.5 Mb.
 
 ## Downstream dependencies

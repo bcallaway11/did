@@ -75,7 +75,7 @@ devtools::install_github("bcallaway11/did")
 The following is a simplified example of the effect of states increasing
 their minimum wages on county-level teen employment rates which comes
 from [Callaway and Sant’Anna
-(2021)](https://authors.elsevier.com/a/1cFzc15Dji4pnC).
+(2021)](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
 - [More detailed examples are also
   available](https://bcallaway11.github.io/did/articles/did-basics.html)

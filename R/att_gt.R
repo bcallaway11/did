@@ -704,7 +704,7 @@ att_gt <- function(yname,
         bT <- scaled[, 1L]
         for (j in seq_len(ncol(scaled))[-1L]) bT <- pmax(bT, scaled[, j])
       }
-      cval <- quantile(bT, 1 - alp, type = 1, na.rm = T)
+      cval <- quantile(bT, 1 - alp, type = 1, na.rm = TRUE)
       if (cval >= 7) {
         warning("Simultaneous critical value is arguably `too large' to be reliable. This usually happens when the number of observations per group is small and/or there is not much variation in outcomes.")
       }
