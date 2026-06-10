@@ -170,6 +170,11 @@ compute.att_gt <- function(dp) {
     # (escape hatch / used to verify bit-identical equivalence).
     use_precompute_panel <- is.null(fix_weights) && panel_units_aligned &&
       !isTRUE(getOption("did.disable_precompute"))
+    # Never-treated control cohort is invariant across every (g,t) cell, so build
+    # it once here; notyettreated rebuilds C_full per cell inside the loops.
+    if (use_precompute_panel && nevertreated) {
+      C_full <- as.numeric(g_unit_panel == 0)
+    }
   } else {
     # repeated cross-section / unbalanced: row-subset the full design by POSITION
     # (.rowid is not unique across periods here).
@@ -179,13 +184,33 @@ compute.att_gt <- function(dp) {
 
   # loop over groups
   for (g in 1:nG) {
-    # Set up .G once (use pre-extracted g_col to avoid get() inside data.table)
+    # Set up .G once (use pre-extracted g_col to avoid get() inside data.table).
+    # The precompute panel path derives the treated cohort from g_unit_panel and
+    # never reads data$.G, so skip the full-length column write there.
     current_g <- glist[g]
-    set(data, j = ".G", value = as.numeric(g_col == current_g))
+    if (!use_precompute_panel) {
+      set(data, j = ".G", value = as.numeric(g_col == current_g))
+    }
 
     # pre-compute the universal/post-treatment base period for this group (used multiple times)
     idx_g <- which((tlist + anticipation) < glist[g])
     pret_g <- if (length(idx_g) == 0L) NA_integer_ else idx_g[length(idx_g)]
+
+    # Precompute path: the treated-cohort indicator depends only on g, so build it
+    # once per group. Under nevertreated the control cohort is also t-invariant
+    # (C_full was hoisted above the loops), so the kept-unit index and the G/C
+    # vectors are hoisted here too; notyettreated recomputes C_full/disidx/kept
+    # per cell below because its control cohort varies with t.
+    if (use_precompute_panel) {
+      G_full <- as.numeric(g_unit_panel == current_g)
+      if (nevertreated) {
+        disidx <- G_full == 1 | C_full == 1
+        kept <- which(disidx)
+        n1 <- length(kept)
+        G <- G_full[kept]
+        C <- C_full[kept]
+      }
+    }
 
     # loop over time periods
     for (t in 1:tlist.length) {
@@ -218,11 +243,16 @@ compute.att_gt <- function(dp) {
       # that is, never treated + units that are eventually treated,
       # but not treated by the current period (+ anticipation)
       if (!nevertreated) {
-        # Use pre-extracted g_col to avoid get() inside data.table
+        # Use pre-extracted g_col to avoid get() inside data.table.
+        # The precompute panel path recomputes the control cohort from
+        # g_unit_panel and never reads data$.C, so skip the full-length
+        # column write there (the time_threshold scalar is still needed below).
         time_threshold <- tlist[max(t, pret) + tfac] + anticipation
-        set(data, j = ".C", value = as.integer((g_col == 0) |
-          ((g_col > time_threshold) &
-            (g_col != current_g))))
+        if (!use_precompute_panel) {
+          set(data, j = ".C", value = as.integer((g_col == 0) |
+            ((g_col > time_threshold) &
+              (g_col != current_g))))
+        }
       }
 
 
@@ -263,11 +293,14 @@ compute.att_gt <- function(dp) {
       # total number of units (not just included in G or C)
       # disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
       target_times <- c(tlist[t + tfac], tlist[pret])
-      time_mask <- t_col %in% target_times
       # The precompute panel path assembles each cell from per-period blocks and does
       # not need this long 2-period subset (the dominant per-cell cost); RC,
-      # fix_weights, and unaligned panels still build disdat as before.
+      # fix_weights, and unaligned panels still build disdat as before. time_mask is
+      # only read here and in the fix_weights == "varying" branch, which always runs
+      # with use_precompute_panel == FALSE (the precompute path requires
+      # is.null(fix_weights)), so it is computed on every path that consumes it.
       if (!(panel && use_precompute_panel)) {
+        time_mask <- t_col %in% target_times
         disdat <- data[time_mask]
       }
 
@@ -280,20 +313,19 @@ compute.att_gt <- function(dp) {
           # period pret because get_wide_data's .y1/.y0 (later/earlier) swap exactly
           # cancels the universal-base ordering used below. The earlier period (whose
           # weights + covariates get_wide_data retains) is min(t + tfac, pret).
-          G_full <- as.numeric(g_unit_panel == current_g)
-          if (nevertreated) {
-            C_full <- as.numeric(g_unit_panel == 0)
-          } else {
-            time_threshold <- tlist[max(t, pret) + tfac] + anticipation
+          # G_full (and, under nevertreated, C_full/disidx/kept/n1/G/C) are hoisted
+          # to the group/setup level above; only t-varying pieces are built here.
+          if (!nevertreated) {
+            # time_threshold was computed above (kept for the precompute path)
             C_full <- as.numeric((g_unit_panel == 0) |
               ((g_unit_panel > time_threshold) & (g_unit_panel != current_g)))
+            disidx <- G_full == 1 | C_full == 1
+            kept <- which(disidx)
+            n1 <- length(kept)
+            G <- G_full[kept]
+            C <- C_full[kept]
           }
-          disidx <- G_full == 1 | C_full == 1
           n <- length(g_unit_panel)
-          kept <- which(disidx)
-          n1 <- length(kept)
-          G <- G_full[kept]
-          C <- C_full[kept]
           Ypost <- period_y[[t + tfac]][kept]
           Ypre  <- period_y[[pret]][kept]
           earlier_idx <- min(t + tfac, pret)
@@ -751,8 +783,11 @@ compute.att_gt <- function(dp) {
       # store the per-cell influence function)
       if (do_inf) {
       if (panel) {
-        # Store integer indices directly (avoids which() later)
-        idx <- which(disidx)
+        # Store integer indices directly (avoids which() later). On the precompute
+        # path `kept` is exactly which(disidx) (disidx is not modified in between),
+        # so reuse it; the get_wide_data fallback derives the index from its
+        # wide-data disidx as before.
+        idx <- if (use_precompute_panel) kept else which(disidx)
         inffunc_updates[[update_counter]] <- list(
           indices = idx,
           values = attgt$att.inf.func
