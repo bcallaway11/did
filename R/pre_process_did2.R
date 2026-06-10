@@ -442,6 +442,18 @@ did_standardization <- function(data, args){
 #' @noRd
 get_did_tensors <- function(data, args){
 
+  # Drop globally-empty factor levels from the covariates referenced by xformla
+  # before any design matrix is built: model.matrix() emits a dummy column for
+  # every declared level, so a level absent from the ENTIRE estimation sample
+  # (common after users subset their data) would produce an all-zero column in
+  # every (g,t) cell and NA-fail the whole estimation. Done before invariant_data
+  # is derived below so both model.matrix() calls see the same levels. Levels
+  # absent only from a particular 2x2 cell are unaffected. Mirrors the identical
+  # fix in compute.att_gt() (slow path).
+  for (v in all.vars(args$xformla)) {
+    if (is.factor(data[[v]])) set(data, j = v, value = droplevels(data[[v]]))
+  }
+
   # Getting the outcome tensor: a vector of outcome variables per time period of dimension id_count x 1 x time_periods_count
   #if(!args$allow_unbalanced_panel){
   if(args$panel){

@@ -108,6 +108,16 @@ compute.att_gt <- function(dp) {
   #
   # `data` is already complete-cases and finite (see pre_process_did), so na.pass adds
   # no NA rows and full_mm aligns 1:1 (by row position) with `data`.
+  #
+  # Drop globally-empty factor levels first: model.matrix() emits a dummy column for
+  # every declared level, so a level absent from the ENTIRE estimation sample (common
+  # after users subset their data) would produce an all-zero column in every cell and
+  # NA-fail the whole estimation. Levels absent only from a particular 2x2 cell are
+  # unaffected (still all-zero in that cell only, as documented above). Mirrors the
+  # identical fix in get_did_tensors() (fast path).
+  for (v in all.vars(xformla)) {
+    if (is.factor(data[[v]])) set(data, j = v, value = droplevels(data[[v]]))
+  }
   full_mm <- model.matrix(xformla, data = data, na.action = na.pass)
   if (panel) {
     # per-period row slices keyed by idname, for the earlier-period covariates that

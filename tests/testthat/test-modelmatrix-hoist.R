@@ -121,6 +121,50 @@ test_that("transform formulae that evaluate to NaN drop those rows instead of cr
   expect_equal(rs$att, rref$att, tolerance = 1e-12)
 })
 
+test_that("a globally-empty factor level is dropped instead of NA-failing every cell", {
+  # Regression: factor(levels = c('a','b','c')) where 'c' never occurs in the data
+  # (common after users subset their data, since R keeps empty levels) used to emit
+  # an all-zero dummy column in EVERY (g,t) cell, NA-failing the whole estimation
+  # with a misleading 'Not enough control units' warning. Globally-empty levels are
+  # now dropped once up front on both paths, so results equal the droplevels()-ed
+  # data exactly. Levels absent only from particular cells keep their documented
+  # NA-that-cell-only behavior (see the sparse-factor test below).
+  set.seed(22)
+  nunit <- 80
+  G <- rep(c(0, 2), each = 40)
+  funit <- factor(sample(c("a", "b"), nunit, TRUE), levels = c("a", "b", "c"))
+  dat <- expand.grid(id = 1:nunit, period = 1:3)
+  dat$G <- G[dat$id]
+  dat$flev <- funit[dat$id]
+  eta <- rnorm(nunit)
+  dat$Y <- eta[dat$id] + dat$period + 1 * (dat$G == 2 & dat$period >= 2) +
+    rnorm(nrow(dat), sd = 0.1)
+  dat2 <- dat
+  dat2$flev <- droplevels(dat2$flev)
+
+  run <- function(d, fm, est) suppressWarnings(suppressMessages(
+    att_gt(yname = "Y", tname = "period", idname = "id", gname = "G", data = d,
+           xformla = ~flev, est_method = est, bstrap = FALSE, faster_mode = fm)))
+
+  for (fm in c(FALSE, TRUE)) for (est in c("dr", "ipw", "reg")) {
+    lab <- paste("fm", fm, est)
+    res <- run(dat, fm, est)    # empty level 'c' declared
+    ref <- run(dat2, fm, est)   # empty level pre-dropped by the user
+    expect_false(anyNA(res$att), label = paste(lab, "no NA"))
+    expect_equal(res$att, ref$att, tolerance = 1e-12, label = paste(lab, "ATT"))
+    expect_equal(res$se,  ref$se,  tolerance = 1e-12, label = paste(lab, "se"))
+    expect_equal(as.matrix(res$inffunc), as.matrix(ref$inffunc), tolerance = 1e-12,
+                 label = paste(lab, "inffunc"))
+  }
+
+  # known values (master's slow path estimated these with the empty level present)
+  res_slow <- run(dat, FALSE, "dr")
+  res_fast <- run(dat, TRUE, "dr")
+  expect_equal(res_slow$att, c(1.0275, 0.9826), tolerance = 1e-3)
+  expect_equal(res_slow$att, res_fast$att, tolerance = 1e-10)
+  expect_equal(res_slow$se,  res_fast$se,  tolerance = 1e-10)
+})
+
 test_that("a sparse factor (level absent from some cells) matches manual dummies, incl. warnings", {
   # 'b' appears only in group 2, so the never-treated control never has it; every cell
   # is rank-deficient and must return NA -- exactly as manual dummies do, with the same
