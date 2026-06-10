@@ -70,6 +70,95 @@ test_that("RC-path (positional global slice) matches faster_mode", {
   }
 })
 
+test_that("unbalanced panel (positional global slice) matches faster_mode for factor / transform formulae", {
+  # the allow_unbalanced_panel branch slices global_mm by POSITION via disdat_rows,
+  # so cover it with formulae whose design depends on which rows are present
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  d <- did::build_sim_dataset(sp)
+  d$fac <- factor(sample(c("a", "b", "c"), nrow(d), TRUE))
+  set.seed(42)
+  d_ub <- d[-sample(nrow(d), floor(nrow(d) * 0.05)), ]
+  for (f in list(~fac, ~I(X^2), ~poly(X, 2), ~X * fac)) {
+    rs <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period", idname = "id",
+             gname = "G", est_method = "dr", bstrap = FALSE,
+             allow_unbalanced_panel = TRUE, faster_mode = FALSE)))
+    rf <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period", idname = "id",
+             gname = "G", est_method = "dr", bstrap = FALSE,
+             allow_unbalanced_panel = TRUE, faster_mode = TRUE)))
+    expect_equal(rs$att, rf$att, tolerance = 1e-10, label = paste("UB", deparse(f), "ATT"))
+    expect_equal(rs$se,  rf$se,  tolerance = 1e-10, label = paste("UB", deparse(f), "se"))
+  }
+})
+
+test_that("RC-path matches faster_mode for factor / data-dependent-basis formulae", {
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  d <- did::build_sim_dataset(sp)
+  d$fac <- factor(sample(c("a", "b", "c"), nrow(d), TRUE))
+  set.seed(42)
+  d_ub <- d[-sample(nrow(d), floor(nrow(d) * 0.05)), ]
+  for (f in list(~fac, ~poly(X, 2))) {
+    rs <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period", idname = "id",
+             gname = "G", est_method = "dr", bstrap = FALSE, panel = FALSE,
+             faster_mode = FALSE)))
+    rf <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period", idname = "id",
+             gname = "G", est_method = "dr", bstrap = FALSE, panel = FALSE,
+             faster_mode = TRUE)))
+    expect_equal(rs$att, rf$att, tolerance = 1e-10, label = paste("RC", deparse(f), "ATT"))
+    expect_equal(rs$se,  rf$se,  tolerance = 1e-10, label = paste("RC", deparse(f), "se"))
+  }
+})
+
+test_that("transform / factor formulae match faster_mode under universal base, notyettreated, anticipation", {
+  # crosses the hoisted design with the non-default options the precompute path
+  # reimplements (universal-base Ypre/Ypost swap, notyettreated C_full, anticipation)
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  d <- did::build_sim_dataset(sp)
+  d$fac <- factor(sample(c("a", "b", "c"), nrow(d), TRUE))
+  for (f in list(~I(X^2) + X, ~fac)) {
+    rs <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = f, data = d, tname = "period", idname = "id",
+             gname = "G", est_method = "dr", bstrap = FALSE,
+             control_group = "notyettreated", base_period = "universal",
+             anticipation = 1, faster_mode = FALSE)))
+    rf <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = f, data = d, tname = "period", idname = "id",
+             gname = "G", est_method = "dr", bstrap = FALSE,
+             control_group = "notyettreated", base_period = "universal",
+             anticipation = 1, faster_mode = TRUE)))
+    expect_equal(rs$att, rf$att, tolerance = 1e-10, label = paste("cross", deparse(f), "ATT"))
+    expect_equal(rs$se,  rf$se,  tolerance = 1e-10, label = paste("cross", deparse(f), "se"))
+  }
+})
+
+test_that("global basis is reparameterization-invariant: ~poly(X, 2) equals ~X + I(X^2)", {
+  # locks the claim justifying the GLOBAL basis for data-dependent terms (poly/scale/ns):
+  # the 2x2 estimators are invariant to a full-rank reparameterization of the covariates,
+  # so the orthogonal global basis must reproduce the raw basis spanning the same space
+  set.seed(20260401)
+  sp <- did::reset.sim()
+  d <- did::build_sim_dataset(sp)
+  for (est in c("dr", "reg", "ipw")) for (fm in c(FALSE, TRUE)) {
+    rp <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~poly(X, 2), data = d, tname = "period",
+             idname = "id", gname = "G", est_method = est, bstrap = FALSE,
+             faster_mode = fm)))
+    rr <- suppressWarnings(suppressMessages(
+      att_gt(yname = "Y", xformla = ~X + I(X^2), data = d, tname = "period",
+             idname = "id", gname = "G", est_method = est, bstrap = FALSE,
+             faster_mode = fm)))
+    lab <- paste(est, "fm", fm)
+    expect_equal(rp$att, rr$att, tolerance = 1e-10, label = paste(lab, "ATT"))
+    expect_equal(rp$se,  rr$se,  tolerance = 1e-10, label = paste(lab, "se"))
+  }
+})
+
 test_that("a factor covariate equals manually-expanded dummies EXACTLY (dense levels)", {
   set.seed(11)
   sp <- did::reset.sim()
@@ -191,5 +280,35 @@ test_that("a sparse factor (level absent from some cells) matches manual dummies
     expect_equal(rf$att, rd$att, label = paste("fm", fm, "ATT"))     # both all-NA, same cells
     expect_equal(rf$se,  rd$se,  label = paste("fm", fm, "se"))
     expect_identical(rf$warns, rd$warns, label = paste("fm", fm, "warnings"))
+  }
+})
+
+test_that("RC sparse factor (level absent from some cells) matches manual dummies, incl. warnings", {
+  # same construction as the panel test above, on the repeated-cross-sections path
+  # (positional global_mm slicing): 'b' appears only in group 2, so every cell is
+  # rank-deficient and must NA-fail exactly as manual dummies do, in both modes
+  set.seed(11)
+  sp <- did::reset.sim()
+  data <- did::build_sim_dataset(sp)
+  fac <- rep("a", nrow(data)); fac[data$G == 2] <- sample(c("a", "b"), sum(data$G == 2), TRUE)
+  data$fac <- factor(fac)
+  data$f_b <- as.numeric(data$fac == "b")
+
+  collect <- function(f, fm) {
+    ws <- character(0)
+    res <- withCallingHandlers(
+      suppressMessages(att_gt(yname = "Y", xformla = f, data = data, tname = "period",
+                              idname = "id", gname = "G", est_method = "reg",
+                              panel = FALSE, bstrap = FALSE, faster_mode = fm)),
+      warning = function(w) { ws[[length(ws) + 1]] <<- conditionMessage(w); invokeRestart("muffleWarning") })
+    list(att = res$att, se = res$se, warns = sort(unique(ws)))
+  }
+  for (fm in c(TRUE, FALSE)) {
+    rf <- collect(~fac, fm)
+    rd <- collect(~f_b, fm)
+    expect_equal(rf$att, rd$att, label = paste("RC fm", fm, "ATT"))
+    expect_equal(rf$se,  rd$se,  label = paste("RC fm", fm, "se"))
+    expect_equal(is.na(rf$att), is.na(rd$att), label = paste("RC fm", fm, "NA pattern"))
+    expect_identical(rf$warns, rd$warns, label = paste("RC fm", fm, "warnings"))
   }
 })

@@ -53,6 +53,30 @@ test_that("panel precompute also bit-identical for factor / transform covariates
   }
 })
 
+test_that("panel precompute also bit-identical with time-varying sampling weights", {
+  # the precompute retains per-period weights (period_w[[min(t + tfac, pret)]]);
+  # time-varying weights are the only sim quantity that can expose a wrong-period index
+  old_opt <- getOption("did.disable_precompute")
+  withr::defer(options(did.disable_precompute = old_opt))
+  set.seed(303)
+  sp <- did::reset.sim(time.periods = 4)
+  d <- did::build_sim_dataset(sp)
+  d$tvw <- d$period + runif(nrow(d), -0.1, 0.1)
+  for (bp in c("varying", "universal")) {
+    options(did.disable_precompute = TRUE)
+    ref <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = d,
+      tname = "period", idname = "id", gname = "G", weightsname = "tvw",
+      faster_mode = FALSE, bstrap = FALSE, est_method = "dr", base_period = bp)))
+    options(did.disable_precompute = FALSE)
+    new <- suppressWarnings(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = d,
+      tname = "period", idname = "id", gname = "G", weightsname = "tvw",
+      faster_mode = FALSE, bstrap = FALSE, est_method = "dr", base_period = bp)))
+    expect_equal(ref$att, new$att, tolerance = 0, label = paste("tvw", bp, "ATT"))
+    expect_equal(as.matrix(ref$inffunc), as.matrix(new$inffunc), tolerance = 0,
+                 label = paste("tvw", bp, "IF"))
+  }
+})
+
 test_that("input row order does not affect slow-path results (precompute precondition)", {
   set.seed(7)
   sp <- did::reset.sim(time.periods = 4)
