@@ -88,6 +88,8 @@ except where a bug fix is explicitly noted.
 
   * `fix_weights = "base_period"`/`"first_period"` are blocked for repeated cross sections (`panel = FALSE`); `fix_weights = "varying"` is blocked with a custom `est_method` function (whose signature differs from the internal RC path). Both with clear messages.
 
+  * `anticipation` must now be a non-negative number in both modes. Previously only `faster_mode = TRUE` enforced this; the `faster_mode = FALSE` path silently accepted negative values (shifting the base period later than the treatment period), which was undocumented and inconsistent across modes.
+
   * `panel = TRUE` (the default) without `idname` now errors with "Must provide idname when panel = TRUE. Set panel = FALSE for repeated cross sections." Previously this failed with a cryptic internal `data.table` error (`faster_mode = TRUE`) or a misleading "All observations dropped while converting data to balanced panel" message (`faster_mode = FALSE`).
 
   * A non-numeric outcome variable (`yname`) is now rejected up front with a clear message in both code paths (logical 0/1 outcomes remain allowed). Previously a character or factor outcome "ran" to completion with all-`NA` ATTs and misleading per-cell warnings, and a list-column outcome failed with a cryptic `complete.cases()` error.

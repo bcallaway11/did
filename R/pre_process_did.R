@@ -46,6 +46,13 @@ pre_process_did <- function(yname,
   if (!(base_period %in% c("universal", "varying"))) {
     stop("base_period must be either 'universal' or 'varying'.")
   }
+  # Check if anticipation is numeric and non-negative (same contract as the fast path)
+  if (!is.numeric(anticipation)) {
+    stop("anticipation must be numeric. Please convert it.")
+  }
+  if (anticipation < 0) {
+    stop("anticipation must be non-negative. Please check your arguments.")
+  }
   check_reserved_did_names(yname = yname, tname = tname, idname = idname,
                            gname = gname, xformla = xformla,
                            weightsname = weightsname,
