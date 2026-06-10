@@ -106,10 +106,20 @@ compute.att_gt <- function(dp) {
     }
   }
 
-  if (nevertreated) {
+  # Positional precompute for the repeated-cross-section / unbalanced-panel path:
+  # each (g,t) cell is assembled from plain vectors and per-period row indices
+  # precomputed once per call, instead of two full data.table subsets plus a
+  # full-data %in% per cell (the dominant per-cell cost on this path). Bit-identical
+  # to the legacy construction (see the per-cell comments below);
+  # options(did.disable_precompute = TRUE) forces the legacy path (escape hatch /
+  # used to verify bit-identical equivalence), mirroring the panel precompute.
+  use_precompute_rc <- !panel && !isTRUE(getOption("did.disable_precompute"))
+
+  # The precompute paths never read data$.C / data$.G (cohort indicators are
+  # rebuilt from plain vectors), so skip the full-length column writes there.
+  if (nevertreated && !use_precompute_rc) {
     set(data, j = ".C", value = as.integer(g_col == 0))
   }
-  set(data, j = ".y", value = data[[yname]])
 
   # -- design matrix: built ONCE over the full data, then row-subset per (g,t) cell --
   # This (a) avoids rebuilding model.matrix() nG*nT times, and (b) gives every cell the
@@ -148,7 +158,7 @@ compute.att_gt <- function(dp) {
     period_id <- vector("list", length(tlist))
     period_y  <- vector("list", length(tlist))
     period_w  <- vector("list", length(tlist))
-    y_col <- data[[".y"]]
+    y_col <- data[[yname]]
     w_col <- data[[".w"]]
     for (tp in seq_along(tlist)) {
       rows_tp <- which(t_col == tlist[tp])
@@ -180,15 +190,37 @@ compute.att_gt <- function(dp) {
     # (.rowid is not unique across periods here).
     global_mm <- full_mm
     use_precompute_panel <- FALSE
+    if (use_precompute_rc) {
+      # One-time positional precompute: per-period row indices into `data` plus
+      # plain copies of the columns each cell consumes. which() preserves data
+      # order within each period, so per-period vectors are bit-identical to the
+      # corresponding data.table period subsets.
+      period_rows_rc <- vector("list", length(tlist))
+      for (tp in seq_along(tlist)) {
+        period_rows_rc[[tp]] <- which(t_col == tlist[tp])
+      }
+      rowid_col <- data$.rowid
+      y_col_rc <- data[[yname]]
+      w_col_rc <- data[[".w"]]
+      # loop-invariant id universe for the influence-function index lookup
+      unique_rowid <- unique(rowid_col)
+      # fix_weights base/first: per-period .rowid/.w lookup vectors replace the
+      # per-cell full-table data[t_col == target_period, ] subset; match()
+      # semantics (first match wins, unmatched -> NA) are unchanged.
+      if (!is.null(fix_weights) && fix_weights %in% c("base_period", "first_period")) {
+        target_rowid_by_period <- lapply(period_rows_rc, function(rr) rowid_col[rr])
+        target_w_by_period <- lapply(period_rows_rc, function(rr) w_col_rc[rr])
+      }
+    }
   }
 
   # loop over groups
   for (g in 1:nG) {
     # Set up .G once (use pre-extracted g_col to avoid get() inside data.table).
-    # The precompute panel path derives the treated cohort from g_unit_panel and
-    # never reads data$.G, so skip the full-length column write there.
+    # The precompute paths derive the treated cohort from g_unit_panel / g_col
+    # directly and never read data$.G, so skip the full-length column write there.
     current_g <- glist[g]
-    if (!use_precompute_panel) {
+    if (!use_precompute_panel && !use_precompute_rc) {
       set(data, j = ".G", value = as.numeric(g_col == current_g))
     }
 
@@ -244,11 +276,11 @@ compute.att_gt <- function(dp) {
       # but not treated by the current period (+ anticipation)
       if (!nevertreated) {
         # Use pre-extracted g_col to avoid get() inside data.table.
-        # The precompute panel path recomputes the control cohort from
-        # g_unit_panel and never reads data$.C, so skip the full-length
+        # The precompute paths recompute the control cohort from
+        # g_unit_panel / g_col and never read data$.C, so skip the full-length
         # column write there (the time_threshold scalar is still needed below).
         time_threshold <- tlist[max(t, pret) + tfac] + anticipation
-        if (!use_precompute_panel) {
+        if (!use_precompute_panel && !use_precompute_rc) {
           set(data, j = ".C", value = as.integer((g_col == 0) |
             ((g_col > time_threshold) &
               (g_col != current_g))))
@@ -292,14 +324,15 @@ compute.att_gt <- function(dp) {
 
       # total number of units (not just included in G or C)
       # disdat <- data[data[,tname] == tlist[t+tfac] | data[,tname] == tlist[pret],]
-      target_times <- c(tlist[t + tfac], tlist[pret])
-      # The precompute panel path assembles each cell from per-period blocks and does
-      # not need this long 2-period subset (the dominant per-cell cost); RC,
-      # fix_weights, and unaligned panels still build disdat as before. time_mask is
-      # only read here and in the fix_weights == "varying" branch, which always runs
-      # with use_precompute_panel == FALSE (the precompute path requires
-      # is.null(fix_weights)), so it is computed on every path that consumes it.
-      if (!(panel && use_precompute_panel)) {
+      # The precompute paths (panel per-period blocks; RC/unbalanced positional
+      # assembly) build each cell without this long 2-period subset (the dominant
+      # per-cell cost); the legacy escape-hatch paths still build disdat as before.
+      # time_mask is only read here and in the fix_weights == "varying" branch,
+      # which always runs with use_precompute_panel == FALSE (the panel precompute
+      # requires is.null(fix_weights)) and panel == TRUE (so use_precompute_rc is
+      # FALSE), so it is computed on every path that consumes it.
+      if (!(panel && use_precompute_panel) && !use_precompute_rc) {
+        target_times <- c(tlist[t + tfac], tlist[pret])
         time_mask <- t_col %in% target_times
         disdat <- data[time_mask]
       }
@@ -565,33 +598,72 @@ compute.att_gt <- function(dp) {
         }
       } else { # repeated cross sections / unbalanced panel
 
-        # pick up the indices for units that will be used to compute ATT(g,t)
-        # these conditions are (1) you are observed in the right period and
-        # (2) you are in the right group (it is possible to be observed in
-        # the right period but still not be part of the treated or control
-        # group in that period here
-        rightids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
+        if (use_precompute_rc) {
+          # ---- positional precompute path (default) ----
+          # .G / .C are row-wise functions of g_col, and gname is time-invariant
+          # within .rowid (pre_process_did stops otherwise; for true repeated
+          # cross sections .rowid is the row number), so a unit satisfies
+          # .G == 1 | .C == 1 either in BOTH of this cell's periods or in
+          # NEITHER. The legacy rightids/%in% construction below therefore
+          # reduces to a row-wise G|C filter over the two periods, assembled
+          # here positionally from the vectors precomputed before the loops --
+          # skipping the two full data.table subsets, the full-data %in%, and
+          # droplevels() per cell (covariates come positionally from global_mm,
+          # so factor levels in `data` are never read). sort() restores original
+          # data order, so the rows match which(disidx) on the legacy path
+          # bit-identically. (The two periods are always distinct here: the
+          # universal-base cell with tlist[pret] == tlist[t + tfac] is skipped
+          # before this point.)
+          rows_pair <- sort(c(period_rows_rc[[t + tfac]], period_rows_rc[[pret]]))
+          g_cell <- g_col[rows_pair]
+          Gv <- as.numeric(g_cell == current_g)
+          # same formulas and types as the .G/.C column writes on the legacy path
+          Cv <- if (nevertreated) {
+            as.integer(g_cell == 0)
+          } else {
+            as.integer((g_cell == 0) |
+              ((g_cell > time_threshold) & (g_cell != current_g)))
+          }
+          sel <- Gv == 1 | Cv == 1
+          # positional index into `data` for slicing the global design matrix,
+          # kept in sync with any later fix_weights row drops below.
+          disdat_rows <- rows_pair[sel]
+          G <- Gv[sel]
+          C <- Cv[sel]
+          Y <- y_col_rc[disdat_rows]
+          post <- 1 * (t_col[disdat_rows] == tlist[t + tfac])
+          cell_rowid <- rowid_col[disdat_rows]
+        } else {
+          # ---- legacy path (options(did.disable_precompute = TRUE)) ----
+          # pick up the indices for units that will be used to compute ATT(g,t)
+          # these conditions are (1) you are observed in the right period and
+          # (2) you are in the right group (it is possible to be observed in
+          # the right period but still not be part of the treated or control
+          # group in that period here
+          rightids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
 
-        # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
-        # with true repeated cross sections, but should pick up the right time periods
-        # only with unbalanced panel
-        disidx <- (data$.rowid %in% rightids) & ((t_col == tlist[t + tfac]) | (t_col == tlist[pret]))
+          # this is the fix for unbalanced panels; 2nd criteria shouldn't do anything
+          # with true repeated cross sections, but should pick up the right time periods
+          # only with unbalanced panel
+          disidx <- (data$.rowid %in% rightids) & ((t_col == tlist[t + tfac]) | (t_col == tlist[pret]))
 
-        # pick up the data that will be used to compute ATT(g,t)
-        disdat <- data[disidx, ]
-        # positional index into `data` for slicing the global design matrix, kept in
-        # sync with any later row drops below (droplevels does not reorder/drop rows).
-        # global_mm[disdat_rows, ] is the design for the rows used in this cell.
-        disdat_rows <- which(disidx)
+          # pick up the data that will be used to compute ATT(g,t)
+          disdat <- data[disidx, ]
+          # positional index into `data` for slicing the global design matrix, kept in
+          # sync with any later row drops below (droplevels does not reorder/drop rows).
+          # global_mm[disdat_rows, ] is the design for the rows used in this cell.
+          disdat_rows <- which(disidx)
 
-        # drop missing factors
-        disdat <- droplevels(disdat)
+          # drop missing factors
+          disdat <- droplevels(disdat)
 
-        # give short names for data in this iteration
-        G <- disdat$.G
-        C <- disdat$.C
-        Y <- disdat[[yname]]
-        post <- 1 * (disdat[[tname]] == tlist[t + tfac])
+          # give short names for data in this iteration
+          G <- disdat$.G
+          C <- disdat$.C
+          Y <- disdat[[yname]]
+          post <- 1 * (disdat[[tname]] == tlist[t + tfac])
+          cell_rowid <- disdat$.rowid
+        }
         # num obs. for computing ATT(g,t), have to be careful here
         n1 <- sum(G + C)
 
@@ -599,34 +671,50 @@ compute.att_gt <- function(dp) {
         if (!is.null(fix_weights) && fix_weights %in% c("base_period", "first_period")) {
           # Determine which period's weight to use
           if (fix_weights == "base_period") {
-            target_period <- tlist[pret_g]
+            target_idx <- pret_g
           } else {
-            target_period <- tlist[1]
+            target_idx <- 1L
           }
-          # Build lookup: weight from target period per unit
-          target_rows <- data[t_col == target_period, ]
+          target_period <- tlist[target_idx]
           # Map each observation's weight from the target period by integer .rowid
           # matching (equivalent to the previous named-character lookup: first match
           # wins, unmatched -> NA), without coercing every .rowid to character.
-          w <- target_rows$.w[match(disdat$.rowid, target_rows$.rowid)]
+          if (use_precompute_rc) {
+            # per-period lookup vectors precomputed before the loops; the period
+            # subsets preserve data order, so the match() result is identical to
+            # the legacy full-table subset below.
+            w <- target_w_by_period[[target_idx]][match(cell_rowid, target_rowid_by_period[[target_idx]])]
+          } else {
+            # Build lookup: weight from target period per unit
+            target_rows <- data[t_col == target_period, ]
+            w <- target_rows$.w[match(cell_rowid, target_rows$.rowid)]
+          }
           # Drop units not observed in the target period
           missing_w <- is.na(w)
           if (any(missing_w)) {
-            n_dropped <- length(unique(disdat$.rowid[missing_w]))
+            n_dropped <- length(unique(cell_rowid[missing_w]))
             warning(paste0("Dropped ", n_dropped, " units not observed in ",
                            fix_weights, " (period ", target_period, ") ",
                            "for group ", glist[g], " in time period ", tlist[t + tfac]))
-            disdat <- disdat[!missing_w, ]
             disdat_rows <- disdat_rows[!missing_w]
-            G <- disdat$.G
-            C <- disdat$.C
-            Y <- disdat[[yname]]
-            post <- 1 * (disdat[[tname]] == tlist[t + tfac])
+            cell_rowid <- cell_rowid[!missing_w]
+            if (use_precompute_rc) {
+              G <- G[!missing_w]
+              C <- C[!missing_w]
+              Y <- Y[!missing_w]
+              post <- post[!missing_w]
+            } else {
+              disdat <- disdat[!missing_w, ]
+              G <- disdat$.G
+              C <- disdat$.C
+              Y <- disdat[[yname]]
+              post <- 1 * (disdat[[tname]] == tlist[t + tfac])
+            }
             n1 <- sum(G + C)
             w <- w[!missing_w]
           }
         } else {
-          w <- disdat$.w
+          w <- if (use_precompute_rc) w_col_rc[disdat_rows] else disdat$.w
         }
 
         #-----------------------------------------------------------------------------
@@ -794,13 +882,26 @@ compute.att_gt <- function(dp) {
         )
       } else {
         # aggregate inf functions by id (order by id)
-        # Use current disdat$.rowid (may differ from rightids if fix_weights dropped obs)
-        # rowsum(reorder = TRUE) sums per id and returns rows in ascending-id order,
-        # matching stats::aggregate() but ~40x faster (see test-slowpath-rowsum).
-        current_ids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
-        rs <- rowsum(attgt$att.inf.func, current_ids, reorder = TRUE)
-        rs_ids <- sort(unique(current_ids))
-        idx <- match(rs_ids, unique(data$.rowid))
+        # Use the current cell ids (may differ from the initial selection if
+        # fix_weights dropped obs). rowsum(reorder = TRUE) sums per id and returns
+        # rows in ascending-id order, matching stats::aggregate() but ~40x faster
+        # (see test-slowpath-rowsum).
+        if (use_precompute_rc) {
+          # every row of this cell satisfies .G == 1 | .C == 1 by construction
+          # (the positional assembly selects on exactly that condition, and gname
+          # is time-invariant within .rowid -- pre_process_did stops otherwise),
+          # so the legacy G|C re-filter below is vacuous here. unique_rowid was
+          # precomputed before the loops (loop-invariant).
+          current_ids <- cell_rowid
+          rs <- rowsum(attgt$att.inf.func, current_ids, reorder = TRUE)
+          rs_ids <- sort(unique(current_ids))
+          idx <- match(rs_ids, unique_rowid)
+        } else {
+          current_ids <- disdat$.rowid[disdat$.G == 1 | disdat$.C == 1]
+          rs <- rowsum(attgt$att.inf.func, current_ids, reorder = TRUE)
+          rs_ids <- sort(unique(current_ids))
+          idx <- match(rs_ids, unique(data$.rowid))
+        }
         inffunc_updates[[update_counter]] <- list(
           indices = idx,
           values = as.numeric(rs[, 1])
