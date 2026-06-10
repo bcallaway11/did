@@ -359,16 +359,16 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
     # weight via match() exactly as the original loop did.
     uc <- unique(dta[, clustervars])
     n1 <- length(uc)
-    Vc <- matrix(sample(c(-1, 1), n1 * biters, replace = TRUE), nrow = n1)
+    Vc <- matrix(sample(c(-1, 1), as.numeric(n1) * biters, replace = TRUE), nrow = n1)
     V <- Vc[match(dta[, clustervars], uc), , drop = FALSE]
   } else {
-    V <- matrix(sample(c(-1, 1), n * biters, replace = TRUE), nrow = n)
+    V <- matrix(sample(c(-1, 1), as.numeric(n) * biters, replace = TRUE), nrow = n)
   }
 
   # Tile over the X dimension so peak memory is n*k*chunk doubles instead of the
   # full n*k*nX reshape. CvMb is a plain sum over X, so chunking is exact (the only
   # difference is summation order). Chunk targets ~5e6 doubles (~40 MB) per slice.
-  chunk <- max(1L, as.integer(5e6 %/% (n * k)))
+  chunk <- max(1L, as.integer(5e6 %/% (as.numeric(n) * k)))
   bout <- numeric(biters)
   for (start in seq.int(1L, nX, by = chunk)) {
     xs <- start:min(start + chunk - 1L, nX)
