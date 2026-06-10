@@ -595,6 +595,10 @@ att_gt <- function(yname,
   if (is.null(wald_invalid)) {
     # select which periods are pre-treatment
     pre <- which(group > tt)
+    # number of pre-treatment cells before the variance filter below, so the
+    # no-pre-periods warning can distinguish "no pre-treatment cells exist"
+    # from "all pre-treatment cells were dropped for NA/zero variance"
+    n_pre_cells <- length(pre)
 
     # Drop group-periods that have variance equal to zero (singularity problems)
     if (length(zero_na_sd_entry) > 0) {
@@ -608,13 +612,24 @@ att_gt <- function(yname,
 
     # check if there are actually any pre-treatment periods
     if (length(preV) == 0) {
-      msg <- paste0(
-        "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
-        "This can happen when all groups are first treated early in the panel ",
-        "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
-      )
-      if (anticipation > 0) {
-        msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+      if (n_pre_cells > 0) {
+        # pre-treatment cells existed, but every one was dropped by the
+        # zero/NA-variance filter above
+        msg <- paste0(
+          "No pre-treatment periods available for the Wald pre-test of parallel trends: ",
+          "pre-treatment ATT(g,t) estimates exist, but all of them have missing or zero ",
+          "variance (e.g., because the underlying 2x2 estimation failed for those cells), ",
+          "so they were dropped from the pre-test."
+        )
+      } else {
+        msg <- paste0(
+          "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
+          "This can happen when all groups are first treated early in the panel ",
+          "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
+        )
+        if (anticipation > 0) {
+          msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+        }
       }
       warning(msg)
       W <- NULL

@@ -92,6 +92,8 @@ except where a bug fix is explicitly noted.
 
   * `alp` must now be a single number strictly between 0 and 1 (e.g. `alp = 1.5` previously inverted the confidence bands silently or errored deep inside `quantile()`), and `biters` must be a single positive whole number when `bstrap = TRUE` (a negative value previously crashed inside the bootstrap's linear-algebra code with no hint about the cause).
 
+  * Cleaner failed-cell warnings under `faster_mode = FALSE`: each failed (g,t) cell now warns exactly once with the same text as `faster_mode = TRUE` ("overlap condition violated for group g in time period t"). Previously the slow path warned twice per failed overlap/rank check -- the diagnostic plus a wrapper warning leaking the internal sentinel (`"... : overlap. The ATT for this cell will be set to NA."`). Genuine estimator errors are still surfaced by the wrapper warning. Additionally, when the Wald pre-test is unavailable, the warning now distinguishes "pre-treatment ATT(g,t) estimates exist but all have missing/zero variance" from "no pre-treatment cells exist at all" (the latter previously mis-diagnosed the former as "all groups are first treated early in the panel").
+
 ## Documentation, namespace, and internals
 
   * Reduced namespace pollution: replaced blanket `import(stats)`, `import(utils)`, and `import(BMisc)` with selective `importFrom()` calls. `did` no longer re-exports `stats::filter`/`stats::lag` (which previously masked `dplyr::filter`/`dplyr::lag`). `R CMD check` passes with 0 code-related NOTEs.

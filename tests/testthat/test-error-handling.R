@@ -381,6 +381,37 @@ test_that("att_gt warns on overlap violations", {
   )
 })
 
+test_that("slow path warns once per failed cell, matching fast-path wording, with accurate Wald diagnosis", {
+  # Each failed (g,t) cell must produce exactly ONE warning with identical text in
+  # both modes: the tryCatch wrapper must not re-warn the internal overlap/singular
+  # sentinels after the diagnostic warning already fired. And when pre-treatment
+  # cells existed but were all dropped for NA/zero variance, the Wald warning must
+  # say so instead of claiming no pre-treatment cells exist.
+  set.seed(20260610)
+  d <- expand.grid(id = 1:200, period = 1:3)
+  gvals <- c(0, 2, 3)
+  d$G <- gvals[(d$id - 1) %% 3 + 1]
+  d$Xsep <- 1 * (d$G > 0)  # separates treated from never-treated: overlap fails in all 4 cells
+  d$Y <- 0.1 * d$period + (d$G > 0 & d$period >= d$G) + rnorm(nrow(d), 0, 0.5)
+
+  w_slow <- capture_warnings(suppressMessages(
+    att_gt(yname = "Y", xformla = ~Xsep, data = d, tname = "period", idname = "id",
+           gname = "G", est_method = "dr", faster_mode = FALSE, bstrap = FALSE)))
+  w_fast <- capture_warnings(suppressMessages(
+    att_gt(yname = "Y", xformla = ~Xsep, data = d, tname = "period", idname = "id",
+           gname = "G", est_method = "dr", faster_mode = TRUE, bstrap = FALSE)))
+
+  # identical warning sets across modes (one per failed cell + the Wald warning)
+  expect_identical(w_slow, w_fast)
+  # exactly one warning per failed cell, with the fast-path wording
+  expect_identical(sum(grepl("overlap condition violated for group", w_slow)), 4L)
+  # no leaked internal sentinel via the tryCatch wrapper
+  expect_false(any(grepl("Error computing internal 2x2 DiD", w_slow)))
+  # accurate Wald diagnosis: pre-treatment cells existed but had NA/zero variance
+  expect_true(any(grepl("missing or zero variance", w_slow)))
+  expect_false(any(grepl("treated early in the panel", w_slow)))
+})
+
 test_that("att_gt warns when no pre-treatment periods for Wald test", {
   # Create data where a group is first treated in period 2 (only 1 pre-treatment period)
   # With base_period="varying", there may be no pre-treatment ATTs for the Wald test

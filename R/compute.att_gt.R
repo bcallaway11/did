@@ -369,7 +369,7 @@ compute.att_gt <- function(dp) {
               if (est_method %in% c("dr", "ipw")) {
                 preliminary_logit <- overlap_logit_fit(covariates_rc, G_rc)
                 if (max(preliminary_logit$fitted.values) >= 0.999) {
-                  warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+                  warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
                 }
               }
@@ -407,7 +407,7 @@ compute.att_gt <- function(dp) {
               if (est_method %in% c("dr", "ipw")) {
                 preliminary_logit <- overlap_logit_fit(covariates, G)
                 if (max(preliminary_logit$fitted.values) >= 0.999) {
-                  warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+                  warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
                 }
               }
@@ -476,7 +476,13 @@ compute.att_gt <- function(dp) {
           }
           res
         }, error = function(e) {
-          warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
+          # The overlap/rank guards above already emitted a full diagnostic warning
+          # before signalling the internal "overlap"/"singular" sentinels, so skip
+          # the wrapper warning for those: each failed cell warns exactly once,
+          # matching the fast path. Genuine estimator errors are still surfaced.
+          if (!(conditionMessage(e) %in% c("overlap", "singular"))) {
+            warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
+          }
           NULL
         })
 
@@ -610,7 +616,7 @@ compute.att_gt <- function(dp) {
             if (est_method %in% c("dr", "ipw")) {
               preliminary_logit <- overlap_logit_fit(covariates, G)
               if (max(preliminary_logit$fitted.values) >= 0.999) {
-                warning(paste0("overlap condition violated for ", glist[g], " in time period ", tlist[t + tfac]))
+                warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                 stop("overlap")
               }
             }
@@ -678,7 +684,13 @@ compute.att_gt <- function(dp) {
           }
           res
         }, error = function(e) {
-          warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
+          # The overlap/rank guards above already emitted a full diagnostic warning
+          # before signalling the internal "overlap"/"singular" sentinels, so skip
+          # the wrapper warning for those: each failed cell warns exactly once,
+          # matching the fast path. Genuine estimator errors are still surfaced.
+          if (!(conditionMessage(e) %in% c("overlap", "singular"))) {
+            warning("Error computing internal 2x2 DiD for (g, t) = (", glist[g], ", ", tlist[t + tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
+          }
           NULL
         })
 
