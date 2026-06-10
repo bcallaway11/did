@@ -4,6 +4,26 @@
 #'  assumption holding in all pre-treatment time periods for all groups
 #'
 #' @inheritParams att_gt
+#' @param weightsname The name of the column containing the sampling weights.
+#'  If not set, all observations have same weight.
+#' @param est_method the method to compute group-time average treatment
+#'  effects.  The default for `conditional_did_pretest` is "ipw" for
+#'  inverse probability weighting.  Other built-in methods include "dr"
+#'  which uses the doubly robust approach in the `DRDID` package and "reg"
+#'  for first step regression estimators.
+#' @param bstrap Not used by the pre-test.  Critical values and p-values
+#'  for the Cramer von Mises and Kolmogorov-Smirnov test statistics are
+#'  always computed with the multiplier bootstrap (using `biters`
+#'  iterations), regardless of this argument, and no standard errors are
+#'  reported.
+#' @param biters The number of multiplier bootstrap iterations used to
+#'  simulate the limiting distribution of the test statistics.  The
+#'  default is 1000.
+#' @param clustervars A vector of variables names to cluster on (the
+#'  multiplier bootstrap then draws cluster-level multipliers).  At most,
+#'  there can be two variables (otherwise will throw an error) and one of
+#'  these must be the same as idname which allows for clustering at the
+#'  individual level.
 #' @param cores The number of cores to use for parallel processing. This
 #'  parallelizes Step 1 (computing the test statistic); Step 2's multiplier
 #'  bootstrap is vectorized and runs in a single process.

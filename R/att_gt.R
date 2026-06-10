@@ -122,8 +122,12 @@
 #' `att.inf.func` (an `n x 1` influence function — one entry per
 #' observation passed into the estimator).
 #' The function can return other things as well, but these are
-#' the only two that are required. `est_method` is only used
-#' if covariates are included.
+#' the only two that are required. With no covariates
+#' (`xformla = NULL`), the built-in methods ("dr", "ipw", "reg") all
+#' reduce to the unconditional difference-in-differences estimator, so
+#' the choice among them is irrelevant; a custom `est_method` function
+#' is still called (with an intercept-only `covariates` matrix) and
+#' determines the estimates.
 #' @param xformla A formula for the covariates to include in the
 #'  model.  It should be of the form `~ X1 + X2`.  Default
 #'  is NULL which is equivalent to `xformla=~1`.  This is
