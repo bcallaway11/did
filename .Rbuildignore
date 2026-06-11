@@ -39,3 +39,5 @@ Icon?
 ^test-spec\.md$
 ^CLAUDE\.md$
 ^data-raw$
+
+^updates_made\.md$
