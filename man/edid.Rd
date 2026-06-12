@@ -33,7 +33,7 @@ edid(
   moment_set = NULL,
   min_pair_units = 5L,
   bs_df = 4L,
-  ratio_method = c("coherent", "direct", "exp"),
+  ratio_method = c("exp", "direct"),
   nocov_shrink = TRUE
 )
 }
@@ -346,81 +346,57 @@ of the moments, Eq. (4.4)) and the finite-cohort inverse
 propensities \eqn{1/p_{g'}(X)} (the \eqn{\Omega^*} variance prefactors) -- are
 estimated on the covariate path.
 \describe{
-\item{\code{"coherent"} (default)}{a common multinomial-logit sieve system: for each
-treated cohort \eqn{c}, the log-odds \eqn{h_c(X) = \log(p_c(X)/p_{NT}(X))} is
-estimated by a ridge-penalized logistic sieve on the cohort-vs-never-treated
-subsample (shared full-sample B-spline basis, scale-normalized penalty with fixed
-scale 1 -- an \eqn{O(1)} penalty against an \eqn{O(n)} likelihood, hence
-asymptotically negligible), and the nuisances are formed analytically:
-\eqn{\hat r_{g,g'} = \exp(\hat h_g - \hat h_{g'})} and
-\eqn{1/\hat p_c = (1 + \sum_{c'} e^{\hat h_{c'}})/e^{\hat h_c}}. They are positive
-by construction, algebraically coherent across pairs
-(\eqn{\hat r_{g,g'}\,\hat r_{g',g''} = \hat r_{g,g''}}; implied shares add to one),
-and every fit's comparison group is the (large) never-treated pool. The first-step
-estimation-effect machinery COVERS the system fits: the M-estimator aux is packed
-against the JOINT stacked coefficient vector of the per-cohort ridge-logistic fits
-(block-diagonal joint Hessian, ridge included; the shared never-treated pool makes
-the blocks' scores correlated, captured by the stacked score), with the exact chain
-rules \eqn{\partial\hat r_{g,g'}/\partial\beta = \hat r\,(\psi\ \mathrm{in}\ g,\
-    -\psi\ \mathrm{in}\ g')} and the implied-share (softmax) Jacobian
-\eqn{\partial(1/\hat p_c)/\partial\beta_{c'} = (1/\hat p_c)(\hat p_{c'} -
-    \delta_{cc'})\,\psi}, so \code{estimation_effect} (ACH), \code{higher_order}, the
-inv-p weight-channel correction (\code{misspec_robust}), and
-\code{edid_perturbation_bootstrap()} all apply to the cross-cohort channels
-(finite-difference-oracled; the bootstrap draws one coefficient perturbation per
-shared system, not per entry).}
-\item{\code{"direct"}}{the legacy behavior: each cross-cohort ratio and each
-inverse propensity is fit by an independent per-target least-squares sieve
-(losses \eqn{\mathbb{E}_n[r^2 G_{g'} - 2 r G_g]} and
-\eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}). Both Gram matrices use only the
-\eqn{n_{g'}} comparison-cohort observations, so basis directions thin on \eqn{g'}
-explode: on real staggered designs this produced large NEGATIVE fitted "ratios"
-on sizable shares of the comparison cohort, \eqn{|r| > 10^4} tails, and fitted
-inverse propensities of order \eqn{10^8} against a true scale of \eqn{10^2} --
-even under healthy cohort-vs-never-treated overlap -- poisoning the cross-cohort
-moments, the \eqn{\Omega^*} variance prefactors, the efficient weights, and the
-overlap-trim masks. Retained for reproducing pre-fix results.}
-\item{\code{"exp"}}{per-target \emph{exponential-link Riesz regressions} within the
-paper's direct-loss framework: each ratio \eqn{r_{g,g'}} -- INCLUDING the
-never-treated ratio \eqn{r_{g,\infty}}, unlike \code{"coherent"} -- and each
-finite-cohort inverse propensity \eqn{1/p_{g'}} is an independently fitted
-\eqn{\exp(\psi^K(X)'\hat\beta)} on the same B-spline basis, so positivity holds by
-construction while the per-target structure of Eq. (4.1)-(4.2) is retained. The
-primary fitting criterion is the tailored convex loss
-\eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - (\psi'\beta) G_g]} (for \eqn{s}:
-\eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}), whose first-order condition
-is exact basis-mean balancing \eqn{\mathbb{E}_n[\psi \hat r G_{g'}] =
-    \mathbb{E}_n[\psi G_g]} and whose population minimizer is the log ratio (log inverse
-propensity) -- the same estimand as the paper's quadratic loss, on the log scale.
-Newton with step-halving, warm starts, and a scale-normalized ridge rescue for
-(rare) infeasible balancing. Crucially, the \code{estimation_effect} /
-\code{higher_order} / inv-p weight-channel / perturbation-bootstrap first-step
-corrections COVER every exp fit (no fallback-skipping): the M-estimator aux is
-returned in full, with the exp-link chain rule
-\eqn{\partial\hat r/\partial\beta = \hat r\,\psi} as the coefficient-perturbation
-direction, the tailored-loss score \eqn{\psi(G_{g'}\hat r - G_g)}, and Hessian
-\eqn{\mathbb{E}_n[\psi\psi' e^{\psi'\beta} G_{g'}]}. (Internal cross-check:
-\code{options(edid_exp_loss = "paper")} refits by the literal paper loss
-\eqn{\mathbb{E}_n[e^{2\psi'\beta} G_{g'} - 2 e^{\psi'\beta} G_g]} via quasi-Newton
-from the tailored solution; under correct specification the two agree.)}
+\item{\code{"exp"} (default)}{per-target \emph{exponential-link Riesz regressions}
+within the paper's direct-loss framework: each ratio \eqn{r_{g,g'}} -- INCLUDING
+the never-treated ratio \eqn{r_{g,\infty}} -- and each finite-cohort inverse
+propensity \eqn{1/p_{g'}} is an independently fitted \eqn{\exp(\psi^K(X)'\hat\beta)}
+on the same B-spline basis, so positivity holds by construction while the per-target
+structure of Eq. (4.1)-(4.2) is retained. The primary fitting criterion is the
+tailored convex loss \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - (\psi'\beta) G_g]}
+(for \eqn{s}: \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}), whose
+first-order condition is exact basis-mean balancing
+\eqn{\mathbb{E}_n[\psi \hat r G_{g'}] = \mathbb{E}_n[\psi G_g]} and whose population
+minimizer is the log ratio (log inverse propensity) -- the same estimand as the
+paper's quadratic loss, on the log scale. Newton with step-halving, warm starts,
+and a scale-normalized ridge rescue for (rare) infeasible balancing. Crucially, the
+\code{estimation_effect} / \code{higher_order} / inv-p weight-channel /
+perturbation-bootstrap first-step corrections COVER every exp fit (no
+fallback-skipping): the M-estimator aux is returned in full, with the exp-link chain
+rule \eqn{\partial\hat r/\partial\beta = \hat r\,\psi} as the
+coefficient-perturbation direction, the tailored-loss score
+\eqn{\psi(G_{g'}\hat r - G_g)}, and Hessian
+\eqn{\mathbb{E}_n[\psi\psi' e^{\psi'\beta} G_{g'}]} (finite-difference-oracled).
+(Internal cross-check: \code{options(edid_exp_loss = "paper")} refits by the literal
+paper loss \eqn{\mathbb{E}_n[e^{2\psi'\beta} G_{g'} - 2 e^{\psi'\beta} G_g]} via
+quasi-Newton from the tailored solution; under correct specification the two agree.)
+This is the recommended construction: positivity of every consumed ratio and exact
+basis-mean balancing make it robust where the legacy LS sieve degenerates, and a
+thin-cohort-share Monte Carlo confirmed materially better confidence-interval
+coverage than the (now removed) multinomial-logit alternative.}
+\item{\code{"direct"}}{the paper's literal linear construction, retained for
+forensics: each cross-cohort ratio and each inverse propensity is fit by an
+independent per-target least-squares sieve (losses
+\eqn{\mathbb{E}_n[r^2 G_{g'} - 2 r G_g]} and \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}).
+Both Gram matrices use only the \eqn{n_{g'}} comparison-cohort observations, so
+basis directions thin on \eqn{g'} explode: on real staggered designs this produced
+large NEGATIVE fitted "ratios" on sizable shares of the comparison cohort,
+\eqn{|r| > 10^4} tails, and fitted inverse propensities of order \eqn{10^8} against
+a true scale of \eqn{10^2} -- even under healthy cohort-vs-never-treated overlap --
+poisoning the cross-cohort moments, the \eqn{\Omega^*} variance prefactors, the
+efficient weights, and the overlap-trim masks. Use only to reproduce pre-fix
+results or the paper's exact quadratic-loss sieves.}
 }
 The never-treated inverse propensity \eqn{1/p_{NT}} is ALWAYS the paper's LS sieve
-(its comparison group is the large never-treated pool, the well-conditioned case),
-as is \eqn{r_{g,\infty}} under \code{"coherent"} and \code{"direct"} (under
-\code{"exp"} it is the exp-link fit, so \code{pt_assumption = "post"} fits move
-slightly under \code{"exp"} while remaining bitwise identical between
-\code{"coherent"} and \code{"direct"}). Self-comparison MOMENTS (and hence
-uniform-weight fits on own-cohort \code{moment_set}s) are identical between
-\code{"coherent"} and \code{"direct"}, while estimated-weight schemes on \eqn{H>1}
-cells may move slightly through the \eqn{1/p_g} variance prefactor of
-\eqn{\Omega^*}. All constructions are consistent nuisance estimators
-and the moment is Neyman-orthogonal in \eqn{r}, so the estimand, the
-influence-function structure, and first-order inference are unchanged; under EVERY
-\code{ratio_method} the \code{estimation_effect} / \code{higher_order} / inv-p
-weight-channel first-step corrections cover all estimated channels -- conditional
-means, never-treated, AND cross-cohort (under \code{"coherent"} via the joint
-stacked-system aux described above). The no-covariate path
-is bitwise invariant to \code{ratio_method}.}
+(its comparison group is the large never-treated pool, the well-conditioned case);
+under \code{"direct"} the never-treated ratio \eqn{r_{g,\infty}} is also the LS sieve,
+so \code{pt_assumption = "post"} fits differ between \code{"exp"} (exp-link
+\eqn{r_{g,\infty}}) and \code{"direct"} (LS \eqn{r_{g,\infty}}). All constructions are
+consistent nuisance estimators and the moment is Neyman-orthogonal in \eqn{r}, so the
+estimand, the influence-function structure, and first-order inference are unchanged;
+under EITHER \code{ratio_method} the \code{estimation_effect} / \code{higher_order} /
+inv-p weight-channel first-step corrections cover all estimated channels -- conditional
+means, never-treated, AND cross-cohort. The no-covariate path is bitwise invariant to
+\code{ratio_method}.}
 
 \item{nocov_shrink}{Logical scalar (default \code{TRUE}): Ledoit-Wolf shrinkage of the
 no-covariate moment covariance toward its i.i.d.-pole structure. On the no-covariate

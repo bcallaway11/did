@@ -1,9 +1,10 @@
 library(testthat)
 
 # ---------------------------------------------------------------------------
-# ratio_method = "exp": per-target exponential-link Riesz regressions.
+# ratio_method = "exp" (the covariate-path default): per-target exponential-link
+# Riesz regressions.
 #
-# The paper-compatible alternative to "coherent": every ratio r_{g,g'} (incl.
+# The paper-compatible direct-loss construction: every ratio r_{g,g'} (incl.
 # r_{g,Inf}) and every finite-cohort inverse propensity is exp(psi'beta) fit by
 # the tailored convex loss E_n[exp(psi'b) G_{g'} - (psi'b) G_g] (FOC = exact
 # basis-mean balancing), with FULL estimation-effect aux (chain rule
@@ -243,20 +244,22 @@ test_that("no-X fits are bitwise invariant to ratio_method = 'exp'; validation l
   expect_identical(f$args$ratio_method, "exp")
 })
 
-test_that("coherent fits are unchanged by the exp engine's presence (same code path, identical reruns)", {
+test_that("exp is the covariate-path default (explicit ratio_method='exp' reproduces the default fit; direct differs)", {
   df <- make_thin_cohort_panel_exp(n = 400L, seed = 3L, p_thin = 0.10)
-  f1 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2,
-                              aggregate = "none", cband = FALSE, seed = 1))
-  f2 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2,
-                              aggregate = "none", cband = FALSE, seed = 1,
-                              ratio_method = "coherent"))
-  expect_identical(f1$att_gt$att, f2$att_gt$att)
-  expect_identical(f1$att_gt$se,  f2$att_gt$se)
-  # and exp genuinely differs from coherent on the covariate path (it is a different estimator)
-  f3 <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2,
-                              aggregate = "none", cband = FALSE, seed = 1,
-                              ratio_method = "exp"))
-  expect_false(isTRUE(all.equal(f1$att_gt$att, f3$att_gt$att, tolerance = 1e-12)))
+  # the default fit on the covariate path uses ratio_method = "exp" (the shipped default)
+  f_default <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2,
+                                     aggregate = "none", cband = FALSE, seed = 1))
+  f_exp     <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2,
+                                     aggregate = "none", cband = FALSE, seed = 1,
+                                     ratio_method = "exp"))
+  expect_identical(f_default$ratio_method, "exp")
+  expect_identical(f_default$att_gt$att, f_exp$att_gt$att)
+  expect_identical(f_default$att_gt$se,  f_exp$att_gt$se)
+  # and exp genuinely differs from the paper's direct LS construction (it is a different estimator)
+  f_dir <- suppressWarnings(edid(df, "y", "id", "t", "g", xformla = ~ x1 + x2,
+                                 aggregate = "none", cband = FALSE, seed = 1,
+                                 ratio_method = "direct"))
+  expect_false(isTRUE(all.equal(f_default$att_gt$att, f_dir$att_gt$att, tolerance = 1e-12)))
 })
 
 test_that("ratio-targeted trimming and the keep-mask threading apply identically to exp fits", {

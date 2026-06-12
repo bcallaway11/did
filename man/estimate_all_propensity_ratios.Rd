@@ -12,7 +12,7 @@ estimate_all_propensity_ratios(
   K_folds,
   fold_id,
   return_aux = FALSE,
-  ratio_method = c("direct", "coherent", "exp")
+  ratio_method = c("direct", "exp")
 )
 }
 \arguments{
@@ -29,13 +29,12 @@ estimate_all_propensity_ratios(
 
 \item{fold_id}{integer vector length n: pre-generated fold assignments}
 
-\item{ratio_method}{\code{"direct"} (default; legacy per-pair LS sieve for
-every comparison), \code{"coherent"} (multinomial-logit sieve for the
-cross-cohort ratios; \code{edid()}'s default), or \code{"exp"}
-(per-target exponential-link Riesz regressions for every comparison,
-full estimation-effect aux). The function-level default stays
-\code{"direct"} so existing direct callers and validation harnesses
-are unchanged; \code{fit_edid_cells} passes the user's choice explicitly.}
+\item{ratio_method}{\code{"direct"} (default at the function level; legacy
+per-pair LS sieve for every comparison) or \code{"exp"} (per-target
+exponential-link Riesz regressions for every comparison, full
+estimation-effect aux; \code{edid()}'s default). The function-level default
+stays \code{"direct"} so existing direct callers and validation harnesses are
+unchanged; \code{fit_edid_cells} passes the user's choice explicitly.}
 }
 \value{
 named list of n-vectors, keyed by \code{as.character(gp)}
@@ -51,39 +50,18 @@ For each unique \code{gp} in \code{pairs}, produces a full-sample n-vector of
 never-treated pool, the well-conditioned case). For \emph{finite} comparison
 cohorts \eqn{g' \ne g} (the cross-cohort pairs of the PT-All moment set):
 \describe{
-\item{\code{"coherent"}}{ratios come from a common multinomial-logit sieve
-system: per-cohort ridge-penalized logistic fits
-\eqn{\hat h_c = \log(p_c/p_{NT})} (cohort vs never-treated, shared
-full-sample basis; \code{fit_coherent_logodds_edid}), combined analytically
-as \eqn{\hat r_{g,g'} = \exp(\hat h_g - \hat h_{g'})}. Positive by
-construction and algebraically coherent across pairs; avoids the
-thin-denominator Gram explosion of the per-pair LS sieve (whose quadratic
-loss controls \eqn{r} only on the \eqn{n_{g'}} comparison points). Under
-\code{return_aux = TRUE} every cross-cohort entry carries FULL M-estimator
-aux against the JOINT stacked system (\code{coherent_system_aux_edid}):
-\code{B_test} = the exact chain rule \eqn{\partial r/\partial\beta}
-(\eqn{+r\psi} in the g block, \eqn{-r\psi} in the g' block),
-\code{score_mat} = the stacked per-cohort ridge-logistic scores (the shared
-never-treated pool makes the blocks' scores correlated, which the stacking
-captures), \code{H_inv} = the block-diagonal joint Hessian inverse (ridge
-included), plus a \code{coef_id} identifying the shared coefficient vector
-so consumers that draw or dedup per coefficient block (the perturbation
-bootstrap, \code{sigma_quad_edid}) treat entries sharing the system
-consistently. The ACH / higher-order / gmm / bootstrap first-step
-corrections therefore COVER the cross-cohort channels (no
-fallback-skipping; entries fall back only when their g or g' block itself
-fell back or did not converge).}
-\item{\code{"direct"}}{the legacy independent per-pair LS sieve for every
-\code{gp} (byte-identical previous behavior).}
 \item{\code{"exp"}}{the exponential-link Riesz regression of
 \code{estimate_propensity_ratio_exp_edid} for EVERY \code{gp} -- including the
-never-treated pool, unlike \code{"coherent"}: each ratio is an independent
-per-target fit \eqn{\hat r = \exp(\psi'\hat\beta)} of the tailored convex
-balancing loss (positive by construction, paper-loss-compatible). Under
+never-treated pool: each ratio is an independent per-target fit
+\eqn{\hat r = \exp(\psi'\hat\beta)} of the tailored convex balancing loss
+(positive by construction, paper-loss-compatible). Under
 \code{return_aux = TRUE} every entry carries FULL M-estimator aux (chain-rule
 Jacobian \code{B_test}, tailored score, Hessian inverse) with
 \code{is_fallback = FALSE}: the ACH / higher-order / gmm / bootstrap first-step
-corrections COVER the cross-cohort channels (no fallback-skipping).}
+corrections COVER the cross-cohort channels (no fallback-skipping). This is
+\code{edid()}'s default.}
+\item{\code{"direct"}}{the paper's literal per-pair LS sieve for every
+\code{gp} (byte-identical legacy behavior; retained for forensics).}
 }
 }
 \keyword{internal}

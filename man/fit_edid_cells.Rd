@@ -24,7 +24,7 @@ fit_edid_cells(
   moment_set = NULL,
   min_pair_units = 5L,
   bs_df = 4L,
-  ratio_method = c("coherent", "direct", "exp"),
+  ratio_method = c("exp", "direct"),
   nocov_shrink = TRUE
 )
 }
@@ -54,11 +54,11 @@ applied per target cohort via \code{apply_thin_cohort_guard_edid()} (see \code{\
 \item{bs_df}{integer >= 3 (default \code{4L}) or \code{"ic"}: B-spline df for
 the sieve nuisances, or the per-fit IC selection (see \code{\link{edid}})}
 
-\item{ratio_method}{\code{"coherent"} (default), \code{"direct"}, or \code{"exp"}:
-construction of the propensity nuisances on the covariate path (see \code{\link{edid}}
-and \code{estimate_all_propensity_ratios}); \code{"direct"} reproduces the legacy
-per-pair LS sieve bit-for-bit, \code{"exp"} fits per-target exponential-link Riesz
-regressions with full estimation-effect integration}
+\item{ratio_method}{\code{"exp"} (default) or \code{"direct"}: construction of the
+propensity nuisances on the covariate path (see \code{\link{edid}} and
+\code{estimate_all_propensity_ratios}); \code{"exp"} fits per-target exponential-link
+Riesz regressions with full estimation-effect integration, \code{"direct"} reproduces
+the paper's legacy per-pair LS sieve bit-for-bit (retained for forensics)}
 
 \item{nocov_shrink}{logical (default \code{TRUE}): on the no-covariate PT-All
 path, shrink each cell's estimated moment covariance toward its

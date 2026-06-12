@@ -527,13 +527,16 @@ print.edid_refit_bootstrap <- function(x, digits = 4, ...) {
 #' (\mathrm{score}_k'\mathrm{score}_k)\, H_k^{-1}} from the stored M-estimator
 #' pieces, draws \eqn{\theta_k^* \sim N(\hat\theta_k, \widehat{V}_{\theta,k})}
 #' \emph{independently across distinct coefficient blocks} (the validated
-#' "INDEP" variant; the joint draw is dominated by it) -- nuisance entries that
-#' share ONE underlying fitted coefficient vector, like the
-#' \code{ratio_method = "coherent"} ratios and inverse propensities that all
-#' read the same joint multinomial-logit system, are dedup'd on the aux's
-#' \code{coef_id} and share a single draw per replication, mapped into each
-#' entry through its own chain-rule Jacobian (independent draws there would
-#' break the exact cross-entry coupling of the shared system) -- recomputes the
+#' "INDEP" variant; the joint draw is dominated by it) -- any nuisance entries
+#' that share ONE underlying fitted coefficient vector (identified by a common
+#' \code{coef_id} on the aux) are dedup'd and share a single draw per replication,
+#' mapped into each entry through its own chain-rule Jacobian (independent draws
+#' for a shared block would break the exact cross-entry coupling). Under the
+#' shipped engines (\code{"exp"}, \code{"direct"}) every ratio / inverse-propensity
+#' fit is an independent per-target regression, so each entry has its own
+#' \code{coef_id} and the dedup is a no-op that reproduces the per-entry draw
+#' stream; the dedup is retained as correct general infrastructure for any
+#' shared-coefficient nuisance. -- recomputes the
 #' doubly-robust generated outcomes nonlinearly at the perturbed predictions
 #' \eqn{\hat\nu + B_k(\theta_k^* - \hat\theta_k)} with the weights \eqn{W} and
 #' the overlap-trim masks held FIXED at the original fit, and reads off the
@@ -686,7 +689,7 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
   bs_df_fit  <- args$bs_df %||% 4L
   # Cross-cohort ratio construction of the fit (the rebuild must match it exactly; the
   # exactness guard below would otherwise reject). Snapshot fallback = edid()'s default.
-  ratio_method_fit <- fit$ratio_method %||% args$ratio_method %||% "coherent"
+  ratio_method_fit <- fit$ratio_method %||% args$ratio_method %||% "exp"
   yname  <- args$yname
   if (is.null(yname)) stop("Could not recover `yname` from the fit's call.", call. = FALSE)
   alpha      <- fit$alpha %||% 0.05
@@ -868,15 +871,17 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
   #
   # COEFFICIENT-BLOCK identity (cid). Independent per-target fits draw one
   # Gaussian coefficient vector each (the validated "INDEP" variant) -- their cid
-  # defaults to the entry's own name, preserving the legacy draw stream bit for
-  # bit. Entries that SHARE one underlying fitted coefficient vector -- the
-  # ratio_method = "coherent" entries, whose r_{g,g'} all read the SAME joint
-  # multinomial-logit system (aux field coef_id) -- must share ONE draw per
-  # replication: independent draws per entry would break the perfect cross-entry
-  # coupling (e.g. dr_{g,g'} and dr_{g',g} move reciprocally through the shared
-  # blocks) and mis-state the perturbation variance of every aggregate. The
-  # draws are therefore dedup'd on cid: one N(0, V_theta) coefficient draw per
-  # DISTINCT cid, mapped into each entry through ITS OWN chain-rule Jacobian B.
+  # defaults to the entry's own name, preserving the per-entry draw stream bit for
+  # bit. Any entries that SHARE one underlying fitted coefficient vector (a common
+  # aux coef_id) must instead share ONE draw per replication: independent draws per
+  # entry would break the perfect cross-entry coupling (e.g. reciprocal nuisances
+  # that move together through the shared block) and mis-state the perturbation
+  # variance of every aggregate. The draws are therefore dedup'd on cid: one
+  # N(0, V_theta) coefficient draw per DISTINCT cid, mapped into each entry through
+  # ITS OWN chain-rule Jacobian B. Under the shipped engines ("exp", "direct") every
+  # fit is independent per target, so each cid is unique and the dedup is a no-op;
+  # it is kept as correct general infrastructure (exercised by a synthetic
+  # shared-block unit test in test-edid-boot.R).
   infos <- list()
   for (g in tg) {
     gb <- gcache[[as.character(g)]]
@@ -922,9 +927,9 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
     # one independent Gaussian coefficient draw per DISTINCT coefficient block (cid; "INDEP"
     # across genuinely independent fits): the SAME draw enters every cell -- and every
     # ENTRY -- that consumes that block, so both the cross-cell correlation needed by the
-    # aggregations and the cross-entry coupling of shared-system (coherent) nuisances are
-    # inherited coherently. Draws happen at the first encounter of each cid in the fixed
-    # info_names order, so fits with no shared blocks reproduce the legacy stream exactly.
+    # aggregations and the cross-entry coupling of any shared-coefficient nuisances are
+    # inherited consistently. Draws happen at the first encounter of each cid in the fixed
+    # info_names order, so fits with no shared blocks reproduce the per-entry stream exactly.
     pr_pert <- lapply(gcache, function(gb) gb$prop_ratios)
     cm_pert <- mcache_pred
     delta <- list()                                # cid -> the replication's coefficient draw

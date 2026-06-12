@@ -187,8 +187,10 @@ test_that("Daleckii-Krein coupling is the exact derivative of the FIXED-floor in
 # whose ratio-targeted mask keys on r_{3,4}(X) = p_3/p_4, huge everywhere cohort 3 lives -- retain no
 # treated mass and must be DROPPED, not kept as zero columns (the pre-fix behavior halved the cell
 # ATT: ~0.5 when the truth is 1.0). (2026-06: the masks are ratio-only for finite cohorts and the
-# default ratios are the coherent multinomial system, so the supports must be genuinely disjoint for
-# the pair to die; the old s-based mask killed it through the 1/p_4 scale alone.)
+# default ratios are the exp-link Riesz fits, so the supports must be genuinely disjoint for the
+# pair to die; the old s-based mask killed it through the 1/p_4 scale alone. This test deliberately
+# uses ratio_method = "direct" -- the LS sieve's extreme fitted values reliably kill the
+# disjoint-support cross pair at trim_level = 3, exercising the construction-agnostic drop machinery.)
 make_deadpair_panel <- function(n2 = 600, Tt = 5, seed = 1) {
   set.seed(seed)
   x2 <- rnorm(n2)
@@ -209,8 +211,8 @@ test_that("dead pairs are dropped (not zero-padded): post ATT recovers ~1.0 with
   df <- make_deadpair_panel()
   # ratio_method = "direct": this test guards the DEAD-PAIR MACHINERY (drop vs zero-pad), which is
   # construction-agnostic; the direct LS ratio's extreme fitted values reliably kill the disjoint-support
-  # cross pair at trim_level = 3 on this single seed. Under the default coherent ratios the ridge-logistic
-  # sieve (like any smooth sieve) cannot represent this DGP's DISCONTINUOUS log-odds jump and under-
+  # cross pair at trim_level = 3 on this single seed. Under the default exp-link ratios the smooth sieve
+  # (like any smooth sieve) cannot represent this DGP's DISCONTINUOUS log-odds jump and under-
   # estimates the contrast near the boundary, so a sliver of treated mass stays kept -- the pair is then
   # legitimately alive-but-trimmed (the cell-common-overlap machinery, tested below, handles that case).
   res <- .collect_warnings_id(
@@ -275,11 +277,11 @@ test_that("binding trim with heterogeneous tau(X): all weight schemes target the
   cross <- pairs[is.finite(pairs$gp) & pairs$gp != g, , drop = FALSE]
   if (nrow(cross) > 0L) pfn <- unique(rbind(pfn, data.frame(gp = Inf, tpre = unique(cross$tpre))))
   fid <- rep(1L, panel$n)
-  # mirror the fit's default construction exactly: coherent nuisances + the shared ratio-targeted mask
+  # mirror the fit's default construction exactly: exp-link nuisances + the shared ratio-targeted mask
   pr <- suppressWarnings(estimate_all_propensity_ratios(panel, g, pfn, bs_df = 4L, K_folds = 1L,
-                                                        fold_id = fid, ratio_method = "coherent"))
+                                                        fold_id = fid, ratio_method = "exp"))
   ip <- suppressWarnings(estimate_all_inverse_propensities(panel, g, pairs, bs_df = 4L, K_folds = 1L,
-                                                           fold_id = fid, ratio_method = "coherent"))
+                                                           fold_id = fid, ratio_method = "exp"))
   trim_keep <- build_trim_keep_edid(pr, ip, tl, panel$n)
   ti <- edid_cell_trim_structure(panel, g, pairs, trim_keep, "all")
   expect_true(any(ti$keep_common < 0.5))                  # the trim binds

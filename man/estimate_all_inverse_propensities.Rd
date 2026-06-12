@@ -12,7 +12,7 @@ estimate_all_inverse_propensities(
   K_folds,
   fold_id,
   return_aux = FALSE,
-  ratio_method = c("direct", "coherent", "exp")
+  ratio_method = c("direct", "exp")
 )
 }
 \arguments{
@@ -28,10 +28,10 @@ estimate_all_inverse_propensities(
 
 \item{fold_id}{integer vector length n: pre-generated fold assignments}
 
-\item{ratio_method}{\code{"direct"} (default; legacy LS sieve for every group),
-\code{"coherent"} (multinomial-logit system for finite cohorts; \code{edid()}'s
-default), or \code{"exp"} (exponential-link Riesz regression for finite cohorts,
-full estimation-effect aux). The never-treated \eqn{1/p_{NT}} is ALWAYS the LS sieve.}
+\item{ratio_method}{\code{"direct"} (default at the function level; legacy LS sieve
+for every group) or \code{"exp"} (exponential-link Riesz regression for finite
+cohorts, full estimation-effect aux; \code{edid()}'s default). The never-treated
+\eqn{1/p_{NT}} is ALWAYS the LS sieve.}
 }
 \value{
 named list of n-vectors, keyed by \code{as.character(group)}
@@ -45,33 +45,18 @@ a full-sample n-vector of \eqn{\hat s_{g'}(X_i) = 1/\hat p_{g'}(X_i)}.
 \strong{Inverse-propensity construction (\code{ratio_method}).} The never-treated
 inverse propensity \eqn{1/p_{NT}} is ALWAYS the LS sieve of
 \code{estimate_inverse_propensity_edid} (its Gram uses the large never-treated
-pool). For FINITE cohorts under \code{"coherent"}, the inverse propensities come
-from the same multinomial-logit sieve system as the cross-cohort ratios: with
-\eqn{\hat h_c = \log(p_c/p_{NT})} fit per cohort vs the never-treated pool,
-\deqn{1/\hat p_c(X) = \big(1 + \sum_{c'} e^{\hat h_{c'}(X)}\big) / e^{\hat h_c(X)}}
-(the sum runs over ALL treated cohorts in the panel, so the implied shares add to
-one). The legacy per-cohort LS sieve (\code{"direct"}) minimizes
-\eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}, whose Gram also uses only the \eqn{n_{g'}}
+pool). The paper's per-cohort LS sieve (\code{"direct"}) minimizes
+\eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}, whose Gram uses only the \eqn{n_{g'}}
 cohort observations: for small cohorts it is the s-channel instance of the same
 thin-denominator explosion as the direct ratio fits (audited fitted \eqn{1/p}
 of order \eqn{10^8} against a true scale of \eqn{10^2}, ~half the sample clamped
-at 0), which poisons every Omega* prefactor it enters. Under \code{"coherent"}
-the finite-cohort aux entries carry FULL M-estimator pieces against the JOINT
-stacked multinomial system: \code{B_test} is the exact implied-share (softmax)
-Jacobian \eqn{\partial(1/p_c)/\partial\beta_{c'} = (1/p_c)(p_{c'} -
-\delta_{cc'})\,\psi} per cohort block, \code{score_mat}/\code{H_inv} the joint
-stacked score and block-diagonal Hessian inverse shared with the ratio entries
-(same \code{coef_id}), and \code{link = "coherent"} flags the
-prediction-scale Jacobian for the link-aware FD step -- so the analytic inv-p
-weight-channel correction COVERS every coherent channel (no fallback-skipping;
-an entry falls back only when its own cohort block fell back or did not
-converge). Under \code{"exp"}, each FINITE cohort's inverse
-propensity is instead the per-target exponential-link Riesz regression of
-\code{estimate_inverse_propensity_exp_edid} (tailored loss
-\eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}, strictly positive fit), and the
-aux entries carry FULL M-estimator pieces with \code{is_fallback = FALSE}, so the
-analytic inv-p weight-channel correction covers every channel (no skipping).
-PT-Post fits are byte-invariant to this choice:
+at 0), which poisons every Omega* prefactor it enters. Under \code{"exp"} (the
+default), each FINITE cohort's inverse propensity is instead the per-target
+exponential-link Riesz regression of \code{estimate_inverse_propensity_exp_edid}
+(tailored loss \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}, strictly
+positive fit), and the aux entries carry FULL M-estimator pieces with
+\code{is_fallback = FALSE}, so the analytic inv-p weight-channel correction covers
+every channel (no skipping). PT-Post fits are byte-invariant to this choice:
 their single moment uses no \eqn{s}, their weight is identically 1
 (\eqn{H = 1}), and the \eqn{H = 1} weight-channel coupling is exactly zero.
 }

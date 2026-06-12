@@ -1138,12 +1138,11 @@ compute_invp_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios
     if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
     base <- inv_propensities[[key]]; B <- a$B_test; spos <- a$s_pos
     # Step size: for the LINEAR sieve, B columns are O(1) basis values and the absolute step
-    # eps_rel*(1+max|s|) probes the coefficient scale. For the EXP link (and the coherent
-    # softmax map, whose Jacobian s*(p - delta)*psi likewise carries the prediction scale),
-    # B_test is already the chain-rule Jacobian, so the coefficient step is eps_rel itself
-    # (a 1e-6 RELATIVE perturbation of s along the Jacobian column); the absolute heuristic
-    # would perturb s by O(s) at large-s units and destroy the difference quotient.
-    eps  <- if (identical(a$link, "exp") || identical(a$link, "coherent")) eps_rel
+    # eps_rel*(1+max|s|) probes the coefficient scale. For the EXP link, B_test is already the
+    # chain-rule Jacobian, so the coefficient step is eps_rel itself (a 1e-6 RELATIVE
+    # perturbation of s along the Jacobian column); the absolute heuristic would perturb s by
+    # O(s) at large-s units and destroy the difference quotient.
+    eps  <- if (identical(a$link, "exp")) eps_rel
             else eps_rel * (1 + max(abs(base)))
     Gamma <- vapply(seq_len(ncol(B)), function(j) {
       ip <- inv_propensities; ip[[key]] <- base + eps * B[, j] * spos       # perturb where s>0 (= dpref/dbeta support)

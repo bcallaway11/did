@@ -83,13 +83,16 @@ variability \emph{without re-solving anything}: for each first-step nuisance
 (\mathrm{score}_k'\mathrm{score}_k)\, H_k^{-1}} from the stored M-estimator
 pieces, draws \eqn{\theta_k^* \sim N(\hat\theta_k, \widehat{V}_{\theta,k})}
 \emph{independently across distinct coefficient blocks} (the validated
-"INDEP" variant; the joint draw is dominated by it) -- nuisance entries that
-share ONE underlying fitted coefficient vector, like the
-\code{ratio_method = "coherent"} ratios and inverse propensities that all
-read the same joint multinomial-logit system, are dedup'd on the aux's
-\code{coef_id} and share a single draw per replication, mapped into each
-entry through its own chain-rule Jacobian (independent draws there would
-break the exact cross-entry coupling of the shared system) -- recomputes the
+"INDEP" variant; the joint draw is dominated by it) -- any nuisance entries
+that share ONE underlying fitted coefficient vector (identified by a common
+\code{coef_id} on the aux) are dedup'd and share a single draw per replication,
+mapped into each entry through its own chain-rule Jacobian (independent draws
+for a shared block would break the exact cross-entry coupling). Under the
+shipped engines (\code{"exp"}, \code{"direct"}) every ratio / inverse-propensity
+fit is an independent per-target regression, so each entry has its own
+\code{coef_id} and the dedup is a no-op that reproduces the per-entry draw
+stream; the dedup is retained as correct general infrastructure for any
+shared-coefficient nuisance. -- recomputes the
 doubly-robust generated outcomes nonlinearly at the perturbed predictions
 \eqn{\hat\nu + B_k(\theta_k^* - \hat\theta_k)} with the weights \eqn{W} and
 the overlap-trim masks held FIXED at the original fit, and reads off the

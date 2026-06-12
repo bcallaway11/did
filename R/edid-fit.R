@@ -23,11 +23,11 @@
 #'   applied per target cohort via \code{apply_thin_cohort_guard_edid()} (see \code{\link{edid}})
 #' @param bs_df integer >= 3 (default \code{4L}) or \code{"ic"}: B-spline df for
 #'   the sieve nuisances, or the per-fit IC selection (see \code{\link{edid}})
-#' @param ratio_method \code{"coherent"} (default), \code{"direct"}, or \code{"exp"}:
-#'   construction of the propensity nuisances on the covariate path (see \code{\link{edid}}
-#'   and \code{estimate_all_propensity_ratios}); \code{"direct"} reproduces the legacy
-#'   per-pair LS sieve bit-for-bit, \code{"exp"} fits per-target exponential-link Riesz
-#'   regressions with full estimation-effect integration
+#' @param ratio_method \code{"exp"} (default) or \code{"direct"}: construction of the
+#'   propensity nuisances on the covariate path (see \code{\link{edid}} and
+#'   \code{estimate_all_propensity_ratios}); \code{"exp"} fits per-target exponential-link
+#'   Riesz regressions with full estimation-effect integration, \code{"direct"} reproduces
+#'   the paper's legacy per-pair LS sieve bit-for-bit (retained for forensics)
 #' @param nocov_shrink logical (default \code{TRUE}): on the no-covariate PT-All
 #'   path, shrink each cell's estimated moment covariance toward its
 #'   i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
@@ -56,7 +56,7 @@ fit_edid_cells <- function(
   estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
   estimation_effect_explicit = TRUE, higher_order_explicit = TRUE, misspec_robust_explicit = TRUE,
   trim_level = Inf, mc_cores = getOption("edid_mc_cores", 1L), moment_set = NULL,
-  min_pair_units = 5L, bs_df = 4L, ratio_method = c("coherent", "direct", "exp"), nocov_shrink = TRUE
+  min_pair_units = 5L, bs_df = 4L, ratio_method = c("exp", "direct"), nocov_shrink = TRUE
 ) {
   weight_method <- match.arg(weight_method)
   ratio_method  <- match.arg(ratio_method)
