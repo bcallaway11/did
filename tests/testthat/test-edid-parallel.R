@@ -12,6 +12,15 @@
 test_that("cores > 1 is bit-identical to the serial path (att / se / EIF)", {
   skip_on_cran()
   skip_on_os("windows")          # mclapply forking is unavailable on Windows; cores is ignored there
+  # On macOS with an Accelerate (vecLib) BLAS the fork path is unsafe and edid() now
+  # downgrades cores > 1 to serial (a one-time message), so cores = 2 would not actually
+  # fork here -- the comparison would be a trivial serial-vs-serial check. Skip so the
+  # fork-bit-identity guard runs only where forking is safe (Linux CI), where it genuinely
+  # exercises the parallel::mclapply path it is meant to protect. (Override exists:
+  # options(edid_allow_fork_blas = TRUE), but forcing the fork here is the very segfault
+  # the guard prevents.)
+  skip_if(.edid_fork_blas_unsafe(),
+          "fork-unsafe BLAS (macOS Accelerate): cores > 1 serializes, so this would not test the fork path")
   data(mpdta, package = "did")
   run <- function(k) {
     set.seed(7)
@@ -28,6 +37,8 @@ test_that("cores > 1 is bit-identical to the serial path (att / se / EIF)", {
 test_that("the edid_mc_cores option still works as a session-wide default for cores", {
   skip_on_cran()
   skip_on_os("windows")
+  skip_if(.edid_fork_blas_unsafe(),
+          "fork-unsafe BLAS (macOS Accelerate): cores > 1 serializes (see the bit-identity test)")
   data(mpdta, package = "did")
   old <- options(edid_mc_cores = 2L)
   on.exit(options(old))

@@ -458,6 +458,18 @@ data.frame with one row per cohort having fewer than \code{min_pair_units} units
 just-identified moment), \code{excised_comparison} (its cross-cohort pairs were removed
 from other cohorts' cells). Affected cells additionally carry
 \code{$cells[[k]]$thin_cohort_degraded = TRUE}.}
+\item{\code{diagnostics}}{A list of stability read-outs (informational; computed from
+conditions already detected during fitting, so it changes no estimate). Elements:
+\code{n_extreme_ratio} / \code{n_psi_unstable} / \code{n_pairs_dropped} / \code{n_fulltrim}
+(the same counts the one-shot fit warnings report); \code{net_hedge_mass} /
+\code{gross_hedge_mass} (mean over post cells of the cross-cohort moment mass, signed vs
+absolute) and \code{net_hedge_flag} (the broken-fit red flag, \code{TRUE} when net mass
+\eqn{\ge} the calibrated threshold and \eqn{\approx} gross); \code{min_finite_cohort};
+\code{small_cohorts} (finite cohorts in \code{[min_pair_units, 36)} flagged by the
+thin-cohort radar, or \code{NULL}); \code{cohort_sizes}; \code{use_cov_path}; and
+\code{unstable}, the single summary the Section-5 toolkit's broken-leg guards key on
+(\code{TRUE} when extreme ratios entered, the weight channel was not a credible influence
+function, or the cross-cohort hedges carry the estimand).}
 \item{\code{bstrap}}{Logical: whether the multiplier bootstrap was requested. \code{bstrap = TRUE}
 with \code{cband_method} left at its default selects the multiplier bootstrap, so the cell SEs and
 the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} / \code{\link[did]{aggte}});
@@ -509,6 +521,22 @@ shrinkage intensity of the pointwise \eqn{\hat\Omega^*(X_i)} toward \eqn{\bar\Om
 disables shrinkage; a value in \eqn{[0,1]} fixes the intensity.}
 \item{\code{edid_eig_tol}}{Numeric, or \code{NA} (default) for the rate-based relative eigenvalue floor
 \eqn{n^{-a}}. A positive value sets the floor directly (condition-number cap \eqn{= 1/}\code{tol}).}
+\item{\code{edid_allow_fork_blas}}{Logical (default \code{FALSE}). On macOS with an Apple Accelerate
+(vecLib) BLAS -- which is not fork-safe -- \code{cores > 1} is automatically downgraded to serial
+(with a one-time message), because forked workers can segfault inside BLAS calls and silently drop
+results. Set \code{TRUE} to force the fork path anyway (e.g. once a fork-safe BLAS such as OpenBLAS
+is linked). No effect off macOS or on a non-Accelerate BLAS. Does not change any number; it only
+governs parallelism (the serial and parallel paths are bit-identical).}
+\item{\code{edid_auto_excise_unstable_pairs}}{Logical (default \code{FALSE}). When \code{TRUE}, the
+covariate-path estimability auto-guard excises a cross-cohort comparison pair whose fitted propensity
+ratio \eqn{r_{g,g'}(X)} remains extreme (\eqn{|r| > 100}) on the units surviving overlap trimming, or
+that loses essentially all its kept mass -- the unestimable cross moments that blow up the with-X
+efficient fit on thin / continuous-covariate designs. This generalizes \code{moment_set = "own"}
+(which drops \emph{all} cross-cohort pairs a priori) to the offending pairs only; self pairs and the
+never-treated comparison are never excised, so the surviving cells estimate \eqn{ATT(g,t)} from their
+healthy moments and a named warning lists what was dropped. \strong{Changes the point estimate where
+it fires} -- it is OFF by default so the standard paths are byte-identical, and it acts only on the
+genuinely degenerate covariate fits it is designed to repair.}
 }
 Other \code{edid_*} options are internal development / diagnostic hooks (e.g. \code{edid_fixed_weights},
 \code{edid_fixed_wpw}, \code{edid_store_psiomega}, \code{edid_psiomega_fd}) and are unsupported.

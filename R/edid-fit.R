@@ -85,7 +85,15 @@ fit_edid_cells <- function(
   # CONTINUOUS columns drive that rate: binary dummies (<= 2 distinct values after the
   # model.matrix expansion) are discrete cells the kernel matches exactly in the limit
   # (no bandwidth shrinkage along them), so they are excluded from d.
-  if (weight_method == "efficient" && use_cov_path) {
+  #
+  # Suppressed under pt_assumption = "post": every cell is then JUST-IDENTIFIED (the
+  # single never-treated, base-period-(g-1) moment), so the over-identifying efficient
+  # weights Omega*(X) are never formed and their curse-of-dimensionality collapse is
+  # moot -- the PT-Post estimator is the same regardless of weight_scheme. Warning the
+  # user that the efficient weights "collapse toward uniform" on a fit that uses no
+  # such weights is a false alarm (Bailey-GB report: it fires on the just-identified
+  # PT-Post-X fit, where it is purely noise).
+  if (weight_method == "efficient" && use_cov_path && !identical(pt_assumption, "post")) {
     X_cov <- panel_obj$covariate_matrix
     d_cov <- sum(vapply(seq_len(ncol(X_cov)),
                         function(j) length(unique(X_cov[, j])) > 2L, logical(1L)))
@@ -292,7 +300,8 @@ fit_edid_cells <- function(
     pairs_g <- guard_g$pairs
     gb <- list(pairs = pairs_g, prop_ratios = NULL, r_aux = NULL, inv_propensities = NULL,
                trim_keep = NULL, pairs_for_nuisance = NULL, n_extreme = 0L,
-               thin_degraded = guard_g$degraded, thin_excised_gp = guard_g$excised_gp)
+               thin_degraded = guard_g$degraded, thin_excised_gp = guard_g$excised_gp,
+               ratio_excised_gp = numeric(0L))
     if (nrow(pairs_g) > 0L && use_cov_path) {
       pfn <- pairs_g
       self_cmp <- is.finite(pfn$gp) & (pfn$gp == g); if (any(self_cmp)) pfn$gp[self_cmp] <- Inf
@@ -324,6 +333,37 @@ fit_edid_cells <- function(
       }
       gb$trim_keep <- build_trim_keep_edid(gb$prop_ratios, gb$inv_propensities,
                                            trim_level, panel_obj$n)
+
+      # Estimability auto-guard (covariate path; OPT-IN via
+      # options(edid_auto_excise_unstable_pairs = TRUE), default FALSE so the byte-identical
+      # paths are untouched). Generalizes moment_set = "own": instead of dropping ALL
+      # cross-cohort pairs a priori, it excises ONLY the cross-cohort pairs whose propensity
+      # RATIO is still extreme on the KEPT (post-trim) units -- the poisoned moments that
+      # blow up the with-X efficient fit (Bailey-GB full-skeleton +671; the cross pairs
+      # require cohort-vs-cohort propensities on thin cohorts that are unestimable). Self
+      # pairs (gp == g) and the never-treated pair (gp = Inf) are NEVER excised (they are the
+      # just-identified PT-Post moment and the conservative anchor). Recorded in
+      # gb$ratio_excised_gp so the post-loop bookkeeping can emit a named warning.
+      if (isTRUE(getOption("edid_auto_excise_unstable_pairs", FALSE)) &&
+          identical(pt_assumption, "all") && nrow(gb$pairs) > 0L) {
+        rex <- .edid_ratio_unstable_pairs(gb$pairs, g, gb$prop_ratios, gb$trim_keep)
+        if (length(rex$drop_gp) > 0L) {
+          keep_rows <- !(is.finite(gb$pairs$gp) & gb$pairs$gp %in% rex$drop_gp)
+          gb$pairs <- gb$pairs[keep_rows, , drop = FALSE]
+          rownames(gb$pairs) <- NULL
+          gb$ratio_excised_gp <- rex$drop_gp
+          # Rebuild the nuisance pair set + masks on the surviving pairs so no excised pair
+          # contributes to weights/moments (the nuisances themselves are unchanged for the
+          # survivors -- same per-target fits -- so the kept pairs are byte-identical to the
+          # moment_set-restricted fit).
+          pfn2 <- gb$pairs
+          self2 <- is.finite(pfn2$gp) & (pfn2$gp == g); if (any(self2)) pfn2$gp[self2] <- Inf
+          cross2 <- gb$pairs[is.finite(gb$pairs$gp) & gb$pairs$gp != g, , drop = FALSE]
+          if (nrow(cross2) > 0L)
+            pfn2 <- unique(rbind(pfn2, data.frame(gp = Inf, tpre = unique(cross2$tpre))))
+          gb$pairs_for_nuisance <- pfn2
+        }
+      }
     }
     gb
   }
@@ -386,6 +426,57 @@ fit_edid_cells <- function(
       excised_comparison = thin_all %in% excised_cmp,
       row.names          = NULL,
       stringsAsFactors   = FALSE)
+  }
+
+  # Guard radar gap (informative note + fit field; NO behavior change). The hard guard
+  # above only fires below min_pair_units (default 5). But the audited covariate-path
+  # over-identification fragility (extreme propensity ratios, near-uniform "efficient"
+  # weights loading on poisoned cross-cohort moments) already bites at SMALL-but-above-
+  # guard cohort sizes (the Nguyen gate: 14- and 33-unit cohorts at shares 0.6-1.4%,
+  # fatal with d=4 X, while the no-X path is fine). This is the silent band between the
+  # hard guard and a comfortable cohort size. Record finite cohorts in
+  # [min_pair_units, EDID_THIN_COHORT_COMFORT) so the user is told which cohorts are thin
+  # enough that the efficient-weight machinery may be unreliable on the covariate path,
+  # without changing any moment, weight, or estimate. The note is emitted only on the
+  # OVER-IDENTIFIED PT-All path (it is moot for the just-identified PT-Post moment).
+  small_cohorts <- NULL
+  fin_sizes <- cohort_sizes[is.finite(tgroups)]
+  small_mask <- is.finite(fin_sizes) & fin_sizes >= min_pair_units &
+    fin_sizes < EDID_THIN_COHORT_COMFORT
+  if (any(small_mask)) {
+    sc <- sort(as.numeric(names(fin_sizes)[small_mask]))
+    small_cohorts <- data.frame(
+      cohort  = sc,
+      n_units = as.integer(cohort_sizes[as.character(sc)]),
+      row.names = NULL, stringsAsFactors = FALSE)
+    # The note itself is surfaced via the fit's $diagnostics$small_cohorts field and the
+    # print/summary methods (.edid_thin_radar_note), NOT a warning() -- the prompt asks for
+    # "an informative note + a fit field, no behavior change", and a per-fit warning on
+    # every small-cohort covariate fit would flood the warning stream (most small-n
+    # covariate fits have a cohort in this band). The field is recorded UNCONDITIONALLY
+    # (harmless metadata, all paths) so the toolkit and the user can read the thin cohorts;
+    # the printed note is shown only on the over-identified covariate path where the
+    # fragility is real (the no-covariate path is fine at these sizes; the just-identified
+    # PT-Post moment uses no efficient weights). No moment, weight, or estimate changes.
+  }
+
+  # Estimability auto-guard bookkeeping (OPT-IN; see the per-cohort excision in .gbuild).
+  # Emit ONE named warning naming the cross-cohort comparison cohorts excised (and from
+  # which target cohorts) because their propensity ratios were still unstable post-trim.
+  # Only populated when options(edid_auto_excise_unstable_pairs = TRUE); empty otherwise,
+  # so the default path is silent and unchanged.
+  ratio_excised_by_target <- lapply(gcache, function(b) b$ratio_excised_gp %||% numeric(0L))
+  ratio_excised_cmp <- sort(unique(unlist(ratio_excised_by_target, use.names = FALSE)))
+  ratio_excised_targets <- tgroups[vapply(gcache, function(b) length(b$ratio_excised_gp %||% numeric(0L)) > 0L, logical(1L))]
+  if (length(ratio_excised_cmp) > 0L) {
+    warning(sprintf(
+      paste0("Estimability auto-guard (edid_auto_excise_unstable_pairs): comparison cohort(s) %s had ",
+             "propensity ratios that remained extreme (|r| > %g) after overlap trimming -- unestimable ",
+             "cross-cohort moments that poison the efficient fit -- so their cross-cohort pairs were ",
+             "excised from the moment set(s) of target cohort(s) %s (generalizing moment_set = \"own\" to ",
+             "the offending pairs only). Self pairs and the never-treated comparison are untouched. The ",
+             "surviving cells estimate ATT(g,t) from their healthy moments."),
+      .fmt_g(ratio_excised_cmp), EDID_RATIO_EXCISE_THRESH, .fmt_g(ratio_excised_targets)), call. = FALSE)
   }
 
   # Global conditional-mean cache. m_{gp,period}(X) = E[Y_period - Y_1 | G=gp, X] depends ONLY on (gp, period),
@@ -1078,6 +1169,21 @@ fit_edid_cells <- function(
     if (is.null(dim(nocov_ee_s))) nocov_ee_s <- matrix(nocov_ee_s, nrow = n)
   }
 
+  # Stability-diagnostic counts surfaced on the fit ($diagnostics) for the Section-5
+  # toolkit's broken-leg / few-cluster guards and the net-hedge-mass red flag. These are
+  # the SAME counts the one-shot warnings above report; threading them through changes no
+  # moment, weight, or estimate (a pure read-out of conditions already detected).
+  diagnostics_raw <- list(
+    n_extreme_ratio   = as.integer(n_extreme_ratio_instances),
+    n_psi_unstable    = as.integer(n_psi_unstable_total),
+    n_pairs_dropped   = as.integer(n_pairs_dropped_total),
+    n_fulltrim        = as.integer(n_fulltrim_total),
+    small_cohorts     = small_cohorts,          # finite cohorts in [min_pair_units, comfort); NULL if none
+    cohort_sizes      = cohort_sizes,           # named unit counts per cohort (finite cohorts + Inf)
+    min_finite_cohort = if (any(is.finite(tgroups))) as.integer(min(cohort_sizes[is.finite(tgroups)])) else NA_integer_,
+    use_cov_path      = use_cov_path
+  )
+
   list(
     cells      = cells,
     eif_matrix = eif_matrix,
@@ -1085,6 +1191,7 @@ fit_edid_cells <- function(
     misspec_robust = misspec_robust,  # the EFFECTIVE flag (downgraded to FALSE by the guards above if applicable)
     bs_df_selected = bs_df_selected,  # IC-selected sieve dfs (bs_df = "ic" + covariates only; else NULL)
     thin_cohorts   = thin_cohorts,    # thin-cohort guard record (NULL when the guard never fired)
+    diagnostics_raw = diagnostics_raw, # stability-diagnostic counts (read-out; see $diagnostics on the fit)
     nocov_ee_s     = nocov_ee_s      # per-unit s_i matrix for the no-cov weight-estimation cross-cell increments
   )
 }

@@ -551,6 +551,15 @@
 #'   \code{assume_efficient = TRUE}, in which case \code{GMM} equals \code{YR}
 #'   exactly); \code{$assume_efficient} records the RESOLVED convention and
 #'   \code{$assume_efficient_auto} whether it came from the AUTO rule.
+#'   \code{$assume_efficient_fallback} is \code{TRUE} when the AUTO rule
+#'   selected \code{assume_efficient = TRUE} from the \code{"efficient"} weight
+#'   scheme label but the restricted fit was \emph{not} empirically tighter
+#'   than the unrestricted one (\eqn{\widehat\sigma_R^2 \ge
+#'   \widehat\sigma_U^2}, so the imposed identity would give a non-positive
+#'   over-identification variance), in which case it fell back to the empirical
+#'   covariance (\code{assume_efficient = FALSE}) with a message rather than
+#'   erroring -- the internally-consistent choice when the efficient leg is not
+#'   tighter (an \emph{explicit} \code{assume_efficient = TRUE} still errors).
 #'
 #'   When \code{ci = TRUE} (the default), the object additionally carries:
 #'   \code{$ci}, a data.frame with one row per (variant, B) -- for
@@ -657,12 +666,47 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
     list(VU = S[1L, 1L], VR = S[2L, 2L], VUR = S[1L, 2L])
   }
 
+  # AUTO convention fallback (Brazil-gate footgun): when AUTO selected
+  # assume_efficient = TRUE from the scheme LABEL (weight_scheme = "efficient") but the
+  # efficient (restricted) leg is NOT empirically tighter than the conservative one
+  # (VR >= VU), the imposed identity VUR = VR forces sigma_O^2 = VU - VR <= 0 and the
+  # core stops with "VO ... is not positive". On big-N covariate fits the efficient
+  # weights can be empirically NOISIER than the conservative ones (the kernel collapses /
+  # the over-identified moments add variance), so the LABEL is wrong about bound-attainment
+  # there. Rather than erroring out, fall back to the empirical-covariance convention
+  # (assume_efficient = FALSE) with a one-time message -- the internally-consistent choice
+  # when the identity does not hold. An EXPLICIT assume_efficient = TRUE still errors (the
+  # user asserted the identity; honor the documented contract). `$assume_efficient_fallback`
+  # records that the fallback fired. Returns the core list (always assume_efficient = FALSE
+  # on the fallback path).
+  auto_fallback_fired <- FALSE
+  .core_auto <- function(YR, VR, YU, VU, VUR) {
+    ae <- assume_efficient
+    if (assume_efficient_auto && isTRUE(assume_efficient)) {
+      VO_try <- VR - 2 * VR + VU            # VO under the imposed identity VUR = VR (= VU - VR)
+      if (!is.finite(VO_try) || VO_try <= 0) {
+        if (!auto_fallback_fired) {
+          message("edid_adaptive [AUTO]: weight_scheme = \"efficient\" labels the restricted fit as ",
+                  "bound-attaining, but it is NOT empirically more precise than the conservative fit ",
+                  "(VR >= VU), so the Hausman identity VUR = VR would give a non-positive ",
+                  "over-identification variance. Falling back to assume_efficient = FALSE (empirical ",
+                  "influence-function covariance) -- the internally-consistent convention when the ",
+                  "efficient leg is not tighter. Pass assume_efficient = TRUE explicitly to override ",
+                  "and error instead.")
+          auto_fallback_fired <<- TRUE
+        }
+        ae <- FALSE
+      }
+    }
+    .edid_aks_core(YR = YR, VR = VR, YU = YU, VU = VU, VUR = VUR,
+                   tables = tables, assume_efficient = ae)
+  }
+
   if (parameter == "overall") {
     oU <- .edid_param_ifs(fit_unrestricted, "overall")
     oR <- .edid_param_ifs(fit_restricted,  "overall")
     v  <- .biv(oU$IF[, 1L], oR$IF[, 1L])
-    core <- .edid_aks_core(YR = oR$est, VR = v$VR, YU = oU$est, VU = v$VU, VUR = v$VUR,
-                           tables = tables, assume_efficient = assume_efficient)
+    core <- .core_auto(YR = oR$est, VR = v$VR, YU = oU$est, VU = v$VU, VUR = v$VUR)
     out <- core
     out$psi_fun <- NULL   # internal interpolant; not part of the user-facing object
     out$acorr_eval <- NULL
@@ -682,8 +726,7 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
     ci_rows <- if (ci) vector("list", length(e_set)) else NULL
     for (j in seq_along(e_set)) {
       v <- .biv(pU$IF[, j], pR$IF[, j])
-      cj <- .edid_aks_core(YR = pR$est[j], VR = v$VR, YU = pU$est[j], VU = v$VU, VUR = v$VUR,
-                           tables = tables, assume_efficient = assume_efficient)
+      cj <- .core_auto(YR = pR$est[j], VR = v$VR, YU = pU$est[j], VU = v$VU, VUR = v$VUR)
       rows[[j]] <- cbind(data.frame(e = e_set[j]), as.data.frame(cj[cols]))
       if (ci) {
         ci_rows[[j]] <- cbind(data.frame(e = e_set[j]),
@@ -708,8 +751,11 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
       "(Armstrong, Kline & Sun 2025, Sec. 4.2); B = Inf uses their B = 9*sigma_O",
       "approximation. All intervals are center +- cv*sigma_U with sigma_U = sqrt(VU).")
   }
-  out$assume_efficient <- assume_efficient
+  # Report the EFFECTIVE convention: the AUTO fallback (above) demotes a label-driven
+  # assume_efficient = TRUE to FALSE when the efficient leg is not empirically tighter.
+  out$assume_efficient <- if (auto_fallback_fired) FALSE else assume_efficient
   out$assume_efficient_auto <- assume_efficient_auto
+  out$assume_efficient_fallback <- isTRUE(auto_fallback_fired)
   out$n <- n
   out$clustered <- !is.null(clus_idx)
   class(out) <- c("edid_adaptive", "list")
@@ -730,7 +776,12 @@ print.edid_adaptive <- function(x, digits = 4, ...) {
                 if (isTRUE(x$assume_efficient_auto)) " [AUTO: restricted fit is bound-attaining]" else ""))
   } else if (isTRUE(x$assume_efficient_auto)) {
     cat("  Covariance convention: empirical influence-function covariance\n")
-    cat("  (assume_efficient = FALSE [AUTO: restricted fit is not bound-attaining])\n")
+    if (isTRUE(x$assume_efficient_fallback)) {
+      cat("  (assume_efficient = FALSE [AUTO fallback: the \"efficient\"-labelled restricted\n")
+      cat("   fit is not empirically tighter (VR >= VU), so the Hausman identity was dropped])\n")
+    } else {
+      cat("  (assume_efficient = FALSE [AUTO: restricted fit is not bound-attaining])\n")
+    }
   }
   if (identical(x$parameter, "overall")) {
     cat(sprintf("  Parameter: ES_avg%s\n", if (isTRUE(x$clustered)) " (cluster-robust)" else ""))

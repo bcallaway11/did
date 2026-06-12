@@ -141,6 +141,15 @@ the covariance actually used (equal to \code{VR} under
 \code{assume_efficient = TRUE}, in which case \code{GMM} equals \code{YR}
 exactly); \code{$assume_efficient} records the RESOLVED convention and
 \code{$assume_efficient_auto} whether it came from the AUTO rule.
+\code{$assume_efficient_fallback} is \code{TRUE} when the AUTO rule
+selected \code{assume_efficient = TRUE} from the \code{"efficient"} weight
+scheme label but the restricted fit was \emph{not} empirically tighter
+than the unrestricted one (\eqn{\widehat\sigma_R^2 \ge
+  \widehat\sigma_U^2}, so the imposed identity would give a non-positive
+over-identification variance), in which case it fell back to the empirical
+covariance (\code{assume_efficient = FALSE}) with a message rather than
+erroring -- the internally-consistent choice when the efficient leg is not
+tighter (an \emph{explicit} \code{assume_efficient = TRUE} still errors).
 
 When \code{ci = TRUE} (the default), the object additionally carries:
 \code{$ci}, a data.frame with one row per (variant, B) -- for

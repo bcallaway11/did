@@ -53,7 +53,15 @@ the \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} guard applied), \code{d}
 (the estimated asymptotic covariance of \eqn{\sqrt{n}\,d}), \code{scalar}
 (data.frame of per-coordinate eqn (5.5) statistics, including an
 \code{ES_avg} row), \code{parameter}, \code{e_set}, \code{n},
-\code{clustered}.
+\code{clustered}, plus the round-3 sanity guards:
+\code{leg_unstable} (\code{TRUE} when a constituent fit is numerically
+degenerate -- extreme propensity ratios, a non-credible weight channel,
+cross-cohort hedges carrying the estimand, or non-finite reported SEs --
+so a non-rejection is \emph{hollow}; a loud warning is also emitted),
+\code{leg_reasons} (the per-leg breakage descriptions; empty when healthy),
+\code{few_clusters} (\code{TRUE} when the fits carry fewer than 5 clusters,
+so the cluster-robust statistic is unreliable -- a few-cluster artifact,
+not PT evidence), and \code{n_clusters}.
 }
 \description{
 Implements the Hausman-type specification test of Theorem 5.1 in Chen,

@@ -19,6 +19,69 @@ EDID_CLIP_HI <- 20         # ratio clipping upper bound (deferred: covariate pat
 EDID_SE_EPS <- sqrt(.Machine$double.eps) * 10  # SE below which is treated as zero/NA
 
 #' @keywords internal
+# Comfort threshold for the thin-cohort radar note (informational only; NO behavior
+# change). Finite treated cohorts at or above min_pair_units but below this size are
+# flagged as small enough that the COVARIATE-path over-identified efficient weights may
+# be unreliable (the audited Nguyen failure: 14- and 33-unit cohorts at 0.6-1.4% share,
+# fatal with d=4 X, while the no-covariate path is fine). 36 sits just above the
+# Nguyen 33-unit failing cohort and below the >= 75-unit cohorts the Dias-Fontes gate
+# ran cleanly. The no-covariate path never trips on it (radar is PT-All only and the
+# message names the covariate path explicitly).
+EDID_THIN_COHORT_COMFORT <- 36L
+
+#' @keywords internal
+# Minimum number of clusters below which the Section-5 toolkit's cluster-robust statistics
+# are flagged as unreliable (message + field; the statistic is still returned). With G < 5
+# the cluster-level moment covariance is too noisy / degenerate for the chi-square (or
+# G/(G-1)) reference to hold -- the ACA gate's 2-3-state cohorts produce Sargan "rejections"
+# (H ~ 350, p ~ 1e-73) that are few-cluster artifacts, not parallel-trends evidence.
+EDID_FEWCLUSTER_MIN <- 5L
+
+#' @keywords internal
+# Net cross-cohort hedge-mass red-flag threshold for the fit diagnostics (informational
+# only). Calibrated from the gate evidence: healthy efficient fits carry net cross-cohort
+# hedge mass ~0.01-0.43 (the "hedges" hedge -- gross negative mass offsets gross
+# positive), while the audited broken with-X fits show net ~= gross >= 0.6 with zero
+# negative mass (the cross-cohort control variates stop hedging and CARRY the estimand).
+# 0.55 sits above the healthy band and below every broken sighting (0.628, 0.681, 0.857,
+# 0.878).
+EDID_NET_HEDGE_FLAG <- 0.55
+
+#' @keywords internal
+# Estimability auto-guard (OPT-IN; edid_auto_excise_unstable_pairs) post-trim thresholds.
+# A cross-cohort comparison cohort is excised when, on the units surviving overlap trimming,
+# its fitted propensity ratio still exceeds EDID_RATIO_EXCISE_THRESH (the |r| > 100 scale the
+# extreme-ratio diagnostic uses -- a ratio this large AFTER trimming is a poisoned,
+# unestimable cross moment), or when fewer than EDID_RATIO_EXCISE_MINKEEP units survive for
+# that comparison (the trim removed essentially all its mass).
+EDID_RATIO_EXCISE_THRESH <- 100
+#' @keywords internal
+EDID_RATIO_EXCISE_MINKEEP <- 5L
+
+#' Is fork-based parallelism unsafe on this platform's BLAS?
+#'
+#' macOS Apple Accelerate (vecLib) BLAS is not safe to call from a process forked by
+#' \code{parallel::mclapply}: a forked worker that enters Accelerate (the covariate-path
+#' cell loop's \code{crossprod} / kernel solves) can crash, which \code{mclapply}
+#' surfaces only as a missing/NULL result -- corrupting or aborting the fit with no R
+#' error. Returns \code{TRUE} on Darwin when the linked BLAS reports as an
+#' Accelerate/vecLib library, \code{FALSE} otherwise (Linux/Windows, or macOS linked
+#' against a fork-safe BLAS such as OpenBLAS). Used by \code{\link{edid}} to default
+#' \code{cores > 1} back to serial on the unsafe configuration (override:
+#' \code{options(edid_allow_fork_blas = TRUE)}). Cheap and dependency-free
+#' (\code{extSoftVersion()} string match); not exported.
+#' @keywords internal
+.edid_fork_blas_unsafe <- function() {
+  if (!identical(Sys.info()[["sysname"]], "Darwin")) return(FALSE)
+  blas <- tryCatch(tolower(extSoftVersion()[["BLAS"]] %||% ""),
+                   error = function(e) "")
+  # Accelerate.framework / vecLib.framework / libBLAS.dylib are the Apple BLAS markers;
+  # a fork-safe replacement (openblas, libRblas, mkl, ...) does not match.
+  grepl("accelerate|veclib", blas, fixed = FALSE) ||
+    (grepl("libblas\\.dylib$", blas) && grepl("/system/library/frameworks/", blas))
+}
+
+#' @keywords internal
 # Variance-inflation ceiling for the misspec_robust weight-estimation channel: the largest factor by which
 # folding psi_Omega may inflate a cell's EIF variance (=> SE inflation <= sqrt of this). A genuine first-order
 # correction inflates the cell SE by at most ~2-3x; this 100 (SE <= 10x) is far above that yet far below the

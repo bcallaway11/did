@@ -55,6 +55,48 @@
   invisible(TRUE)
 }
 
+# ---------------------------------------------------------------------------
+# Leg-health guards for the Section-5 toolkit (broken-leg + few-cluster)
+# ---------------------------------------------------------------------------
+
+# Number of clusters feeding a fit's cluster-robust covariance (G; n when unclustered,
+# i.e. unit-level / iid). The few-cluster guard compares this to EDID_FEWCLUSTER_MIN.
+.edid_n_clusters <- function(fit) {
+  ci <- fit$cluster_indices
+  if (is.null(ci)) (fit$n %||% length(unique(fit$all_units))) else length(unique(ci))
+}
+
+# Is a fit a numerically degenerate leg? A non-rejection (or a point estimate) built on
+# such a leg is HOLLOW -- the restricted/efficient fit carried extreme propensity ratios,
+# a non-credible weight channel, or cross-cohort hedges that carry the estimand, or its
+# reported SEs are non-finite. Reads the fit's own $diagnostics read-out (set by edid())
+# plus the aggregation SEs the test will difference. Returns a list with a logical
+# `broken` and a character vector of `reasons` (empty when healthy). Older fits without
+# $diagnostics degrade gracefully to the SE-finiteness check only.
+.edid_leg_health <- function(fit, label) {
+  reasons <- character(0L)
+  d <- fit$diagnostics
+  if (!is.null(d)) {
+    if (isTRUE(d$unstable)) {
+      if ((d$n_extreme_ratio %||% 0L) > 0L)
+        reasons <- c(reasons, sprintf("extreme propensity ratios in %d estimation step(s)", d$n_extreme_ratio))
+      if ((d$n_psi_unstable %||% 0L) > 0L)
+        reasons <- c(reasons, sprintf("weight-estimation channel not a credible IF in %d cell(s)", d$n_psi_unstable))
+      if (isTRUE(d$net_hedge_flag))
+        reasons <- c(reasons, sprintf("cross-cohort hedges carry the estimand (net hedge mass %.2f ~ gross %.2f)",
+                                      d$net_hedge_mass %||% NA_real_, d$gross_hedge_mass %||% NA_real_))
+    }
+  }
+  # Non-finite reported SEs on the headline (overall) aggregation: a hard breakage signal
+  # available even without $diagnostics.
+  ov <- fit$overall
+  se_ov <- if (!is.null(ov)) suppressWarnings(ov$overall.se) else NULL
+  if (!is.null(se_ov) && length(se_ov) && any(!is.finite(se_ov))) {
+    reasons <- c(reasons, "non-finite reported standard error on the overall aggregation")
+  }
+  list(broken = length(reasons) > 0L, reasons = unique(reasons), label = label)
+}
+
 # Dynamic (event-study) AGGTEobj of a fit: reuse the stored one, else aggregate
 # on the fly with the same machinery edid() uses (aggte_edid -> did::aggte).
 .edid_dynamic_aggte <- function(fit) {
@@ -255,7 +297,15 @@
 #'   (the estimated asymptotic covariance of \eqn{\sqrt{n}\,d}), \code{scalar}
 #'   (data.frame of per-coordinate eqn (5.5) statistics, including an
 #'   \code{ES_avg} row), \code{parameter}, \code{e_set}, \code{n},
-#'   \code{clustered}.
+#'   \code{clustered}, plus the round-3 sanity guards:
+#'   \code{leg_unstable} (\code{TRUE} when a constituent fit is numerically
+#'   degenerate -- extreme propensity ratios, a non-credible weight channel,
+#'   cross-cohort hedges carrying the estimand, or non-finite reported SEs --
+#'   so a non-rejection is \emph{hollow}; a loud warning is also emitted),
+#'   \code{leg_reasons} (the per-leg breakage descriptions; empty when healthy),
+#'   \code{few_clusters} (\code{TRUE} when the fits carry fewer than 5 clusters,
+#'   so the cluster-robust statistic is unreliable -- a few-cluster artifact,
+#'   not PT evidence), and \code{n_clusters}.
 #'
 #' @references Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025). Efficient
 #'   Difference-in-Differences and Event Study Estimators. Section 5.1,
@@ -294,6 +344,29 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   n  <- fit_restricted$n
   ci <- fit_restricted$cluster_indices
 
+  # Broken-leg sanity guard (a hollow non-rejection footgun, Nguyen/Bailey-GB/ACA gate
+  # evidence): if EITHER leg is a numerically degenerate fit -- extreme propensity ratios,
+  # a non-credible weight channel, cross-cohort hedges carrying the estimand, or non-finite
+  # SEs -- the Hausman contrast inherits the breakage and a non-rejection means nothing.
+  # Warn loudly, naming the unhealthy leg(s) and reason(s), and flag the result object
+  # ($leg_unstable / $leg_reasons) so a hollow p ~ 0.3-0.95 is not mistaken for a pass.
+  health_U <- .edid_leg_health(fit_unrestricted, "fit_unrestricted (PT-Post)")
+  health_R <- .edid_leg_health(fit_restricted,  "fit_restricted (PT-All)")
+  leg_unstable <- health_U$broken || health_R$broken
+  leg_reasons  <- character(0L)
+  if (leg_unstable) {
+    msgs <- c(if (health_R$broken) sprintf("%s: %s", health_R$label, paste(health_R$reasons, collapse = "; ")),
+              if (health_U$broken) sprintf("%s: %s", health_U$label, paste(health_U$reasons, collapse = "; ")))
+    leg_reasons <- msgs
+    warning(paste0(
+      "edid_hausman: a constituent fit is numerically degenerate, so this test is HOLLOW -- ",
+      "a non-rejection here carries no evidence (the contrast inherits the broken leg's ",
+      "instability). ", paste(msgs, collapse = " | "),
+      ". Repair the fit (e.g. moment_set = \"own\" to drop cross-cohort pairs, weight_scheme = ",
+      "\"averaged\", or a low-dimensional covariate index) before reading the p-value; the result ",
+      "is returned with $leg_unstable = TRUE."), call. = FALSE)
+  }
+
   if (parameter == "event_study") {
     e_set <- .edid_shared_e_set(fit_unrestricted, fit_restricted, e_set)
     pU <- .edid_param_ifs(fit_unrestricted, "event_study", e_set)
@@ -318,6 +391,21 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
             "contrast is degenerate and is reported as H = 0, df = 0, p = 1. This is expected ",
             "when the fits carry no over-identifying content to test -- e.g. when the ",
             "thin-cohort guard has pinned every cell to its just-identified moment.")
+  }
+
+  # Few-cluster guard: with G < EDID_FEWCLUSTER_MIN clusters the cluster-robust D is too
+  # noisy / degenerate for the chi-square reference (the ACA gate's 2-3-state cohorts give
+  # H ~ 350, p ~ 1e-73 -- a few-cluster artifact, not PT evidence). Flag the statistic as
+  # unreliable (message + field); it is still returned.
+  n_clusters <- .edid_n_clusters(fit_restricted)
+  few_clusters <- !is.null(ci) && n_clusters < EDID_FEWCLUSTER_MIN
+  if (few_clusters) {
+    warning(sprintf(paste0(
+      "edid_hausman: only %d cluster(s) at the clustering level (clustervars). The cluster-robust ",
+      "statistic is UNRELIABLE below %d clusters -- the cluster-level covariance is too noisy / ",
+      "degenerate for the chi-square reference, so the p-value is not trustworthy (flagged ",
+      "$few_clusters = TRUE). Report unit-level (unclustered) toolkit statistics, or aggregate to ",
+      "a coarser level with enough clusters."), n_clusters, EDID_FEWCLUSTER_MIN), call. = FALSE)
   }
 
   # Scalar eqn (5.5) statistics: each ES(e) plus ES_avg (always included).
@@ -356,6 +444,10 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
     e_set      = e_set,
     n          = n,
     clustered  = !is.null(ci),
+    leg_unstable = isTRUE(leg_unstable),   # a constituent fit is numerically degenerate -> hollow test
+    leg_reasons  = leg_reasons,            # per-leg breakage descriptions (empty when healthy)
+    few_clusters = isTRUE(few_clusters),   # G < EDID_FEWCLUSTER_MIN -> cluster-robust stat unreliable
+    n_clusters   = n_clusters,
     alpha      = fit_restricted$alpha %||% 0.05
   )
   class(out) <- c("edid_hausman", "list")
@@ -380,6 +472,15 @@ print.edid_hausman <- function(x, digits = 4, ...) {
   if (isTRUE(x$degenerate)) {
     cat("  NOTE: degenerate contrast -- the two estimators coincide, so there is no\n")
     cat("  over-identifying content to test (H = 0, df = 0, p = 1 by construction).\n")
+  }
+  if (isTRUE(x$leg_unstable)) {
+    cat("  WARNING: HOLLOW TEST -- a constituent fit is numerically degenerate, so a\n")
+    cat("  non-rejection carries no evidence. Reason(s):\n")
+    for (r in x$leg_reasons) cat("    - ", r, "\n", sep = "")
+  }
+  if (isTRUE(x$few_clusters)) {
+    cat(sprintf("  WARNING: only %d cluster(s) -- the cluster-robust statistic is unreliable\n", x$n_clusters))
+    cat("  below ", EDID_FEWCLUSTER_MIN, " clusters (few-cluster artifact, not PT evidence).\n", sep = "")
   }
   cat("\nPer-parameter scalar statistics (eqn 5.5):\n")
   tab <- x$scalar

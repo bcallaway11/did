@@ -193,3 +193,33 @@ apply_thin_cohort_guard_edid <- function(
   }
   res
 }
+
+# Identify cross-cohort comparison cohorts whose propensity ratio is unstable post-trim.
+# The post-trim half of the estimability auto-guard (opt-in; see
+# options(edid_auto_excise_unstable_pairs) in edid()). For each finite CROSS-cohort
+# comparison cohort gp != target_g in the pair set, checks whether its propensity ratio
+# r_{g,g'}(X) is STILL extreme (max |r| > EDID_RATIO_EXCISE_THRESH, i.e. > 100 on the
+# fitted scale) on the units that SURVIVE trimming, or whether trimming removed essentially
+# all of that comparison's mass (< EDID_RATIO_EXCISE_MINKEEP kept) -- the signature of a
+# cross-cohort moment that is unestimable on a thin cohort and poisons the cell (Bailey-GB
+# full-skeleton). Self pairs (gp == target_g) and the never-treated pair (gp = Inf) are
+# never candidates. Returns list(drop_gp = comparison cohorts to excise).
+# @keywords internal
+.edid_ratio_unstable_pairs <- function(pairs, target_g, prop_ratios, trim_keep) {
+  drop_gp <- numeric(0L)
+  if (is.null(pairs) || nrow(pairs) == 0L || is.null(prop_ratios)) return(list(drop_gp = drop_gp))
+  cross_gp <- unique(pairs$gp[is.finite(pairs$gp) & pairs$gp != target_g])
+  for (gp in cross_gp) {
+    rr <- prop_ratios[[as.character(gp)]]
+    if (is.null(rr)) next
+    keep <- if (!is.null(trim_keep)) trim_keep[[as.character(gp)]] else rep(TRUE, length(rr))
+    if (is.null(keep)) keep <- rep(TRUE, length(rr))
+    rk <- rr[keep & is.finite(rr)]
+    # (a) extreme ratio survives the trim, or (b) the trim removed (nearly) all mass for
+    # this comparison -- both mean the cross moment is not credibly estimable here.
+    survived_extreme <- length(rk) > 0L && max(abs(rk)) > EDID_RATIO_EXCISE_THRESH
+    mass_gone <- sum(keep) < EDID_RATIO_EXCISE_MINKEEP
+    if (survived_extreme || mass_gone) drop_gp <- c(drop_gp, gp)
+  }
+  list(drop_gp = sort(unique(drop_gp)))
+}

@@ -398,6 +398,22 @@
 #'     disables shrinkage; a value in \eqn{[0,1]} fixes the intensity.}
 #'   \item{\code{edid_eig_tol}}{Numeric, or \code{NA} (default) for the rate-based relative eigenvalue floor
 #'     \eqn{n^{-a}}. A positive value sets the floor directly (condition-number cap \eqn{= 1/}\code{tol}).}
+#'   \item{\code{edid_allow_fork_blas}}{Logical (default \code{FALSE}). On macOS with an Apple Accelerate
+#'     (vecLib) BLAS -- which is not fork-safe -- \code{cores > 1} is automatically downgraded to serial
+#'     (with a one-time message), because forked workers can segfault inside BLAS calls and silently drop
+#'     results. Set \code{TRUE} to force the fork path anyway (e.g. once a fork-safe BLAS such as OpenBLAS
+#'     is linked). No effect off macOS or on a non-Accelerate BLAS. Does not change any number; it only
+#'     governs parallelism (the serial and parallel paths are bit-identical).}
+#'   \item{\code{edid_auto_excise_unstable_pairs}}{Logical (default \code{FALSE}). When \code{TRUE}, the
+#'     covariate-path estimability auto-guard excises a cross-cohort comparison pair whose fitted propensity
+#'     ratio \eqn{r_{g,g'}(X)} remains extreme (\eqn{|r| > 100}) on the units surviving overlap trimming, or
+#'     that loses essentially all its kept mass -- the unestimable cross moments that blow up the with-X
+#'     efficient fit on thin / continuous-covariate designs. This generalizes \code{moment_set = "own"}
+#'     (which drops \emph{all} cross-cohort pairs a priori) to the offending pairs only; self pairs and the
+#'     never-treated comparison are never excised, so the surviving cells estimate \eqn{ATT(g,t)} from their
+#'     healthy moments and a named warning lists what was dropped. \strong{Changes the point estimate where
+#'     it fires} -- it is OFF by default so the standard paths are byte-identical, and it acts only on the
+#'     genuinely degenerate covariate fits it is designed to repair.}
 #' }
 #' Other \code{edid_*} options are internal development / diagnostic hooks (e.g. \code{edid_fixed_weights},
 #' \code{edid_fixed_wpw}, \code{edid_store_psiomega}, \code{edid_psiomega_fd}) and are unsupported.
@@ -438,6 +454,18 @@
 #'       just-identified moment), \code{excised_comparison} (its cross-cohort pairs were removed
 #'       from other cohorts' cells). Affected cells additionally carry
 #'       \code{$cells[[k]]$thin_cohort_degraded = TRUE}.}
+#'     \item{\code{diagnostics}}{A list of stability read-outs (informational; computed from
+#'       conditions already detected during fitting, so it changes no estimate). Elements:
+#'       \code{n_extreme_ratio} / \code{n_psi_unstable} / \code{n_pairs_dropped} / \code{n_fulltrim}
+#'       (the same counts the one-shot fit warnings report); \code{net_hedge_mass} /
+#'       \code{gross_hedge_mass} (mean over post cells of the cross-cohort moment mass, signed vs
+#'       absolute) and \code{net_hedge_flag} (the broken-fit red flag, \code{TRUE} when net mass
+#'       \eqn{\ge} the calibrated threshold and \eqn{\approx} gross); \code{min_finite_cohort};
+#'       \code{small_cohorts} (finite cohorts in \code{[min_pair_units, 36)} flagged by the
+#'       thin-cohort radar, or \code{NULL}); \code{cohort_sizes}; \code{use_cov_path}; and
+#'       \code{unstable}, the single summary the Section-5 toolkit's broken-leg guards key on
+#'       (\code{TRUE} when extreme ratios entered, the weight channel was not a credible influence
+#'       function, or the cross-cohort hedges carry the estimand).}
 #'     \item{\code{bstrap}}{Logical: whether the multiplier bootstrap was requested. \code{bstrap = TRUE}
 #'       with \code{cband_method} left at its default selects the multiplier bootstrap, so the cell SEs and
 #'       the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} / \code{\link[did]{aggte}});
@@ -725,6 +753,23 @@ edid <- function(
   # it overrides). Coerce to a positive integer; fork-based, so it is silently serial on Windows downstream.
   cores <- suppressWarnings(as.integer(cores))
   if (length(cores) != 1L || is.na(cores) || cores < 1L) cores <- 1L
+
+  # macOS Accelerate (vecLib) BLAS is not fork-safe: a forked parallel::mclapply worker
+  # that calls into Accelerate (e.g. crossprod in the covariate-path cell loop) can
+  # segfault the worker, which mclapply reports as a missing result -- silently
+  # corrupting or aborting the fit. Three independent covariate-path sightings (the
+  # Bailey-GB / Dobkin with-X gate runs). Detect Darwin + an Accelerate/vecLib BLAS and
+  # fall back to serial with a one-time documented message; the user can override with
+  # options(edid_allow_fork_blas = TRUE) once a fork-safe BLAS (OpenBLAS, etc.) is in
+  # use. Windows is already serial downstream (no fork), so this only affects macOS.
+  if (cores > 1L && .edid_fork_blas_unsafe() && !isTRUE(getOption("edid_allow_fork_blas", FALSE))) {
+    message("edid: cores > 1 requested on macOS with an Accelerate (vecLib) BLAS, which is not ",
+            "fork-safe -- forked workers can segfault in BLAS calls (e.g. crossprod) and silently ",
+            "drop results. Falling back to serial (cores = 1). Link a fork-safe BLAS (e.g. OpenBLAS) ",
+            "for parallel cell estimation, or set options(edid_allow_fork_blas = TRUE) to force the ",
+            "fork path at your own risk.")
+    cores <- 1L
+  }
 
   # ------------------------------------------------------------------
   # Bootstrap: derive internal n_bootstrap from bstrap + biters
@@ -1054,6 +1099,10 @@ edid <- function(
     min_pair_units   = min_pair_units,             # thin-cohort guard threshold (5 = default; 2 = legacy behavior)
     nocov_shrink     = nocov_shrink,               # Ledoit-Wolf pole-target weight shrinkage on the no-covariate path
     thin_cohorts     = fit_result$thin_cohorts,    # data.frame of thin cohorts the guard acted on, or NULL
+    diagnostics      = .edid_build_diagnostics(fit_result$diagnostics_raw, cells,
+                                               pt_assumption = pt_assumption,
+                                               weight_scheme = weight_method,
+                                               min_pair_units = min_pair_units),  # stability red flags (read-out)
     bs_df            = bs_df,                      # sieve df: integer, or "ic" (per-fit IC selection)
     ratio_method     = ratio_method,               # propensity-nuisance construction: "exp" (default) or "direct"
     bs_df_selected   = fit_result$bs_df_selected,  # tidy IC-selected dfs (bs_df = "ic" + covariates), else NULL
@@ -1068,6 +1117,28 @@ edid <- function(
   )
 
   class(edid_fit) <- c("edid_fit", "list")
+
+  # Net-cross-moment-mass red flag (informational only; the fit is returned as-is). A
+  # cheap diagnostic on the over-identified efficient weights, calibrated from the gate
+  # evidence: a HEALTHY efficient fit's cross-cohort control-variate moments hedge (net
+  # mass ~0.01-0.43, offset by gross negative mass), but a BROKEN fit's "hedges" stop
+  # hedging and CARRY the estimand (net ~= gross >= ~0.6, zero negative mass) -- the
+  # weight-level signature of poisoned cross-cohort moments (Nguyen/Bailey-GB/ACA with-X).
+  # Surfaced as a one-time warning so the user is alerted before reading a number that
+  # rides on poisoned moments; the underlying values are in $diagnostics.
+  .diag <- edid_fit$diagnostics
+  if (isTRUE(.diag$net_hedge_flag)) {
+    warning(sprintf(paste0(
+      "Net cross-cohort moment mass = %.2f (~ gross %.2f, near-zero offsetting negative mass): the ",
+      "over-identified cross-cohort 'hedge' moments are CARRYING the estimand rather than hedging with ",
+      "it. This is the weight-level signature of poisoned cross-cohort propensity-ratio moments (a ",
+      "broken with-X efficient fit); the point estimate and its SE may not be trustworthy. Healthy fits ",
+      "carry net hedge mass well below %.2f. Consider moment_set = \"own\" (drop cross-cohort pairs), ",
+      "weight_scheme = \"averaged\", or a low-dimensional covariate index. Informational only (see ",
+      "$diagnostics$net_hedge_mass)."),
+      .diag$net_hedge_mass %||% NA_real_, .diag$gross_hedge_mass %||% NA_real_, EDID_NET_HEDGE_FLAG),
+      call. = FALSE)
+  }
 
   # Compute the requested aggregations as did::AGGTEobj objects via aggte_edid() (= did::aggte on the
   # edid MP), so they inherit did's print/summary/tidy methods (full att_gt-compatibility). The dynamic
