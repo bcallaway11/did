@@ -56,19 +56,23 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 
     dat <- dp2$time_invariant_data          # shortcut
 
-    # flags for treated and control units
-    Gflag <- dat[[dp2$gname]] == dp2$treated_groups[group]
+    # flags for treated and control units. The per-group flag, the
+    # never-treated flag and the per-period masks are loop-invariant across
+    # (g,t) cells, so they are pre-computed once in compute.att_gt2() instead
+    # of rescanning every row per cell (complete.cases() ran upstream in
+    # pre_process_did2, so == has no NA hazard relative to %in%).
+    Gflag <- dp2$.gflag_by_group[[group]]
 
     if (dp2$control_group == "nevertreated") {
-      Cflag <- dat[[dp2$gname]] == Inf
-    } else {  # not-yet-treated
-      Cflag <- (dat[[dp2$gname]] == Inf) |
+      Cflag <- dp2$.never_treated
+    } else {  # not-yet-treated: the cutoff varies with t, so this comparison stays per cell
+      Cflag <- dp2$.never_treated |
         (dat[[dp2$gname]] > dp2$time_periods[max(time, pret) + tfac] + dp2$anticipation &
-           dat[[dp2$gname]] != dp2$treated_groups[group])
+           !Gflag)
     }
 
     # keep only rows observed in pret or t
-    keep <- dat[[dp2$tname]] %in% c(dp2$time_periods[time + tfac], dp2$time_periods[pret])
+    keep <- dp2$.period_masks[[time + tfac]] | dp2$.period_masks[[pret]]
 
     did_cohort_index <- rep(NA_integer_, nrow(dat))
     did_cohort_index[keep & Cflag] <- 0L
@@ -86,34 +90,49 @@ get_did_cohort_index <- function(group, time, tfac, pret, dp2){
 #' @param covariates Matrix of covariates to be used in the estimation
 #' @param dp2 DiD parameters v2.0.
 #'
-#' @return A list containing the estimated ATT and the influence function vector.
+#' @return A list containing the estimated ATT and the influence function as
+#'  sparse triplets (`if_i` row indices, `if_x` values), except on the force_rc
+#'  path which returns the dense stacked vector (`inf_func`) for the caller's
+#'  half-fold. `if_i`/`if_x` (or `inf_func`) are NULL for point estimates only.
 #' @noRd
-run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, force_rc = FALSE){
+run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
+                      pret_val = NULL, force_rc = FALSE, check_cache_key = NULL){
 
   extra_args <- if (is.null(dp2$extra_args)) list() else dp2$extra_args
   gt_label <- if (!is.null(g_val) && !is.null(t_val)) paste0(" for group ", g_val, " in time period ", t_val) else ""
+  # whether to compute influence functions (default TRUE; FALSE = point estimates only)
+  do_inf <- is.null(dp2$compute_inffunc) || isTRUE(dp2$compute_inffunc)
 
   if(dp2$panel && !force_rc){
     # --------------------------------------
     # Panel Data
     # --------------------------------------
+    # cohort_data is a plain named list of vectors (D, y1, y0, i.weights), built in
+    # run_att_gt_estimation(). Working on the vectors directly avoids per-cell
+    # data.table construction/extraction; the estimator inputs are identical.
 
     # still total number of units (not just included in G or C)
-    n <- cohort_data[, .N]
+    D_all <- cohort_data$D
+    n <- length(D_all)
 
     # pick up the indices for units that will be used to compute ATT(g,t)
-    valid_obs <- which(cohort_data[, !is.na(D)])
-    cohort_data <- cohort_data[valid_obs]
+    valid_obs <- which(!is.na(D_all))
+    D    <- D_all[valid_obs]
+    y1   <- cohort_data$y1[valid_obs]
+    y0   <- cohort_data$y0[valid_obs]
+    i.weights <- cohort_data$i.weights[valid_obs]
 
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
+      intercept_only <- FALSE
     } else {
       covariates <- rep(1, length(valid_obs))
+      intercept_only <- TRUE
     }
     covariates <- as.matrix(covariates)
 
     # num obs. for computing ATT(g,t)
-    n1 <- cohort_data[, .N]
+    n1 <- length(D)
 
     #-----------------------------------------------------------------------------
     # check for overlap and regression problems
@@ -121,25 +140,35 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
     custom_est_method <- inherits(dp2$est_method, "function")
 
     if (!custom_est_method) {
-      D_vec <- cohort_data[, D]
+      D_vec <- D
 
-      # checks for pscore based methods
-      if (dp2$est_method %in% c("dr", "ipw")) {
-        preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
-        preliminary_pscores <- preliminary_logit$fitted.values
-        if (max(preliminary_pscores) >= 0.999) {
-          warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = rep(NA_real_, n)))
-        }
+      # Guard booleans: reuse the cached result when run_att_gt_estimation()
+      # established that this cell's (covariates, D) inputs are bit-identical to
+      # an earlier cell's (panel + nevertreated + non-varying weights; see
+      # compute.att_gt2). Warnings are still emitted per cell below, so cached
+      # failures keep the per-cell warning count and text unchanged.
+      guard <- if (!is.null(check_cache_key)) dp2$.check_cache[[check_cache_key]] else NULL
+      if (is.null(guard)) {
+        # overlap check for pscore based methods; regression-feasibility check
+        # for outcome-regression methods, run only if overlap passed (matching
+        # the early return on overlap failure below)
+        overlap_fail <- (dp2$est_method %in% c("dr", "ipw")) &&
+          overlap_check_fail(covariates, D_vec, intercept_only)
+        rcond_fail <- !overlap_fail && (dp2$est_method %in% c("dr", "reg")) &&
+          rcond_check_fail(covariates, D_vec, intercept_only)
+        guard <- list(overlap_fail = overlap_fail, rcond_fail = rcond_fail)
+        if (!is.null(check_cache_key)) dp2$.check_cache[[check_cache_key]] <- guard
       }
 
-      # check if can run regression using control units
-      if (dp2$est_method %in% c("dr", "reg")) {
-        control_covs <- covariates[D_vec == 0, , drop = FALSE]
-        if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-          warning(paste0("Not enough control units", gt_label, " to run specified regression"))
-          return(list(att = NA, inf_func = rep(NA_real_, n)))
-        }
+      if (guard$overlap_fail) {
+        warning(paste0("overlap condition violated", gt_label))
+        return(list(att = NA, if_i = if (do_inf) seq_len(n) else NULL,
+                    if_x = if (do_inf) rep(NA_real_, n) else NULL))
+      }
+      if (guard$rcond_fail) {
+        warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
+        return(list(att = NA, if_i = if (do_inf) seq_len(n) else NULL,
+                    if_x = if (do_inf) rep(NA_real_, n) else NULL))
       }
     }
 
@@ -151,69 +180,113 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
     if (inherits(dp2$est_method, "function")) {
       # user-specified function
       attgt <- do.call(dp2$est_method, c(list(
-                          y1=cohort_data[, y1],
-                          y0=cohort_data[, y0],
-                          D=cohort_data[, D],
+                          y1=y1,
+                          y0=y0,
+                          D=D,
                           covariates=covariates,
-                          i.weights=cohort_data[, i.weights],
-                          inffunc=TRUE), extra_args))
+                          i.weights=i.weights,
+                          inffunc=do_inf), extra_args))
     } else if (dp2$est_method == "ipw") {
       # inverse-probability weights
-      attgt <- std_ipw_did_panel(y1=cohort_data[, y1],
-                                        y0=cohort_data[, y0],
-                                        D=cohort_data[, D],
+      attgt <- std_ipw_did_panel(y1=y1,
+                                        y0=y0,
+                                        D=D,
                                         covariates=covariates,
-                                        i.weights=cohort_data[, i.weights],
-                                        boot=FALSE, inffunc=TRUE)
+                                        i.weights=i.weights,
+                                        boot=FALSE, inffunc=do_inf)
     } else if (dp2$est_method == "reg") {
       # regression
-      attgt <- reg_did_panel(y1=cohort_data[, y1],
-                                    y0=cohort_data[, y0],
-                                    D=cohort_data[, D],
+      attgt <- reg_did_panel(y1=y1,
+                                    y0=y0,
+                                    D=D,
                                     covariates=covariates,
-                                    i.weights=cohort_data[, i.weights],
-                                    boot=FALSE, inffunc=TRUE)
+                                    i.weights=i.weights,
+                                    boot=FALSE, inffunc=do_inf)
     } else {
       # doubly robust, this is default
-      attgt <- drdid_panel(y1=cohort_data[, y1],
-                                  y0=cohort_data[, y0],
-                                  D=cohort_data[, D],
+      attgt <- drdid_panel(y1=y1,
+                                  y0=y0,
+                                  D=D,
                                   covariates=covariates,
-                                  i.weights=cohort_data[, i.weights],
-                                  boot=FALSE, inffunc=TRUE)
+                                  i.weights=i.weights,
+                                  boot=FALSE, inffunc=do_inf)
     }
 
     # adjust influence function to account for only using
-    # subgroup to estimate att(g,t)
-    inf_func_vector <- rep(0, n)
-    inf_func_not_na <- (n/n1)*attgt$att.inf.func
-    inf_func_vector[valid_obs] <- inf_func_not_na
+    # subgroup to estimate att(g,t). Stored as sparse triplets (if_i row
+    # indices / if_x values) rather than a dense length-n vector: the assembly
+    # in compute.att_gt2() concatenates the triplets directly, mirroring the
+    # slow path, instead of rescanning dense columns with which().
+    if (do_inf) {
+      if_i <- valid_obs
+      if_x <- (n/n1)*attgt$att.inf.func
+    } else {
+      if_i <- NULL   # point estimates only
+      if_x <- NULL
+    }
 
   } else {
     # --------------------------------------
     # Repeated Cross-Section
     # --------------------------------------
-    # if we are running unbalanced panel data, we get a temporary copy of cohort data to compute influence function
-    if(dp2$allow_unbalanced_panel){
-      cohort_data_init <- copy(cohort_data[, .(D, .rowid)])
-    }
-    # still total number of units (not just included in G or C)
-    n <- cohort_data[, .N]
+    # cohort_data is a plain named list of vectors (D, y, post, i.weights, .rowid),
+    # built in run_att_gt_estimation(). Working on the vectors directly avoids per-cell
+    # data.table construction/extraction; the estimator inputs are identical.
+    D_all <- cohort_data$D
+    rowid_all <- cohort_data$.rowid   # all rows (needed for the unbalanced aggregation)
+
+    # still total number of obs. (not just included in G or C)
+    n <- length(D_all)
 
     # pick up the indices for units that will be used to compute ATT(g,t)
-    valid_obs <- which(cohort_data[, !is.na(D)])
-    cohort_data <- cohort_data[valid_obs]
+    valid_obs <- which(!is.na(D_all))
+    D    <- D_all[valid_obs]
+    y    <- cohort_data$y[valid_obs]
+    post <- cohort_data$post[valid_obs]
+    i.weights <- cohort_data$i.weights[valid_obs]
 
     # num obs. for computing ATT(g,t)
-    n1 <- cohort_data[, .N]
+    n1 <- length(D)
 
     if(dp2$xformla != ~1){
       covariates <- covariates[valid_obs,]
+      intercept_only <- FALSE
     } else {
       covariates <- covariates[valid_obs]
+      intercept_only <- TRUE
     }
 
     covariates <- as.matrix(covariates)
+
+    # number of rows of the final influence-function column for early returns:
+    # the unbalanced-panel branch aggregates observations to units; force_rc
+    # failure triplets are already at unit level (the caller's half-fold only
+    # applies to the dense success vector); plain RC has one row per observation
+    n_inf <- if (dp2$allow_unbalanced_panel || force_rc) dp2$id_count else n
+
+    skip_this_att_gt <- FALSE
+    if (sum(D * post) == 0) {
+      warning(paste0("No units in group ", g_val, " in time period ", t_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (sum(D * (1 - post)) == 0) {
+      warning(paste0("No units in group ", g_val, " in time period ", pret_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (sum((1 - D) * post) == 0) {
+      warning(paste0("No available control units for group ", g_val,
+                     " in time period ", t_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (sum((1 - D) * (1 - post)) == 0) {
+      warning(paste0("No available control units for group ", g_val,
+                     " in time period ", pret_val))
+      skip_this_att_gt <- TRUE
+    }
+    if (skip_this_att_gt) {
+      return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                  if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
+    }
 
     #-----------------------------------------------------------------------------
     # check for overlap and regression problems
@@ -221,27 +294,24 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
     custom_est_method <- inherits(dp2$est_method, "function")
 
     if (!custom_est_method) {
-      D_vec <- cohort_data[, D]
+      D_vec <- D
 
-      # determine correct inf_func length for early returns
-      n_inf <- if (dp2$allow_unbalanced_panel) dp2$id_count else n
-
-      # checks for pscore based methods
+      # checks for pscore based methods (no caching on the RC branch: the
+      # cohort index varies cell by cell here)
       if (dp2$est_method %in% c("dr", "ipw")) {
-        preliminary_logit <- fastglm::fastglm(covariates, D_vec, family = binomial())
-        preliminary_pscores <- preliminary_logit$fitted.values
-        if (max(preliminary_pscores) >= 0.999) {
+        if (overlap_check_fail(covariates, D_vec, intercept_only)) {
           warning(paste0("overlap condition violated", gt_label))
-          return(list(att = NA, inf_func = rep(NA_real_, n_inf)))
+          return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                      if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }
 
       # check if can run regression using control units
       if (dp2$est_method %in% c("dr", "reg")) {
-        control_covs <- covariates[D_vec == 0, , drop = FALSE]
-        if (rcond(t(control_covs) %*% control_covs) < .Machine$double.eps) {
-          warning(paste0("Not enough control units", gt_label, " to run specified regression"))
-          return(list(att = NA, inf_func = rep(NA_real_, n_inf)))
+        if (rcond_check_fail(covariates, D_vec, intercept_only)) {
+          warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
+          return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                      if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
         }
       }
     }
@@ -253,60 +323,84 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL, 
     if (inherits(dp2$est_method, "function")) {
       # user-specified function
       attgt <- do.call(dp2$est_method, c(list(
-                          y=cohort_data[, y],
-                          post=cohort_data[, post],
-                          D=cohort_data[, D],
+                          y=y,
+                          post=post,
+                          D=D,
                           covariates=covariates,
-                          i.weights=cohort_data[, i.weights],
-                          inffunc=TRUE), extra_args))
+                          i.weights=i.weights,
+                          inffunc=do_inf), extra_args))
     } else if (dp2$est_method == "ipw") {
       # inverse-probability weights
-      attgt <- std_ipw_did_rc(y=cohort_data[, y],
-                             post=cohort_data[, post],
-                             D=cohort_data[, D],
+      attgt <- std_ipw_did_rc(y=y,
+                             post=post,
+                             D=D,
                              covariates=covariates,
-                             i.weights=cohort_data[, i.weights],
-                             boot=FALSE, inffunc=TRUE)
+                             i.weights=i.weights,
+                             boot=FALSE, inffunc=do_inf)
     } else if (dp2$est_method == "reg") {
       # regression
-      attgt <- reg_did_rc(y=cohort_data[, y],
-                         post=cohort_data[, post],
-                         D=cohort_data[, D],
+      attgt <- reg_did_rc(y=y,
+                         post=post,
+                         D=D,
                          covariates=covariates,
-                         i.weights=cohort_data[, i.weights],
-                         boot=FALSE, inffunc=TRUE)
+                         i.weights=i.weights,
+                         boot=FALSE, inffunc=do_inf)
     } else {
       # doubly robust, this is default
-      attgt <- drdid_rc(y=cohort_data[, y],
-                       post=cohort_data[, post],
-                       D=cohort_data[, D],
+      attgt <- drdid_rc(y=y,
+                       post=post,
+                       D=D,
                        covariates=covariates,
-                       i.weights=cohort_data[, i.weights],
-                       boot=FALSE, inffunc=TRUE)
+                       i.weights=i.weights,
+                       boot=FALSE, inffunc=do_inf)
     }
 
     # n/n1 adjusts for estimating the
     # att_gt only using observations from groups
     # G and C
     # adjust influence function to account for only using
-    # subgroup to estimate att(g,t)
-    if(dp2$allow_unbalanced_panel){
-      # since this is technically a panel data but ran as RCS, we need to adjust the influence function
-      # by aggregating influence value by .rowid (since several obs of one unit could be used to estimate ATT in each 2x2)
-      cohort_data_init[, inf_func_long := 0]
-      # Assign values from vec to the valid rows identified by valid_obs
-      cohort_data_init[valid_obs, inf_func_long := (dp2$id_count/n1)*attgt$att.inf.func]
-      inf_func_vector <- cohort_data_init[, .(inf_func_agg = sum(inf_func_long, na.rm = TRUE)), by = .rowid][ , inf_func_agg]
+    # subgroup to estimate att(g,t). Stored as sparse triplets (if_i/if_x),
+    # mirroring the slow path; the dense vector is kept only where it is still
+    # needed (unbalanced-panel rowsum aggregation, force_rc half-fold).
+    if (!do_inf) {
+      if_i <- NULL   # point estimates only
+      if_x <- NULL
+    } else if(dp2$allow_unbalanced_panel){
+      # since this is technically a panel data but ran as RCS, we need to adjust the
+      # influence function by aggregating influence value by .rowid (several obs of one
+      # unit can be used to estimate ATT in each 2x2). rowsum(..., reorder = FALSE)
+      # reproduces the data.table `by = .rowid` first-appearance group order exactly.
+      # The aggregated dense vector is then converted to triplets with the same
+      # is.na | != 0 scan the assembly previously applied to dense columns.
+      inf_func_long <- numeric(n)
+      inf_func_long[valid_obs] <- (dp2$id_count / n1) * attgt$att.inf.func
+      agg <- dp2$.rowid_agg
+      inf_func_vector <- if (!is.null(agg)) {
+        # precomputed sparse unit-aggregation operator (see compute.att_gt2):
+        # accumulates in row order within each unit, bit-identical to the
+        # rowsum() fallback but without per-cell hashing/dimnames work
+        as.vector(agg %*% inf_func_long)
+      } else {
+        rowsum(inf_func_long, rowid_all, reorder = FALSE)[, 1L]
+      }
+      if_i <- which(is.na(inf_func_vector) | inf_func_vector != 0)
+      if_x <- inf_func_vector[if_i]
 
-    } else {
+    } else if (force_rc) {
+      # balanced panel run as RC (fix_weights = "varying"): return the dense
+      # stacked [all pre, all post] vector; run_att_gt_estimation() half-folds
+      # it to unit level and converts it to triplets there.
       inf_func_vector <- rep(0, n)
-      inf_func_not_na <- (n/n1)*attgt$att.inf.func
-      inf_func_vector[valid_obs] <- inf_func_not_na
+      inf_func_vector[valid_obs] <- (n/n1)*attgt$att.inf.func
+      return(list(att = attgt$ATT, inf_func = inf_func_vector))
+    } else {
+      if_i <- valid_obs
+      if_x <- (n/n1)*attgt$att.inf.func
     }
 
   }
 
-  return(list(att = attgt$ATT, inf_func = inf_func_vector))
+  return(list(att = attgt$ATT, if_i = if_i, if_x = if_x))
 
 }
 
@@ -375,6 +469,10 @@ run_att_gt_estimation <- function(g, t, dp2){
 
 
 
+  # key into the overlap/rcond guard cache (set on the panel non-varying branch
+  # below when the cache is active; NULL = no caching for this cell)
+  check_cache_key <- NULL
+
   if(dp2$panel){
     # Determine which weight period to use based on fix_weights
     use_rc_for_weights <- (!is.null(dp2$fix_weights) && dp2$fix_weights == "varying")
@@ -408,14 +506,27 @@ run_att_gt_estimation <- function(g, t, dp2){
       } else if (dp2$fix_weights == "first_period") {
         w_idx <- 1L
       }
-      cohort_data <- data.table(did_cohort_index, dp2$outcomes_tensor[[t+tfac]],
-                                dp2$outcomes_tensor[[pret]], dp2$weights_tensor[[w_idx]])
-      names(cohort_data) <- c("D", "y1", "y0", "i.weights")
+      # Plain named list of the cohort vectors (the tensors already hold vectors);
+      # this avoids constructing/extracting a data.table per (g,t) cell, which the
+      # profiler showed is a large share of the run time. run_DRDID()'s panel branch
+      # consumes these as vectors, so the result is identical.
+      cohort_data <- list(D = did_cohort_index,
+                          y1 = dp2$outcomes_tensor[[t + tfac]],
+                          y0 = dp2$outcomes_tensor[[pret]],
+                          i.weights = dp2$weights_tensor[[w_idx]])
       covariates <- dp2$covariates_tensor[[base::min(pret, t)]]
+      # Key for the overlap/rcond guard cache (see compute.att_gt2): under
+      # nevertreated the cohort index depends only on g, so the guards'
+      # (covariates, D) inputs are bit-identical across all cells of a group
+      # sharing a covariate (and weight) period.
+      if (!is.null(dp2$.check_cache)) {
+        check_cache_key <- paste(g, base::min(pret, t), w_idx, sep = "_")
+      }
     }
   } else {
 
-    log_vec <- dp2$time_invariant_data[[ dp2$tname ]] == dp2$time_periods[t+tfac]
+    # post indicator reuses the pre-computed period mask (see compute.att_gt2)
+    log_vec <- dp2$.period_masks[[t + tfac]]
     # convert TRUE/FALSE to 1/0 in place (fastest)
     set(dp2$time_invariant_data, j = "post", value = as.integer(log_vec))
 
@@ -426,18 +537,34 @@ run_att_gt_estimation <- function(g, t, dp2){
       } else {
         target_period <- dp2$time_periods[1]
       }
-      # Build weight lookup from target period
       tid <- dp2$time_invariant_data
-      target_mask <- tid[[dp2$tname]] == target_period
-      target_ids <- tid[[dp2$idname]][target_mask]
-      target_ws <- tid[["weights"]][target_mask]
-      target_w_lookup <- stats::setNames(target_ws, as.character(target_ids))
-      # Look up weight for each observation
-      obs_ids <- as.character(tid[[dp2$idname]])
-      fixed_w <- as.numeric(target_w_lookup[obs_ids])
+      # Memoize the weight lookup per target period (env set in compute.att_gt2):
+      # target_period depends only on g for "base_period" and is constant for
+      # "first_period", and tid's id/time/.w columns are never mutated in the
+      # (g,t) loop, so fixed_w/na_w are identical across all cells sharing a
+      # target period. Keying by as.character(target_period) memoizes the NA
+      # case (group with no pre-period, varying base, pre-treatment cell)
+      # under "NA" with unchanged semantics. The warning and the
+      # did_cohort_index mutation below stay per cell.
+      memo <- dp2$.fixed_w_memo
+      memo_key <- as.character(target_period)
+      cached <- if (!is.null(memo)) memo[[memo_key]] else NULL
+      if (is.null(cached)) {
+        # Build weight lookup from target period
+        target_mask <- tid[[dp2$tname]] == target_period
+        target_ids <- tid[[dp2$idname]][target_mask]
+        target_ws <- tid[[".w"]][target_mask]
+        # Map each observation's weight from the target period by integer id matching.
+        # Equivalent to the previous named-character lookup (first match wins on any
+        # duplicate id; unmatched ids -> NA) but avoids coercing every id to character.
+        fixed_w <- target_ws[match(tid[[dp2$idname]], target_ids)]
+        cached <- list(fixed_w = fixed_w, na_w = is.na(fixed_w))
+        if (!is.null(memo)) memo[[memo_key]] <- cached
+      }
+      fixed_w <- cached$fixed_w
       # Exclude units not observed in target period by setting D to NA
       # (run_DRDID filters on !is.na(D))
-      na_w <- is.na(fixed_w)
+      na_w <- cached$na_w
       if (any(na_w & !is.na(did_cohort_index))) {
         did_cohort_index[na_w] <- NA_integer_
         warning(paste0("Some units not observed in ", dp2$fix_weights,
@@ -445,17 +572,26 @@ run_att_gt_estimation <- function(g, t, dp2){
                        dp2$treated_groups[g], " in time period ",
                        dp2$time_periods[t+tfac], ". These units are excluded."))
       }
-      cohort_data <- data.table(did_cohort_index, tid[[dp2$yname]], tid$post, fixed_w, tid$.rowid)
+      # Plain named list of the cohort vectors (avoids per-cell data.table
+      # construction/extraction; run_DRDID()'s RC branch consumes these as vectors).
+      cohort_data <- list(D = did_cohort_index, y = tid[[dp2$yname]], post = tid$post,
+                          i.weights = fixed_w, .rowid = tid$.rowid)
     } else {
-      cohort_data <- data.table(did_cohort_index, dp2$time_invariant_data[[dp2$yname]], dp2$time_invariant_data$post, dp2$time_invariant_data$weights, dp2$time_invariant_data$.rowid)
+      cohort_data <- list(D = did_cohort_index, y = dp2$time_invariant_data[[dp2$yname]],
+                          post = dp2$time_invariant_data$post,
+                          i.weights = dp2$time_invariant_data[[".w"]],
+                          .rowid = dp2$time_invariant_data$.rowid)
     }
-    names(cohort_data) <- c("D", "y", "post", "i.weights", ".rowid")
     covariates <- dp2$covariates_matrix
   }
 
   # run estimation
   force_rc <- !is.null(dp2$fix_weights) && dp2$fix_weights == "varying" && dp2$panel
-  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g], t_val = dp2$time_periods[t+tfac], force_rc = force_rc),
+  did_result <- tryCatch(run_DRDID(cohort_data, covariates, dp2, g_val = dp2$treated_groups[g],
+                                   t_val = dp2$time_periods[t + tfac],
+                                   pret_val = dp2$time_periods[pret],
+                                   force_rc = force_rc,
+                                   check_cache_key = check_cache_key),
                          error = function(e) {
                            warning("Error computing internal 2x2 DiD for (g, t) = (", dp2$treated_groups[g], ", ", dp2$time_periods[t+tfac], "): ", e$message, ". The ATT for this cell will be set to NA.")
                            return(NULL)
@@ -464,10 +600,15 @@ run_att_gt_estimation <- function(g, t, dp2){
   # When force_rc on balanced panel, the influence function has 2*n_units rows.
   # Half-split is safe here: cohort_data is explicitly stacked as
   # [all pre, all post] via rep(c(0L, 1L), each = n_units) in construction above.
-  if (force_rc && !is.null(did_result) && dp2$panel) {
+  # The folded dense vector is converted to sparse triplets (if_i/if_x) with the
+  # same is.na | != 0 scan the assembly previously applied to dense columns.
+  if (force_rc && !is.null(did_result) && dp2$panel && !is.null(did_result$inf_func)) {
     inf <- did_result$inf_func
     n_half <- length(inf) %/% 2L
-    did_result$inf_func <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
+    inf_folded <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
+    did_result$if_i <- which(is.na(inf_folded) | inf_folded != 0)
+    did_result$if_x <- inf_folded[did_result$if_i]
+    did_result$inf_func <- NULL
   }
 
   return(did_result)
@@ -493,6 +634,8 @@ run_att_gt_estimation <- function(g, t, dp2){
 compute.att_gt2 <- function(dp2) {
 
   n <- dp2$id_count  # Total number of units
+  # whether to compute influence functions (default TRUE; FALSE = point estimates only)
+  do_inf <- is.null(dp2$compute_inffunc) || isTRUE(dp2$compute_inffunc)
   time_periods <- dp2$time_periods # tlist
 
   tlist.length <- if (dp2$base_period != "universal") length(time_periods) - 1L else length(time_periods)
@@ -501,6 +644,54 @@ compute.att_gt2 <- function(dp2) {
   # Pre-compute cumulative cohort sizes for fast indexing in get_did_cohort_index
   if (dp2$panel) {
     dp2$.cohort_cum_sizes <- cumsum(dp2$cohort_counts$cohort_size)
+  } else {
+    # Pre-compute the loop-invariant row masks used by get_did_cohort_index()
+    # and the post indicator in run_att_gt_estimation(): per-period membership,
+    # the never-treated flag, and per-group treated flags. Each was previously
+    # recomputed with full O(rows) scans for every (g,t) cell on the RC /
+    # unbalanced-panel path. Memory: (T + n_groups + 1) logical vectors of
+    # length nrow(time_invariant_data).
+    dat <- dp2$time_invariant_data
+    dp2$.period_masks <- lapply(time_periods, function(tp) dat[[dp2$tname]] == tp)
+    dp2$.never_treated <- dat[[dp2$gname]] == Inf
+    dp2$.gflag_by_group <- lapply(dp2$treated_groups, function(gval) dat[[dp2$gname]] == gval)
+    # Memo for the fix_weights = "base_period"/"first_period" weight lookup in
+    # run_att_gt_estimation(): fixed_w/na_w depend only on the target period
+    # (one per group for "base_period", a single constant for "first_period"),
+    # so the full-table mask + match() is computed once per distinct period
+    # instead of once per (g,t) cell.
+    if (!is.null(dp2$fix_weights) && dp2$fix_weights %in% c("base_period", "first_period")) {
+      dp2$.fixed_w_memo <- new.env(parent = emptyenv())
+    }
+    # Pre-build the unit-aggregation operator for the unbalanced-panel
+    # influence function: sparse 0/1 matrix S (id_count x rows) with
+    # S[u, r] = 1 iff row r belongs to unit u, units ordered by first
+    # appearance. S %*% v accumulates v in row order within each unit,
+    # reproducing rowsum(v, .rowid, reorder = FALSE) bit-identically, while
+    # the grouping work is done once per att_gt() call instead of once per
+    # (g,t) cell (rowsum re-hashes the full .rowid vector and builds
+    # character dimnames on every call).
+    if (dp2$allow_unbalanced_panel && do_inf) {
+      rowid_all <- dat$.rowid
+      gmap <- match(rowid_all, unique(rowid_all))
+      dp2$.rowid_agg <- Matrix::sparseMatrix(i = gmap, j = seq_along(rowid_all),
+                                             x = 1, dims = c(n, length(rowid_all)))
+    }
+  }
+
+  # Cache for the per-cell overlap/rcond guard booleans. For panel data with
+  # control_group = "nevertreated" and non-varying weights, the guards'
+  # (covariates, D) inputs are bit-identical across all cells of a group that
+  # share a covariate (and weight) period, so each boolean is computed once per
+  # (g, covariate-period, weight-period) key (see run_DRDID). Not used for
+  # notyettreated (the control cohort varies with t) or fix_weights = "varying"
+  # (RC estimator path). Only the booleans are stored; failure warnings are
+  # still emitted per cell. options(did.disable_check_cache = TRUE) forces the
+  # per-cell checks (escape hatch / used to verify bit-identical equivalence).
+  if (dp2$panel && dp2$control_group[1] == "nevertreated" &&
+      (is.null(dp2$fix_weights) || dp2$fix_weights != "varying") &&
+      !isTRUE(getOption("did.disable_check_cache"))) {
+    dp2$.check_cache <- new.env(parent = emptyenv())
   }
 
 
@@ -512,17 +703,18 @@ compute.att_gt2 <- function(dp2) {
   }, integer(1))
   dp2$.pret_by_group <- pret_by_group
 
-  # in terms of indexes, not calendar times
-  gt_cells <- expand.grid(g = 1:dp2$treated_groups_count, t = 1:tlist.length, stringsAsFactors = FALSE)
-  gt_cells <- gt_cells[order(gt_cells$g, gt_cells$t), ]
-  total_gt_iterations <- nrow(gt_cells)
+  # in terms of indexes, not calendar times.
+  # Build the (g,t) index pairs directly in g-major / t-minor order. This is
+  # identical to expand.grid(g, t) followed by order(g, t) but avoids both the
+  # data.frame construction and the per-iteration single-row subset below.
+  g_vec <- rep.int(seq_len(dp2$treated_groups_count), rep.int(tlist.length, dp2$treated_groups_count))
+  t_vec <- rep.int(seq_len(tlist.length), dp2$treated_groups_count)
+  total_gt_iterations <- length(g_vec)
 
 
   # Running estimation using run_att_gt_estimation() function
   # Helper function for processing each (g,t) pair
-  process_gt <- function(gt_cell, idx) {
-    g <- gt_cell$g
-    t <- gt_cell$t
+  process_gt <- function(g, t) {
 
     # Run estimation
     gt_result <- run_att_gt_estimation(g, t, dp2)
@@ -530,45 +722,54 @@ compute.att_gt2 <- function(dp2) {
       # Compute post-treatment indicator
     post.treat <- as.integer(dp2$treated_groups[g] <= dp2$time_periods[t+tfac])
 
-    # Check for NULL first (estimation failed or was skipped)
+    # Check for NULL first (estimation failed or was skipped). When do_inf = FALSE
+    # (point estimates only) no influence-function triplets are stored (saving memory).
+    # Failed cells propagate NA to every row of their column: if_i = seq_len(n),
+    # if_x = NA, exactly the triplets the dense-column scan used to produce.
     if (is.null(gt_result)) {
-      inffunc_updates <- rep(NA_real_, n)
-      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat,
+                        if_i = if (do_inf) seq_len(n) else NULL,
+                        if_x = if (do_inf) rep(NA_real_, n) else NULL)
       return(gt_result)
     }
 
-    # Base period normalization: ATT is 0 by construction
+    # Base period normalization: ATT is 0 by construction (empty triplet column)
     if (!is.null(gt_result$base_period_norm)) {
-      inffunc_updates <- rep(0, n)
-      gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = 0, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat,
+                        if_i = if (do_inf) integer(0) else NULL,
+                        if_x = if (do_inf) numeric(0) else NULL)
       return(gt_result)
     }
 
     if (is.null(gt_result$att)) {
       # Estimation returned a result but without an ATT
-      inffunc_updates <- rep(NA_real_, n)
-      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      gt_result <- list(att = NA, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat,
+                        if_i = if (do_inf) seq_len(n) else NULL,
+                        if_x = if (do_inf) rep(NA_real_, n) else NULL)
       return(gt_result)
     } else {
       att <- gt_result$att
-      inf_func <- gt_result$inf_func
+      if_i <- gt_result$if_i
+      if_x <- gt_result$if_x
 
       # Handle NaN ATT: treat as estimation failure
       if (is.nan(att)) {
         att <- NA
-        inf_func <- rep(NA_real_, n)
+        if (do_inf) {
+          if_i <- seq_len(n)
+          if_x <- rep(NA_real_, n)
+        }
       }
 
-      # Save ATT and influence function
-      inffunc_updates <- inf_func
-      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, inffunc_updates = inffunc_updates)
+      # Save ATT and influence triplets (if_i/if_x are NULL when do_inf = FALSE)
+      gt_result <- list(att = att, group = dp2$treated_groups[g], year = dp2$time_periods[t+tfac], post = post.treat, if_i = if_i, if_x = if_x)
       return(gt_result)
     }
   }
 
   # run the estimation for each (g,t) pair with process_gt
   gt_results <- lapply(seq_len(total_gt_iterations), function(idx) {
-    process_gt(gt_cells[idx, ], idx)
+    process_gt(g_vec[idx], t_vec[idx])
   })
 
   # Filter out NULL results
@@ -579,25 +780,30 @@ compute.att_gt2 <- function(dp2) {
          "Check treatment timing, control group definition, and anticipation settings.")
   }
 
-  # Post processing: Build sparse influence function matrix directly from triplets
-  n_rows <- length(gt_results[[1]]$inffunc_updates)
-  n_cols <- length(gt_results)
+  # Post processing: Build sparse influence function matrix directly from triplets.
+  # Skipped entirely for point estimates only (do_inf = FALSE) -- no n x k matrix is
+  # ever formed, which is the memory saving of compute_inffunc = FALSE.
+  if (!do_inf) {
+    inffunc <- NULL
+  } else {
+    n_cols <- length(gt_results)
 
-  # Collect non-zero entries as sparse triplets
-  trip_i <- integer(0)
-  trip_j <- integer(0)
-  trip_x <- numeric(0)
-  for (j in seq_len(n_cols)) {
-    vec <- gt_results[[j]]$inffunc_updates
-    nz <- which(is.na(vec) | vec != 0)
-    if (length(nz) > 0L) {
-      trip_i <- c(trip_i, nz)
-      trip_j <- c(trip_j, rep.int(j, length(nz)))
-      trip_x <- c(trip_x, vec[nz])
-    }
+    # Each cell already carries its influence column as sparse triplets
+    # (if_i row indices / if_x values), mirroring the slow path; concatenate
+    # them once instead of rescanning dense per-cell vectors with which().
+    # The triplet order is unchanged (column-major, original within-column
+    # order), so the resulting sparse matrix is identical. Every code path
+    # produces columns with dp2$id_count rows (panel units, RC observations,
+    # unbalanced-panel units after the rowsum aggregation, force_rc units
+    # after the half-fold).
+    nz_list <- lapply(gt_results, `[[`, "if_i")
+    val_list <- lapply(gt_results, `[[`, "if_x")
+    trip_i <- unlist(nz_list, use.names = FALSE)
+    trip_x <- unlist(val_list, use.names = FALSE)
+    trip_j <- rep.int(seq_len(n_cols), lengths(nz_list))
+    inffunc <- Matrix::sparseMatrix(i = trip_i, j = trip_j, x = trip_x,
+                                    dims = c(n, n_cols))
   }
-  inffunc <- Matrix::sparseMatrix(i = trip_i, j = trip_j, x = trip_x,
-                                  dims = c(n_rows, n_cols))
 
   return(list(attgt.list=gt_results, inffunc=inffunc))
 }

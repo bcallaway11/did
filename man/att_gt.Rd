@@ -28,6 +28,7 @@ att_gt(
   print_details = FALSE,
   pl = FALSE,
   cores = 1,
+  compute_inffunc = TRUE,
   ...
 )
 }
@@ -196,8 +197,12 @@ In both cases the function should return a list that includes
 \code{att.inf.func} (an \verb{n x 1} influence function — one entry per
 observation passed into the estimator).
 The function can return other things as well, but these are
-the only two that are required. \code{est_method} is only used
-if covariates are included.}
+the only two that are required. With no covariates
+(\code{xformla = NULL}), the built-in methods ("dr", "ipw", "reg") all
+reduce to the unconditional difference-in-differences estimator, so
+the choice among them is irrelevant; a custom \code{est_method} function
+is still called (with an intercept-only \code{covariates} matrix) and
+determines the estimates.}
 
 \item{base_period}{Whether to use a "varying" base period or a
 "universal" base period.  Either choice results in the same
@@ -226,8 +231,9 @@ extra estimate in an earlier period.}
 
 \item{faster_mode}{This option enables a faster version of \code{did}, optimizing
 computation time for large datasets by improving data management within the package.
-The default is set to \code{FALSE}. While the difference is minimal for small datasets,
-it is recommended for use with large datasets.}
+The default is set to \code{TRUE}. Both modes produce identical results up to
+numerical precision; while the difference is minimal for small datasets,
+the speedup is substantial for large ones.}
 
 \item{print_details}{Whether or not to show details/progress of computations.
 Default is \code{FALSE}.}
@@ -236,6 +242,16 @@ Default is \code{FALSE}.}
 
 \item{cores}{The number of cores to use for parallel processing}
 
+\item{compute_inffunc}{Whether or not to compute the influence functions. The
+default is \code{TRUE}. The influence functions are required for standard errors,
+uniform confidence bands, the parallel-trends pre-test, and for aggregating the
+group-time effects with \code{\link[=aggte]{aggte()}}. Set \code{compute_inffunc = FALSE} to obtain the
+group-time ATT \emph{point estimates only}: this is faster and uses substantially less
+memory (no \eqn{n \times k} influence-function matrix is formed or bootstrapped),
+but the returned object has no standard errors / pre-test and cannot be passed to
+\code{\link[=aggte]{aggte()}}. The point estimates are identical to those from a full run. When
+\code{compute_inffunc = FALSE}, \code{bstrap} and \code{cband} are set to \code{FALSE} automatically.}
+
 \item{...}{Additional arguments to be passed to a custom \code{est_method}
 function. These are ignored when using built-in estimation methods
 (\code{"dr"}, \code{"ipw"}, \code{"reg"}).}
@@ -243,6 +259,16 @@ function. These are ignored when using built-in estimation methods
 \value{
 an \code{\link{MP}} object containing all the results for group-time average
 treatment effects
+
+The returned \code{inffunc} matrix collects the estimated influence functions,
+with one column per ATT(g,t) and one row per cross-sectional unit (one row
+per observation with repeated cross sections). Its rownames hold the unit
+ids (\code{idname}; an internal observation index for repeated cross sections)
+and are the authoritative link between rows and units: the row ORDER is
+mode-specific (\code{faster_mode = FALSE} sorts units by id, while
+\code{faster_mode = TRUE} uses an internal (period, cohort, id) ordering), so
+external consumers of the influence functions must align rows by rowname,
+never by position.
 }
 \description{
 \code{att_gt} computes average treatment effects in DID
@@ -251,6 +277,16 @@ treatment to occur at different points in time and allowing for
 treatment effect heterogeneity and dynamics.
 See Callaway and Sant'Anna (2021) for a detailed description.
 }
+\section{Options}{
+
+When \code{faster_mode = FALSE}, setting \code{options(did.disable_precompute = TRUE)}
+disables the one-time positional precompute and assembles every 2x2
+comparison from the long data per cell, as in earlier versions. The
+covariate design matrix is still built once over the full sample under
+both settings, so results are identical either way; the option exists
+only as a debugging escape hatch.
+}
+
 \section{Examples:}{
 \strong{Basic \code{\link[=att_gt]{att_gt()}} call:}
 

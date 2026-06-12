@@ -11,7 +11,13 @@
 #'  approximation.
 #' @param V_analytical Analytical estimator for the asymptotic variance-covariance matrix for group-time average treatment effects
 #' @param se standard errors for group-time average treatment effects. If bootstrap is set to TRUE, this provides bootstrap-based se.
-#' @param inffunc the influence function for estimating group-time average treatment effects
+#' @param inffunc the influence function for estimating group-time average
+#'  treatment effects: one column per ATT(g,t) and one row per cross-sectional
+#'  unit (one row per observation with repeated cross sections). The rownames
+#'  hold the unit ids and are the authoritative link between rows and units --
+#'  the row order differs across `faster_mode = TRUE` (internal
+#'  (period, cohort, id) ordering) and `faster_mode = FALSE` (id-sorted), so
+#'  align rows by rowname, never by position.
 #' @param n the number of unique cross-sectional units (unique values of idname)
 #' @param W the Wald statistic for pre-testing the common trends assumption
 #' @param Wpval the p-value of the Wald statistic for pre-testing the
@@ -56,9 +62,11 @@ summary.MP <- function(object, ...) {
   cat("Group-Time Average Treatment Effects:\n")
 
   cband_text1a <- paste0(100*(1-mpobj$alp),"% ")
-  cband_text1b <- ifelse(mpobj$DIDparams$bstrap,
-                         ifelse(mpobj$DIDparams$cband, "Simult. ", "Pointwise "),
-                         "Pointwise ")
+  cband_text1b <- if (mpobj$DIDparams$bstrap) {
+    if (mpobj$DIDparams$cband) "Simult. " else "Pointwise "
+  } else {
+    "Pointwise "
+  }
   cband_text1 <- paste0("[", cband_text1a, cband_text1b)
 
   cband_lower <- mpobj$att - mpobj$c*mpobj$se

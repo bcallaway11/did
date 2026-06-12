@@ -11,9 +11,11 @@ test.mboot(inf.func, DIDparams, cores = 1)
 
 \item{DIDparams}{DIDparams object}
 
-\item{cores}{The number of cores to use to bootstrap the test
-statistic in parallel.  Default is \code{cores=1} which
-corresponds to not running parallel.}
+\item{cores}{Unused; retained for backward compatibility. The
+multiplier bootstrap is computed with vectorized matrix operations
+in a single process, so this argument has no effect here. In
+\code{conditional_did_pretest}, \code{cores} parallelizes only
+Step 1 (computing the test statistic).}
 }
 \value{
 list

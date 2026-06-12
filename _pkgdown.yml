@@ -93,6 +93,8 @@ reference:
       - trimmer
       - glance.AGGTEobj
       - glance.MP
+      - nobs.AGGTEobj
+      - nobs.MP
       - tidy.AGGTEobj
       - tidy.MP
   - title: "Data"
