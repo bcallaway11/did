@@ -22,7 +22,10 @@ fit_edid_cells(
   trim_level = Inf,
   mc_cores = getOption("edid_mc_cores", 1L),
   moment_set = NULL,
-  bs_df = 4L
+  min_pair_units = 5L,
+  bs_df = 4L,
+  ratio_method = c("coherent", "direct", "exp"),
+  nocov_shrink = TRUE
 )
 }
 \arguments{
@@ -45,8 +48,23 @@ is non-NULL)}
 enumerated pairs per target cohort; forwarded to
 \code{enumerate_valid_pairs_edid()} (see \code{\link{edid}})}
 
+\item{min_pair_units}{integer >= 2 (default \code{5L}): thin-cohort guard threshold;
+applied per target cohort via \code{apply_thin_cohort_guard_edid()} (see \code{\link{edid}})}
+
 \item{bs_df}{integer >= 3 (default \code{4L}) or \code{"ic"}: B-spline df for
 the sieve nuisances, or the per-fit IC selection (see \code{\link{edid}})}
+
+\item{ratio_method}{\code{"coherent"} (default), \code{"direct"}, or \code{"exp"}:
+construction of the propensity nuisances on the covariate path (see \code{\link{edid}}
+and \code{estimate_all_propensity_ratios}); \code{"direct"} reproduces the legacy
+per-pair LS sieve bit-for-bit, \code{"exp"} fits per-target exponential-link Riesz
+regressions with full estimation-effect integration}
+
+\item{nocov_shrink}{logical (default \code{TRUE}): on the no-covariate PT-All
+path, shrink each cell's estimated moment covariance toward its
+i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
+the weights (see \code{\link{edid}}); \code{FALSE} reproduces the
+unshrunk weights bit-for-bit}
 }
 \value{
 list with elements:
@@ -56,6 +74,13 @@ list with elements:
 \item{\code{cell_index}}{data.frame: group, time, cell_id, is_pre}
 \item{\code{bs_df_selected}}{data.frame of IC-selected dfs per nuisance fit
 (only under \code{bs_df = "ic"} on the covariate path), or NULL}
+\item{\code{thin_cohorts}}{data.frame of cohorts the thin-cohort guard acted on
+(\code{cohort}, \code{n_units}, \code{degraded_target}, \code{excised_comparison}),
+or NULL when the guard never fired}
+\item{\code{nocov_ee_s}}{n x n_cells matrix of per-unit projections \eqn{s_i = d_i'\psi_i}
+feeding the cross-cell increments of the no-covariate weight-estimation correction
+(\code{nocov_ee_sigma_full_edid}); NA columns where the correction did not apply;
+NULL unless the correction is engaged}
 }
 }
 \description{

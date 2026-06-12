@@ -395,6 +395,16 @@ build_kernel_weights_edid <- function(X_mat, bw = NULL) {
 #' @param kp_cache optional environment for memoizing the cell-invariant per-group kernel slices
 #'   (\code{K_mat[, idx]} + row sums). Pass a shared env to reuse the slices across the array build
 #'   (\code{compute_omega_star_kernel_fast_edid}) and this psi pass within a cell; NULL builds a local one.
+#' @param keep optional \{0,1\}/logical n-vector: the cell-common overlap-trim mask the generated
+#'   outcomes were built with (\code{edid_cell_trim_structure}'s \code{keep_common}). When supplied,
+#'   every Eq. (3.12) prefactor is zeroed at trimmed units, so Omega*(X) (and the psi_Omega channel)
+#'   estimate the covariance of the moments ACTUALLY used: the trimmed moment is
+#'   \eqn{keep_i \cdot renorm \cdot \phi_i}, hence \eqn{\Omega^{trim}(X_i) = keep_i\,renorm^2\,
+#'   \Omega(X_i)} -- the cell-common scalar \eqn{renorm^2} cancels in the (scale-invariant) weights
+#'   and is omitted; the per-unit \eqn{keep_i} does not and is applied here. Without it, the
+#'   1/p prefactors are largest exactly at the units trimming removed, so the weight and psi
+#'   channels were driven by observations the moments no longer contain (\code{trim_level} did not
+#'   reach the psi channel). \code{NULL} (default) is byte-identical to the previous behavior.
 #'
 #' @return numeric matrix H x H (positive semi-definite), or a list with the per-unit array when
 #'   \code{return_pointwise = TRUE}
@@ -406,7 +416,8 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
                                         K_mat = NULL,
                                         return_pointwise = FALSE,
                                         psi_qw = NULL,
-                                        kp_cache = NULL) {
+                                        kp_cache = NULL,
+                                        keep = NULL) {
   X_mat <- panel_obj$covariate_matrix
   n     <- nrow(X_mat)
   d     <- ncol(X_mat)
@@ -468,6 +479,16 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   } else {
     inv_pg_vec   <- rep(1 / pi_g, n)
     inv_pinf_vec <- rep(1 / pi_inf, n)
+  }
+  # Cell-common overlap-trim mask: zero every prefactor at trimmed units so Omega* (and the psi
+  # channel below) integrate only the population the trimmed moments actually use. The cov terms
+  # are nuisance fits and stay full-sample (trimmed obs still inform the smoother); each Eq.(3.12)
+  # term carries EXACTLY one prefactor, so scaling the prefactor vectors applies keep_i once per term.
+  kv <- NULL
+  if (!is.null(keep)) {
+    kv <- as.numeric(keep)
+    inv_pg_vec   <- inv_pg_vec * kv
+    inv_pinf_vec <- inv_pinf_vec * kv
   }
 
   # Kernel conditional covariance Cov_K(A,B | X_i) = E_K[AB|X_i] - E_K[A|X_i] E_K[B|X_i], with E_K[.|X_i]=(K_i .)/(K_i 1).
@@ -617,9 +638,11 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     # coupled_C for the inv_p Gamma: dOmega/dbeta_c collects sign_term * coup * C_i (per-unit cov) for the term's inv_p
     # group c. dtheta_w/dbeta_c = -(1/n) crossprod(B_masked, coupled_C_c). (grp_sign*coup)*cov_vals is length-n in both
     # the scalar (broadcast) and pointwise (per-unit) cases, so this expression is scheme-agnostic.
+    # Under overlap trimming the prefactor is keep_i * s_c,i, so dOmega_i/ds_c,i carries keep_i: fold kv into the
+    # cov side ONCE here (pref_vec already carries it for the data channel above).
     if (!is.null(grp_key)) {
       cur <- if (exists(grp_key, envir = cpl, inherits = FALSE)) get(grp_key, envir = cpl) else numeric(n)
-      assign(grp_key, cur + (grp_sign * coup) * cov_vals, envir = cpl)
+      assign(grp_key, cur + (grp_sign * coup) * (if (is.null(kv)) cov_vals else kv * cov_vals), envir = cpl)
     }
     invisible(NULL)
   }
@@ -723,6 +746,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
             pi_gp <- panel_obj$cohort_fractions[[gp_key_jk]]
             inv_pgp_vec <- if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n)
           }
+          if (!is.null(kv)) inv_pgp_vec <- inv_pgp_vec * kv      # overlap-trim mask (see keep)
           mask_gp_jk <- panel_obj$cohort_masks[[gp_key_jk]]
           if (is.null(mask_gp_jk)) mask_gp_jk <- rep(FALSE, n)
         }
@@ -789,24 +813,56 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     return(Omega_array)   # (do_psi already returned above; the efficient psi rides the FIRST array call's lambda)
   }
 
-  # Ensure positive semi-definiteness AND cap the condition number via a dimension-aware RELATIVE eigenvalue
-  # floor (scale-invariant), matching the pointwise path. An absolute 1e-12 floor leaves the averaged Omega-bar
-  # arbitrarily ill-conditioned for small-scale outcomes (e.g. kappa ~1e13), which makes its inverse blow up and
-  # destabilizes the efficient-weight / weight-estimation-channel computations (catastrophic cancellation in
-  # q'1). The relative floor mx * n^(-a_floor) caps kappa at n^(a_floor), as in compute_pointwise_weights_edid.
-  eig     <- eigen(Omega_hat, symmetric = TRUE)
-  d_cov   <- ncol(panel_obj$covariate_matrix)
-  a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
-  mx      <- max(eig$values)
-  floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
-  lam_raw <- eig$values                                       # raw (pre-floor) eigenvalues, for the coupling IF
+  # Ensure positive semi-definiteness AND cap the condition number via a RELATIVE eigenvalue floor on the
+  # CORRELATION scale (diagonal-preserving). The floor must dominate the estimation noise of the matrix it
+  # floors; the pooled Omega-bar is a cross-unit average -- sqrt(n)-consistent with NO curse of
+  # dimensionality (the same property the averaged scheme's documentation claims) -- so its admissible floor
+  # band is 0 < a < 1/2 and we take a = 1/3 (strictly interior), NOT the pointwise kernel exponent
+  # 0.7*(5-d)/10 (at d = 4 that is 0.07, i.e. a condition cap of ~1.7, which erased the per-moment variance
+  # ordering and forced near-uniform weights over moments whose variances differ by orders of magnitude --
+  # the audited with-X SE degeneracy). Flooring the correlation matrix D^{-1/2} Omega D^{-1/2} keeps the
+  # diagonal (the well-estimated per-moment variances) intact and regularizes only the correlation SHAPE,
+  # where the genuine near-collinearity of the moment noises lives. The legacy raw-scale d-dependent floor
+  # is reachable via options(edid_legacy_floor = TRUE) (forensics).
+  if (isTRUE(getOption("edid_legacy_floor"))) {
+    eig     <- eigen(Omega_hat, symmetric = TRUE)
+    d_cov   <- ncol(panel_obj$covariate_matrix)
+    a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
+    mx      <- max(eig$values)
+    floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
+    lam_raw <- eig$values                                     # raw (pre-floor) eigenvalues, for the coupling IF
+    eig$values <- pmax(eig$values, floor_v)
+    Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+    attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    return(Omega_hat)
+  }
+  # DEGENERATE moments (zero pooled variance -- e.g. the structurally-zero self pair with tpre == t that
+  # the t-independent pair enumeration produces in PRE-treatment cells) get scale 0: they are EXCLUDED
+  # from the GLS system (their floored-Omega rows are zeroed, so the weight solver routes them through the
+  # pseudoinverse and assigns them zero weight -- the same treatment the no-covariate path's pinv gives an
+  # exactly-degenerate moment). Flooring them instead would hand the zero-variance moment ALL the weight.
+  dgo <- diag(Omega_hat)
+  if (all(is.finite(dgo)) && any(dgo > 0)) {
+    pos <- dgo > max(dgo) * 1e-12
+    dsc <- ifelse(pos, 1 / sqrt(pmax(dgo, max(dgo) * 1e-300)), 0)
+    inv_dsc <- ifelse(pos, sqrt(pmax(dgo, 0)), 0)   # pmax: ifelse evaluates both branches (avoid sqrt(<0) NaN warnings)
+  } else {
+    dsc <- rep(1, H); inv_dsc <- rep(1, H)
+  }
+  S   <- t(t(Omega_hat * dsc) * dsc)
+  S   <- 0.5 * (S + t(S))
+  eig <- eigen(S, symmetric = TRUE)
+  mx  <- max(eig$values)
+  floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-1/3) else 1e-12
+  lam_raw <- eig$values                                       # raw (pre-floor) SCALED eigenvalues, for the coupling IF
   eig$values <- pmax(eig$values, floor_v)
-  Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
-  # Raw eigendecomposition for the AVERAGED weight channel's eigen-floor-aware coupling (Daleckii-Krein
-  # derivative of the FLOORED inverse) -- same attachment as the sieve and fast-kernel pooled builders. The
-  # pooled floor binds in high-H cells; the smooth -sym(q w') adjoint mis-scales psi_Omega there. Inert for the
-  # estimate (attributes are stripped by solve/%*%); read only by compute_obar_coupling_edid.
-  attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+  Sf <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  Omega_hat <- t(t(Sf * inv_dsc) * inv_dsc)
+  # Scaled eigendecomposition + scale for the AVERAGED weight channel's eigen-floor-aware coupling
+  # (Daleckii-Krein derivative of the FLOORED inverse, on the scaled system) -- same attachment as the sieve
+  # and fast-kernel pooled builders. Inert for the estimate (attributes are stripped by solve/%*%); read only
+  # by compute_obar_coupling_edid (which maps dtheta/dS back to dtheta/dOmega via the stored scale).
+  attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
 
   Omega_hat   # (do_psi returns its list above)
 }
@@ -1068,19 +1124,27 @@ compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_
 #' @keywords internal
 compute_invp_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
                                              inv_propensities, invp_aux, weights, mbar,
-                                             bw = NULL, K_mat = NULL, eps_rel = 1e-6) {
+                                             bw = NULL, K_mat = NULL, eps_rel = 1e-6, keep = NULL) {
   n <- panel_obj$n; correction <- numeric(n)
   if (is.null(invp_aux)) return(correction)
   theta0 <- sum(weights * mbar)
   theta_fun <- function(ip) {                                  # recompute Omega-bar -> averaged w -> theta_w
-    om <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means, ip, bw = bw, K_mat = K_mat)
+    om <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means, ip, bw = bw, K_mat = K_mat,
+                                      keep = keep)             # same trim mask as the weights' Omega
     sum(compute_efficient_weights_edid(om) * mbar)
   }
   for (key in names(invp_aux)) {
     a <- invp_aux[[key]]
     if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
     base <- inv_propensities[[key]]; B <- a$B_test; spos <- a$s_pos
-    eps  <- eps_rel * (1 + max(abs(base)))
+    # Step size: for the LINEAR sieve, B columns are O(1) basis values and the absolute step
+    # eps_rel*(1+max|s|) probes the coefficient scale. For the EXP link (and the coherent
+    # softmax map, whose Jacobian s*(p - delta)*psi likewise carries the prediction scale),
+    # B_test is already the chain-rule Jacobian, so the coefficient step is eps_rel itself
+    # (a 1e-6 RELATIVE perturbation of s along the Jacobian column); the absolute heuristic
+    # would perturb s by O(s) at large-s units and destroy the difference quotient.
+    eps  <- if (identical(a$link, "exp") || identical(a$link, "coherent")) eps_rel
+            else eps_rel * (1 + max(abs(base)))
     Gamma <- vapply(seq_len(ncol(B)), function(j) {
       ip <- inv_propensities; ip[[key]] <- base + eps * B[, j] * spos       # perturb where s>0 (= dpref/dbeta support)
       (theta_fun(ip) - theta0) / eps
@@ -1315,6 +1379,37 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
   H   <- dim(omega_array)[2]
   one <- rep(1, H)
   W   <- matrix(NA_real_, n, H)
+  # POOLED-SCALE flooring (default). The relative eigenvalue floor caps the condition number of the
+  # matrix it floors at 1/tol -- at d = 4 covariates tol = n^(-0.07) ~ 0.5-0.6, i.e. a cap of ~1.7-2.
+  # Applied to the raw covariance Omega(X_i) (the legacy map), that cap ERASES the per-moment variance
+  # ordering: when a cell mixes low-variance self moments with cross-cohort moments whose 1/p_{g'}
+  # prefactors make them 1e2-1e4 times noisier, the floored inverse is near-uniform across moments and
+  # the "efficient" weights load on the noisiest moments (the audited with-X degeneracy: SEs 7-30x).
+  # The scale information lives in the DIAGONAL of the pooled Omega-bar -- a cross-unit average,
+  # sqrt(n)-consistent with no curse of dimensionality -- so the floor is now applied on the
+  # pooled-diagonal scale: with D = diag(diag(Omega-bar)),
+  #     S_i = D^{-1/2} Omega(X_i) D^{-1/2},  S_i^{fl} = floor(S_i),  Minv_i = D^{-1/2} (S_i^{fl})^{-1} D^{-1/2},
+  # i.e. the conservative d-dependent cap regularizes only the SHAPE (where the kernel noise lives),
+  # while the well-estimated pooled variance ordering passes through. Same limit (floor vanishes =>
+  # Minv_i -> Omega(X_i)^{-1}, full pointwise efficiency), same q'1 = 0 identity (Minv_i is symmetric
+  # PD and shared by w_i and q_i). The legacy raw-scale map remains reachable via
+  # options(edid_legacy_floor = TRUE) (forensics), and is used automatically when the builder did not
+  # attach the pooled Omega-bar (e.g. hand-built arrays in validation harnesses).
+  # DEGENERATE moments (zero pooled variance -- e.g. the structurally-zero self pair with tpre == t in
+  # PRE-treatment cells) get scale 0: weight exactly 0 (excluded from every unit's GLS combination and
+  # renormalized over the rest), matching the no-covariate path's pseudoinverse treatment. Flooring them
+  # instead would hand the zero-variance moment all the weight (a 0-variance "moment" is the GLS optimum).
+  ds <- NULL
+  if (!isTRUE(getOption("edid_legacy_floor"))) {
+    .ob2 <- attr(omega_array, "omega_bar")
+    if (!is.null(.ob2)) {
+      dbar <- diag(0.5 * (.ob2 + t(.ob2)))
+      if (all(is.finite(dbar)) && any(dbar > 0)) {
+        ds <- ifelse(dbar > max(dbar) * 1e-12,
+                     1 / sqrt(pmax(dbar, max(dbar) * 1e-300, 0)), 0)
+      }
+    }
+  }
   # Speed: when gen_out_mat is supplied (efficient misspec_robust / diagnostic), ALSO return the per-unit adjoint
   # q_i = Minv_i (M_i - theta_i 1) from the SAME per-unit eigendecomposition (one eigen pass instead of two; the q
   # is bit-identical to compute_pointwise_q_edid). gen_out_mat = NULL keeps the default weights path unchanged.
@@ -1373,28 +1468,40 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
         e   <- eigen(0.5 * (Mi + t(Mi)), symmetric = TRUE); mx <- max(e$values)
       }
     }
+    # Pooled-diagonal scaling (see the `ds` note above): floor the SHAPE matrix S_i = D^{-1/2} Mi D^{-1/2},
+    # then apply Minv_eff = D^{-1/2} (S_i^fl)^{-1} D^{-1/2}. sv = D^{-1/2} 1 carries the scale through every
+    # Minv application; sv = 1 (ds NULL / legacy option) reproduces the raw-scale map exactly.
+    if (!is.null(ds)) {
+      Si <- t(t(Mi * ds) * ds)
+      Si <- 0.5 * (Si + t(Si))
+      e  <- eigen(Si, symmetric = TRUE)
+      mx <- max(e$values)
+      if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }
+    }
+    sv <- if (is.null(ds)) one else ds
     ev_floored <- pmax(e$values, mx * tol)
     # Apply Omega(X_i)^{-1} to the vectors we actually need (1, and gen_out_i - theta_i) straight from the
     # eigenpairs: Minv z = V ((V' z) / lambda_floored). This skips forming the H x H Minv = V diag(1/lam) V'
     # and the extra H x H matmul, n times over (the per-unit loop is O(n H^3); this removes the H^3 rebuild,
     # leaving the eigendecomposition as the only H^3 step). Same value up to FP reassociation (~1e-13).
     Vt   <- e$vectors
-    v    <- drop(Vt %*% (crossprod(Vt, one) / ev_floored))                     # Minv %*% 1
+    v    <- sv * drop(Vt %*% (crossprod(Vt, sv) / ev_floored))                 # Minv_eff %*% 1
     den  <- sum(v)
     if (is.finite(den) && abs(den) > 1e-12) {
       W[i, ] <- v / den
-      if (do_q) {                                                              # same Minv => q_i'1 = 0
+      if (do_q) {                                                              # same Minv_eff => q_i'1 = 0
         theta_i <- sum(W[i, ] * gen_out_mat[i, ])
-        z       <- gen_out_mat[i, ] - theta_i
-        Q[i, ]  <- drop(Vt %*% (crossprod(Vt, z) / ev_floored))               # Minv %*% (gen_out_i - theta_i)
+        z       <- sv * (gen_out_mat[i, ] - theta_i)                           # D^{-1/2}(gen_out_i - theta_i)
+        Q[i, ]  <- sv * drop(Vt %*% (crossprod(Vt, z) / ev_floored))           # Minv_eff (gen_out_i - theta_i)
         if (need_coup) {                                                        # eigen-floor-aware coupling gradient
-          # dtheta = (1/s) 1'(dM)(gen_out - theta), dM = V[f^{[1]} o (V'dOmega V)]V' (Daleckii-Krein),
+          # dtheta = (1/s) 1'(dM)(gen_out - theta), dM = V[f^{[1]} o (V'dS V)]V' (Daleckii-Krein) on the SCALED
+          # system, mapped back as dtheta/dOmega = D^{-1/2}[dtheta/dS]D^{-1/2};
           # f(lam)=1/max(lam,c): floored directions are clamped (f'=0), so their inverse does NOT respond to
           # dOmega -- exactly the variance reduction the smooth -sym(q w') adjoint ignores. The floor level
-          # c = mx*tol is held FIXED here (its d(mx)/dOmega dependence, and the data-driven shrinkage lambda /
-          # Omega-bar derivatives, are higher-order and omitted -- ~0.5% in the operating regime, the same
-          # asymptotically-negligible-stabilization convention the kernel path uses).
-          atil <- drop(crossprod(Vt, one)); util <- drop(crossprod(Vt, z))     # V'1 , V'(gen_out_i - theta_i)
+          # c = mx*tol AND the pooled scale D are held FIXED here (their d(mx)/dOmega and d(Omega-bar)
+          # dependence, and the data-driven shrinkage lambda derivative, are higher-order and omitted -- the
+          # same asymptotically-negligible-stabilization convention the kernel path documents).
+          atil <- drop(crossprod(Vt, sv)); util <- drop(crossprod(Vt, z))      # V'(D^{-1/2}1) , V'(D^{-1/2}(gen-theta))
           lam  <- e$values; invfl <- 1 / ev_floored; c_fl <- mx * tol
           fp   <- ifelse(lam > c_fl, -1 / lam^2, 0)                            # f'(lam) (clamped to 0 when floored)
           dl   <- outer(lam, lam, "-")
@@ -1402,7 +1509,8 @@ compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NU
           near <- abs(dl) < 1e-8 * (abs(mx) + 1e-300)                          # degenerate / diagonal -> derivative
           if (any(near)) Dm[near] <- outer(fp, fp, function(a, b) 0.5 * (a + b))[near]
           Smat <- 0.5 * (outer(atil, util) + outer(util, atil))                # sym(a~ u~')
-          C[i, , ] <- (Vt %*% (Dm * Smat) %*% t(Vt)) / den                     # (1/s) V[f^{[1]} o sym] V'
+          Cm   <- (Vt %*% (Dm * Smat) %*% t(Vt)) / den                         # (1/s) V[f^{[1]} o sym] V' (dtheta/dS)
+          C[i, , ] <- if (is.null(ds)) Cm else t(t(Cm * ds) * ds)              # back to the raw Omega scale
         }
       }
     } else {
@@ -1437,16 +1545,25 @@ compute_obar_coupling_edid <- function(omega_floored, mbar, att) {
   ef <- attr(omega_floored, "eig_floor"); if (is.null(ef)) return(NULL)
   Vt  <- ef$vectors; lam <- ef$values; c_fl <- ef$floor
   H   <- length(lam); if (H < 1L) return(NULL)
+  # Pooled-scale flooring (default builders): the stored eigendecomposition is of the SCALED system
+  # S = D^{-1/2} Omega-bar D^{-1/2} with D = diag(diag(Omega-bar)) and ef$scale = diag(D^{-1/2}); the weight
+  # map is w = D^{-1/2} fl(S)^{-1} D^{-1/2} 1 / (...), so the directional derivative is computed on the
+  # scaled system (a0 = D^{-1/2}1, z0 = D^{-1/2}(mbar - att)) and mapped back as
+  # dtheta/dOmega = D^{-1/2} [dtheta/dS] D^{-1/2} (the pooled scale held fixed -- the same higher-order
+  # omission convention as the floor level c). ef$scale absent (legacy floor / hand-built attrs) => sc = 1,
+  # which reduces EXACTLY to the raw-scale coupling.
+  sc  <- if (!is.null(ef$scale)) ef$scale else rep(1, H)
   ev_floored <- pmax(lam, c_fl); invfl <- 1 / ev_floored
-  one <- rep(1, H); z <- mbar - att
-  den <- sum(drop(Vt %*% (crossprod(Vt, one) / ev_floored)))            # 1' Minv 1
+  a0  <- sc; z0 <- sc * (mbar - att)
+  den <- sum(sc * drop(Vt %*% (crossprod(Vt, a0) / ev_floored)))         # 1' Minv_eff 1
   if (!is.finite(den) || abs(den) < 1e-12) return(NULL)
-  atil <- drop(crossprod(Vt, one)); util <- drop(crossprod(Vt, z))      # V'1 , V'(mbar - theta)
+  atil <- drop(crossprod(Vt, a0)); util <- drop(crossprod(Vt, z0))      # V'(D^{-1/2}1) , V'(D^{-1/2}(mbar - theta))
   fp   <- ifelse(lam > c_fl, -1 / lam^2, 0)                             # f'(lam) clamped to 0 when floored
   dl   <- outer(lam, lam, "-")
   Dm   <- outer(invfl, invfl, "-") / dl                                 # divided differences f^{[1]}
   mx   <- max(lam); near <- abs(dl) < 1e-8 * (abs(mx) + 1e-300)
   if (any(near)) Dm[near] <- outer(fp, fp, function(a, b) 0.5 * (a + b))[near]
   Smat <- 0.5 * (outer(atil, util) + outer(util, atil))                # sym(a~ u~')
-  (Vt %*% (Dm * Smat) %*% t(Vt)) / den
+  Cm   <- (Vt %*% (Dm * Smat) %*% t(Vt)) / den                         # dtheta/dS
+  t(t(Cm * sc) * sc)                                                   # back to the raw Omega-bar scale
 }

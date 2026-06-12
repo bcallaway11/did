@@ -82,9 +82,15 @@ variability \emph{without re-solving anything}: for each first-step nuisance
 \eqn{\widehat{V}_{\theta,k} = n^{-2} H_k^{-1}\,
 (\mathrm{score}_k'\mathrm{score}_k)\, H_k^{-1}} from the stored M-estimator
 pieces, draws \eqn{\theta_k^* \sim N(\hat\theta_k, \widehat{V}_{\theta,k})}
-\emph{independently across nuisances} (the validated "INDEP" variant; the
-joint draw is dominated by it), recomputes the doubly-robust generated
-outcomes nonlinearly at the perturbed predictions
+\emph{independently across distinct coefficient blocks} (the validated
+"INDEP" variant; the joint draw is dominated by it) -- nuisance entries that
+share ONE underlying fitted coefficient vector, like the
+\code{ratio_method = "coherent"} ratios and inverse propensities that all
+read the same joint multinomial-logit system, are dedup'd on the aux's
+\code{coef_id} and share a single draw per replication, mapped into each
+entry through its own chain-rule Jacobian (independent draws there would
+break the exact cross-entry coupling of the shared system) -- recomputes the
+doubly-robust generated outcomes nonlinearly at the perturbed predictions
 \eqn{\hat\nu + B_k(\theta_k^* - \hat\theta_k)} with the weights \eqn{W} and
 the overlap-trim masks held FIXED at the original fit, and reads off the
 perturbed estimate per draw. By Neyman orthogonality the first-order term is

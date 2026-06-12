@@ -36,21 +36,29 @@ test_that("fast BLAS kernel build is invariant to the exact original per-pair bu
 
 test_that("edid() reproduces the pinned golden att/se on mpdta + ~lpop (guards kp_cache / m_eff)", {
   fk <- fit_mpdta_bi("kernel")
-  # att + se RE-PINNED for the cell-common overlap-trim estimand (2026-06): the default trim_level = 200
-  # BINDS on mpdta + ~lpop (max |att(200) - att(Inf)| = 0.0069), and in 8 of the 12 cells the comparison
-  # pairs carry DIFFERENT overlap masks, so the common-mask renormalization (every moment masked on the
-  # intersection of the surviving pairs' masks -- ONE estimand per cell) moves those cells by 3e-4..7e-3.
-  # No pair is dropped here (n_pairs_dropped == 0 in every cell); the 4 unmoved cells are those whose
-  # pair masks coincide. trim_level = Inf remains byte-identical to the pre-change build.
-  golden_att <- c(-0.020876019051455, -0.081264904800779, -0.144247924115520, -0.110234369322343,
-                  -0.000489304301903, -0.006978740079083, -0.005584399663392, -0.048704071009899,
-                   0.007680747334852,  0.012341556720145, -0.016242058275798, -0.053993457185514)
-  # (Earlier se re-pin note, still in force: the kernel misspec_robust weight channel uses the
-  # eigen-floor-aware Daleckii-Krein coupling + (1-lambda) shrinkage factor + Eq.(3.12) Term-1
-  # contribution -- the same construction the sieve channel already used.)
-  golden_se  <- c(0.02255763635885, 0.02891300644631, 0.03471181464718, 0.03302420914630,
-                  0.00888452687748, 0.01250881585930, 0.02013082743995, 0.02140868178139,
-                  0.00702085767154, 0.00770758312701, 0.01108837878524, 0.01586968653181)
+  # att + se RE-PINNED for the coherent-nuisance + pooled-scale-floor round (2026-06, the with-X
+  # cross-cohort repair): (i) ratio_method = "coherent" replaces the per-pair LS cross-cohort ratio and
+  # finite-cohort inverse-propensity sieves with the multinomial-logit system (mpdta has cross pairs in
+  # every cohort-2006/2007 cell, so their moments and Omega prefactors move); (ii) the pooled/pointwise
+  # eigen floors act on the pooled-diagonal scale (the d-dependent raw-scale cap erased the per-moment
+  # variance ordering); (iii) STRUCTURALLY DEGENERATE moments (the tpre == t self pair of PRE-treatment
+  # cells, an exact-zero moment) now get weight 0 (pinv-style exclusion) instead of diluting pre-cell
+  # placebos toward 0 -- the pre cells (5, 6, 9, 10, 11) move the most for that reason.
+  # (Earlier re-pin notes remain in force: cell-common overlap-trim estimand; the eigen-floor-aware
+  # Daleckii-Krein psi coupling.)
+  #
+  # SE (only) RE-PINNED again for the coherent FULL estimation-effect round (2026-06): the
+  # cross-cohort ratio and finite-cohort inverse-propensity entries now carry complete
+  # joint-stacked-system M-estimator aux (no fallback-marking), so the default misspec_robust
+  # bundle's ACH / higher-order / inv-p channels cover them -- SEs move by up to ~3e-4
+  # (FD-oracled in test-edid-coherent-ee.R). The ATT estimates are BYTE-IDENTICAL (the
+  # corrections enter the influence function only), so golden_att is unchanged -- asserted here.
+  golden_att <- c(-0.022135707672074, -0.083097479920636, -0.144928755380812, -0.113505421220554,
+                   0.002630097380151, -0.008934558404687, -0.004837910447134, -0.047712053995789,
+                   0.016118304720655,  0.010700359324765, -0.026537068859659, -0.041435874184193)
+  golden_se  <- c(0.02172263305400, 0.02838394621347, 0.03450642588284, 0.03290100269279,
+                  0.01187899032301, 0.01975408280814, 0.01835050209244, 0.02013058035024,
+                  0.00991035133013, 0.01168187818878, 0.01790787579469, 0.01417812336181)
   expect_equal(fk$att_gt$att, golden_att, tolerance = 1e-7)
   expect_equal(fk$att_gt$se,  golden_se,  tolerance = 1e-7)
 })

@@ -16,7 +16,14 @@
 # (481 x 60 delta* policy values; ROWS = y-grid points, COLS = corr-grid
 # points), st / ht (soft/hard-threshold lookups), mse_lambda (ERM lambda
 # lookup), corr_grid (the 60-point |corr| grid abs(tanh(seq(-3, -0.05, 0.05))),
-# decreasing, indexing the columns).
+# decreasing, indexing the columns), and the B-FLCI critical-value tables of
+# AKS Section 4.2.2: flci_B_grid (the 91-point B-tilde = B/sigma_O grid
+# c(0.01, seq(0.1, 9, 0.1)) indexing the rows), flci_cv_adaptive /
+# flci_cv_st (91 x 60 c_.05 tables for the adaptive and soft-threshold
+# estimators; columns = corr_grid points), flci_minimax_B_grid /
+# flci_cv_minimax (90-row analogue for the B-minimax estimator -- vendored
+# for completeness but consumed by no exported interface, because
+# edid_adaptive() computes no B-minimax point estimate; internal hook only).
 .edid_aks_lookup <- function() {
   path <- system.file("extdata", "aks_lookup", "aks_lookup.rds", package = "did")
   if (is.null(path) || !nzchar(path) || !file.exists(path)) {
@@ -56,9 +63,14 @@
   VO  <- VR - 2 * VUR + VU             # sigma_O^2 = sigma_R^2 - 2 sigma_UR + sigma_U^2 > 0
   VUO <- VUR - VU                      # sigma_UO = sigma_UR - sigma_U^2
   if (!is.finite(VO) || VO <= 0) {
-    stop(sprintf(paste0("edid_adaptive: VO = VR - 2*VUR + VU = %.6g is not positive; the ",
-                        "restricted/unrestricted variances admit no valid over-identification ",
-                        "direction (Proposition 5.1 requires sigma_O^2 > 0)."), VO), call. = FALSE)
+    stop(sprintf(paste0("edid_adaptive: VO = VR - 2*VUR + VU = %.6g is not positive, so there is ",
+                        "no over-identification direction to adapt over (Proposition 5.1 requires ",
+                        "sigma_O^2 > 0). This typically means the efficient (restricted) and ",
+                        "conservative (unrestricted) fits coincide -- common when the thin-cohort ",
+                        "guard has pinned every cell to its just-identified moment (check the fits' ",
+                        "$thin_cohorts and warnings, or edid_weights()) -- or, under ",
+                        "assume_efficient = TRUE, that the restricted fit is not empirically more ",
+                        "precise than the unrestricted one (VR >= VU)."), VO), call. = FALSE)
   }
   tO  <- YO / sqrt(VO)                 # over-identification statistic t_O
 
@@ -144,8 +156,181 @@
     adaptive_st = adaptive_st, adaptive_ht = adaptive_ht,
     pretest = pretest, erm = erm, adaptive_erm = adaptive_erm,
     # Thresholds
-    soft_threshold = st, hard_threshold = ht, erm_lambda = erm_lambda
+    soft_threshold = st, hard_threshold = ht, erm_lambda = erm_lambda,
+    # Quantities the B-FLCI layer (.edid_aks_ci) reuses so that the CIs
+    # inherit exactly the clamping conventions and interpolants of the
+    # estimates they are centered at: the clamped |corr| actually used for
+    # every corr-grid lookup, and the two-stage psi interpolant
+    # delta*(.; rho_AKS^2) on the y grid.
+    acorr_eval = acorr, psi_fun = psi_extrap
   )
+}
+
+# ============================================================================
+# B-FLCI inference layer: the fixed-length confidence intervals of Armstrong,
+# Kline & Sun (Econometrica 2025), Section 4.2.2 (arXiv v6 numbering; their
+# eqs. (7)-(8)), centered at the adaptive (and soft-threshold) estimates.
+# Every interval is {center +- c_.05(B/sigma_O; rho, delta) * sigma_U} with
+# sigma_U = sqrt(VU), the UNRESTRICTED estimator's standard error -- never
+# se_GMM, never sqrt(VR): because the local bias b cannot be consistently
+# estimated, the adaptive estimator has no consistently estimable asymptotic
+# distribution and hence no own standard error (AKS Section 4.2.1).
+# ============================================================================
+
+# The b-tilde (= b/sigma_O) grid on which coverage is evaluated and on which
+# the inner sup of AKS eq. (8) is taken: seq(-9, 9, 0.025), exactly the
+# `b.grid` of MissAdapt's risk.mat (721 points; generated inline rather than
+# vendored).
+.edid_aks_b_grid <- function() seq(-9, 9, by = 0.025)
+
+# Deterministic Gaussian-quadrature coverage of {estimate +- cval * sigma_U}
+# at scaled bias b-tilde, from the AKS distributional representation (their
+# eq. (7)):
+#   (theta_hat - theta)/sigma_U = rho [delta(Z1 + b) - b] + sqrt(1 - rho^2) Z2,
+# so conditional on Z1 = z the pivot is normal with mean
+# m(z) = rho (delta(z + b) - b) and sd s = sqrt(1 - rho^2), giving
+#   coverage(b) = E_Z1[ Phi((cval - m)/s) - Phi((-cval - m)/s) ].
+# The Z1 expectation uses the fixed grid z = seq(-8.5, 8.5, 0.01) with
+# dnorm(z) * 0.01 weights. This deterministic quadrature replaces MissAdapt's
+# set.seed(1), 100000-draw Monte Carlo (agreement within ~4e-3, the MC noise
+# level) and is the package's single coverage convention. delta_fun is the
+# shrinkage policy: the psi interpolant for the adaptive estimator, the
+# soft-threshold map for the soft-threshold estimator.
+.edid_aks_flci_coverage <- function(delta_fun, corr, cval, b_grid) {
+  z  <- seq(-8.5, 8.5, by = 0.01)
+  wz <- stats::dnorm(z) * 0.01
+  s  <- sqrt(1 - corr^2)
+  vapply(b_grid, function(b) {
+    m <- corr * (delta_fun(z + b) - b)
+    sum((stats::pnorm((cval - m) / s) - stats::pnorm((-cval - m) / s)) * wz)
+  }, numeric(1L))
+}
+
+# Solve AKS eq. (8) for the soft-threshold estimator at the CORRECT adaptive
+# soft threshold lambda = lambda*(rho) -- the thresholds.mat value that
+# defines the soft-threshold ESTIMATE the interval is centered at: the
+# smallest critical value c such that
+#   min over |b-tilde| <= B_tilde (risk.mat b grid) of coverage(b-tilde; c)
+# is at least `level`. Coverage is nondecreasing in c for every b-tilde, so
+# bisection applies; the returned upper bracket guarantees min coverage >=
+# level up to the bisection tolerance. The b-tilde sup uses the nonnegative
+# half of the grid only: coverage(b) = coverage(-b) exactly, because delta_S
+# is odd and the z grid is symmetric.
+#
+# This runtime solve exists because the SHIPPED flci_adaptive_st_cv.mat is
+# calibrated to a different (smaller, off-grid-extrapolated) soft threshold
+# than the one the soft-threshold estimate uses -- a signed-vs-absolute grid
+# mispairing in MissAdapt's calculate_B_FLCI.R (its line 36 reassigns the
+# interpolation grid to the signed tanh grid while evaluating at abs(corr)).
+# At the correct lambda*(rho), the shipped critical values can undercover
+# within |b| <= B (e.g. min coverage 0.74 at rho = -0.995, B-tilde = 9); the
+# st_cv = "missadapt" option keeps the shipped table for exact replication.
+.edid_aks_st_cv_exact <- function(corr, lambda, B_tilde, level = 0.95) {
+  z  <- seq(-8.5, 8.5, by = 0.01)
+  wz <- stats::dnorm(z) * 0.01
+  s  <- sqrt(1 - corr^2)
+  bg <- .edid_aks_b_grid()
+  b  <- bg[bg >= 0 & bg <= B_tilde + 1e-12]
+  # delta_S(z + b) - b is independent of c: precompute the conditional means
+  TB <- outer(z, b, "+")
+  D  <- (TB > lambda) * (TB - lambda) + (TB < -lambda) * (TB + lambda)
+  M  <- corr * (D - matrix(b, nrow = length(z), ncol = length(b), byrow = TRUE))
+  cov_min <- function(cc) {
+    min(colSums((stats::pnorm((cc - M) / s) - stats::pnorm((-cc - M) / s)) * wz))
+  }
+  lo <- 0; hi <- 6
+  if (cov_min(hi) < level) {
+    stop("edid_adaptive: the soft-threshold eq.-(8) critical value exceeds 6; ",
+         "this cannot occur on the tabulated (corr, B) grids.", call. = FALSE)
+  }
+  while (hi - lo > 1e-7) {
+    mid <- (lo + hi) / 2
+    if (cov_min(mid) >= level) hi <- mid else lo <- mid
+  }
+  hi
+}
+
+# Critical-value lookup c_.05(B_tilde; |corr|) from a vendored 91 x 60 cv
+# table: fmm spline of row `row` against corr_grid (the decreasing |corr|
+# grid), evaluated at the clamped |corr|. This is numerically IDENTICAL
+# (exact fmm mirror symmetry, asserted in data-raw/aks_lookup.R) to
+# MissAdapt's spline of the same row against the signed increasing grid
+# tanh(seq(-3, -0.05, 0.05)) evaluated at the signed (negative) correlation,
+# while remaining on-grid for corr > 0 inputs (the signed-grid convention
+# would silently extrapolate far off-grid there).
+.edid_aks_flci_cv <- function(cv_mat, row, corr_grid, acorr) {
+  stats::splinefun(corr_grid, cv_mat[row, ], method = "fmm", ties = mean)(acorr)
+}
+
+# Resolve requested bias bounds B (in sigma_O units, i.e. B-tilde) to rows of
+# the FLCI tables. Conventions (documented in ?edid_adaptive):
+#   B = 0   -> row 1 (B-tilde = 0.01), the authors' own `B == 0` mapping;
+#   B = Inf -> the B-tilde = 9 row, AKS's finite approximation to the
+#              infinity-FLCI ("we approximate an infinity-FLCI by setting
+#              B = 9 sigma_O");
+#   otherwise snap to the grid within 1e-8. MissAdapt's own lookup uses an
+#   exact floating-point match, which crashes for requests like B = 0.3 or
+#   0.7 (the Matlab-written grid doubles differ from R literals in the last
+#   bit); the tolerance match accepts those without changing any on-grid row.
+.edid_aks_flci_rows <- function(B, B_grid) {
+  if (!is.numeric(B) || length(B) == 0L || anyNA(B)) {
+    stop("edid_adaptive: B must be a numeric vector of bias bounds (sigma_O units) ",
+         "with no missing values.", call. = FALSE)
+  }
+  if (any(B < 0)) {
+    stop("edid_adaptive: bias bounds B must be nonnegative (B is the bound on ",
+         "|b|/sigma_O).", call. = FALSE)
+  }
+  idx <- vapply(B, function(b) {
+    if (b == 0) return(1L)
+    if (is.infinite(b)) return(length(B_grid))
+    j <- which.min(abs(B_grid - b))
+    if (abs(B_grid[j] - b) > 1e-8) {
+      stop(sprintf(paste0("edid_adaptive: B = %g is not on the tabulated B-tilde grid; ",
+                          "valid values are 0, Inf, 0.01, and 0.1, 0.2, ..., 9 ",
+                          "(within 1e-8)."), b), call. = FALSE)
+    }
+    j
+  }, integer(1L))
+  data.frame(B = B, row = idx, B_tilde = B_grid[idx])
+}
+
+# Assemble the B-FLCI table for one .edid_aks_core() result: one row per
+# (variant, B), every interval centered at that variant's point estimate and
+# scaled by sigma_U = sqrt(VU).
+.edid_aks_ci <- function(core, tables, B, st_cv, level = 0.95) {
+  rows    <- .edid_aks_flci_rows(B, tables$flci_B_grid)
+  sigma_U <- sqrt(core$VU)
+  acorr   <- core$acorr_eval
+  corr_eval <- if (core$corr < 0) -acorr else acorr  # clamped, signed
+
+  cv_ad <- vapply(rows$row, function(r) {
+    .edid_aks_flci_cv(tables$flci_cv_adaptive, r, tables$corr_grid, acorr)
+  }, numeric(1L))
+  cv_st <- if (identical(st_cv, "exact")) {
+    vapply(rows$B_tilde, function(bt) {
+      .edid_aks_st_cv_exact(corr_eval, core$soft_threshold, bt, level)
+    }, numeric(1L))
+  } else {
+    vapply(rows$row, function(r) {
+      .edid_aks_flci_cv(tables$flci_cv_st, r, tables$corr_grid, acorr)
+    }, numeric(1L))
+  }
+
+  out <- rbind(
+    data.frame(variant = "adaptive", B = rows$B, B_tilde = rows$B_tilde,
+               center = core$adaptive, sigma_U = sigma_U, cv = cv_ad,
+               lower = core$adaptive - cv_ad * sigma_U,
+               upper = core$adaptive + cv_ad * sigma_U,
+               cv_source = "table"),
+    data.frame(variant = "soft_threshold", B = rows$B, B_tilde = rows$B_tilde,
+               center = core$adaptive_st, sigma_U = sigma_U, cv = cv_st,
+               lower = core$adaptive_st - cv_st * sigma_U,
+               upper = core$adaptive_st + cv_st * sigma_U,
+               cv_source = if (identical(st_cv, "exact")) "exact" else "missadapt_table")
+  )
+  rownames(out) <- NULL
+  out
 }
 
 #' Adaptive event-study estimator under uncertain parallel trends
@@ -210,14 +395,56 @@
 #'   such identity and keeps the internally consistent empirical covariance.
 #'   An explicit \code{TRUE}/\code{FALSE} always overrides the AUTO rule. See
 #'   Details.
+#' @param ci logical (default \code{TRUE}): attach the fixed-length confidence
+#'   intervals (B-FLCIs) of Armstrong, Kline & Sun (2025, Section 4.2 of the
+#'   published version; Section 4.2.2 and eqs. (7)-(8) in the arXiv-v6
+#'   numbering used below) to the adaptive and soft-threshold estimates. See
+#'   Details ("Inference: the AKS B-FLCIs").
+#' @param B numeric vector or \code{NULL}: additional bias bounds, in
+#'   \eqn{\widehat\sigma_O} units (\eqn{\widetilde{B} = B/\sigma_O}, the units
+#'   of the AKS tables), at which to report B-FLCIs. The 0-FLCI
+#'   (\code{B = 0}) and the \eqn{\infty}-FLCI (\code{B = Inf}) are always
+#'   reported, per the AKS recommendation to "report alongside an adaptive
+#'   estimate the critical values for a 0-FLCI and \eqn{\infty}-FLCI, thereby
+#'   summarizing the range of critical values needed to guarantee coverage
+#'   under different assumptions". Values must lie on the tabulated grid
+#'   \{0.01, 0.1, 0.2, ..., 9\} (matched within 1e-8, so \code{B = 0.3}
+#'   works; MissAdapt's own exact floating-point match crashes there);
+#'   \code{B = 0} maps to the \eqn{\widetilde{B} = 0.01} row (the authors'
+#'   convention) and \code{B = Inf} to the \eqn{\widetilde{B} = 9} row (AKS:
+#'   "we approximate an \eqn{\infty}-FLCI by setting \eqn{B = 9\sigma_O}").
+#' @param level confidence level; must be \code{0.95}. The MissAdapt
+#'   critical-value tables are tabulated for the 95\% level only (no other
+#'   level is tabulated anywhere in their package), so any other value is an
+#'   error.
+#' @param st_cv \code{"exact"} (default) or \code{"missadapt"}: source of the
+#'   critical value for the \emph{soft-threshold} B-FLCI. \code{"exact"}
+#'   solves AKS eq. (8) at runtime (deterministic quadrature + bisection) at
+#'   the same soft threshold \eqn{\lambda^*(\rho)} that defines the
+#'   soft-threshold estimate the interval is centered at. \code{"missadapt"}
+#'   reproduces the shipped \code{flci_adaptive_st_cv.mat} critical values
+#'   exactly, for comparability with MissAdapt output. The two differ because
+#'   the shipped table is calibrated to a different threshold than the
+#'   estimate: \code{calculate_B_FLCI.R} in MissAdapt interpolates the soft
+#'   threshold for its coverage simulation against the \emph{signed}
+#'   correlation grid while evaluating at \code{abs(corr)}, extrapolating
+#'   beyond the grid and yielding a threshold of about 0.45-0.54 for every
+#'   \eqn{\rho} instead of \eqn{\lambda^*(\rho)} from \code{thresholds.mat}
+#'   (which reaches 1.12 at \eqn{|\rho| = 0.97}). At the correct
+#'   \eqn{\lambda^*(\rho)}, the shipped critical values can undercover within
+#'   \eqn{|b| \le B} (quadrature minimum coverage 0.74 at \eqn{\rho = -0.995},
+#'   \eqn{\widetilde{B} = 9}, versus the nominal 0.95). The \emph{adaptive}
+#'   (nonlinear) cv table has no such issue and is always used as shipped.
 #'
 #' @details
 #' All variances and covariances are computed from the per-unit influence
 #' functions of the two aggregations (cluster-robust when the fits carry
 #' cluster assignments). The construction requires
 #' \eqn{\widehat\sigma_O^2 > 0}; when the two estimators coincide (no
-#' over-identification direction, e.g. a just-identified design) the function
-#' stops with an informative error. Inputs whose \eqn{|corr|} or
+#' over-identification direction --- e.g. a just-identified design, or every
+#' cell pinned to its just-identified moment by the thin-cohort guard, see
+#' \code{min_pair_units} in \code{\link{edid}}) the function stops with an
+#' informative error. Inputs whose \eqn{|corr|} or
 #' \eqn{\widehat{t}_O} fall outside the tabulated grids are clamped to the grid
 #' boundary with a warning (no silent spline extrapolation).
 #'
@@ -246,17 +473,47 @@
 #' constant-weight schemes with covariates), the identity is wrong and AUTO
 #' keeps the empirical covariance.
 #'
-#' \strong{No inference accompanies the adaptive estimate.} Proposition 5.1 is
-#' a point-estimation (risk) result; the paper makes no coverage claims for
-#' \eqn{\widehat{ES}_{avg}^{AKS}}, and no standard error is reported for it.
-#' Use the efficient or conservative fits (or the robustness frontier,
-#' \code{\link{edid_frontier}}) for inference.
+#' \strong{Inference: the AKS B-FLCIs.} Proposition 5.1 itself is a
+#' point-estimation (risk) result, and no conventional standard error attaches
+#' to the adaptive estimate: in the AKS normal limit experiment the local bias
+#' \eqn{b} of the restricted estimator cannot be consistently estimated, so
+#' neither can the asymptotic distribution of the adaptive estimator
+#' (Armstrong, Kline & Sun 2025, Section 4.2). Armstrong, Kline & Sun instead
+#' construct \emph{fixed-length confidence intervals} (B-FLCIs)
+#' \deqn{\{\hat\theta \pm c_{\alpha}(B/\sigma_O;\, \rho, \delta)\,\sigma_U\},}
+#' centered at the adaptive (or soft-threshold) estimate and scaled by
+#' \eqn{\sigma_U = \sqrt{VU}}, the \emph{unrestricted} (conservative)
+#' estimator's standard error. The critical value solves their eq. (8)
+#' (arXiv-v6 numbering): the smallest \eqn{\chi} such that
+#' \eqn{\sup_{|\tilde b| \le \tilde B} P(|\rho[\delta(Z_1+\tilde b)-\tilde b]
+#' + \sqrt{1-\rho^2} Z_2| > \chi) \le \alpha}, using the distributional
+#' representation of their eq. (7). The exact guarantee is: \emph{in the
+#' normal limit experiment with known covariance matrix, the B-FLCI covers the
+#' target with probability at least \eqn{1-\alpha} for every \eqn{(\theta, b)}
+#' with \eqn{|b| \le B}} -- i.e., uniformly over the bias \eqn{b} in
+#' \eqn{[-B, B]} (with \eqn{B} in absolute units; \eqn{\widetilde{B} =
+#' B/\sigma_O} in the tables' units), for all \eqn{\theta}, at the plugged-in
+#' correlation \eqn{\rho}. It is not conditional coverage and not uniform over
+#' \eqn{B}; the feasible version plugs in consistent estimates of
+#' \eqn{(\rho, \sigma_U, \sigma_O)}, justified by the local-asymptotic
+#' framework in which those are consistently estimable while \eqn{b} is not.
+#' Coverage degrades smoothly for \eqn{|b| > B}; setting \eqn{B = \infty}
+#' recovers the usual interval centered at the unrestricted estimator, and no
+#' interval centered at the adaptive estimate can be both short and uniformly
+#' valid over all biases (Armstrong & Kolesar 2021, Section 4). Reporting the
+#' \eqn{B = 0} and \eqn{B = \infty} intervals together -- the default here --
+#' brackets the critical values needed under any bias bound, which is the AKS
+#' recommendation. Coverage diagnostics in this implementation (and the
+#' eq.-(8) solve under \code{st_cv = "exact"}) use deterministic Gaussian
+#' quadrature over the representation (7) rather than MissAdapt's seeded
+#' Monte Carlo; the two agree to the MC noise level (~4e-3).
 #'
 #' \strong{Lookup-table provenance.} The shipped tables
 #' (\code{inst/extdata/aks_lookup/}) are the \code{policy.mat},
-#' \code{thresholds.mat}, and \code{emse_corr.mat} lookup tables of the
-#' MissAdapt replication package of Armstrong, Kline & Sun (Econometrica 2025),
-#' vendored byte-identically from
+#' \code{thresholds.mat}, \code{emse_corr.mat}, \code{flci_adaptive_cv.mat},
+#' \code{flci_adaptive_st_cv.mat}, and \code{flci_minimax_cv.mat} lookup
+#' tables of the MissAdapt replication package of Armstrong, Kline & Sun
+#' (Econometrica 2025), vendored byte-identically from
 #' \url{https://github.com/lsun20/MissAdapt} (commit \code{98d823a}; also
 #' archived as Zenodo record 16890198) and distributed under the MIT license
 #' (Copyright (c) 2023 Sophie Sun; see \code{inst/COPYRIGHTS}). The
@@ -265,7 +522,21 @@
 #' which documents the grid conventions and runs orientation/monotonicity/
 #' symmetry sanity checks, including a regression against the published
 #' MissAdapt vignette example; the provenance, commit, license, and grid
-#' conventions are embedded as attributes of the \code{.rds}.
+#' conventions are embedded as attributes of the \code{.rds}. The FLCI
+#' critical-value tables are 95\%-only and tabulated to two decimals on the
+#' \eqn{\widetilde{B}} grid \{0.01, 0.1, ..., 9\} by the signed correlation
+#' grid \code{tanh(seq(-3, -0.05, 0.05))}; the lookup splines each
+#' \eqn{\widetilde{B}} row across the \eqn{|\rho|} grid and evaluates at the
+#' clamped \eqn{|\widehat\rho|} (exactly equivalent, by spline mirror
+#' symmetry, to the authors' signed-grid lookup for \eqn{\widehat\rho < 0},
+#' and well-defined -- not an off-grid extrapolation -- for
+#' \eqn{\widehat\rho > 0}, where the critical value is symmetric in
+#' \eqn{\rho}). The \code{flci_minimax_cv.mat} table (critical values for the
+#' B-minimax estimator) is vendored for completeness but not exposed:
+#' \code{edid_adaptive} computes no B-minimax point estimate, so there is no
+#' estimate for that interval to be centered at; the table is available
+#' internally as \code{.edid_aks_lookup()$flci_cv_minimax} for a future
+#' \code{B}-minimax estimator.
 #'
 #' @return An object of class \code{edid_adaptive}. For
 #'   \code{parameter = "overall"}: a list with the adaptive estimate
@@ -281,12 +552,33 @@
 #'   exactly); \code{$assume_efficient} records the RESOLVED convention and
 #'   \code{$assume_efficient_auto} whether it came from the AUTO rule.
 #'
+#'   When \code{ci = TRUE} (the default), the object additionally carries:
+#'   \code{$ci}, a data.frame with one row per (variant, B) -- for
+#'   \code{parameter = "event_study"} also per \code{e} -- with columns
+#'   \code{variant} (\code{"adaptive"}, the headline interval, or
+#'   \code{"soft_threshold"}), \code{B} (the requested bound, \code{0} /
+#'   \code{Inf} / user-supplied), \code{B_tilde} (the table row actually used:
+#'   0.01 for \code{B = 0}, 9 for \code{B = Inf}), \code{center} (that
+#'   variant's point estimate), \code{sigma_U} (\eqn{= \sqrt{VU}}, the scale
+#'   of every interval), \code{cv} (the 95\% critical value
+#'   \eqn{c_{.05}(\widetilde{B}; \hat\rho)}), \code{lower}/\code{upper}
+#'   (\code{center} \eqn{\pm} \code{cv * sigma_U}), and \code{cv_source}
+#'   (\code{"table"} for the shipped MissAdapt tables, \code{"exact"} for the
+#'   runtime eq.-(8) solve -- the corrected-versus-shipped flag for the
+#'   soft-threshold rows); plus \code{$sigma_U} (overall parameter only),
+#'   \code{$ci_level} (\code{0.95}), \code{$st_cv} (the resolved soft-threshold
+#'   cv source), and \code{$ci_note} (the one-line validity statement).
+#'
 #' @references Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025). Efficient
 #'   Difference-in-Differences and Event Study Estimators. Section 5.2,
 #'   Proposition 5.1. \cr
 #'   Armstrong, T. B., Kline, P., & Sun, L. (2025). Adapting to
 #'   Misspecification. \emph{Econometrica}, 93(6), 1981-2005. Replication
-#'   package: MissAdapt, Zenodo 16890198.
+#'   package: MissAdapt, Zenodo 16890198. (B-FLCIs: Section 4.2; equation
+#'   numbers (7)-(8) cited here follow the arXiv v6 manuscript.) \cr
+#'   Armstrong, T. B., & Kolesar, M. (2021). Sensitivity analysis using
+#'   approximate moment condition models. \emph{Quantitative Economics},
+#'   12(1), 77-108. (Impossibility of short CIs valid over all biases.)
 #'
 #' @seealso \code{\link{edid}}, \code{\link{edid_hausman}},
 #'   \code{\link{edid_frontier}}
@@ -310,8 +602,21 @@
 #' @export
 edid_adaptive <- function(fit_unrestricted, fit_restricted,
                           parameter = c("overall", "event_study"),
-                          e_set = NULL, assume_efficient = NULL) {
+                          e_set = NULL, assume_efficient = NULL,
+                          ci = TRUE, B = NULL, level = 0.95,
+                          st_cv = c("exact", "missadapt")) {
   parameter <- match.arg(parameter)
+  st_cv <- match.arg(st_cv)
+  stopifnot(is.logical(ci), length(ci) == 1L, !is.na(ci))
+  if (!is.numeric(level) || length(level) != 1L || is.na(level) ||
+      abs(level - 0.95) > 1e-12) {
+    stop("edid_adaptive: level must be 0.95. The MissAdapt B-FLCI critical-value ",
+         "tables are tabulated for the 95% level only (no other level is ",
+         "tabulated anywhere in their package).", call. = FALSE)
+  }
+  # 0- and Inf-FLCIs always reported (AKS recommendation); user B values added
+  # in between (sort() places Inf last)
+  B_report <- sort(unique(c(0, Inf, B)))
   assume_efficient_auto <- is.null(assume_efficient)
   if (!assume_efficient_auto) {
     stopifnot(is.logical(assume_efficient), length(assume_efficient) == 1L,
@@ -330,15 +635,25 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
       (!has_cov && !is.null(ws) && !identical(ws, "uniform"))
   }
 
-  n      <- fit_restricted$n
-  ci     <- fit_restricted$cluster_indices
-  tables <- .edid_aks_lookup()
+  n        <- fit_restricted$n
+  clus_idx <- fit_restricted$cluster_indices
+  tables   <- .edid_aks_lookup()
+  if (ci) {
+    flci_needed <- c("flci_B_grid", "flci_cv_adaptive", "flci_cv_st")
+    if (!all(flci_needed %in% names(tables))) {
+      stop("edid_adaptive: the installed aks_lookup.rds predates the B-FLCI layer ",
+           "(missing components: ",
+           paste(setdiff(flci_needed, names(tables)), collapse = ", "),
+           "); rebuild it with data-raw/aks_lookup.R or reinstall the package.",
+           call. = FALSE)
+    }
+  }
 
   # Bivariate variance of the (unrestricted, restricted) ESTIMATES:
   # cluster-robust sandwich of the two aggregation IFs, order 1/n (the same
   # scale as the reference implementation's mean(if^2)/n).
   .biv <- function(psi_U, psi_R) {
-    S <- cluster_cov_edid(cbind(psi_U, psi_R), ci, n)
+    S <- cluster_cov_edid(cbind(psi_U, psi_R), clus_idx, n)
     list(VU = S[1L, 1L], VR = S[2L, 2L], VUR = S[1L, 2L])
   }
 
@@ -346,9 +661,16 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
     oU <- .edid_param_ifs(fit_unrestricted, "overall")
     oR <- .edid_param_ifs(fit_restricted,  "overall")
     v  <- .biv(oU$IF[, 1L], oR$IF[, 1L])
-    out <- .edid_aks_core(YR = oR$est, VR = v$VR, YU = oU$est, VU = v$VU, VUR = v$VUR,
-                          tables = tables, assume_efficient = assume_efficient)
+    core <- .edid_aks_core(YR = oR$est, VR = v$VR, YU = oU$est, VU = v$VU, VUR = v$VUR,
+                           tables = tables, assume_efficient = assume_efficient)
+    out <- core
+    out$psi_fun <- NULL   # internal interpolant; not part of the user-facing object
+    out$acorr_eval <- NULL
     out$parameter <- "overall"
+    if (ci) {
+      out$ci <- .edid_aks_ci(core, tables, B_report, st_cv, level)
+      out$sigma_U <- sqrt(core$VU)
+    }
   } else {
     e_set <- .edid_shared_e_set(fit_unrestricted, fit_restricted, e_set)
     pU <- .edid_param_ifs(fit_unrestricted, "event_study", e_set)
@@ -357,21 +679,39 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
               "GMM", "se_GMM", "adaptive", "adaptive_st", "adaptive_ht", "pretest",
               "adaptive_erm", "soft_threshold", "hard_threshold")
     rows <- vector("list", length(e_set))
+    ci_rows <- if (ci) vector("list", length(e_set)) else NULL
     for (j in seq_along(e_set)) {
       v <- .biv(pU$IF[, j], pR$IF[, j])
       cj <- .edid_aks_core(YR = pR$est[j], VR = v$VR, YU = pU$est[j], VU = v$VU, VUR = v$VUR,
                            tables = tables, assume_efficient = assume_efficient)
       rows[[j]] <- cbind(data.frame(e = e_set[j]), as.data.frame(cj[cols]))
+      if (ci) {
+        ci_rows[[j]] <- cbind(data.frame(e = e_set[j]),
+                              .edid_aks_ci(cj, tables, B_report, st_cv, level))
+      }
     }
     out <- list(parameter = "event_study", e_set = e_set,
                 table = do.call(rbind, rows))
     rownames(out$table) <- NULL
+    if (ci) {
+      out$ci <- do.call(rbind, ci_rows)
+      rownames(out$ci) <- NULL
+    }
   }
 
+  if (ci) {
+    out$ci_level <- level
+    out$st_cv <- st_cv
+    out$ci_note <- paste(
+      "Each B-FLCI covers with probability >= 0.95 uniformly over biases",
+      "|b| <= B*sigma_O at the plug-in rho, in the AKS normal limit experiment",
+      "(Armstrong, Kline & Sun 2025, Sec. 4.2); B = Inf uses their B = 9*sigma_O",
+      "approximation. All intervals are center +- cv*sigma_U with sigma_U = sqrt(VU).")
+  }
   out$assume_efficient <- assume_efficient
   out$assume_efficient_auto <- assume_efficient_auto
   out$n <- n
-  out$clustered <- !is.null(ci)
+  out$clustered <- !is.null(clus_idx)
   class(out) <- c("edid_adaptive", "list")
   out
 }
@@ -402,6 +742,18 @@ print.edid_adaptive <- function(x, digits = 4, ...) {
     cat(sprintf("  [GMM: %s; soft-threshold: %s; hard-threshold: %s; pre-test: %s]\n",
                 format(x$GMM, digits = digits), format(x$adaptive_st, digits = digits),
                 format(x$adaptive_ht, digits = digits), format(x$pretest, digits = digits)))
+    if (!is.null(x$ci)) {
+      ad <- x$ci[x$ci$variant == "adaptive", , drop = FALSE]
+      cat(sprintf("\n  95%% adaptive FLCIs (estimate +- cv * sigma_U, sigma_U = sqrt(VU) = %s):\n",
+                  format(x$sigma_U, digits = digits)))
+      for (k in seq_len(nrow(ad))) {
+        cat(sprintf("    B = %-4s (B~ = %-4s): cv = %s, CI = [%s, %s]\n",
+                    format(ad$B[k]), format(ad$B_tilde[k]),
+                    format(ad$cv[k], digits = digits),
+                    format(ad$lower[k], digits = digits),
+                    format(ad$upper[k], digits = digits)))
+      }
+    }
   } else {
     cat(sprintf("  Parameter: ES(e) per event time%s\n",
                 if (isTRUE(x$clustered)) " (cluster-robust)" else ""))
@@ -409,8 +761,24 @@ print.edid_adaptive <- function(x, digits = 4, ...) {
     num <- vapply(tab, is.numeric, logical(1L))
     tab[num] <- lapply(tab[num], function(z) signif(z, digits))
     print(tab, row.names = FALSE)
+    if (!is.null(x$ci)) {
+      cat("\n  95% adaptive FLCIs (estimate +- cv * sigma_U, sigma_U = sqrt(VU)):\n")
+      ad <- x$ci[x$ci$variant == "adaptive",
+                 c("e", "B", "B_tilde", "center", "cv", "lower", "upper"), drop = FALSE]
+      num <- vapply(ad, is.numeric, logical(1L))
+      ad[num] <- lapply(ad[num], function(z) signif(z, digits))
+      print(ad, row.names = FALSE)
+    }
   }
-  cat("\nNote: the adaptive estimate is a point-estimation (risk) construction; no\n")
-  cat("standard error or coverage claim accompanies it (see ?edid_adaptive).\n")
+  if (!is.null(x$ci)) {
+    cat("\nEach FLCI covers with prob >= 0.95 uniformly over PT violations |b| <= B*sigma_O\n")
+    cat("(plug-in rho; AKS 2025, Sec. 4.2; B = Inf via their B = 9*sigma_O approximation).\n")
+    cat("The soft-threshold FLCI (cv source: ", x$st_cv,
+        ") is in $ci; see ?edid_adaptive.\n", sep = "")
+  } else {
+    cat("\nNote: no conventional standard error attaches to the adaptive estimate (its\n")
+    cat("asymptotic distribution is not consistently estimable); call with ci = TRUE\n")
+    cat("for the AKS fixed-length confidence intervals (see ?edid_adaptive).\n")
+  }
   invisible(x)
 }

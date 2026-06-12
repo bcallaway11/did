@@ -172,3 +172,21 @@ solve_ols_edid <- function(X, y, weights = NULL) {
   resid <- y - yhat
   list(coef = beta, fitted = yhat, residuals = resid)
 }
+
+# Evaluated edid() arguments for an internal refit of a fitted model: the
+# argument list (everything except `data`) with which `fit` was estimated, for
+# the refit tools (edid_sargan()'s moment-set refits, edid_refit_bootstrap() /
+# edid_perturbation_bootstrap()). Fits store this snapshot at fit time
+# ($args), so refits reuse the materials captured when the fit was made. For
+# fits created before $args existed (e.g. loaded from disk), falls back to the
+# legacy idiom: normalize the stored call to named arguments and re-evaluate
+# them in `envir` -- which breaks if a variable referenced in the call has
+# changed, is no longer reachable, or is a `..N` promise from a
+# programmatically built call.
+.edid_refit_args <- function(fit, envir = parent.frame()) {
+  if (!is.null(fit$args)) return(fit$args)
+  mc <- match.call(definition = edid, call = fit$call)
+  args <- as.list(mc)[-1L]
+  args$data <- NULL
+  lapply(args, function(a) eval(a, envir = envir))
+}

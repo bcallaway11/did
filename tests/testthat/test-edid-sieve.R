@@ -37,7 +37,7 @@ test_that("sieve EFFICIENT + misspec_robust runs the weight channel (no warning,
 
 test_that("sieve AVERAGED + misspec_robust runs the pooled weight channel (no warning, mean-zero EIF, finite SEs)", {
   skip_on_cran()
-  old <- options(edid_omega_method = "sieve"); on.exit(options(old))
+  old <- options(edid_omega_method = "sieve", edid_legacy_floor = NULL); on.exit(options(old))
   w <- testthat::capture_warnings(
     f_mr <- edid(mpdta, yname = "lemp", idname = "countyreal", tname = "year",
                  gname = "first.treat", xformla = ~ lpop, weight_scheme = "averaged",
@@ -52,11 +52,25 @@ test_that("sieve AVERAGED + misspec_robust runs the pooled weight channel (no wa
                  misspec_robust = FALSE, aggregate = "none"))
   expect_true(max(abs(f_mr$att_gt$se - f_pl$att_gt$se)) > 1e-8)
   expect_equal(f_mr$att_gt$att, f_pl$att_gt$att, tolerance = 1e-10)          # point estimates unchanged
-  # NUMERIC ANCHOR: pin the SE ratio to the eigen-floor-aware coupling's range. The corrected channel keeps
-  # se_mr/se_pl <= ~1.23 here; if a regression silently dropped back to the smooth -sym(q w') adjoint (the bug the
-  # pooled Daleckii-Krein coupling fixes) the ratio would balloon to ~2.5x. A loose finite/positive check alone
-  # could not tell these apart, so anchor it tightly.
-  expect_lt(max(f_mr$att_gt$se / f_pl$att_gt$se), 1.6)
+  # Sanity bound under the DEFAULT (pooled-scale, exponent-1/3) floor: the weaker pooled floor clamps far
+  # fewer directions, so the weight channel legitimately responds more than under the legacy floor (the
+  # long-horizon (2004, 2007) cell sits at ~2.6x here); bound it loosely. The tight anti-regression anchor
+  # lives below under the LEGACY floor, where its original calibration applies unchanged.
+  expect_lt(max(f_mr$att_gt$se / f_pl$att_gt$se), 4)
+  # NUMERIC ANCHOR (legacy floor): pin the SE ratio to the eigen-floor-aware coupling's range under
+  # options(edid_legacy_floor = TRUE), the regime the anchor was calibrated in. The corrected channel keeps
+  # se_mr/se_pl <= ~1.31 here; if a regression silently dropped back to the smooth -sym(q w') adjoint (the bug
+  # the pooled Daleckii-Krein coupling fixes) the ratio would balloon to ~2.5x. A loose finite/positive check
+  # alone could not tell these apart, so anchor it tightly.
+  options(edid_legacy_floor = TRUE)
+  f_mr_l <- suppressWarnings(edid(mpdta, yname = "lemp", idname = "countyreal", tname = "year",
+                 gname = "first.treat", xformla = ~ lpop, weight_scheme = "averaged",
+                 misspec_robust = TRUE, aggregate = "none"))
+  f_pl_l <- suppressWarnings(edid(mpdta, yname = "lemp", idname = "countyreal", tname = "year",
+                 gname = "first.treat", xformla = ~ lpop, weight_scheme = "averaged",
+                 misspec_robust = FALSE, aggregate = "none"))
+  options(edid_legacy_floor = NULL)
+  expect_lt(max(f_mr_l$att_gt$se / f_pl_l$att_gt$se), 1.6)
 })
 
 test_that("compute_obar_coupling_edid: reduces to the smooth adjoint with no floor, differs with an active floor", {

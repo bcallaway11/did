@@ -25,7 +25,11 @@ internal refits; the candidate pairs are always enumerated under PT-All.}
 \code{NULL} (default), in which case the data expression stored in the
 fit's call is re-evaluated in the caller's environment (the
 \code{update()} idiom). Supply \code{data} explicitly when the original
-object is no longer reachable by that name.}
+object is no longer reachable by that name. All other estimation
+arguments are taken from the fit's stored argument snapshot
+(\code{fit_restricted$args}), never re-evaluated from the call, and the
+refits verify that \code{data} reproduces the fitted sample (same
+\code{n} and unit ids).}
 
 \item{alpha}{Familywise error rate for the Holm-Bonferroni step-down.
 Default \code{0.05}.}

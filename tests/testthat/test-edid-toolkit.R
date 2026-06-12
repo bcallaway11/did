@@ -186,6 +186,72 @@ test_that("edid_hausman cluster-aware path runs and validation catches mismatche
 })
 
 # ===========================================================================
+# edid_hausman: degenerate-contrast guard on the joint statistic
+# ===========================================================================
+
+# Panel whose treated cohorts are ALL below the default min_pair_units = 5, so
+# the thin-cohort guard pins every cell to its just-identified moment and the
+# PT-All fit coincides with the PT-Post fit up to float dust.
+make_panel_pinned <- function(seed, n = 60L) {
+  set.seed(seed)
+  coh <- c(rep(3, 3L), rep(4, 2L), rep(Inf, n - 5L))
+  df  <- data.frame(id = rep(seq_len(n), each = 6L), time = rep(1:6, n))
+  df$g <- coh[df$id]
+  df$y <- rnorm(n)[df$id] + 0.2 * df$time + rnorm(nrow(df), 0, 0.5) + 1 * (df$time >= df$g)
+  df
+}
+
+test_that(".edid_if_diff_quadform guards degenerate contrasts (no rank found in float dust)", {
+  # The PDMP/Johnson gate-run failure mode: a contrast that is pure numerical
+  # noise (d ~ 1e-19, D entries ~ 1e-36) must NOT be ranked by the relative
+  # eigenvalue threshold into a spurious large H with p ~ 0.
+  set.seed(99L)
+  n  <- 24L
+  d  <- rnorm(4L) * 1e-19
+  xi <- matrix(rnorm(n * 4L), n, 4L) * 1e-18
+  qf <- .edid_if_diff_quadform(d, xi, n, NULL, v_scale = 1)
+  expect_identical(qf$statistic, 0)
+  expect_identical(qf$df, 0L)
+  expect_identical(qf$p_value, 1)
+  expect_true(isTRUE(qf$degenerate))
+
+  # A genuine contrast on the same scale as v_scale is untouched by the guard.
+  xi2 <- matrix(rnorm(n * 4L), n, 4L)
+  d2  <- colMeans(xi2)
+  qf2 <- .edid_if_diff_quadform(d2, xi2, n, NULL, v_scale = 1)
+  expect_gt(qf2$df, 0L)
+  expect_false(isTRUE(qf2$degenerate))
+  expect_true(is.finite(qf2$statistic) && qf2$statistic >= 0)
+})
+
+test_that("edid_hausman joint test is degenerate (p = 1), not spurious, when the guard pins both fits", {
+  df <- make_panel_pinned(20260612L)
+  fR <- suppressWarnings(edid(df, "y", "id", "time", "g", pt_assumption = "all",
+                              aggregate = "event_study", cband = FALSE))
+  fU <- suppressWarnings(edid(df, "y", "id", "time", "g", pt_assumption = "post",
+                              aggregate = "event_study", cband = FALSE))
+  expect_identical(nrow(fR$thin_cohorts), 2L)   # both cohorts pinned
+
+  # Joint contrast: previously the rank-thresholded pseudoinverse "found" rank
+  # in the 1e-18 noise (e.g. H = 18.5, df = 4, p = 0.001); now degenerate.
+  expect_message(h <- edid_hausman(fU, fR), "degenerate")
+  expect_identical(h$statistic, 0)
+  expect_identical(h$df, 0L)
+  expect_identical(h$p_value, 1)
+  expect_true(isTRUE(h$degenerate))
+  expect_output(print(h), "degenerate contrast")
+
+  # The scalar path already guarded this case; joint and scalar now agree.
+  expect_true(all(h$scalar$H == 0))
+  expect_true(all(h$scalar$p_value == 1))
+
+  # The overall (scalar) parameter goes through the same joint code path.
+  h_ov <- suppressMessages(edid_hausman(fU, fR, parameter = "overall"))
+  expect_identical(h_ov$df, 0L)
+  expect_identical(h_ov$p_value, 1)
+})
+
+# ===========================================================================
 # edid_frontier (Theorem 5.2 / eqn 5.6)
 # ===========================================================================
 test_that("edid_frontier: H >= 0, radii monotone in tau, frontier centered at theta_R", {
@@ -295,6 +361,26 @@ test_that("adaptive core edge behavior: sigma_O ~ 0, clamps, and VO <= 0 assert"
                "not positive")
 })
 
+test_that("edid_adaptive's VO <= 0 error is diagnostic (coinciding fits / thin-cohort guard)", {
+  # The error must explain the generic cause -- the efficient and conservative
+  # fits coincide, the common outcome when the thin-cohort guard pins every
+  # cell -- and point at the guard diagnostics, not just state VO <= 0.
+  expect_error(.edid_aks_core(YR = 0.8, VR = 0.04, YU = 1.0, VU = 0.09, VUR = 0.07),
+               "no over-identification direction to adapt over")
+  expect_error(.edid_aks_core(YR = 0.8, VR = 0.04, YU = 1.0, VU = 0.09, VUR = 0.07),
+               "thin-cohort guard")
+  expect_error(.edid_aks_core(YR = 0.8, VR = 0.04, YU = 1.0, VU = 0.09, VUR = 0.07),
+               "edid_weights")
+
+  # Guard-pinned scenario: identical estimator pair (VU = VR = VUR exactly).
+  # AUTO resolves assume_efficient = TRUE for the no-covariate restricted fit,
+  # so VO = VU - VR = 0 exactly -> the documented hard error, with the hint.
+  df <- make_panel_pinned(20260613L)
+  fR <- suppressWarnings(edid(df, "y", "id", "time", "g", pt_assumption = "all",
+                              aggregate = "event_study", cband = FALSE))
+  expect_error(suppressWarnings(edid_adaptive(fR, fR)), "thin-cohort guard")
+})
+
 test_that("edid_adaptive runs on fits, overall and per-e, with components consistent", {
   df <- make_panel_toolkit(6L, n = 300L)
   ff <- fit_pair_toolkit(df)
@@ -322,7 +408,8 @@ test_that("edid_adaptive runs on fits, overall and per-e, with components consis
   expect_equal(ad$rho_aks_sq, ad$corr^2, tolerance = 1e-12)
   expect_true(is.finite(ad$adaptive))
   expect_output(print(ad), "Adaptive event-study estimator")
-  expect_output(print(ad), "point-estimation")   # the no-inference note is printed
+  expect_output(print(ad), "95% adaptive FLCIs", fixed = TRUE)   # the B-FLCI block is printed
+  expect_output(print(ad), "uniformly over PT violations")      # with its validity note
 
   # Per-e variant
   ad_e <- edid_adaptive(ff$U, ff$R, parameter = "event_study", assume_efficient = FALSE)
@@ -551,6 +638,89 @@ test_that("edid_sargan returns NULL with a message when the model is just-identi
               aggregate = "event_study", cband = FALSE)
   expect_message(out <- edid_sargan(fit, data = df), "just-identified")
   expect_null(out)
+})
+
+# ===========================================================================
+# edid_sargan refits: the fit's stored argument snapshot, not call replay
+# ===========================================================================
+test_that("edid_sargan refits use the fit's stored arguments, not the caller's mutated variables", {
+  # Panel with two candidate covariates; y depends on x1 only.
+  set.seed(77L)
+  n   <- 80L
+  coh <- sample(c(3, Inf), n, replace = TRUE)
+  x1u <- rnorm(n); x2u <- rnorm(n)
+  df  <- data.frame(id = rep(seq_len(n), each = 4L), time = rep(1:4, n))
+  df$g  <- coh[df$id]
+  df$x1 <- x1u[df$id]; df$x2 <- x2u[df$id]
+  df$y  <- rnorm(n)[df$id] + 0.3 * df$time + 0.5 * df$x1 +
+    1 * (df$time >= df$g) + rnorm(nrow(df), 0, 0.4)
+
+  xf  <- ~ x1
+  fit <- edid(df, "y", "id", "time", "g", xformla = xf, pt_assumption = "all",
+              aggregate = "event_study", cband = FALSE, misspec_robust = FALSE)
+  ref <- edid(df, "y", "id", "time", "g", xformla = ~ x1, pt_assumption = "all",
+              aggregate = "event_study", cband = FALSE, misspec_robust = FALSE)
+  s_ref <- edid_sargan(ref, data = df, inference = "plugin_fast")
+
+  # Mutate the caller's variable AFTER fitting: previously the refits
+  # re-evaluated `xformla = xf` in this environment and silently used ~ x2.
+  xf <- ~ x2
+  s_fit <- edid_sargan(fit, data = df, inference = "plugin_fast")
+  expect_equal(s_fit$table, s_ref$table, tolerance = 1e-10)
+
+  # Even with the variable gone, the stored snapshot carries the formula.
+  rm(xf)
+  expect_no_error(edid_sargan(fit, data = df, inference = "plugin_fast"))
+
+  # Wrong data is loud, not silent: the refit sample must match the fit.
+  expect_error(edid_sargan(fit, data = df[df$id <= 70L, ], inference = "plugin_fast"),
+               "does not match the fitted sample")
+})
+
+test_that("edid_sargan runs on programmatically built fits (wrapper / do.call / lapply)", {
+  df <- make_panel_toolkit(13L, n = 200L)
+
+  # `...`-forwarding wrapper: the stored call holds `..1`-style promises that
+  # cannot be re-evaluated ("..3 used in an incorrect context" previously).
+  wrap  <- function(...) edid(...)
+  fit_w <- wrap(df, "y", "id", "time", "g", pt_assumption = "all",
+                aggregate = "event_study", cband = FALSE)
+  expect_s3_class(edid_sargan(fit_w, data = df), "edid_sargan")
+
+  # do.call-built fit
+  fit_d <- do.call(edid, list(data = df, yname = "y", idname = "id", tname = "time",
+                              gname = "g", pt_assumption = "all",
+                              aggregate = "event_study", cband = FALSE))
+  expect_s3_class(edid_sargan(fit_d, data = df), "edid_sargan")
+
+  # Fit built inside lapply: the call references a lambda-local variable.
+  fit_l <- lapply(list("y"), function(yn) {
+    edid(df, yn, "id", "time", "g", pt_assumption = "all",
+         aggregate = "event_study", cband = FALSE)
+  })[[1L]]
+  expect_s3_class(edid_sargan(fit_l, data = df), "edid_sargan")
+})
+
+test_that(".edid_refit_args returns the stored snapshot and falls back to call replay for legacy fits", {
+  df  <- make_panel_toolkit(15L, n = 150L)
+  fit <- edid(df, "y", "id", "time", "g", pt_assumption = "all",
+              aggregate = "event_study", cband = FALSE)
+  args <- .edid_refit_args(fit)
+  expect_identical(args, fit$args)
+  expect_false("data" %in% names(args))
+  expect_identical(args$yname, "y")
+  expect_identical(args$pt_assumption, "all")
+  expect_identical(args$weight_scheme, "efficient")
+  expect_identical(args$min_pair_units, 5L)
+
+  # Legacy fit (no $args, e.g. loaded from an old .rds): call re-evaluation,
+  # which for a literal call recovers the supplied arguments.
+  legacy <- fit
+  legacy$args <- NULL
+  args_legacy <- .edid_refit_args(legacy, envir = environment())
+  expect_identical(args_legacy$pt_assumption, "all")
+  expect_identical(args_legacy$aggregate, "event_study")
+  expect_false("data" %in% names(args_legacy))
 })
 
 # ===========================================================================

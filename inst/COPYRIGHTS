@@ -14,6 +14,9 @@ The files
     inst/extdata/aks_lookup/policy.mat
     inst/extdata/aks_lookup/thresholds.mat
     inst/extdata/aks_lookup/emse_corr.mat
+    inst/extdata/aks_lookup/flci_adaptive_cv.mat
+    inst/extdata/aks_lookup/flci_adaptive_st_cv.mat
+    inst/extdata/aks_lookup/flci_minimax_cv.mat
     inst/extdata/aks_lookup/aks_lookup.rds   (a conversion of the above;
                                               see data-raw/aks_lookup.R)
 

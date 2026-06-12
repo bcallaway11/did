@@ -399,6 +399,792 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
   }
 }
 
+#' Build the per-comparison overlap-trim masks (ratio-targeted)
+#'
+#' One \{TRUE, FALSE\} n-vector per comparison key, consumed by
+#' \code{edid_cell_trim_structure} (a pair's own mask is \code{keep_inf} for
+#' self/two-period pairs and \code{keep_inf * keep_gp} for cross pairs).
+#'
+#' \strong{Ratio-targeted semantics.} A finite comparison cohort's mask keys on the
+#' propensity RATIO \eqn{r_{g,g'}(X)} only -- the actual reweighting factor of that
+#' pair's moment (Eq. 4.4 term 3). The inverse propensity \eqn{1/p_{g'}(X)} is a
+#' variance-channel object (an Omega* prefactor, never a moment weight) whose
+#' absolute scale is \eqn{\approx 1/\pi_{g'}}: thresholding it at a fixed
+#' \code{trim_level} mechanically removes (nearly) every unit from any pair whose
+#' comparison cohort is small (\eqn{1/\pi_{g'} \ge} \code{trim_level}), killing
+#' small-cohort pairs regardless of actual covariate overlap -- the audited
+#' dead-pair pathology. The never-treated mask (key \code{"Inf"}) retains the
+#' legacy definition (ratio AND inverse propensity), which keeps the PT-Post and
+#' self-pair behavior byte-identical.
+#'
+#' @param prop_ratios named list of n-vectors (keys \code{"Inf"} and finite gp's)
+#' @param inv_propensities named list of n-vectors (same key space, superset)
+#' @param trim_level positive scalar; \code{Inf} disables trimming
+#' @param n number of units
+#' @return named list of logical n-vectors, or \code{NULL} when trimming is off
+#' @keywords internal
+#' @noRd
+build_trim_keep_edid <- function(prop_ratios, inv_propensities, trim_level, n) {
+  if (!is.finite(trim_level)) return(NULL)
+  if (is.null(prop_ratios) && is.null(inv_propensities)) return(NULL)
+  ks <- union(names(prop_ratios), names(inv_propensities))
+  if (!length(ks)) return(NULL)
+  stats::setNames(lapply(ks, function(k) {
+    keep <- rep(TRUE, n)
+    rr <- prop_ratios[[k]]
+    if (!is.null(rr)) keep <- keep & (abs(rr) < trim_level)
+    if (identical(k, "Inf")) {                       # legacy never-treated mask: ratio AND 1/p_NT
+      ip <- inv_propensities[[k]]
+      if (!is.null(ip)) keep <- keep & (abs(ip) < trim_level)
+    }
+    keep
+  }), ks)
+}
+
+# ---------------------------------------------------------------------------
+# Coherent (multinomial-logit sieve) cross-cohort propensity ratios
+# ---------------------------------------------------------------------------
+
+#' Ridge-penalized logistic sieve fit (IRLS)
+#'
+#' Fits a binomial logit of \code{d} on the basis \code{B} with an L2 penalty
+#' \code{lambda * colMeans(B^2)} on every non-intercept coefficient (the
+#' \code{colMeans(B^2)} factor makes the penalty invariant to column rescaling;
+#' the first column is treated as the intercept and left unpenalized). The fixed
+#' penalty is \eqn{O(1)} against an \eqn{O(n)} log-likelihood, so the
+#' regularization bias vanishes at rate \eqn{O(1/n)} -- asymptotically
+#' negligible, like the package's other finite-sample stabilizations -- while in
+#' finite samples it rules out the (quasi-)separation runaway that an
+#' unpenalized flexible-basis logit suffers when one class is small.
+#'
+#' @param B numeric matrix n x p (first column = intercept)
+#' @param d 0/1 response vector length n
+#' @param lambda non-negative penalty scale (default 1)
+#' @param maxit,tol IRLS controls
+#' @return list with \code{beta} (length p; non-finite entries replaced by 0),
+#'   \code{converged} (logical), and \code{pen} (the length-p penalty vector
+#'   \code{lambda * colMeans(B^2)} with the intercept entry zeroed -- returned so
+#'   the estimation-effect aux can fold the ridge term into the M-estimator
+#'   score/Hessian exactly as the IRLS used it)
+#' @keywords internal
+#' @noRd
+ridge_logit_edid <- function(B, d, lambda = 1, maxit = 100L, tol = 1e-8) {
+  p   <- ncol(B)
+  pen <- lambda * colMeans(B * B)
+  pen[1] <- 0
+  beta <- numeric(p)
+  beta[1] <- stats::qlogis(max(min(mean(d), 1 - 1e-6), 1e-6))
+  converged <- FALSE
+  for (it in seq_len(maxit)) {
+    eta <- drop(B %*% beta)
+    mu  <- stats::plogis(eta)
+    w   <- mu * (1 - mu)
+    Hm  <- crossprod(B, w * B)
+    diag(Hm) <- diag(Hm) + pen
+    sc  <- drop(crossprod(B, d - mu)) - pen * beta
+    step <- tryCatch(solve(Hm, sc),
+                     error = function(e) drop(compute_pseudoinverse_edid(Hm) %*% sc))
+    beta_new <- beta + drop(step)
+    if (!all(is.finite(beta_new))) break
+    if (max(abs(beta_new - beta)) < tol * (1 + max(abs(beta)))) {
+      beta <- beta_new
+      converged <- TRUE
+      break
+    }
+    beta <- beta_new
+  }
+  beta[!is.finite(beta)] <- 0
+  list(beta = beta, converged = converged, pen = pen)
+}
+
+#' Fit the coherent (multinomial-logit sieve) log-odds system h_c = log(p_c / p_NT)
+#'
+#' For each requested finite cohort \code{c}, fits the ridge-penalized logistic
+#' sieve of \code{1\{G = c\}} on the \emph{cohort-vs-never-treated} subsample over a
+#' SHARED full-sample B-spline basis, giving \eqn{\hat h_c(X) = \log(p_c(X)/p_{NT}(X))}
+#' (the binomial decomposition of the multinomial logit with the never-treated pool as
+#' base category). Cross-cohort propensity ratios are then formed analytically as
+#' \deqn{\hat r_{g,g'}(X) = \exp(\hat h_g(X) - \hat h_{g'}(X)),}
+#' which is positive by construction, algebraically coherent across pairs
+#' (\eqn{r_{g,g'} r_{g',g''} = r_{g,g''}}), and never solves a least-squares system on a
+#' thin comparison cohort's Gram matrix -- every fit's "denominator" group is the
+#' (large) never-treated pool. This is the \code{ratio_method = "coherent"} engine
+#' (see \code{\link{edid}}); the legacy per-pair LS sieve remains available as
+#' \code{ratio_method = "direct"}.
+#'
+#' Under \code{bs_df = "ic"} the basis df of each cohort fit is selected over
+#' \code{3:8} by the BIC for the (unpenalized) logistic deviance,
+#' \code{deviance + log(n_sub) * K} (\code{K} = total basis dimension,
+#' \code{n_sub} = cohort + NT sample size); the selected df is reported via the
+#' \code{bs_df} entry of each fit.
+#'
+#' @param X_mat numeric matrix n x d (full sample; basis knots use all rows)
+#' @param G_vec cohort vector length n (Inf = never-treated)
+#' @param cohorts numeric vector of finite cohorts whose \code{h_c} is needed
+#' @param bs_df integer B-spline df, or \code{"ic"}
+#' @param lambda ridge penalty scale (see \code{ridge_logit_edid})
+#' @param return_aux logical: when TRUE, each CONVERGED non-fallback cohort fit also carries its
+#'   per-block M-estimator pieces for the estimation-effect corrections (plug-in regime):
+#'   \itemize{
+#'     \item \code{beta}, \code{pen}: the fitted coefficients and the ridge vector the IRLS used;
+#'     \item \code{B}: the n x q basis (explicit intercept prepended) the block was fit on;
+#'     \item \code{score}: the n x q per-unit score in the package's SUBTRACT convention
+#'       (positive-definite Jacobian, first-step IF of \code{beta} = \eqn{-H^{-1} s}):
+#'       \eqn{s_i = 1\{i \in S_c\}\,\psi_i\,(\mu_i^c - d_i^c) + pen \circ \beta_c / n}, with
+#'       \eqn{S_c} the cohort-vs-NT subsample, \eqn{d^c = 1\{G = c\}},
+#'       \eqn{\mu^c = \mathrm{plogis}(\psi'\beta_c)}; the \eqn{O(1)} ridge term is distributed
+#'       over the \eqn{n} rows so the columns sum to 0 exactly at \eqn{\hat\beta_c};
+#'     \item \code{Hmat}: the q x q sum-form Hessian
+#'       \eqn{\sum_{i \in S_c} \mu_i(1-\mu_i)\,\psi_i\psi_i' + \mathrm{diag}(pen)} -- EXACTLY the
+#'       IRLS curvature, ridge included for finite-sample fidelity.
+#'   }
+#'   The JOINT system Hessian across cohorts is exactly BLOCK-DIAGONAL in these blocks (each
+#'   block's estimating equation involves only its own \eqn{\beta_c}); the shared never-treated
+#'   pool induces cross-block dependence only through the SCORES (an NT unit appears in every
+#'   block's score), which the stacked-score packing of
+#'   \code{coherent_system_aux_edid} captures. Non-converged fits carry no aux (treated like
+#'   fallbacks by the consumers: no estimated coefficients to correct for).
+#' @return named list (keys \code{as.character(cohort)}) of
+#'   \code{list(h = length-n log-odds vector, converged, bs_df, is_fallback)} (+ the aux fields
+#'   above under \code{return_aux});
+#'   cohorts with fewer than 2 units (or a degenerate NT pool) fall back to the
+#'   constant log share ratio with \code{is_fallback = TRUE}.
+#' @keywords internal
+#' @noRd
+fit_coherent_logodds_edid <- function(X_mat, G_vec, cohorts, bs_df = 4L, lambda = 1,
+                                      return_aux = FALSE) {
+  n   <- length(G_vec)
+  ntm <- is.infinite(G_vec)
+  n_nt <- sum(ntm)
+  out <- list()
+  ic_mode <- identical(bs_df, "ic")
+
+  basis_cache <- new.env(parent = emptyenv())
+  get_basis <- function(df_k) {
+    key <- as.character(df_k)
+    if (exists(key, envir = basis_cache, inherits = FALSE)) return(get(key, envir = basis_cache))
+    Bo <- build_basis_matrix_edid(X_mat, df_k)
+    B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
+    # Prepend an EXPLICIT intercept column. The B-spline block with intercept = TRUE spans constants
+    # only as a sum across columns (partition of unity), so penalizing its coefficients would shrink
+    # the LEVEL of h_c toward 0 (biasing the implied cohort shares); the explicit unpenalized
+    # intercept absorbs the level and the ridge shrinks only deviations. The induced collinearity
+    # (constants are in the span of B) is harmless under the ridge: the penalty makes the IRLS
+    # Hessian positive definite and routes constants through the unpenalized coordinate.
+    B <- cbind(1, B)
+    assign(key, B, envir = basis_cache)
+    B
+  }
+
+  for (cc in cohorts) {
+    ckey <- as.character(cc)
+    mask_c <- (G_vec == cc) & !ntm
+    n_c <- sum(mask_c)
+    pi_ratio <- if (n_nt > 0L) max(n_c, 1L) / n_nt else 1
+    if (n_c < 2L || n_nt < 2L) {
+      # too few units to fit a conditional log-odds: constant log share ratio
+      out[[ckey]] <- list(h = rep(log(pi_ratio), n), converged = FALSE,
+                          bs_df = NA_integer_, is_fallback = TRUE)
+      next
+    }
+    sub <- ntm | mask_c
+    d_sub <- as.integer(mask_c[sub])
+    df_use <- bs_df
+    if (ic_mode) {
+      # BIC over 3:8 on the logistic deviance of the (unpenalized) subsample fit;
+      # ties keep the smaller df; all-infeasible falls back to the package default 4.
+      n_sub <- sum(sub)
+      df_use <- select_bs_df_ic_edid(function(df_k) {
+        Bk <- get_basis(df_k)[sub, , drop = FALSE]
+        ft <- ridge_logit_edid(Bk, d_sub, lambda = lambda)
+        mu <- stats::plogis(drop(Bk %*% ft$beta))
+        mu <- pmin(pmax(mu, 1e-12), 1 - 1e-12)
+        dev <- -2 * sum(d_sub * log(mu) + (1 - d_sub) * log(1 - mu))
+        # select_bs_df_ic_edid computes 2*loss + log(n)K/n; pass loss = dev/(2 n_sub)
+        # so the criterion is (dev + log(n_sub) K)/n_sub, i.e. the logistic BIC.
+        c(loss = dev / (2 * n_sub), K = ncol(Bk))
+      }, n = n_sub)
+    }
+    B  <- get_basis(df_use)
+    ft <- ridge_logit_edid(B[sub, , drop = FALSE], d_sub, lambda = lambda)
+    h  <- drop(B %*% ft$beta)
+    if (!all(is.finite(h))) {
+      out[[ckey]] <- list(h = rep(log(pi_ratio), n), converged = FALSE,
+                          bs_df = NA_integer_, is_fallback = TRUE)
+      next
+    }
+    o <- list(h = h, converged = ft$converged,
+              bs_df = if (ic_mode) as.integer(df_use) else NA_integer_,
+              is_fallback = FALSE)
+    if (return_aux && ft$converged) {
+      # Per-block M-estimator pieces (see @param return_aux). mu/w on the SUBSAMPLE rows; the
+      # score is assembled full-sample (zero off-subsample apart from the distributed ridge
+      # term) so the stacked joint score has one row per unit -- the object every
+      # estimation-effect consumer averages over.
+      mu_sub  <- stats::plogis(drop(B[sub, , drop = FALSE] %*% ft$beta))
+      w_sub   <- mu_sub * (1 - mu_sub)
+      Hmat    <- crossprod(B[sub, , drop = FALSE], w_sub * B[sub, , drop = FALSE])
+      diag(Hmat) <- diag(Hmat) + ft$pen
+      resid_f      <- numeric(n)
+      resid_f[sub] <- mu_sub - d_sub                       # (mu - d) on S_c, 0 elsewhere
+      score        <- B * resid_f
+      pb <- ft$pen * ft$beta
+      if (any(pb != 0)) score <- score + matrix(pb / n, n, ncol(B), byrow = TRUE)
+      o$beta <- ft$beta; o$pen <- ft$pen; o$B <- B; o$score <- score; o$Hmat <- Hmat
+    }
+    out[[ckey]] <- o
+  }
+  out
+}
+
+#' Assemble the coherent system's joint stacked-coefficient aux (canonical layout)
+#'
+#' Stacks the per-cohort blocks of \code{fit_coherent_logodds_edid(..., return_aux = TRUE)} into
+#' the ONE joint coefficient space every coherent nuisance entry packs against: blocks in the
+#' order of \code{cohorts_order} (the panel's sorted treated cohorts), KEEPING only converged
+#' non-fallback blocks that carry aux (fallback/non-converged blocks have no estimated
+#' coefficients -- their predictions are treated as fixed, the package-wide fallback convention).
+#' Because the per-cohort fits are independent given the basis, the same call signature yields
+#' bitwise-identical blocks across the ratio and inverse-propensity dispatchers, so entries from
+#' BOTH carry the SAME stacked \code{score_mat} / \code{H_inv} / \code{coef_id} -- the contract
+#' the linear corrections (additive in Gamma), the higher-order dedup, and the perturbation
+#' bootstrap's shared-draw dedup rely on.
+#'
+#' @param hsys output of \code{fit_coherent_logodds_edid(..., return_aux = TRUE)}
+#' @param cohorts_order numeric vector: the canonical cohort order (panel treatment groups)
+#' @param n sample size
+#' @return NULL when no block carries aux; else \code{list(cohorts, offsets, sizes, score_mat
+#'   (n x P), H_inv (P x P, block-diagonal n * pinv(Hmat_c)), beta (stacked), B_list (per-block
+#'   n x q_c bases), coef_id)}
+#' @keywords internal
+#' @noRd
+coherent_system_aux_edid <- function(hsys, cohorts_order, n) {
+  keys <- as.character(cohorts_order)
+  keys <- keys[vapply(keys, function(k) {
+    hk <- hsys[[k]]
+    !is.null(hk) && !isTRUE(hk$is_fallback) && !is.null(hk$score)
+  }, logical(1))]
+  if (!length(keys)) return(NULL)
+  sizes   <- vapply(keys, function(k) ncol(hsys[[k]]$B), integer(1))
+  offsets <- cumsum(c(0L, sizes[-length(sizes)])); names(offsets) <- keys
+  P <- sum(sizes)
+  score_mat <- matrix(0, n, P)
+  H_inv     <- matrix(0, P, P)
+  beta      <- numeric(P)
+  B_list    <- vector("list", length(keys)); names(B_list) <- keys
+  for (k in keys) {
+    jj <- offsets[[k]] + seq_len(sizes[[k]])
+    score_mat[, jj] <- hsys[[k]]$score
+    H_inv[jj, jj]   <- n * compute_pseudoinverse_edid(hsys[[k]]$Hmat)
+    beta[jj]        <- hsys[[k]]$beta
+    B_list[[k]]     <- hsys[[k]]$B
+  }
+  list(cohorts = keys, offsets = offsets, sizes = sizes, score_mat = score_mat,
+       H_inv = H_inv, beta = beta, B_list = B_list,
+       coef_id = paste0("coherent|", paste0(keys, ":", sizes, collapse = ",")))
+}
+
+#' Pack the cross-cohort ratio r_{g,g'} = exp(h_g - h_{g'}) against the joint coherent system
+#'
+#' Chain rule against the stacked coefficients: \eqn{\partial r/\partial\beta_g = r\,\psi} and
+#' \eqn{\partial r/\partial\beta_{g'} = -r\,\psi} (zero in every other block), packed as
+#' \code{B_test} so every consumer's \eqn{\Gamma = n^{-1} B_{test}' s} and prediction-perturbation
+#' direction are the exact coefficient derivatives. \code{score_mat} / \code{H_inv} are the JOINT
+#' stacked system pieces (shared across entries -- the additive-in-Gamma linear corrections then
+#' sum to the exact joint correction, and the bootstrap dedups draws on \code{coef_id}). Entries
+#' whose g or g' block carries no aux fall back (skipped by consumers, as before).
+#' @keywords internal
+#' @noRd
+coherent_ratio_aux_edid <- function(coh_sys, g, gp, r_full) {
+  gk <- as.character(g); gpk <- as.character(gp)
+  if (is.null(coh_sys) || !(gk %in% coh_sys$cohorts) || !(gpk %in% coh_sys$cohorts)) {
+    return(list(pred = r_full, is_fallback = TRUE, coherent = TRUE))
+  }
+  n <- length(r_full)
+  B_test <- matrix(0, n, ncol(coh_sys$score_mat))
+  B_test[, coh_sys$offsets[[gk]]  + seq_len(coh_sys$sizes[[gk]])]  <-  r_full * coh_sys$B_list[[gk]]
+  B_test[, coh_sys$offsets[[gpk]] + seq_len(coh_sys$sizes[[gpk]])] <- -r_full * coh_sys$B_list[[gpk]]
+  list(pred = r_full, B_test = B_test, score_mat = coh_sys$score_mat, H_inv = coh_sys$H_inv,
+       is_fallback = FALSE, coherent = TRUE, link = "coherent", coef_id = coh_sys$coef_id,
+       beta = coh_sys$beta, coh_layout = coh_sys[c("cohorts", "offsets", "sizes")])
+}
+
+#' Pack the finite-cohort inverse propensity 1/p_c against the joint coherent system
+#'
+#' With \eqn{E_c = e^{h_c}}, \eqn{D = 1 + \sum_{c'} E_{c'}} (sum over ALL treated cohorts) and
+#' \eqn{s_c = 1/p_c = D/E_c}, the implied-share (softmax) Jacobian is
+#' \deqn{\partial s_c/\partial\beta_{c'} = s_c\,(p_{c'} - \delta_{cc'})\,\psi,}
+#' i.e. \eqn{(1 - s_c)\,\psi < 0} in the own block and \eqn{(E_{c'}/E_c)\,\psi} elsewhere --
+#' packed as \code{B_test} over the joint layout (blocks without aux are treated as fixed
+#' constants, the fallback convention). \code{s_pos} is all-TRUE (the exp-composite map never
+#' clamps) and \code{link = "coherent"} flags the prediction-scale Jacobian for the link-aware
+#' FD step of \code{compute_invp_correction_cov_edid}.
+#' @keywords internal
+#' @noRd
+coherent_invp_aux_edid <- function(coh_sys, eh, den_nt, gp, s_full) {
+  gpk <- as.character(gp)
+  if (is.null(coh_sys) || !(gpk %in% coh_sys$cohorts)) {
+    return(list(s_hat = s_full, is_fallback = TRUE, coherent = TRUE))
+  }
+  n <- length(s_full)
+  B_test <- matrix(0, n, ncol(coh_sys$score_mat))
+  for (ck in coh_sys$cohorts) {
+    p_ck <- eh[, ck] / den_nt                              # implied share of cohort ck
+    coef <- s_full * (p_ck - as.numeric(ck == gpk))        # softmax Jacobian factor
+    B_test[, coh_sys$offsets[[ck]] + seq_len(coh_sys$sizes[[ck]])] <- coef * coh_sys$B_list[[ck]]
+  }
+  list(s_hat = s_full, B_test = B_test, score_mat = coh_sys$score_mat, H_inv = coh_sys$H_inv,
+       s_pos = rep(TRUE, n), is_fallback = FALSE, coherent = TRUE, link = "coherent",
+       coef_id = coh_sys$coef_id, beta = coh_sys$beta,
+       coh_layout = coh_sys[c("cohorts", "offsets", "sizes")])
+}
+
+# ---------------------------------------------------------------------------
+# Exponential-link Riesz regressions (ratio_method = "exp")
+# ---------------------------------------------------------------------------
+
+#' Newton solver for the tailored exponential-link Riesz loss
+#'
+#' Minimizes the globally convex tailored loss
+#' \deqn{L(\beta) = \mathbb{E}_n[\,\mathrm{comp}_i\, e^{\psi_i'\beta}\,] - t_{col}'\beta
+#'       \;(+\tfrac{\lambda}{2}\,\beta' \mathrm{diag}(pen)\,\beta\ \text{on rescue}),}
+#' whose first-order condition is EXACT basis-mean balancing:
+#' \eqn{\mathbb{E}_n[\psi_i\, e^{\psi_i'\beta}\, \mathrm{comp}_i] = t_{col}}. For the
+#' propensity ratio \eqn{r_{g,g'}} take \eqn{\mathrm{comp} = G_{g'}} and
+#' \eqn{t_{col} = \mathbb{E}_n[\psi\, G_g]} (population minimizer
+#' \eqn{\psi'\beta^* = \log(p_g/p_{g'})}); for the inverse propensity \eqn{s_{g'}} take
+#' \eqn{\mathrm{comp} = G_{g'}} and \eqn{t_{col} = \mathbb{E}_n[\psi]} (population minimizer
+#' \eqn{\log(1/p_{g'})}).
+#'
+#' Safeguards: (i) basis columns with no comparison-side support (\code{colSums(|B| comp) ~ 0})
+#' cannot be balanced -- the loss is unbounded below along them -- so they are pinned at 0
+#' ("dead" columns; the optimization runs on the live block); (ii) Newton steps are
+#' step-halved on the loss (up to 30 halvings); (iii) exp overflow is capped inside the
+#' objective and treated as non-descent; (iv) if the unpenalized problem does not converge
+#' (balancing infeasible / quasi-separation), a scale-normalized ridge
+#' \eqn{pen = \lambda\,\mathrm{colMeans}(B^2)/n} is escalated over \code{ridge_grid} until
+#' the (then strictly convex, coercive) problem converges -- the \eqn{1/n} scaling mirrors
+#' the coherent engine's convention (an \eqn{O(1)} penalty against an \eqn{O(n)} criterion),
+#' so a fixed \eqn{\lambda} stays asymptotically negligible. The returned \code{pen} vector
+#' is 0 except on rescue, and is folded into the aux score/Hessian by the callers so the
+#' M-estimator pieces stay mean-zero at the fitted coefficients.
+#'
+#' @param B numeric matrix n x p (sieve basis at the training sample)
+#' @param comp 0/1 comparison-group indicator length n
+#' @param tcol length-p target basis means (see above)
+#' @param beta_init optional warm start (length p)
+#' @param maxit,tol Newton controls (tol is relative on the gradient sup-norm)
+#' @param ridge_grid increasing ridge scales tried after the unpenalized fit fails
+#' @return list(beta, pen, converged, lambda, n_iter, live)
+#' @keywords internal
+#' @noRd
+fit_exp_riesz_edid <- function(B, comp, tcol, beta_init = NULL, maxit = 200L, tol = 1e-8,
+                               ridge_grid = c(0, 1, 100, 1e4)) {
+  n <- nrow(B); p <- ncol(B)
+  comp <- as.numeric(comp)
+  live <- colSums(abs(B) * comp) > 1e-12          # balanceable directions (comparison-side support)
+  scale_t <- 1 + max(abs(tcol))
+  best <- NULL
+  for (lam in ridge_grid) {
+    pen <- lam * colMeans(B * B) / n              # O(1) vs the O(n) criterion (coherent convention)
+    pen[!live] <- 0
+    beta <- if (!is.null(beta_init) && length(beta_init) == p && all(is.finite(beta_init))) beta_init else numeric(p)
+    beta[!live] <- 0
+    loss_fn <- function(b) {
+      eta <- drop(B %*% b)
+      if (max(eta) > 350) return(Inf)             # exp overflow guard (squares of exp(350) stay finite)
+      mean(comp * exp(eta)) - sum(tcol * b) + 0.5 * sum(pen * b * b)
+    }
+    l0 <- loss_fn(beta)
+    if (!is.finite(l0)) { beta <- numeric(p); l0 <- loss_fn(beta) }
+    converged <- FALSE; it_used <- 0L
+    for (it in seq_len(maxit)) {
+      it_used <- it
+      eta  <- drop(B %*% beta)
+      w    <- comp * exp(pmin(eta, 350))
+      grad <- drop(crossprod(B, w)) / n - tcol + pen * beta
+      if (max(abs(grad[live])) < tol * scale_t) { converged <- TRUE; break }
+      Hm   <- crossprod(B, w * B) / n
+      if (lam > 0) diag(Hm) <- diag(Hm) + pen
+      Hl   <- Hm[live, live, drop = FALSE]
+      step <- tryCatch(-solve(Hl, grad[live]),
+                       error = function(e) -drop(compute_pseudoinverse_edid(Hl) %*% grad[live]))
+      if (!all(is.finite(step))) break
+      ok <- FALSE; fac <- 1; lnew <- l0
+      for (hh in 1:30) {                          # step-halving on the (penalized) loss
+        bnew <- beta; bnew[live] <- beta[live] + fac * step
+        lnew <- loss_fn(bnew)
+        if (is.finite(lnew) && lnew <= l0 + 1e-12 * (1 + abs(l0))) { ok <- TRUE; break }
+        fac <- fac / 2
+      }
+      if (!ok) break                              # no descent direction left: stop (converged stays FALSE)
+      beta[live] <- beta[live] + fac * step
+      moved <- max(abs(fac * step))
+      l0 <- lnew
+      if (moved < 1e-12 * (1 + max(abs(beta)))) { # negligible step: accept if the gradient is small-ish
+        eta  <- drop(B %*% beta)
+        w    <- comp * exp(pmin(eta, 350))
+        grad <- drop(crossprod(B, w)) / n - tcol + pen * beta
+        converged <- max(abs(grad[live])) < sqrt(tol) * scale_t
+        break
+      }
+    }
+    if (converged && all(is.finite(beta))) return(list(beta = beta, pen = pen, converged = TRUE,
+                                                       lambda = lam, n_iter = it_used, live = live))
+    if (is.null(best) && all(is.finite(beta))) best <- list(beta = beta, pen = pen, converged = FALSE,
+                                                            lambda = lam, n_iter = it_used, live = live)
+  }
+  if (is.null(best)) best <- list(beta = numeric(p), pen = numeric(p), converged = FALSE,
+                                  lambda = NA_real_, n_iter = 0L, live = live)
+  best
+}
+
+#' Warm starts for the exponential-link Riesz fit
+#'
+#' Returns the better (lower tailored loss) of two candidates: (a) the constant fit at the
+#' closed-form level \code{const_level} (= \eqn{n_g/n_{g'}} for the ratio, \eqn{n/n_{g'}} for
+#' the inverse propensity), represented as \code{log(const_level) * q} with \code{q} the LS
+#' projection of the constant 1 onto the basis (skipped when constants are not in the span);
+#' (b) the log of the CLIPPED per-target LS sieve fit (the paper's closed-form linear fit,
+#' floored at a small positive value) projected back onto the basis. Either may be the zero
+#' vector when degenerate; the zero start is always a valid fallback (the loss is globally
+#' convex, so the warm start affects speed and overflow risk, not the optimum).
+#' @keywords internal
+#' @noRd
+exp_riesz_warmstart_edid <- function(B, comp, tcol, const_level) {
+  n <- nrow(B); p <- ncol(B)
+  BtB_pinv <- compute_pseudoinverse_edid(crossprod(B))
+  cands <- list(numeric(p))
+  # (a) constant log level through the basis (B-spline first block is a partition of unity)
+  if (is.finite(const_level) && const_level > 0) {
+    q <- drop(BtB_pinv %*% colSums(B))
+    if (max(abs(drop(B %*% q) - 1)) < 0.01) cands[[length(cands) + 1L]] <- log(const_level) * q
+  }
+  # (b) log of the clipped linear (paper LS) fit
+  beta_ls <- tryCatch(
+    drop(compute_pseudoinverse_edid(crossprod(B, comp * B)) %*% (n * tcol)),
+    error = function(e) NULL)
+  if (!is.null(beta_ls) && all(is.finite(beta_ls))) {
+    r_ls <- drop(B %*% beta_ls)
+    clip <- max(1e-6, 1e-3 * stats::median(abs(r_ls)))
+    bl   <- drop(BtB_pinv %*% crossprod(B, log(pmax(r_ls, clip))))
+    if (all(is.finite(bl))) cands[[length(cands) + 1L]] <- bl
+  }
+  loss0 <- function(b) {
+    eta <- drop(B %*% b)
+    if (max(eta) > 350) return(Inf)
+    mean(comp * exp(eta)) - sum(tcol * b)
+  }
+  ls <- vapply(cands, loss0, numeric(1))
+  cands[[which.min(replace(ls, !is.finite(ls), Inf))]]
+}
+
+#' Literal paper-loss refinement of an exponential-link fit (internal cross-check)
+#'
+#' Damped (Levenberg) Newton minimization of the PAPER's loss with the exp parametrization,
+#' \eqn{L_2(\beta) = \mathbb{E}_n[\,\mathrm{comp}\, e^{2\psi'\beta} - 2\,\mathrm{tgt}\,
+#' e^{\psi'\beta}\,]} (Eq. (4.1)'s \eqn{r^2 G_{g'} - 2 r G_g} with \eqn{r = e^{\psi'\beta}};
+#' for \eqn{s}, \code{tgt = 1}), warm-started from the tailored solution. \eqn{L_2} is not
+#' globally convex in \eqn{\beta} (difference of convex), and in finite samples it can be
+#' UNBOUNDED below along directions that raise \eqn{\eta} where the target has basis mass
+#' but the comparison has (essentially) none -- the multiplicative analogue of the LS sieve's
+#' thin-support pathology, which an unconstrained quasi-Newton line search will find and
+#' exploit. The refinement therefore stays in a TRUST REGION around the tailored solution
+#' (steps that push \eqn{\max\eta} more than 5 above the warm start's are rejected), uses
+#' loss-based step-halving with Levenberg damping when the Hessian is indefinite, and is
+#' accepted only at an interior stationary point (small gradient); otherwise the caller keeps
+#' the tailored fit and its aux. Under correct specification both losses share the population
+#' minimizer, so the refinement converges and the two fits agree. Reached via
+#' \code{options(edid_exp_loss = "paper")}; the default \code{"tailored"} never calls this.
+#' @keywords internal
+#' @noRd
+exp_riesz_paper_refine_edid <- function(B, comp, tgt, beta0, maxit = 50L) {
+  n <- nrow(B); p <- ncol(B)
+  eta_max0 <- max(drop(B %*% beta0))
+  eta_cap  <- eta_max0 + 5                         # trust bound against the empirical-divergence escape
+  fn <- function(eta) mean(comp * exp(2 * eta) - 2 * tgt * exp(eta))
+  beta <- beta0
+  eta  <- drop(B %*% beta)
+  f0   <- fn(eta)
+  grad <- drop(crossprod(B, 2 * (comp * exp(2 * eta) - tgt * exp(eta)))) / n
+  tol_g <- 1e-8 * (1 + max(abs(grad)))
+  converged <- max(abs(grad)) < tol_g
+  it <- 0L
+  while (!converged && it < maxit) {
+    it <- it + 1L
+    Hm <- crossprod(B, (2 * (2 * comp * exp(2 * eta) - tgt * exp(eta))) * B) / n
+    mu <- 0; accepted <- FALSE
+    for (damp in 1:8) {                            # Levenberg escalation if the step is not descent
+      Hd <- Hm; if (mu > 0) diag(Hd) <- diag(Hd) + mu * (1 + abs(diag(Hm)))
+      step <- tryCatch(-solve(Hd, grad),
+                       error = function(e) -drop(compute_pseudoinverse_edid(Hd) %*% grad))
+      if (all(is.finite(step))) {
+        fac <- 1
+        for (hh in 1:25) {
+          bnew <- beta + fac * step
+          eta_new <- drop(B %*% bnew)
+          if (max(eta_new) <= eta_cap) {           # stay in the trust region
+            fnew <- fn(eta_new)
+            if (is.finite(fnew) && fnew <= f0 - 1e-14 * (1 + abs(f0))) {
+              beta <- bnew; eta <- eta_new; f0 <- fnew; accepted <- TRUE
+              break
+            }
+          }
+          fac <- fac / 2
+        }
+      }
+      if (accepted) break
+      mu <- if (mu == 0) 1e-4 else mu * 100
+    }
+    if (!accepted) break                           # no acceptable descent step: stop
+    grad <- drop(crossprod(B, 2 * (comp * exp(2 * eta) - tgt * exp(eta)))) / n
+    converged <- max(abs(grad)) < tol_g
+  }
+  if (!converged || !all(is.finite(beta))) return(list(beta = beta0, converged = FALSE))
+  list(beta = beta, converged = TRUE)
+}
+
+#' Estimate the propensity ratio r(X) = p_g(X)/p_g'(X) by the exponential-link Riesz regression
+#'
+#' The \code{ratio_method = "exp"} engine (see \code{\link{edid}}): the paper-compatible
+#' per-target alternative to the LS sieve of \code{estimate_propensity_ratio_edid}, with
+#' \eqn{\hat r_{g,g'}(X) = \exp(\psi^K(X)'\hat\beta)} -- positive by construction -- fit
+#' INDEPENDENTLY per (g, g') on the same B-spline machinery. The primary criterion is the
+#' tailored convex loss \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - (\psi'\beta) G_g]}
+#' (\code{fit_exp_riesz_edid}): globally convex, FOC = exact basis-mean balancing
+#' \eqn{\mathbb{E}_n[\psi\, \hat r\, G_{g'}] = \mathbb{E}_n[\psi\, G_g]}, population target
+#' \eqn{\log(p_g/p_{g'})}. Unlike the per-pair LS sieve, no thin-denominator Gram is inverted
+#' on the raw scale: the exp link rules out negative fitted "ratios" entirely.
+#' \code{options(edid_exp_loss = "paper")} refines by the literal paper loss
+#' (\code{exp_riesz_paper_refine_edid}) for cross-checking.
+#'
+#' \strong{Estimation-effect aux (full integration, no fallback-marking).} Under
+#' \code{return_aux = TRUE} (plug-in regime) the M-estimator pieces are returned in the SAME
+#' contract every correction consumes, with the exp-link chain rule baked in:
+#' \itemize{
+#'   \item \code{B_test} = \eqn{\partial \hat r/\partial\beta = \hat r\,\psi} (n x p Jacobian;
+#'     consumers use \code{B_test} as the prediction-perturbation direction and as the Gamma
+#'     basis \eqn{\Gamma = n^{-1} B_{test}'s}, both of which are exactly the coefficient
+#'     derivative under this packing);
+#'   \item \code{score_mat} = \eqn{\psi_i\,(G_{g',i}\hat r_i - G_{g,i})} (+ the ridge term on
+#'     rescue), the tailored-loss score -- mean-zero at \eqn{\hat\beta};
+#'   \item \code{H_inv} = \eqn{n\,[\Psi'\mathrm{diag}(G_{g'}\hat r)\Psi + n\,\mathrm{diag}(pen)]^{-}},
+#'     the tailored-loss Hessian (positive semi-definite, same pseudoinverse convention as the
+#'     LS aux). Under \code{options(edid_exp_loss = "paper")} the score/Hessian are the paper
+#'     loss's: score \eqn{\psi\,\hat r\,(G_{g'}\hat r - G_g)}, Hessian
+#'     \eqn{n^{-1}\Psi'\mathrm{diag}(2 G_{g'}\hat r^2 - G_g \hat r)\Psi}.
+#' }
+#' \code{link = "exp"} and the raw basis \code{B_raw} ride along for the FD oracles.
+#'
+#' @inheritParams estimate_propensity_ratio_edid
+#' @return as \code{estimate_propensity_ratio_edid} (vector, or aux list under
+#'   \code{return_aux = TRUE}); predictions are strictly positive
+#' @keywords internal
+estimate_propensity_ratio_exp_edid <- function(X_train, G_train, X_test, g, gp,
+                                               bs_df = 4L, return_aux = FALSE) {
+  n_test <- nrow(X_test)
+  mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+  mask_g  <- (G_train == g)
+  n_gp <- sum(mask_gp); n_g <- sum(mask_g)
+  n_train <- length(G_train)
+
+  if (n_gp < 2L) {
+    warning(sprintf(
+      "estimate_propensity_ratio_exp_edid: fewer than 2 units in g'=%g training fold; returning 0.", gp))
+    fb <- rep(0, n_test)
+    return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
+  }
+  if (n_g < 1L) {
+    warning(sprintf(
+      "estimate_propensity_ratio_exp_edid: 0 units in g=%g training fold; returning 0.", g))
+    fb <- rep(0, n_test)
+    return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
+  }
+
+  comp <- as.numeric(mask_gp)
+  fit_at_df <- function(df_k) {
+    Bo <- build_basis_matrix_edid(X_train, df_k)
+    B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
+    tcol <- colSums(B * mask_g) / n_train
+    w0 <- exp_riesz_warmstart_edid(B, comp, tcol, const_level = n_g / n_gp)
+    list(Bo = Bo, B = B, tcol = tcol, ft = fit_exp_riesz_edid(B, comp, tcol, beta_init = w0))
+  }
+
+  # Opt-in IC sieve-dimension selection (edid(bs_df = "ic")): the estimator's OWN convex loss
+  # (the tailored loss, unpenalized) in the paper's criterion 2*loss + log(n)*K/n.
+  ic_pick <- NULL
+  if (identical(bs_df, "ic")) {
+    bs_df <- select_bs_df_ic_edid(function(df_k) {
+      fk <- fit_at_df(df_k)
+      if (!fk$ft$converged || !all(is.finite(fk$ft$beta))) return(NULL)
+      eta <- drop(fk$B %*% fk$ft$beta)
+      c(loss = mean(comp * exp(pmin(eta, 350)) - mask_g * eta), K = ncol(fk$B))
+    }, n = n_train)
+    ic_pick <- bs_df
+  }
+
+  fk <- fit_at_df(bs_df)
+  ft <- fk$ft
+  if (!all(is.finite(ft$beta)) || (!ft$converged && is.na(ft$lambda))) {
+    warning(sprintf(
+      "estimate_propensity_ratio_exp_edid: exp-link fit failed for g=%g vs g'=%g; using the constant share ratio.",
+      g, gp))
+    fb <- rep(n_g / n_gp, n_test)
+    return(if (return_aux) list(pred = fb, is_fallback = TRUE) else fb)
+  }
+  beta <- ft$beta
+  pen  <- ft$pen
+
+  # Literal paper-loss refinement (internal cross-check flag; default "tailored" skips this).
+  # A rejected refinement keeps the tailored fit AND its aux (the score/Hessian must encode
+  # the loss whose stationary point beta-hat actually is).
+  loss_used <- getOption("edid_exp_loss", "tailored")
+  if (identical(loss_used, "paper")) {
+    pf <- exp_riesz_paper_refine_edid(fk$B, comp, as.numeric(mask_g), beta)
+    if (pf$converged) {
+      beta <- pf$beta
+      pen  <- numeric(length(beta))                # the refinement is unpenalized
+    } else {
+      loss_used <- "tailored"
+    }
+  }
+
+  B_test <- predict_basis_edid(attr(fk$Bo, "bs_objects"), X_test)
+  r_hat  <- exp(pmin(drop(B_test %*% beta), 350))
+
+  if (!return_aux) {
+    if (!is.null(ic_pick)) attr(r_hat, "edid_bs_df") <- ic_pick
+    return(r_hat)
+  }
+
+  # M-estimator pieces (plug-in regime: train = test = full sample, as the LS aux).
+  mask_gp_t <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+  mask_g_t  <- (G_train == g)
+  if (identical(loss_used, "paper")) {
+    score_mat <- B_test * (r_hat * (mask_gp_t * r_hat - mask_g_t))
+    Hmat      <- crossprod(B_test, (2 * mask_gp_t * r_hat^2 - mask_g_t * r_hat) * B_test)
+  } else {
+    score_mat <- B_test * (mask_gp_t * r_hat - mask_g_t)
+    Hmat      <- crossprod(B_test, (mask_gp_t * r_hat) * B_test)
+    if (any(pen > 0)) {                            # ridge rescue: keep the aux mean-zero at beta-hat
+      score_mat <- score_mat + matrix(pen * beta, n_test, ncol(B_test), byrow = TRUE)
+      Hmat      <- Hmat + n_test * diag(pen, ncol(B_test))
+    }
+  }
+  H_inv <- n_test * compute_pseudoinverse_edid(Hmat)
+  out <- list(pred = r_hat, B_test = B_test * r_hat, score_mat = score_mat, H_inv = H_inv,
+              is_fallback = FALSE, link = "exp", B_raw = B_test, beta = beta,
+              exp_converged = ft$converged, exp_lambda = ft$lambda, exp_loss = loss_used)
+  if (!is.null(ic_pick)) out$bs_df <- ic_pick
+  out
+}
+
+#' Estimate the inverse propensity 1/p_g'(X) by the exponential-link Riesz regression
+#'
+#' The \code{ratio_method = "exp"} engine for the FINITE-cohort inverse propensities (the
+#' \eqn{\Omega^*} variance prefactors): \eqn{\hat s_{g'}(X) = \exp(\psi^K(X)'\hat\beta) > 0},
+#' fit by the tailored convex loss \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}
+#' (FOC: \eqn{\mathbb{E}_n[\psi\,\hat s\,G_{g'}] = \mathbb{E}_n[\psi]}; population target
+#' \eqn{\log(1/p_{g'})}). Same solver, warm starts, ridge rescue, paper-loss flag, and
+#' full-aux contract as \code{estimate_propensity_ratio_exp_edid} (chain rule
+#' \eqn{\partial\hat s/\partial\beta = \hat s\,\psi} packed as \code{B_test}; tailored score
+#' \eqn{\psi(G_{g'}\hat s - 1)}; Hessian \eqn{n^{-1}\Psi'\mathrm{diag}(G_{g'}\hat s)\Psi}).
+#' \code{s_pos} is all-TRUE (the exp fit is never clamped), so the analytic inv-p
+#' weight-channel correction covers this fit with no masked rows.
+#'
+#' @inheritParams estimate_inverse_propensity_edid
+#' @return as \code{estimate_inverse_propensity_edid}; predictions strictly positive
+#' @keywords internal
+estimate_inverse_propensity_exp_edid <- function(X_train, G_train, X_test, gp,
+                                                 bs_df = 4L, return_aux = FALSE) {
+  n_test <- nrow(X_test)
+  mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+  n_gp <- sum(mask_gp)
+  n_train <- length(G_train)
+
+  if (n_gp == 0L) {
+    stop(sprintf(paste0(
+      "estimate_inverse_propensity_exp_edid: 0 units in comparison cohort g'=%g; cannot estimate ",
+      "1/p_{g'}(X). Check the comparison group."), gp))
+  }
+  if (n_gp < 2L) {
+    warning(sprintf(
+      "estimate_inverse_propensity_exp_edid: fewer than 2 units in g'=%g; returning 1/pi_g'.", gp))
+    sv <- rep(n_train / n_gp, n_test)
+    return(if (return_aux) list(s_hat = sv, is_fallback = TRUE) else sv)
+  }
+
+  comp <- as.numeric(mask_gp)
+  fit_at_df <- function(df_k) {
+    Bo <- build_basis_matrix_edid(X_train, df_k)
+    B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
+    tcol <- colMeans(B)
+    w0 <- exp_riesz_warmstart_edid(B, comp, tcol, const_level = n_train / n_gp)
+    list(Bo = Bo, B = B, tcol = tcol, ft = fit_exp_riesz_edid(B, comp, tcol, beta_init = w0))
+  }
+
+  ic_pick <- NULL
+  if (identical(bs_df, "ic")) {
+    bs_df <- select_bs_df_ic_edid(function(df_k) {
+      fk <- fit_at_df(df_k)
+      if (!fk$ft$converged || !all(is.finite(fk$ft$beta))) return(NULL)
+      eta <- drop(fk$B %*% fk$ft$beta)
+      c(loss = mean(comp * exp(pmin(eta, 350)) - eta), K = ncol(fk$B))
+    }, n = n_train)
+    ic_pick <- bs_df
+  }
+
+  fk <- fit_at_df(bs_df)
+  ft <- fk$ft
+  if (!all(is.finite(ft$beta)) || (!ft$converged && is.na(ft$lambda))) {
+    warning(sprintf(
+      "estimate_inverse_propensity_exp_edid: exp-link fit failed for g'=%g; using 1/pi_g'.", gp))
+    sv <- rep(n_train / n_gp, n_test)
+    return(if (return_aux) list(s_hat = sv, is_fallback = TRUE) else sv)
+  }
+  beta <- ft$beta
+  pen  <- ft$pen
+
+  loss_used <- getOption("edid_exp_loss", "tailored")
+  if (identical(loss_used, "paper")) {
+    pf <- exp_riesz_paper_refine_edid(fk$B, comp, rep(1, n_train), beta)
+    if (pf$converged) {
+      beta <- pf$beta
+      pen  <- numeric(length(beta))
+    } else {
+      loss_used <- "tailored"                      # rejected refinement: keep the tailored fit + aux
+    }
+  }
+
+  B_test <- predict_basis_edid(attr(fk$Bo, "bs_objects"), X_test)
+  s_hat  <- exp(pmin(drop(B_test %*% beta), 350))
+
+  if (return_aux) {
+    mask_gp_t <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+    if (identical(loss_used, "paper")) {
+      score_mat <- B_test * (s_hat * (mask_gp_t * s_hat - 1))
+      Hmat      <- crossprod(B_test, (2 * mask_gp_t * s_hat^2 - s_hat) * B_test)
+    } else {
+      score_mat <- B_test * (as.numeric(mask_gp_t) * s_hat - 1)
+      Hmat      <- crossprod(B_test, (mask_gp_t * s_hat) * B_test)
+      if (any(pen > 0)) {
+        score_mat <- score_mat + matrix(pen * beta, n_test, ncol(B_test), byrow = TRUE)
+        Hmat      <- Hmat + n_test * diag(pen, ncol(B_test))
+      }
+    }
+    out <- list(s_hat = s_hat, B_test = B_test * s_hat, score_mat = score_mat,
+                H_inv = n_test * compute_pseudoinverse_edid(Hmat),
+                s_pos = rep(TRUE, n_test), is_fallback = FALSE, link = "exp",
+                B_raw = B_test, beta = beta,
+                exp_converged = ft$converged, exp_lambda = ft$lambda, exp_loss = loss_used)
+    if (!is.null(ic_pick)) out$bs_df <- ic_pick
+    return(out)
+  }
+
+  if (!is.null(ic_pick)) attr(s_hat, "edid_bs_df") <- ic_pick
+  s_hat
+}
+
 #' Estimate the conditional mean \eqn{E[Y_s - Y_1 | G=g', X]}
 #'
 #' Fits an OLS B-spline regression of \code{Y_delta} on \code{B(X)} using only
@@ -502,21 +1288,71 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
 
 #' Estimate propensity ratios for all comparison cohorts via cross-fitting
 #'
-#' For each unique \code{gp} in \code{pairs}, performs K-fold cross-fitting to
-#' produce a full-sample n-vector of \eqn{\hat r_{g, g'}(X_i)}.
+#' For each unique \code{gp} in \code{pairs}, produces a full-sample n-vector of
+#' \eqn{\hat r_{g, g'}(X_i)}.
+#'
+#' \strong{Ratio construction (\code{ratio_method}).} The never-treated ratio
+#' \eqn{r_{g,\infty}} is ALWAYS estimated by the paper's per-pair LS sieve
+#' (\code{estimate_propensity_ratio_edid}; its denominator group is the large
+#' never-treated pool, the well-conditioned case). For \emph{finite} comparison
+#' cohorts \eqn{g' \ne g} (the cross-cohort pairs of the PT-All moment set):
+#' \describe{
+#'   \item{\code{"coherent"}}{ratios come from a common multinomial-logit sieve
+#'     system: per-cohort ridge-penalized logistic fits
+#'     \eqn{\hat h_c = \log(p_c/p_{NT})} (cohort vs never-treated, shared
+#'     full-sample basis; \code{fit_coherent_logodds_edid}), combined analytically
+#'     as \eqn{\hat r_{g,g'} = \exp(\hat h_g - \hat h_{g'})}. Positive by
+#'     construction and algebraically coherent across pairs; avoids the
+#'     thin-denominator Gram explosion of the per-pair LS sieve (whose quadratic
+#'     loss controls \eqn{r} only on the \eqn{n_{g'}} comparison points). Under
+#'     \code{return_aux = TRUE} every cross-cohort entry carries FULL M-estimator
+#'     aux against the JOINT stacked system (\code{coherent_system_aux_edid}):
+#'     \code{B_test} = the exact chain rule \eqn{\partial r/\partial\beta}
+#'     (\eqn{+r\psi} in the g block, \eqn{-r\psi} in the g' block),
+#'     \code{score_mat} = the stacked per-cohort ridge-logistic scores (the shared
+#'     never-treated pool makes the blocks' scores correlated, which the stacking
+#'     captures), \code{H_inv} = the block-diagonal joint Hessian inverse (ridge
+#'     included), plus a \code{coef_id} identifying the shared coefficient vector
+#'     so consumers that draw or dedup per coefficient block (the perturbation
+#'     bootstrap, \code{sigma_quad_edid}) treat entries sharing the system
+#'     consistently. The ACH / higher-order / gmm / bootstrap first-step
+#'     corrections therefore COVER the cross-cohort channels (no
+#'     fallback-skipping; entries fall back only when their g or g' block itself
+#'     fell back or did not converge).}
+#'   \item{\code{"direct"}}{the legacy independent per-pair LS sieve for every
+#'     \code{gp} (byte-identical previous behavior).}
+#'   \item{\code{"exp"}}{the exponential-link Riesz regression of
+#'     \code{estimate_propensity_ratio_exp_edid} for EVERY \code{gp} -- including the
+#'     never-treated pool, unlike \code{"coherent"}: each ratio is an independent
+#'     per-target fit \eqn{\hat r = \exp(\psi'\hat\beta)} of the tailored convex
+#'     balancing loss (positive by construction, paper-loss-compatible). Under
+#'     \code{return_aux = TRUE} every entry carries FULL M-estimator aux (chain-rule
+#'     Jacobian \code{B_test}, tailored score, Hessian inverse) with
+#'     \code{is_fallback = FALSE}: the ACH / higher-order / gmm / bootstrap first-step
+#'     corrections COVER the cross-cohort channels (no fallback-skipping).}
+#' }
 #'
 #' @param panel_obj panel object with \code{covariate_matrix} and
 #'   \code{unit_cohorts}
 #' @param g scalar: target treatment cohort
 #' @param pairs data.frame with column \code{gp}
-#' @param bs_df integer: B-spline df
+#' @param bs_df integer: B-spline df, or \code{"ic"}
 #' @param K_folds integer: number of cross-fitting folds
 #' @param fold_id integer vector length n: pre-generated fold assignments
+#' @param ratio_method \code{"direct"} (default; legacy per-pair LS sieve for
+#'   every comparison), \code{"coherent"} (multinomial-logit sieve for the
+#'   cross-cohort ratios; \code{edid()}'s default), or \code{"exp"}
+#'   (per-target exponential-link Riesz regressions for every comparison,
+#'   full estimation-effect aux). The function-level default stays
+#'   \code{"direct"} so existing direct callers and validation harnesses
+#'   are unchanged; \code{fit_edid_cells} passes the user's choice explicitly.
 #'
 #' @return named list of n-vectors, keyed by \code{as.character(gp)}
 #' @keywords internal
 estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
-                                           K_folds, fold_id, return_aux = FALSE) {
+                                           K_folds, fold_id, return_aux = FALSE,
+                                           ratio_method = c("direct", "coherent", "exp")) {
+  ratio_method <- match.arg(ratio_method)
   n       <- panel_obj$n
   X_mat   <- panel_obj$covariate_matrix
   G_vec   <- panel_obj$unit_cohorts
@@ -527,9 +1363,55 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
 
   unique_gps <- unique(pairs$gp)
 
+  # Coherent system: fit the per-cohort vs-NT log-odds ONCE (plug-in regime; the coherent
+  # construction is defined on the full sample, so K_folds > 1 keeps the direct path). The
+  # system is fit over EVERY treated cohort in the panel, not just {g, finite gps}: the
+  # per-cohort logistic fits are independent given the basis, so the consumed h_g / h_gp --
+  # hence every ratio prediction -- is bitwise identical to the smaller fit, while the full
+  # system gives the ONE canonical stacked-coefficient layout (coherent_system_aux_edid)
+  # shared with the inverse-propensity entries: same joint score/H_inv/coef_id, which the
+  # estimation-effect consumers' additivity and the perturbation bootstrap's shared-draw
+  # dedup key on.
+  finite_gps <- unique_gps[is.finite(unique_gps)]
+  use_coherent <- identical(ratio_method, "coherent") && K_folds == 1L && length(finite_gps) > 0L
+  hsys <- NULL; coh_sys <- NULL
+  if (use_coherent) {
+    coh_cohorts <- panel_obj$treatment_groups
+    if (is.null(coh_cohorts) || !length(coh_cohorts)) coh_cohorts <- unique(c(g, finite_gps))
+    hsys <- fit_coherent_logodds_edid(X_mat, G_vec, cohorts = coh_cohorts,
+                                      bs_df = bs_df, return_aux = return_aux)
+    if (return_aux) coh_sys <- coherent_system_aux_edid(hsys, coh_cohorts, n)
+    if (ic_mode) {
+      # record only the cohorts this call actually consumes (g + the finite comparison
+      # cohorts), keeping the bs_df_selected record identical to the pre-full-system fit
+      for (ck in as.character(unique(c(g, finite_gps)))) {
+        dfk <- hsys[[ck]]$bs_df
+        if (!is.null(dfk) && !is.na(dfk)) { sel_key <- c(sel_key, paste0("h:", ck)); sel_df <- c(sel_df, dfk) }
+      }
+    }
+  }
+
   for (gp in unique_gps) {
     r_full <- numeric(n)
 
+    if (use_coherent && is.finite(gp)) {
+      # Cross-cohort ratio from the coherent log-odds system: r_{g,gp} = exp(h_g - h_gp).
+      r_full <- exp(hsys[[as.character(g)]]$h - hsys[[as.character(gp)]]$h)
+      if (return_aux) {
+        # FULL estimation-effect aux against the joint stacked system (no fallback-marking):
+        # B_test carries the exact chain rule dr/dbeta (+r psi in the g block, -r psi in the
+        # g' block), score_mat/H_inv are the joint stacked score and block-diagonal Hessian
+        # inverse, so the ACH correction, higher-order Hessian, gmm correction, and
+        # perturbation bootstrap COVER this channel. Falls back only if the g or g' block
+        # itself fell back / did not converge (no estimated coefficients).
+        aux[[as.character(gp)]] <- coherent_ratio_aux_edid(coh_sys, g, gp, r_full)
+      }
+    } else {
+    # Per-target fitter: the paper's LS sieve, or (ratio_method = "exp") the exponential-link
+    # Riesz regression -- identical signature/contract, so the fold loop and the aux/ic
+    # bookkeeping below are shared verbatim.
+    ratio_fitter <- if (identical(ratio_method, "exp")) estimate_propensity_ratio_exp_edid
+                    else estimate_propensity_ratio_edid
     for (ell in seq_len(K_folds)) {
       if (K_folds == 1L) {
         # Plug-in: train = test = full sample (paper's main-text proposal)
@@ -541,7 +1423,7 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
       }
       if (length(test_idx) == 0L) next
 
-      out_gp <- estimate_propensity_ratio_edid(
+      out_gp <- ratio_fitter(
         X_train = X_mat[train_idx, , drop = FALSE],
         G_train = G_vec[train_idx],
         X_test  = X_mat[test_idx,  , drop = FALSE],
@@ -560,6 +1442,7 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
         dfk <- if (return_aux) out_gp$bs_df else attr(out_gp, "edid_bs_df")
         if (!is.null(dfk)) { sel_key <- c(sel_key, as.character(gp)); sel_df <- c(sel_df, dfk) }
       }
+    }
     }
 
     .check_extreme_ratios_edid(r_full, g, gp)
@@ -580,17 +1463,56 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
 #' and each comparison cohort g'), performs K-fold cross-fitting to produce
 #' a full-sample n-vector of \eqn{\hat s_{g'}(X_i) = 1/\hat p_{g'}(X_i)}.
 #'
+#' \strong{Inverse-propensity construction (\code{ratio_method}).} The never-treated
+#' inverse propensity \eqn{1/p_{NT}} is ALWAYS the LS sieve of
+#' \code{estimate_inverse_propensity_edid} (its Gram uses the large never-treated
+#' pool). For FINITE cohorts under \code{"coherent"}, the inverse propensities come
+#' from the same multinomial-logit sieve system as the cross-cohort ratios: with
+#' \eqn{\hat h_c = \log(p_c/p_{NT})} fit per cohort vs the never-treated pool,
+#' \deqn{1/\hat p_c(X) = \big(1 + \sum_{c'} e^{\hat h_{c'}(X)}\big) / e^{\hat h_c(X)}}
+#' (the sum runs over ALL treated cohorts in the panel, so the implied shares add to
+#' one). The legacy per-cohort LS sieve (\code{"direct"}) minimizes
+#' \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}, whose Gram also uses only the \eqn{n_{g'}}
+#' cohort observations: for small cohorts it is the s-channel instance of the same
+#' thin-denominator explosion as the direct ratio fits (audited fitted \eqn{1/p}
+#' of order \eqn{10^8} against a true scale of \eqn{10^2}, ~half the sample clamped
+#' at 0), which poisons every Omega* prefactor it enters. Under \code{"coherent"}
+#' the finite-cohort aux entries carry FULL M-estimator pieces against the JOINT
+#' stacked multinomial system: \code{B_test} is the exact implied-share (softmax)
+#' Jacobian \eqn{\partial(1/p_c)/\partial\beta_{c'} = (1/p_c)(p_{c'} -
+#' \delta_{cc'})\,\psi} per cohort block, \code{score_mat}/\code{H_inv} the joint
+#' stacked score and block-diagonal Hessian inverse shared with the ratio entries
+#' (same \code{coef_id}), and \code{link = "coherent"} flags the
+#' prediction-scale Jacobian for the link-aware FD step -- so the analytic inv-p
+#' weight-channel correction COVERS every coherent channel (no fallback-skipping;
+#' an entry falls back only when its own cohort block fell back or did not
+#' converge). Under \code{"exp"}, each FINITE cohort's inverse
+#' propensity is instead the per-target exponential-link Riesz regression of
+#' \code{estimate_inverse_propensity_exp_edid} (tailored loss
+#' \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}, strictly positive fit), and the
+#' aux entries carry FULL M-estimator pieces with \code{is_fallback = FALSE}, so the
+#' analytic inv-p weight-channel correction covers every channel (no skipping).
+#' PT-Post fits are byte-invariant to this choice:
+#' their single moment uses no \eqn{s}, their weight is identically 1
+#' (\eqn{H = 1}), and the \eqn{H = 1} weight-channel coupling is exactly zero.
+#'
 #' @param panel_obj panel object
 #' @param g scalar: target treatment cohort
 #' @param pairs data.frame with column \code{gp}
 #' @param bs_df integer: B-spline df
 #' @param K_folds integer: number of cross-fitting folds
 #' @param fold_id integer vector length n: pre-generated fold assignments
+#' @param ratio_method \code{"direct"} (default; legacy LS sieve for every group),
+#'   \code{"coherent"} (multinomial-logit system for finite cohorts; \code{edid()}'s
+#'   default), or \code{"exp"} (exponential-link Riesz regression for finite cohorts,
+#'   full estimation-effect aux). The never-treated \eqn{1/p_{NT}} is ALWAYS the LS sieve.
 #'
 #' @return named list of n-vectors, keyed by \code{as.character(group)}
 #' @keywords internal
 estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
-                                              K_folds, fold_id, return_aux = FALSE) {
+                                              K_folds, fold_id, return_aux = FALSE,
+                                              ratio_method = c("direct", "coherent", "exp")) {
+  ratio_method <- match.arg(ratio_method)
   n       <- panel_obj$n
   X_mat   <- panel_obj$covariate_matrix
   G_vec   <- panel_obj$unit_cohorts
@@ -601,9 +1523,53 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
 
   groups_needed <- unique(c(g, Inf, pairs$gp[is.finite(pairs$gp)]))
 
+  # Coherent system (plug-in regime): fit h_c for EVERY treated cohort in the panel once, so the
+  # implied probabilities form a complete multinomial system (p_NT = 1/(1 + sum_c exp(h_c))).
+  finite_needed <- groups_needed[is.finite(groups_needed)]
+  use_coherent  <- identical(ratio_method, "coherent") && K_folds == 1L && length(finite_needed) > 0L
+  s_coh <- NULL; coh_sys <- NULL; eh <- NULL; den_nt <- NULL
+  if (use_coherent) {
+    all_cohorts <- panel_obj$treatment_groups
+    want_sys_aux <- return_aux && K_folds == 1L
+    hsys <- fit_coherent_logodds_edid(X_mat, G_vec, cohorts = all_cohorts, bs_df = bs_df,
+                                      return_aux = want_sys_aux)
+    eh   <- vapply(as.character(all_cohorts), function(ck) exp(hsys[[ck]]$h), numeric(n))
+    if (is.null(dim(eh))) eh <- matrix(eh, nrow = n)
+    colnames(eh) <- as.character(all_cohorts)        # softmax-Jacobian packer indexes by cohort key
+    den_nt <- 1 + rowSums(eh)                        # = 1/p_NT implied by the system
+    s_coh  <- stats::setNames(lapply(seq_along(all_cohorts), function(k) den_nt / eh[, k]),
+                              as.character(all_cohorts))
+    # The SAME canonical stacked layout as the ratio dispatcher's (identical call signature =>
+    # bitwise-identical per-cohort fits => identical joint score/H_inv and coef_id).
+    if (want_sys_aux) coh_sys <- coherent_system_aux_edid(hsys, all_cohorts, n)
+    if (ic_mode) {
+      for (ck in names(hsys)) {
+        dfk <- hsys[[ck]]$bs_df
+        if (!is.null(dfk) && !is.na(dfk)) { sel_key <- c(sel_key, paste0("h:", ck)); sel_df <- c(sel_df, dfk) }
+      }
+    }
+  }
+
   for (gp in groups_needed) {
+    if (use_coherent && is.finite(gp) && !is.null(s_coh[[as.character(gp)]])) {
+      s_full <- s_coh[[as.character(gp)]]
+      result[[as.character(gp)]] <- s_full
+      if (return_aux && K_folds == 1L) {
+        # FULL estimation-effect aux against the joint stacked system (no fallback-marking):
+        # B_test is the exact implied-share (softmax) Jacobian d(1/p_gp)/dbeta =
+        # s_gp (p_c' - delta) psi per block, so the analytic + FD inv-p weight-channel
+        # corrections (and any other aux consumer) COVER this channel. Falls back only if
+        # the gp block itself fell back / did not converge.
+        aux[[as.character(gp)]] <- coherent_invp_aux_edid(coh_sys, eh, den_nt, gp, s_full)
+      }
+      next
+    }
     s_full <- numeric(n)
     want_aux_gp <- return_aux && K_folds == 1L       # aux only in the plug-in (train = test) regime, like ACH
+    # Per-target fitter: "exp" routes FINITE cohorts to the exponential-link Riesz regression
+    # (full aux); the never-treated 1/p_NT always keeps the paper's LS sieve.
+    invp_fitter <- if (identical(ratio_method, "exp") && is.finite(gp)) estimate_inverse_propensity_exp_edid
+                   else estimate_inverse_propensity_edid
 
     for (ell in seq_len(K_folds)) {
       if (K_folds == 1L) {
@@ -616,7 +1582,7 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
       }
       if (length(test_idx) == 0L) next
 
-      res_ell <- estimate_inverse_propensity_edid(
+      res_ell <- invp_fitter(
         X_train = X_mat[train_idx, , drop = FALSE],
         G_train = G_vec[train_idx],
         X_test  = X_mat[test_idx,  , drop = FALSE],

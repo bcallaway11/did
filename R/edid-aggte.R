@@ -127,26 +127,25 @@ aggte_edid <- function(
     }
   }
   g <- .edid_agg_if(a)
-  if (is.null(g$egt) && !is.null(g$overall) && isTRUE(fit$higher_order) &&
+  # Total second-order covariance increment: the higher-order ("Wick") Sigma_quad (covariate path), plus the
+  # diagonal no-covariate weight-estimation increment (estimation_effect on a no-covariate fit) -- the cell
+  # SEs already carry the latter, so the aggregate SEs/bands must add A Sigma A' for cell/aggregate
+  # consistency. NULL on fits with neither (the entire classic path), keeping those byte-identical.
+  Sigma_so <- .edid_secondorder_sigma(fit)
+  if (is.null(g$egt) && !is.null(g$overall) && !is.null(Sigma_so) &&
       !is.null(reaggregate) && !is.null(fit$cells) && !is.null(a$overall.se)) {
-    Sigma_quad <- if (!is.null(fit$sigma_quad)) fit$sigma_quad
-                  else sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
     A <- .edid_recover_agg_map(a, fit, reaggregate)
-    if (!is.null(A) && nrow(A) == 1L && ncol(A) == nrow(Sigma_quad)) {
-      inc <- drop(A %*% Sigma_quad %*% t(A))
+    if (!is.null(A) && nrow(A) == 1L && ncol(A) == nrow(Sigma_so)) {
+      inc <- drop(A %*% Sigma_so %*% t(A))
       if (is.finite(inc)) a$overall.se <- sqrt(max(a$overall.se^2 + inc, 0))
     }
   }
   if (!is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) >= 1L) {
     Sig <- cluster_cov_edid(g$egt, fit$cluster_indices, fit$n)
-    if (isTRUE(fit$higher_order) && !is.null(reaggregate) && !is.null(fit$cells)) {
-      # Reuse the Sigma_quad computed once in edid(); recompute only if absent (e.g. a hand-built fit or a
-      # standalone aggte_edid() call). Same input (fit$cells) => bit-identical to the cached matrix.
-      Sigma_quad <- if (!is.null(fit$sigma_quad)) fit$sigma_quad
-                    else sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
+    if (!is.null(Sigma_so) && !is.null(reaggregate) && !is.null(fit$cells)) {
       A <- .edid_recover_agg_map(a, fit, reaggregate)      # n_agg x K, constant cell -> aggregate weights
       if (!is.null(A)) {
-        HO  <- A %*% Sigma_quad %*% t(A)      # aggregate-scale higher-order ("Wick") covariance increment
+        HO  <- A %*% Sigma_so %*% t(A)        # aggregate-scale second-order covariance increment
         Sig <- Sig + HO
         # Make the aggregate SEs higher-order-aware too (not just the sup-t crit): the cell SEs already include
         # diag(Sigma_quad), so the event-study SEs must include diag(A Sigma_quad A') for cell/aggregate
@@ -178,6 +177,25 @@ aggte_edid <- function(
     }
   }
   a
+}
+
+# Total K x K second-order covariance increment carried by a fit: the higher-order ("Wick") Sigma_quad
+# (covariate path, gated on fit$higher_order) plus the no-covariate weight-estimation diagonal
+# (estimation_effect on a no-covariate fit; nocov_ee_sigma_edid). Each piece reuses the matrix cached on
+# the fit when present and recomputes from fit$cells otherwise (hand-built fits / standalone aggte_edid
+# calls; same inputs => bit-identical). Returns NULL when the fit carries neither, so classic fits take
+# the unchanged byte-identical path.
+.edid_secondorder_sigma <- function(fit) {
+  out <- NULL
+  if (isTRUE(fit$higher_order) && !is.null(fit$cells)) {
+    out <- if (!is.null(fit$sigma_quad)) fit$sigma_quad
+           else sigma_quad_edid(fit$cells, fit$cluster_indices, fit$n)
+  }
+  ee <- if (!is.null(fit$sigma_nocov_ee)) fit$sigma_nocov_ee
+        else if (!is.null(fit$cells)) nocov_ee_sigma_edid(fit$cells)
+        else NULL
+  if (!is.null(ee)) out <- if (is.null(out)) ee else out + ee
+  out
 }
 
 # Rank-safe recovery of the overall-aggregate weights w solving overall = egt %*% w, by a DIRECT SVD

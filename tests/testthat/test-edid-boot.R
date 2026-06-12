@@ -182,6 +182,33 @@ test_that("refit bootstrap validates inputs and recovers data from the fit's cal
   expect_identical(r0$att_gt, r1$att_gt)
 })
 
+test_that("bootstrap tools refit from the fit's stored args (wrapper-built fits, mutated variables)", {
+  df <- make_panel_boot(9L, n = 120L)
+
+  # `...`-forwarding wrapper: the stored call holds `..N` promises, which the
+  # legacy call re-evaluation could not handle ("..3 used in an incorrect
+  # context"); the per-draw refits now consume fit$args.
+  wrap <- function(...) edid(...)
+  fit_w <- wrap(df, "y", "id", "time", "g", xformla = ~ x1, weight_scheme = "uniform",
+                aggregate = "event_study", cband = FALSE)
+  rb <- edid_refit_bootstrap(fit_w, data = df, B = 5L, seed = 3L, agg = "overall")
+  expect_s3_class(rb, "edid_refit_bootstrap")
+  pb <- edid_perturbation_bootstrap(fit_w, data = df, B = 9L, seed = 3L, agg = "overall")
+  expect_s3_class(pb, "edid_perturbation_bootstrap")
+  expect_identical(pb$weight_scheme, "uniform")
+
+  # Mutating a caller variable used in the original call must not change the
+  # refit configuration (previously it was silently re-evaluated).
+  xf  <- ~ x1
+  fit <- edid(df, "y", "id", "time", "g", xformla = xf, weight_scheme = "uniform",
+              aggregate = "event_study", cband = FALSE)
+  ref <- edid_refit_bootstrap(fit, data = df, B = 5L, seed = 13L, agg = "overall")
+  xf <- ~ I(x1^3)
+  mut <- edid_refit_bootstrap(fit, data = df, B = 5L, seed = 13L, agg = "overall")
+  expect_identical(ref$att_gt, mut$att_gt)
+  expect_identical(ref$aggregates, mut$aggregates)
+})
+
 # ===========================================================================
 # edid_perturbation_bootstrap: uniform and efficient covariate fits
 # ===========================================================================

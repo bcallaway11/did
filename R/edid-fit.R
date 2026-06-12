@@ -19,8 +19,20 @@
 #' @param moment_set NULL (default) or a data.frame (g, gp, tpre) restricting the
 #'   enumerated pairs per target cohort; forwarded to
 #'   \code{enumerate_valid_pairs_edid()} (see \code{\link{edid}})
+#' @param min_pair_units integer >= 2 (default \code{5L}): thin-cohort guard threshold;
+#'   applied per target cohort via \code{apply_thin_cohort_guard_edid()} (see \code{\link{edid}})
 #' @param bs_df integer >= 3 (default \code{4L}) or \code{"ic"}: B-spline df for
 #'   the sieve nuisances, or the per-fit IC selection (see \code{\link{edid}})
+#' @param ratio_method \code{"coherent"} (default), \code{"direct"}, or \code{"exp"}:
+#'   construction of the propensity nuisances on the covariate path (see \code{\link{edid}}
+#'   and \code{estimate_all_propensity_ratios}); \code{"direct"} reproduces the legacy
+#'   per-pair LS sieve bit-for-bit, \code{"exp"} fits per-target exponential-link Riesz
+#'   regressions with full estimation-effect integration
+#' @param nocov_shrink logical (default \code{TRUE}): on the no-covariate PT-All
+#'   path, shrink each cell's estimated moment covariance toward its
+#'   i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
+#'   the weights (see \code{\link{edid}}); \code{FALSE} reproduces the
+#'   unshrunk weights bit-for-bit
 #'
 #' @return list with elements:
 #'   \describe{
@@ -29,6 +41,13 @@
 #'     \item{\code{cell_index}}{data.frame: group, time, cell_id, is_pre}
 #'     \item{\code{bs_df_selected}}{data.frame of IC-selected dfs per nuisance fit
 #'       (only under \code{bs_df = "ic"} on the covariate path), or NULL}
+#'     \item{\code{thin_cohorts}}{data.frame of cohorts the thin-cohort guard acted on
+#'       (\code{cohort}, \code{n_units}, \code{degraded_target}, \code{excised_comparison}),
+#'       or NULL when the guard never fired}
+#'     \item{\code{nocov_ee_s}}{n x n_cells matrix of per-unit projections \eqn{s_i = d_i'\psi_i}
+#'       feeding the cross-cell increments of the no-covariate weight-estimation correction
+#'       (\code{nocov_ee_sigma_full_edid}); NA columns where the correction did not apply;
+#'       NULL unless the correction is engaged}
 #'   }
 #' @keywords internal
 fit_edid_cells <- function(
@@ -37,9 +56,10 @@ fit_edid_cells <- function(
   estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
   estimation_effect_explicit = TRUE, higher_order_explicit = TRUE, misspec_robust_explicit = TRUE,
   trim_level = Inf, mc_cores = getOption("edid_mc_cores", 1L), moment_set = NULL,
-  bs_df = 4L
+  min_pair_units = 5L, bs_df = 4L, ratio_method = c("coherent", "direct", "exp"), nocov_shrink = TRUE
 ) {
   weight_method <- match.arg(weight_method)
+  ratio_method  <- match.arg(ratio_method)
   # bs_df: a single integer >= 3 (cubic B-spline df; splines::bs needs df >= degree)
   # or "ic" for the paper's per-fit information-criterion selection over 3:8.
   if (!(identical(bs_df, "ic") ||
@@ -61,9 +81,14 @@ fit_edid_cells <- function(
   # empty, Omega_hat*(X) is not consistent, and the regularized weights collapse toward
   # uniform (the estimator stays CONSISTENT via the valid DR moments, but is no longer
   # semiparametrically efficient). Recommend the constant-weight schemes, whose pooled
-  # Omega-bar is sqrt(n)-consistent with no curse of dimensionality.
+  # Omega-bar is sqrt(n)-consistent with no curse of dimensionality. Only genuinely
+  # CONTINUOUS columns drive that rate: binary dummies (<= 2 distinct values after the
+  # model.matrix expansion) are discrete cells the kernel matches exactly in the limit
+  # (no bandwidth shrinkage along them), so they are excluded from d.
   if (weight_method == "efficient" && use_cov_path) {
-    d_cov <- ncol(panel_obj$covariate_matrix)
+    X_cov <- panel_obj$covariate_matrix
+    d_cov <- sum(vapply(seq_len(ncol(X_cov)),
+                        function(j) length(unique(X_cov[, j])) > 2L, logical(1L)))
     if (d_cov >= 5L) {
       warning(sprintf(paste0(
         "weights='efficient' with %d continuous covariates: the pointwise kernel ",
@@ -106,13 +131,27 @@ fit_edid_cells <- function(
   # The ACH (Ackerberg, Chen & Hahn 2012) first-step correction requires the plug-in
   # (train = test = full sample) M-estimator pieces; it is derived for K = 1. Guard
   # defensively in case cross-fitting is ever enabled upstream.
+  #
+  # On the NO-COVARIATE path there are no first-step nuisances, but the weights are still
+  # ESTIMATED (they invert the estimated moment covariance Omega-hat, optionally shrunk):
+  # estimation_effect = TRUE there engages the closed-form second-order weight-estimation
+  # variance correction (compute_nocov_ee_correction_edid) -- the no-X analogue of the
+  # covariate psi_Omega channel. It is an additive variance term (a degenerate-U term has
+  # no per-unit IF to fold into the EIF), applied to the cell SE below and propagated to
+  # the analytic band / aggregations via nocov_ee_sigma_edid(). Uniform weights are fixed
+  # 1/H (no estimation channel): warn on an explicit opt-in and disable, mirroring the
+  # misspec_robust uniform guard below.
+  nocov_ee <- FALSE
   if (isTRUE(estimation_effect)) {
     if (!use_cov_path) {
-      # Warn only on an EXPLICIT opt-in (a no-covariate model has no first-step nuisances to correct); when the
-      # master switch enabled it by default it is silently downgraded -- consistent with misspec_robust above.
-      if (isTRUE(estimation_effect_explicit))
-        warning("estimation_effect has no effect without covariates (no first-step nuisances).", call. = FALSE)
-      estimation_effect <- FALSE
+      if (weight_method == "uniform") {
+        if (isTRUE(estimation_effect_explicit))
+          warning("estimation_effect has no effect for weights = 'uniform' without covariates (fixed weights are not estimated).",
+                  call. = FALSE)
+        estimation_effect <- FALSE
+      } else {
+        nocov_ee <- TRUE
+      }
     } else if (K_use > 1L) {
       stop("estimation_effect = TRUE is only supported with plug-in nuisances (K = 1).", call. = FALSE)
     }
@@ -142,8 +181,14 @@ fit_edid_cells <- function(
     # otherwise" -- so it warns about an inapplicable setting only when the user EXPLICITLY set it (opting in
     # where the channel cannot run); on the default it is quietly downgraded. The K > 1 combination always errors.
     if (!use_cov_path) {
+      # The psi_Omega fold itself is covariate-only; the no-covariate sibling is the second-order
+      # weight-estimation variance correction routed through estimation_effect (nocov_ee above) --
+      # edid() auto-enables it for an explicit misspec_robust = TRUE on a no-covariate fit.
       if (isTRUE(misspec_robust_explicit))
-        warning("misspec_robust has no effect without covariates (weights are not estimated from X).", call. = FALSE)
+        warning(paste0("misspec_robust without covariates: the psi_Omega weight channel applies only to covariate fits. ",
+                       if (nocov_ee) "The no-covariate weight-estimation variance correction is engaged instead (via estimation_effect)."
+                       else "Set estimation_effect = TRUE for the no-covariate weight-estimation variance correction."),
+                call. = FALSE)
       misspec_robust <- FALSE
     } else if (weight_method == "uniform") {
       if (isTRUE(misspec_robust_explicit))
@@ -156,14 +201,22 @@ fit_edid_cells <- function(
   }
   # The first-step aux pieces (B / score / H_inv) are needed whenever EITHER the ACH correction OR the
   # higher-order refinement is requested -- and (experimental) for the gmm weight-channel correction, whose
-  # quadratic moment u'Cw inherits the (r, m) nuisance estimation.
-  want_aux <- isTRUE(estimation_effect) || higher_order ||
+  # quadratic moment u'Cw inherits the (r, m) nuisance estimation. They are covariate-path objects: the
+  # no-covariate estimation_effect (nocov_ee) needs no aux.
+  want_aux <- (isTRUE(estimation_effect) && use_cov_path) || higher_order ||
     ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "gmm")
 
   tgroups   <- panel_obj$treatment_groups
   tperiods  <- panel_obj$time_periods
   period_1  <- panel_obj$period_1
   n         <- panel_obj$n
+
+  # Unit counts per finite treated cohort, consumed by the thin-cohort guard
+  # (apply_thin_cohort_guard_edid inside .gbuild). Deterministic in the panel,
+  # so it is computed once here and shared copy-on-write across forked workers.
+  cohort_sizes <- stats::setNames(
+    vapply(tgroups, function(gg) sum(panel_obj$unit_cohorts == gg), numeric(1L)),
+    as.character(tgroups))
 
   # Periods to iterate over: all except period_1
   iter_periods <- tperiods[tperiods != period_1]
@@ -180,12 +233,14 @@ fit_edid_cells <- function(
 
   keep_eif <- store_eif || need_eif
   eif_list <- if (keep_eif) vector("list", n_cells) else NULL
+  ee_s_list <- if (nocov_ee) vector("list", n_cells) else NULL  # per-unit s_i per corrected cell
 
   cell_id <- 0L
   n_extreme_ratio_instances <- 0L  # accumulate extreme-ratio warnings; emit once at end
   n_psi_unstable_total <- 0L  # cells where the weight channel was not a credible IF -> plug-in SE; emit once
   n_fulltrim_total <- 0L  # cells where overlap trimming removed every treated unit -> NA; emit once
   n_pairs_dropped_total <- 0L  # dead pairs (no kept treated mass) dropped from cells' moment sets; emit once
+  n_nocov_ee_skip_total <- 0L  # no-cov estimation_effect cells where the correction could not apply; emit once
 
   # Hoist the CELL-INVARIANT Nadaraya-Watson kernel: the n x n weight matrix K and the bandwidths depend only on
   # the full covariate matrix, so they are identical for every (g,t) cell. Build ONCE and reuse, instead of
@@ -228,8 +283,16 @@ fit_edid_cells <- function(
     pairs_g <- enumerate_valid_pairs_edid(target_g = g, treatment_groups = tgroups, time_periods = tperiods,
                  period_1 = period_1, pt_assumption = pt_assumption, anticipation = panel_obj$anticipation,
                  moment_set = moment_set)
+    # Thin-cohort guard (min_pair_units): pin a thin TARGET cohort to the just-identified
+    # moment, and excise cross pairs whose COMPARISON cohort is thin, BEFORE any nuisance /
+    # weight machinery sees the pair set. Inert (pairs_g returned untouched) when no cohort
+    # is thin or under pt_assumption = "post"; the bookkeeping feeds ONE post-loop warning
+    # (worker warnings are lost under cores > 1) and the fit's $thin_cohorts record.
+    guard_g <- apply_thin_cohort_guard_edid(g, pairs_g, cohort_sizes, min_pair_units, pt_assumption)
+    pairs_g <- guard_g$pairs
     gb <- list(pairs = pairs_g, prop_ratios = NULL, r_aux = NULL, inv_propensities = NULL,
-               trim_keep = NULL, pairs_for_nuisance = NULL, n_extreme = 0L)
+               trim_keep = NULL, pairs_for_nuisance = NULL, n_extreme = 0L,
+               thin_degraded = guard_g$degraded, thin_excised_gp = guard_g$excised_gp)
     if (nrow(pairs_g) > 0L && use_cov_path) {
       pfn <- pairs_g
       self_cmp <- is.finite(pfn$gp) & (pfn$gp == g); if (any(self_cmp)) pfn$gp[self_cmp] <- Inf
@@ -240,7 +303,8 @@ fit_edid_cells <- function(
       ne <- 0L
       pr <- withCallingHandlers(
         estimate_all_propensity_ratios(panel_obj = panel_obj, g = g, pairs = pfn, bs_df = bs_df,
-                                       K_folds = K_use, fold_id = fold_id, return_aux = want_aux),
+                                       K_folds = K_use, fold_id = fold_id, return_aux = want_aux,
+                                       ratio_method = ratio_method),
         warning = function(w) {
           if (grepl("Extreme propensity ratios", conditionMessage(w), fixed = TRUE)) { ne <<- ne + 1L; invokeRestart("muffleWarning") }
         })
@@ -248,7 +312,8 @@ fit_edid_cells <- function(
       gb$n_extreme <- ne
       gb$inv_propensities <- estimate_all_inverse_propensities(panel_obj = panel_obj, g = g, pairs = pairs_g,
         bs_df = bs_df, K_folds = K_use, fold_id = fold_id,
-        return_aux = (isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method %in% c("averaged", "efficient"))
+        return_aux = (isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method %in% c("averaged", "efficient"),
+        ratio_method = ratio_method)
       if (identical(bs_df, "ic")) {            # record the per-fit IC-selected dfs for this cohort
         .hv <- function(x, nuis) {
           d <- attr(x, "bs_df_selected")
@@ -257,15 +322,8 @@ fit_edid_cells <- function(
         }
         gb$bs_df_sel <- rbind(.hv(pr, "r"), .hv(gb$inv_propensities, "s"))
       }
-      if (is.finite(trim_level) && (!is.null(gb$prop_ratios) || !is.null(gb$inv_propensities))) {
-        ks <- union(names(gb$prop_ratios), names(gb$inv_propensities))
-        gb$trim_keep <- stats::setNames(lapply(ks, function(k) {
-          keep <- rep(TRUE, panel_obj$n)
-          rr <- gb$prop_ratios[[k]];      if (!is.null(rr)) keep <- keep & (abs(rr) < trim_level)
-          ip <- gb$inv_propensities[[k]]; if (!is.null(ip)) keep <- keep & (abs(ip) < trim_level)
-          keep
-        }), ks)
-      }
+      gb$trim_keep <- build_trim_keep_edid(gb$prop_ratios, gb$inv_propensities,
+                                           trim_level, panel_obj$n)
     }
     gb
   }
@@ -277,6 +335,58 @@ fit_edid_cells <- function(
   gcache <- stats::setNames(.glist, as.character(tgroups))
   n_extreme_ratio_instances <- n_extreme_ratio_instances +
     sum(vapply(gcache, function(b) as.integer(b$n_extreme), integer(1)))  # counted once per cohort now
+
+  # ------------------------------------------------------------------
+  # Thin-cohort guard: bookkeeping + LOUD per-fit warnings
+  # ------------------------------------------------------------------
+  # (a) degraded TARGET cohorts: their cells are pinned to the just-identified moment;
+  # (b) thin COMPARISON cohorts: their cross pairs were excised from other cohorts' cells.
+  # Emitted here (serial context, once per fit) because .gbuild runs inside forked workers.
+  # This subsumes the legacy "fewer than 2 units" warning under pt_assumption = "all"
+  # (min_pair_units >= 2 always covers those cohorts); validate_edid_inputs() keeps it
+  # for pt_assumption = "post", where the guard is inert.
+  .fmt_g <- function(x) paste(format(x, trim = TRUE, scientific = FALSE), collapse = ", ")
+  deg_cohorts <- tgroups[vapply(gcache, function(b) isTRUE(b$thin_degraded), logical(1L))]
+  excised_by_target <- lapply(gcache, function(b) b$thin_excised_gp)
+  excised_cmp <- sort(unique(unlist(excised_by_target, use.names = FALSE)))
+  affected_targets <- tgroups[vapply(gcache, function(b) length(b$thin_excised_gp) > 0L, logical(1L))]
+  if (length(deg_cohorts) > 0L) {
+    warning(sprintf(
+      paste0("Thin-cohort guard: treated cohort(s) %s have fewer than min_pair_units = %d units. ",
+             "Their ATT(g,t) cells are estimated from the just-identified moment only ",
+             "(never-treated comparison, base period g-1): analytic SEs for overidentified ",
+             "efficient weighting are unreliable below min_pair_units. For finite-sample ",
+             "inference on these cells use edid_refit_bootstrap()."),
+      paste(sprintf("%s (%d unit%s)", format(deg_cohorts, trim = TRUE, scientific = FALSE),
+                    as.integer(cohort_sizes[as.character(deg_cohorts)]),
+                    ifelse(cohort_sizes[as.character(deg_cohorts)] == 1, "", "s")),
+            collapse = ", "),
+      min_pair_units), call. = FALSE)
+  }
+  if (length(excised_cmp) > 0L) {
+    warning(sprintf(
+      paste0("Thin-cohort guard: comparison cohort(s) %s have fewer than min_pair_units = %d ",
+             "units; their cross-cohort pairs were excised from the moment sets of target ",
+             "cohort(s) %s (a thin comparison cohort's sampling noise otherwise contaminates ",
+             "healthy cohorts' overidentified cells). For finite-sample inference use ",
+             "edid_refit_bootstrap()."),
+      paste(sprintf("%s (%d unit%s)", format(excised_cmp, trim = TRUE, scientific = FALSE),
+                    as.integer(cohort_sizes[as.character(excised_cmp)]),
+                    ifelse(cohort_sizes[as.character(excised_cmp)] == 1, "", "s")),
+            collapse = ", "),
+      min_pair_units, .fmt_g(affected_targets)), call. = FALSE)
+  }
+  thin_all <- sort(unique(c(deg_cohorts, excised_cmp)))
+  thin_cohorts <- NULL
+  if (length(thin_all) > 0L) {
+    thin_cohorts <- data.frame(
+      cohort             = thin_all,
+      n_units            = as.integer(cohort_sizes[as.character(thin_all)]),
+      degraded_target    = thin_all %in% deg_cohorts,
+      excised_comparison = thin_all %in% excised_cmp,
+      row.names          = NULL,
+      stringsAsFactors   = FALSE)
+  }
 
   # Global conditional-mean cache. m_{gp,period}(X) = E[Y_period - Y_1 | G=gp, X] depends ONLY on (gp, period),
   # not on the target cell -- but was re-fit per (g,t) cell (many cells share the same m). Fit each distinct
@@ -351,6 +461,7 @@ fit_edid_cells <- function(
       # Step 1: pairs from the per-cohort cache (g-only; computed once above)
       gb    <- gcache[[as.character(g)]]
       pairs <- gb$pairs
+      thin_deg <- isTRUE(gb$thin_degraded)   # thin-cohort guard pinned this cohort's cells
 
       # NA cell if no valid pairs
       if (nrow(pairs) == 0L) {
@@ -370,6 +481,8 @@ fit_edid_cells <- function(
           condition_num   = NA_real_,
           is_pre          = is_pre,
           inference_valid = FALSE,
+          thin_cohort_degraded = thin_deg,
+          nocov_shrink_lambda = NA_real_,
           eif             = NULL,
           ho              = NULL
         ),
@@ -385,6 +498,9 @@ fit_edid_cells <- function(
       trim_keep        <- gb$trim_keep
       cond_means       <- NULL; m_aux <- NULL
       ho_cell          <- NULL   # higher-order per-cell pieces (nuisance blocks + Hessian), set on cov path
+      shrink_lambda    <- NA_real_   # nocov_shrink Ledoit-Wolf intensity (no-cov PT-All cells only)
+      ee_cell          <- NULL   # no-cov weight-estimation correction record (estimation_effect, no-cov path)
+      n_nocov_ee_skip  <- 0L     # cells where the correction was requested but could not be applied
 
       if (use_cov_path) {
         # Conditional means: subset the global cache to exactly this cell's (gp, period) combos, in the SAME order
@@ -434,7 +550,8 @@ fit_edid_cells <- function(
             n_pairs = nrow(pairs), n_pairs_dropped = 0L, weights = NULL,
             pairs = pairs[, c("gp", "tpre"), drop = FALSE],   # keys kept even though the cell is NA
             condition_num = NA_real_,
-            is_pre = is_pre, inference_valid = FALSE, eif = NULL, ho = NULL
+            is_pre = is_pre, inference_valid = FALSE, thin_cohort_degraded = thin_deg,
+            eif = NULL, ho = NULL
           ),
           eif = rep(NA_real_, n),
           ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
@@ -463,6 +580,14 @@ fit_edid_cells <- function(
         # the array build and the psi pass slice the SAME groups from the SAME K_mat, so memoizing once here
         # halves get_kp's column-subset cost. Cleared each cell (reassigned next iteration) => memory-neutral.
         kp_cache <- new.env(parent = emptyenv())
+        # Cell-common overlap-trim mask for the Omega/psi builders: when trimming bit, Omega*(X) and the
+        # weight-estimation channel must cover the SAME kept population the (zeroed + renormalized) moments
+        # use -- the trimmed moment is keep_i * renorm * phi_i, so Omega^trim(X_i) = keep_i * renorm^2 *
+        # Omega(X_i) (the cell-common scalar renorm^2 cancels in the scale-invariant weights; the per-unit
+        # keep_i is applied inside the builders). Previously the 1/p prefactors entered UNtrimmed, i.e.
+        # largest exactly at the units trimming removed: trim_level never reached the weight/psi channel.
+        # NULL (trim inactive or nothing bit) keeps the builders byte-identical.
+        omega_keep <- if (!is.null(eif_keep) && ncol(eif_keep) > 0L) eif_keep[, 1L] else NULL
         if (weight_method == "efficient") {
           # Paper's pointwise efficient weights w(X_i)=Omega*(X_i)^{-1}1/(1'Omega*(X_i)^{-1}1),
           # with a dimension-aware eigenvalue-floor regularization (a=0.7*(5-d)/10) that is
@@ -470,7 +595,8 @@ fit_edid_cells <- function(
           omega_arr <- .omega_fun(panel_obj, g, t, pairs,
                                                    prop_ratios, cond_means,
                                                    inv_propensities, bw = kern_bw, K_mat = kern_K,
-                                                   return_pointwise = TRUE, kp_cache = kp_cache)
+                                                   return_pointwise = TRUE, kp_cache = kp_cache,
+                                                   keep = omega_keep)
           # Fuse the per-unit adjoint q_i into the weights' eigen pass when the weight-estimation channel is needed
           # (one eigendecomposition per unit instead of two). Q_pw is from the un-frozen weights; the .fwpw freeze
           # (research jackknife) is incompatible with the psi channel and is guarded with a stop below.
@@ -536,7 +662,8 @@ fit_edid_cells <- function(
             lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity: the psi applies its (1-lam) factor
             po    <- .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
                        inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
-                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw, lambda = lam_cell, C = C_pw), kp_cache = kp_cache)
+                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw, lambda = lam_cell, C = C_pw),
+                       kp_cache = kp_cache, keep = omega_keep)
             corr_an <- compute_invp_correction_analytic_cov_edid(panel_obj$n, attr(inv_propensities, "aux"),
                                                                  po$coupled_C)
             psi_i <- po$psi - corr_an                                         # weight-estimation IF (data - corr)
@@ -568,7 +695,7 @@ fit_edid_cells <- function(
           omega    <- if (need_omega) .omega_fun(panel_obj, g, t, pairs,
                                                   prop_ratios, cond_means,
                                                   inv_propensities, bw = kern_bw, K_mat = kern_K,
-                                                  kp_cache = kp_cache) else NULL
+                                                  kp_cache = kp_cache, keep = omega_keep) else NULL
           cond_num <- if (need_omega) tryCatch(check_condition_edid(omega), error = function(e) NA_real_) else NA_real_
           H_local  <- nrow(pairs)   # == nrow(omega) by construction (every builder returns H x H over `pairs`)
           # Research hook (default OFF, NOT committed to the PR): getOption("edid_fixed_weights") =
@@ -621,13 +748,13 @@ fit_edid_cells <- function(
               po    <- if (!is.null(.obarC)) {
                 .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
                   inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(C = .obarC, w = weights),
-                  kp_cache = kp_cache)
+                  kp_cache = kp_cache, keep = omega_keep)
               } else {
                 q_vec <- drop(C_inv %*% (mbar - att_gt))                      # same inverse as the weights => q'1 = 0
                 stopifnot(abs(sum(q_vec)) < 1e-6 * (1 + max(abs(q_vec))))     # Term-1 cancellation premise (defensive)
                 .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
                   inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(q = q_vec, w = weights),
-                  kp_cache = kp_cache)
+                  kp_cache = kp_cache, keep = omega_keep)
               }
               invp_aux <- attr(inv_propensities, "aux")
               corr_an  <- compute_invp_correction_analytic_cov_edid(panel_obj$n, invp_aux, po$coupled_C)  # optimized
@@ -635,7 +762,8 @@ fit_edid_cells <- function(
               if (isTRUE(getOption("edid_store_psiomega"))) {                # research diagnostic accumulator
                 corr_fd  <- if (isTRUE(getOption("edid_psiomega_fd")))        # FD oracle (validation only)
                   compute_invp_correction_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
-                    inv_propensities, invp_aux, weights, mbar, bw = kern_bw, K_mat = kern_K) else NULL
+                    inv_propensities, invp_aux, weights, mbar, bw = kern_bw, K_mat = kern_K,
+                    keep = omega_keep) else NULL
                 acc <- getOption("edid_psiomega_acc", list())
                 acc[[paste0(g, "_", t)]] <- list(data = po$psi, corr = corr_an, corr_fd = corr_fd)  # = data - corr
                 options(edid_psiomega_acc = acc)
@@ -696,6 +824,28 @@ fit_edid_cells <- function(
         # --- No-covariate path ---
         y_hat    <- compute_generated_outcomes_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
         omega    <- compute_omega_star_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
+        omega_raw <- omega   # unshrunk moment covariance (= crossprod(psi)/n^2 exactly); the
+                             # weight-estimation correction needs BOTH the raw psi second moment
+                             # and the matrix the weights actually invert (shrunk or not)
+        # nocov_shrink (default TRUE): Ledoit-Wolf shrinkage of Omega* toward its
+        # i.i.d.-pole structure BEFORE inverting for the weights. This stabilizes the
+        # WEIGHTS only -- at small n the H(H+1)/2 estimated covariance entries are the
+        # audited source of the realized-variance loss vs fixed pole weights, and the
+        # intensity vanishes as n grows (off-pole lambda = O_p(1/n)), so large-sample
+        # weights and gains are unchanged. The SE machinery below is untouched: it is
+        # the empirical (cluster-)variance of the realized weighted IF
+        # (compute_eif_nocov_edid -> safe_inference_edid) evaluated at the weights
+        # actually used; the shrunk matrix never enters the variance directly.
+        # Skipped where no weights are estimated: uniform (fixed 1/H), PT-Post and
+        # guard-pinned/just-identified cells (H = 1, weight = 1).
+        if (isTRUE(nocov_shrink) && weight_method != "uniform" &&
+            pt_assumption == "all" && nrow(pairs) > 1L) {
+          sh <- shrink_omega_nocov_edid(omega, g, t, pairs, panel_obj)
+          omega         <- sh$omega
+          shrink_lambda <- sh$lambda
+        }
+        # condition number of the matrix the weights actually invert (the shrunk one
+        # when nocov_shrink applied; bit-identical to the raw Omega* otherwise)
         cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
         # Honor weight_method: with no covariates there is no X-variation, so efficient,
         # averaged, and gmm all invert the same unconditional Omega* and coincide; only
@@ -704,10 +854,60 @@ fit_edid_cells <- function(
         weights  <- if (weight_method == "uniform") rep(1 / H_local, H_local) else compute_efficient_weights_edid(omega)
         att_gt   <- sum(weights * y_hat)
         eif_gt   <- compute_eif_nocov_edid(g, t, pairs, weights, panel_obj, att_gt, pt_assumption)
+        # estimation_effect (no-covariate): closed-form second-order weight-estimation variance
+        # correction for the estimated Omega-hat -> w(Omega-hat) map (through the shrinkage when it
+        # bound). Skipped where no weights are estimated (PT-Post and H = 1 cells, incl. thin-cohort
+        # pinned ones: the single weight is fixed at 1). Folded into the cell SE after inference below.
+        if (nocov_ee && pt_assumption == "all" && nrow(pairs) > 1L) {
+          ee_cell <- compute_nocov_ee_correction_edid(
+            g, t, pairs, panel_obj, omega_raw = omega_raw, omega_used = omega,
+            weights = weights, shrink_lambda = shrink_lambda)
+          # Structural skips (fallback / pseudoinverse weights: no smooth channel exists, the plug-in SE
+          # is the correct treatment) are recorded per cell but NOT warned; only numeric failures count.
+          if (!isTRUE(ee_cell$applied) && isTRUE(ee_cell$warn)) n_nocov_ee_skip <- n_nocov_ee_skip + 1L
+        }
       }
 
       # Step 7: SE and inference
       inf_res <- safe_inference_edid(eif_gt, panel_obj$cluster_indices, alpha, att_gt)
+
+      # Fold the no-covariate weight-estimation variance correction into THIS cell's reported SE/CI:
+      # Var_total = Var_plugin + Delta_DF + 2 Q-hat (Bessel piece + the in-sample optimism of the
+      # minimized quadratic; see compute_nocov_ee_correction_edid for the derivation and for why the
+      # naive 2Cov + Var(T2) assembly is NOT used). Additive in the variance: unlike the covariate
+      # psi_Omega channel it cannot be folded into the per-unit EIF (a second-order term has no
+      # first-order influence function), so the analytic band site and the aggregations add the SAME
+      # per-cell increment through nocov_ee_sigma_edid() -- keeping cell SEs, sqrt(diag(Sig)), and
+      # aggregate increments consistent. Through the shrinkage chain the optimism term is not sign-
+      # guaranteed: a corrected variance that is not positive falls back to the plug-in SE (counted;
+      # one post-loop warning).
+      if (!is.null(ee_cell) && isTRUE(ee_cell$applied) && is.finite(inf_res$se)) {
+        v_tot <- inf_res$se^2 + ee_cell$var_add
+        if (is.finite(v_tot) && v_tot > EDID_SE_EPS^2) {
+          se_new     <- sqrt(v_tot)
+          inf_res$se <- se_new
+          if (is.finite(att_gt)) {
+            z_crit            <- stats::qnorm(1 - alpha / 2)
+            inf_res$ci_lower  <- att_gt - z_crit * se_new
+            inf_res$ci_upper  <- att_gt + z_crit * se_new
+            inf_res$t_stat    <- att_gt / se_new
+            inf_res$p_value   <- 2 * stats::pnorm(-abs(inf_res$t_stat))
+          }
+        } else {
+          ee_cell$applied <- FALSE
+          ee_cell$warn    <- TRUE
+          ee_cell$reason  <- "non-positive corrected variance (kept the plug-in SE)"
+          n_nocov_ee_skip <- n_nocov_ee_skip + 1L
+        }
+      }
+      # The per-unit projections s_i = d_i' psi_i feed the CROSS-CELL covariance increments
+      # (nocov_ee_sigma_full_edid); they ride back like the EIF, NOT on the user-facing cell
+      # record (an n-vector per cell would bloat $cells).
+      ee_s <- NULL
+      if (!is.null(ee_cell)) {
+        if (isTRUE(ee_cell$applied)) ee_s <- ee_cell$s_vec
+        ee_cell$s_vec <- NULL
+      }
 
       # Step 8: store. The per-cell EIF is intentionally NOT kept on the cell list: it is stored once in eif_list
       # -> eif_matrix -> fit$eif (the only place ever read, by as_MP_edid/aggregation), so a per-cell copy would
@@ -736,14 +936,18 @@ fit_edid_cells <- function(
         condition_num   = cond_num,
         is_pre          = is_pre,
         inference_valid = inf_res$inference_valid,
+        thin_cohort_degraded = thin_deg,   # TRUE when the thin-cohort guard pinned this cohort to the just-identified moment
+        nocov_shrink_lambda = shrink_lambda,   # Ledoit-Wolf intensity (NA: covariate path / uniform / H = 1 / nocov_shrink = FALSE)
+        nocov_ee        = ee_cell,  # no-cov weight-estimation correction record (NULL unless engaged on this cell)
         ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )
 
       list(cell = the_cell,
            eif = if (keep_eif) eif_gt else NULL,
+           ee_s = ee_s,
            ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
            n_extreme = n_extreme, n_psi_unstable = n_psi_unstable,
-           n_dropped = n_pairs_dropped)
+           n_dropped = n_pairs_dropped, n_nocov_ee_skip = n_nocov_ee_skip)
   }  # end .fit_one_cell
 
   # Dispatch: parallel over independent cells when cores > 1 (fork; not on Windows), else serial lapply
@@ -765,10 +969,21 @@ fit_edid_cells <- function(
     ci_cell_id[.cid] <- .cid
     ci_is_pre[.cid]  <- as.logical(.r$ci[["is_pre"]])
     if (keep_eif) eif_list[[.cid]] <- if (is.null(.r$eif)) rep(NA_real_, n) else .r$eif
+    if (nocov_ee) ee_s_list[[.cid]] <- if (is.null(.r$ee_s)) rep(NA_real_, n) else .r$ee_s
     n_extreme_ratio_instances <- n_extreme_ratio_instances + .r$n_extreme
     if (!is.null(.r$n_psi_unstable)) n_psi_unstable_total <- n_psi_unstable_total + .r$n_psi_unstable
     if (!is.null(.r$n_fulltrim)) n_fulltrim_total <- n_fulltrim_total + .r$n_fulltrim
     if (!is.null(.r$n_dropped)) n_pairs_dropped_total <- n_pairs_dropped_total + .r$n_dropped
+    if (!is.null(.r$n_nocov_ee_skip)) n_nocov_ee_skip_total <- n_nocov_ee_skip_total + .r$n_nocov_ee_skip
+  }
+
+  if (n_nocov_ee_skip_total > 0L) {
+    warning(sprintf(
+      paste0("estimation_effect (no-covariate weight-estimation correction): the correction numerically ",
+             "failed in %d cell(s) (non-finite inputs or a non-positive corrected variance); those cells ",
+             "report the plug-in SE (per-cell reasons in `$cells[[k]]$nocov_ee$reason`; structural skips ",
+             "on fallback-weight cells are recorded there too, without this warning)."),
+      n_nocov_ee_skip_total), call. = FALSE)
   }
 
   if (n_pairs_dropped_total > 0L) {
@@ -790,10 +1005,22 @@ fit_edid_cells <- function(
   }
 
   if (n_extreme_ratio_instances > 0L) {
+    # Message distinguishes the two regimes (a Brazil-gate audit item): with a finite trim_level the extreme
+    # observations are EXCISED from the affected pairs (the cell estimates the common-overlap ATT; dead-pair /
+    # full-trim accounting reports any pair or cell that loses all treated mass), so the message points at
+    # pairwise overlap rather than implying numerical instability; only at trim_level = Inf do the extreme
+    # ratios actually enter the moments.
     warning(sprintf(
-      "Extreme propensity ratios detected (max > 100) in %d estimation step(s). Results may be unstable.",
-      n_extreme_ratio_instances
-    ))
+      paste0("Extreme propensity ratios (max > 100) in %d estimation step(s): some units have near-zero ",
+             "estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, ",
+             "possible even when every cohort overlaps the never-treated pool). %s"),
+      n_extreme_ratio_instances,
+      if (is.finite(trim_level)) sprintf(paste0(
+        "With trim_level = %g those observations are trimmed from the affected pairs and each cell ",
+        "estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs ",
+        "or cells that lost all treated mass."), trim_level)
+      else "With trim_level = Inf they enter the moments untrimmed; results may be unstable."
+    ), call. = FALSE)
   }
 
   if (n_psi_unstable_total > 0L) {
@@ -843,11 +1070,21 @@ fit_edid_cells <- function(
     }
   }
 
+  # n x n_cells matrix of the per-unit projections s_i feeding the cross-cell increments of the
+  # no-covariate weight-estimation correction (NA columns where the correction did not apply).
+  nocov_ee_s <- NULL
+  if (nocov_ee && length(ee_s_list) > 0L) {
+    nocov_ee_s <- do.call(cbind, ee_s_list)
+    if (is.null(dim(nocov_ee_s))) nocov_ee_s <- matrix(nocov_ee_s, nrow = n)
+  }
+
   list(
     cells      = cells,
     eif_matrix = eif_matrix,
     cell_index = cell_index,
     misspec_robust = misspec_robust,  # the EFFECTIVE flag (downgraded to FALSE by the guards above if applicable)
-    bs_df_selected = bs_df_selected   # IC-selected sieve dfs (bs_df = "ic" + covariates only; else NULL)
+    bs_df_selected = bs_df_selected,  # IC-selected sieve dfs (bs_df = "ic" + covariates only; else NULL)
+    thin_cohorts   = thin_cohorts,    # thin-cohort guard record (NULL when the guard never fired)
+    nocov_ee_s     = nocov_ee_s      # per-unit s_i matrix for the no-cov weight-estimation cross-cell increments
   )
 }

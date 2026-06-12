@@ -128,11 +128,27 @@
 # rank-deficient branch additionally requires the estimated rank to be
 # consistent for the true rank; the eigenvalue threshold is the standard
 # practical device but is not a formal guarantee.
-.edid_if_diff_quadform <- function(d, xi, n, cluster_indices) {
+#
+# `v_scale` is the absolute variance scale of the constituent estimators (the
+# largest per-coordinate asymptotic variance of either fit; 1 if unknown). It
+# feeds the degenerate-contrast guard, the joint-path mirror of the scalar
+# .edid_scalar_hausman() guard: when the two estimators coincide (e.g. both
+# fits pinned to the same just-identified moments by the thin-cohort guard),
+# xi is pure float dust (differences ~1e-17, D entries ~1e-33) and the
+# RELATIVE eigenvalue threshold below would still "find" rank in that noise,
+# returning an arbitrary large H with a tiny p-value. A D that is negligible
+# on the ABSOLUTE scale of the estimators' own variances carries no testable
+# contrast: report H = 0, df = 0, p = 1 with degenerate = TRUE instead.
+.edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1) {
   xi <- as.matrix(xi)
   D  <- n * cluster_cov_edid(xi, cluster_indices, n)     # = E_n[xi xi'] when iid
   if (any(!is.finite(D))) {
-    return(list(statistic = NA_real_, df = NA_integer_, p_value = NA_real_, D = D))
+    return(list(statistic = NA_real_, df = NA_integer_, p_value = NA_real_, D = D,
+                degenerate = NA))
+  }
+  eps_D <- .Machine$double.eps^0.5
+  if (max(abs(D)) <= eps_D * max(v_scale, 1)) {          # degenerate contrast: estimators coincide
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
   }
   ev  <- eigen(D, symmetric = TRUE)
   mx  <- max(ev$values, 0)
@@ -140,7 +156,7 @@
   pos <- ev$values > tol
   rk  <- sum(pos)
   if (rk == 0L) {                                        # degenerate D: no power, report p = 1
-    return(list(statistic = 0, df = 0L, p_value = 1, D = D))
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
   }
   if (rk == length(d)) {
     H <- as.numeric(n * crossprod(d, solve(D, d)))       # full rank: exact inverse
@@ -149,7 +165,8 @@
     H <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / ev$values[pos])))
   }
   list(statistic = H, df = rk,
-       p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D)
+       p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D,
+       degenerate = FALSE)
 }
 
 # Scalar Hausman component H = n d^2 / D with the degenerate-D guard of
@@ -222,10 +239,18 @@
 #' \eqn{H_{\theta,n} = n(\widehat\theta_U - \widehat\theta_R)^2/\widehat{D}}
 #' of eqn (5.5) for each \eqn{ES(e)} and for \eqn{ES_{\mathrm{avg}}}, with a
 #' degenerate-\eqn{\widehat{D}} guard (coordinates where the two estimators
-#' coincide report \eqn{H = 0}, \eqn{p = 1}).
+#' coincide report \eqn{H = 0}, \eqn{p = 1}). The joint statistic carries the
+#' same guard: when the two estimators coincide on every coordinate --- e.g.
+#' both fits pinned to the same just-identified moments by the thin-cohort
+#' guard, so \eqn{\widehat{D}} is numerical noise relative to the estimators'
+#' own variances --- the joint contrast is degenerate and is reported as
+#' \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} (with a message and
+#' \code{degenerate = TRUE}) rather than ranking the noise.
 #'
 #' @return An object of class \code{edid_hausman}: a list with elements
-#'   \code{statistic}, \code{df}, \code{p_value} (the joint test), \code{d}
+#'   \code{statistic}, \code{df}, \code{p_value} (the joint test),
+#'   \code{degenerate} (\code{TRUE} when the joint contrast was degenerate and
+#'   the \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} guard applied), \code{d}
 #'   (the estimate difference vector, unrestricted minus restricted), \code{D}
 #'   (the estimated asymptotic covariance of \eqn{\sqrt{n}\,d}), \code{scalar}
 #'   (data.frame of per-coordinate eqn (5.5) statistics, including an
@@ -282,7 +307,18 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   d  <- pU$est - pR$est                  # unrestricted minus restricted
   xi <- pU$IF - pR$IF                    # per-unit IF difference (n x |E|)
 
-  joint <- .edid_if_diff_quadform(d, xi, n, ci)
+  # Absolute variance scale of the two estimators (largest per-coordinate
+  # asymptotic variance of either fit), for the degenerate-contrast guard.
+  v_scale <- max(diag(as.matrix(n * cluster_cov_edid(pU$IF, ci, n))),
+                 diag(as.matrix(n * cluster_cov_edid(pR$IF, ci, n))))
+  joint <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = v_scale)
+  if (isTRUE(joint$degenerate)) {
+    message("edid_hausman: the two estimators coincide (the IF-difference covariance is at ",
+            "numerical-noise scale relative to the estimators' own variances), so the joint ",
+            "contrast is degenerate and is reported as H = 0, df = 0, p = 1. This is expected ",
+            "when the fits carry no over-identifying content to test -- e.g. when the ",
+            "thin-cohort guard has pinned every cell to its just-identified moment.")
+  }
 
   # Scalar eqn (5.5) statistics: each ES(e) plus ES_avg (always included).
   oU <- .edid_param_ifs(fit_unrestricted, "overall")
@@ -309,17 +345,18 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   rownames(scalar) <- NULL
 
   out <- list(
-    statistic = joint$statistic,
-    df        = joint$df,
-    p_value   = joint$p_value,
-    d         = stats::setNames(d, if (parameter == "event_study") sprintf("e=%g", pU$e) else "overall"),
-    D         = joint$D,
-    scalar    = scalar,
-    parameter = parameter,
-    e_set     = e_set,
-    n         = n,
-    clustered = !is.null(ci),
-    alpha     = fit_restricted$alpha %||% 0.05
+    statistic  = joint$statistic,
+    df         = joint$df,
+    p_value    = joint$p_value,
+    degenerate = isTRUE(joint$degenerate),
+    d          = stats::setNames(d, if (parameter == "event_study") sprintf("e=%g", pU$e) else "overall"),
+    D          = joint$D,
+    scalar     = scalar,
+    parameter  = parameter,
+    e_set      = e_set,
+    n          = n,
+    clustered  = !is.null(ci),
+    alpha      = fit_restricted$alpha %||% 0.05
   )
   class(out) <- c("edid_hausman", "list")
   out
@@ -340,6 +377,10 @@ print.edid_hausman <- function(x, digits = 4, ...) {
   cat(sprintf("  H = %s on %s df (rank of D-hat), p-value = %s\n",
               format(x$statistic, digits = digits), format(x$df),
               format.pval(x$p_value, digits = digits)))
+  if (isTRUE(x$degenerate)) {
+    cat("  NOTE: degenerate contrast -- the two estimators coincide, so there is no\n")
+    cat("  over-identifying content to test (H = 0, df = 0, p = 1 by construction).\n")
+  }
   cat("\nPer-parameter scalar statistics (eqn 5.5):\n")
   tab <- x$scalar
   num <- vapply(tab, is.numeric, logical(1L))

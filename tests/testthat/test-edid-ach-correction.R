@@ -73,12 +73,21 @@ test_that("correction propagates to the event-study aggregation (points equal, S
   expect_equal(esF$att.egt, esT$att.egt, tolerance = 1e-10)  # ES point estimates unchanged
 })
 
-test_that("estimation_effect has no effect without covariates (warns, disabled)", {
+test_that("estimation_effect without covariates engages the weight-estimation variance correction (no downgrade warning)", {
+  # Previously estimation_effect = TRUE warned "no effect without covariates" and was disabled.
+  # It now engages the closed-form second-order weight-estimation variance correction for the
+  # estimated Omega-hat -> weights map (see test-edid-nocov-estimation-effect.R for the full
+  # battery); the obsolete downgrade warning must be gone and the point estimates unchanged.
   df <- make_cfs_panel(n = 200, seed = 15)
-  expect_warning(
+  w <- character(0)
+  fT <- withCallingHandlers(
     edid(df, "y", "id", "t", "g", xformla = NULL, aggregate = "none", bstrap = FALSE, seed = 1L, estimation_effect = TRUE),
-    "no effect without covariates"
-  )
+    warning = function(ww) { w <<- c(w, conditionMessage(ww)); invokeRestart("muffleWarning") })
+  expect_false(any(grepl("no effect without covariates", w)))
+  expect_true(isTRUE(fT$estimation_effect))
+  f0 <- suppressWarnings(
+    edid(df, "y", "id", "t", "g", xformla = NULL, aggregate = "none", bstrap = FALSE, seed = 1L))
+  expect_equal(fT$att_gt$att, f0$att_gt$att, tolerance = 1e-12)
 })
 
 test_that("conditional-mean ACH correction has the CORRECT SIGN (matches the numerical two-step IF)", {

@@ -140,3 +140,65 @@ test_that("model.matrix() failure in xformla is caught with informative error", 
     regexp = "numeric or factor"
   )
 })
+
+# ============================================================
+# Curse-of-dimensionality warning: continuous columns only
+# ============================================================
+
+# Small panel with one continuous covariate and 7 binary dummies (the
+# Dobkin/HRS-style design where the d >= 5 warning previously counted the
+# dummies as continuous), plus 4 extra continuous covariates for the
+# genuinely high-dimensional case.
+make_panel_curse <- function(n = 60L, n_periods = 3L, seed = 7L) {
+  set.seed(seed)
+  ids   <- rep(seq_len(n), each = n_periods)
+  times <- rep(seq_len(n_periods), times = n)
+  g_vec <- rep(c(3, Inf), each = n / 2L)[ids]
+  xc    <- replicate(5L, rnorm(n))               # continuous: xc1..xc5
+  xd    <- replicate(7L, rbinom(n, 1L, 0.4))     # binary dummies: xd1..xd7
+  df <- data.frame(id = ids, t = times,
+                   y = 0.4 * times + 0.3 * xc[ids, 1L] +
+                     as.numeric(times >= g_vec) + rnorm(n * n_periods, sd = 0.5),
+                   g = g_vec)
+  for (j in 1:5) df[[paste0("xc", j)]] <- xc[ids, j]
+  for (j in 1:7) df[[paste0("xd", j)]] <- xd[ids, j]
+  df
+}
+
+test_that("d >= 5 curse-of-dimensionality warning counts only continuous covariates", {
+  df <- make_panel_curse()
+
+  # 1 continuous + 7 binary dummies (8 columns after expansion): the kernel
+  # rate is driven by d = 1 continuous dimension -> NO curse warning.
+  w_dummies <- capture_warnings(
+    edid(df, "y", "id", "t", "g",
+         xformla = ~ xc1 + xd1 + xd2 + xd3 + xd4 + xd5 + xd6 + xd7,
+         cband = FALSE, misspec_robust = FALSE)
+  )
+  expect_false(any(grepl("curse of dimensionality", w_dummies)))
+
+  # 5 genuinely continuous covariates -> the warning fires and reports d = 5.
+  w_cont <- capture_warnings(
+    edid(df, "y", "id", "t", "g",
+         xformla = ~ xc1 + xc2 + xc3 + xc4 + xc5,
+         cband = FALSE, misspec_robust = FALSE)
+  )
+  expect_true(any(grepl("5 continuous covariates", w_cont)))
+  expect_true(any(grepl("curse of dimensionality", w_cont)))
+
+  # Mixed: 5 continuous + dummies still warns (dummies don't mask the curse).
+  w_mixed <- capture_warnings(
+    edid(df, "y", "id", "t", "g",
+         xformla = ~ xc1 + xc2 + xc3 + xc4 + xc5 + xd1 + xd2,
+         cband = FALSE, misspec_robust = FALSE)
+  )
+  expect_true(any(grepl("5 continuous covariates", w_mixed)))
+
+  # Constant-weight schemes are exempt regardless of dimension.
+  w_avg <- capture_warnings(
+    edid(df, "y", "id", "t", "g",
+         xformla = ~ xc1 + xc2 + xc3 + xc4 + xc5,
+         weight_scheme = "averaged", cband = FALSE, misspec_robust = FALSE)
+  )
+  expect_false(any(grepl("curse of dimensionality", w_avg)))
+})
