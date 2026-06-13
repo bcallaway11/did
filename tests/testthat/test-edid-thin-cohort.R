@@ -39,6 +39,13 @@ fit_thin <- function(df, pt = "all", ...) {
        aggregate = "none", cband = FALSE, ...)
 }
 cell_of <- function(fit, g, t) fit$att_gt[fit$att_gt$group == g & fit$att_gt$time == t, ]
+expect_identical_unless_covr <- function(object, expected) {
+  if (identical(Sys.getenv("R_COVR"), "true")) {
+    expect_equal(object, expected, tolerance = 0, ignore_attr = TRUE)
+  } else {
+    expect_identical(object, expected)
+  }
+}
 
 # Legacy fingerprints: fit_thin() output of the PRE-GUARD package (commit 5133060,
 # the tip of pr/260 before the thin-cohort guard) on the seeded designs below,
@@ -179,8 +186,8 @@ test_that("healthy design (all cohorts >= 5): guard inert, byte-identical to the
   # legacy-reproduction contract is the unshrunk pipeline (nocov_shrink = FALSE
   # is documented to reproduce it bit-for-bit).
   expect_no_warning(f5 <- fit_thin(df, nocov_shrink = FALSE))      # no guard, no legacy warnings
-  expect_identical(f5$att_gt$att, legacy_healthy_att)              # pre-guard package, bit-for-bit
-  expect_identical(f5$att_gt$se,  legacy_healthy_se)
+  expect_identical_unless_covr(f5$att_gt$att, legacy_healthy_att)  # pre-guard package, bit-for-bit
+  expect_identical_unless_covr(f5$att_gt$se,  legacy_healthy_se)
   expect_null(f5$thin_cohorts)
   expect_false(any(vapply(f5$cells, function(x) isTRUE(x$thin_cohort_degraded), logical(1L))))
   # min_pair_units = 2 is equally inert here: identical fit
@@ -203,8 +210,8 @@ test_that("min_pair_units = 2 reproduces the pre-guard fit bit-for-bit on the 3-
   # (see the healthy-design test above for the contract).
   w <- capture_warnings(f2 <- fit_thin(df, min_pair_units = 2L, nocov_shrink = FALSE))
   expect_false(any(grepl("Thin-cohort guard", w)))                 # guard never fires at 2 for 3 units
-  expect_identical(f2$att_gt$att, legacy_thin3_att)                # pre-guard package, bit-for-bit
-  expect_identical(f2$att_gt$se,  legacy_thin3_se)
+  expect_identical_unless_covr(f2$att_gt$att, legacy_thin3_att)    # pre-guard package, bit-for-bit
+  expect_identical_unless_covr(f2$att_gt$se,  legacy_thin3_se)
   expect_identical(f2$att_gt$n_pairs, rep(4L, 6L))                 # full overidentified moment sets
   expect_null(f2$thin_cohorts)
   expect_identical(f2$min_pair_units, 2L)

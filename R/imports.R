@@ -11,7 +11,7 @@
 #' @importFrom stats rnorm var ecdf glm predict
 #' @importFrom utils globalVariables
 #' @import ggplot2
-#' @importFrom BMisc toformula rhs.vars makeBalancedPanel getListElement
+#' @importFrom BMisc toformula rhs.vars makeBalancedPanel get_list_element
 #' @importFrom BMisc multiplier_bootstrap TorF
 #' @import data.table
 #' @import fastglm
