@@ -36,9 +36,9 @@ a few matrix products per cell (no nuisance/weight re-solve), so large
 results are reproducible and identical for any \code{cores} value.}
 
 \item{cores}{Number of forked workers for the draw loop (fork-based; no
-effect on Windows). Numerically identical to \code{cores = 1L}; draws a
-forked worker fails to deliver are recomputed serially with the same
-per-draw seed (see \code{\link{edid_refit_bootstrap}}).}
+effect on Windows). Numerically identical to \code{cores = 1L}; the same
+macOS fork-unsafe BLAS fallback and failed-worker serial recompute behavior
+as \code{\link{edid_refit_bootstrap}} applies.}
 
 \item{agg}{Which aggregations to report alongside the cells: any subset of
 \code{c("event_study", "overall", "group", "calendar")} (default all).

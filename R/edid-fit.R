@@ -28,11 +28,11 @@
 #'   \code{estimate_all_propensity_ratios}); \code{"exp"} fits per-target exponential-link
 #'   Riesz regressions with full estimation-effect integration, \code{"direct"} reproduces
 #'   the paper's legacy per-pair LS sieve bit-for-bit (retained for forensics)
-#' @param nocov_shrink logical (default \code{TRUE}): on the no-covariate PT-All
-#'   path, shrink each cell's estimated moment covariance toward its
+#' @param nocov_shrink logical (default \code{FALSE}): on the no-covariate PT-All
+#'   path, optionally shrink each cell's estimated moment covariance toward its
 #'   i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
-#'   the weights (see \code{\link{edid}}); \code{FALSE} reproduces the
-#'   unshrunk weights bit-for-bit
+#'   the weights (see \code{\link{edid}}); the default \code{FALSE} uses the
+#'   unshrunk plug-in efficient weights
 #'
 #' @return list with elements:
 #'   \describe{
@@ -56,7 +56,7 @@ fit_edid_cells <- function(
   estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
   estimation_effect_explicit = TRUE, higher_order_explicit = TRUE, misspec_robust_explicit = TRUE,
   trim_level = Inf, mc_cores = getOption("edid_mc_cores", 1L), moment_set = NULL,
-  min_pair_units = 5L, bs_df = 4L, ratio_method = c("exp", "direct"), nocov_shrink = TRUE
+  min_pair_units = 5L, bs_df = 4L, ratio_method = c("exp", "direct"), nocov_shrink = FALSE
 ) {
   weight_method <- match.arg(weight_method)
   ratio_method  <- match.arg(ratio_method)
@@ -918,13 +918,11 @@ fit_edid_cells <- function(
         omega_raw <- omega   # unshrunk moment covariance (= crossprod(psi)/n^2 exactly); the
                              # weight-estimation correction needs BOTH the raw psi second moment
                              # and the matrix the weights actually invert (shrunk or not)
-        # nocov_shrink (default TRUE): Ledoit-Wolf shrinkage of Omega* toward its
-        # i.i.d.-pole structure BEFORE inverting for the weights. This stabilizes the
-        # WEIGHTS only -- at small n the H(H+1)/2 estimated covariance entries are the
-        # audited source of the realized-variance loss vs fixed pole weights, and the
-        # intensity vanishes as n grows (off-pole lambda = O_p(1/n)), so large-sample
-        # weights and gains are unchanged. The SE machinery below is untouched: it is
-        # the empirical (cluster-)variance of the realized weighted IF
+        # Optional nocov_shrink: Ledoit-Wolf shrinkage of Omega* toward its
+        # i.i.d.-pole structure BEFORE inverting for the weights. The package
+        # default is the pure plug-in efficient estimator (unshrunk); this opt-in
+        # finite-sample guard stabilizes the WEIGHTS only. The SE machinery below
+        # is untouched: it is the empirical (cluster-)variance of the realized weighted IF
         # (compute_eif_nocov_edid -> safe_inference_edid) evaluated at the weights
         # actually used; the shrunk matrix never enters the variance directly.
         # Skipped where no weights are estimated: uniform (fixed 1/H), PT-Post and

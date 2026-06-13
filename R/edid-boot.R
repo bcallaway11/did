@@ -102,13 +102,18 @@
 
 # Dispatch draws serially or via fork-based parallel::mclapply (not on Windows,
 # matching edid()'s own `cores` semantics). Each draw re-seeds itself
-# (set.seed(seed_base + b)), so the two paths are numerically identical -- and
-# any draw whose forked worker dies without delivering a result (mclapply
-# returns NULL; the classic cause is a fork-unsafe multithreaded BLAS such as
-# macOS Accelerate) is simply recomputed serially, byte-identical to what the
-# fork would have produced. Forked-worker death is therefore a lost speed-up,
-# never a lost / silently-NA draw.
+# (set.seed(seed_base + b)), so the two paths are numerically identical. On
+# macOS Accelerate/vecLib BLAS we default back to serial before forking; otherwise
+# any forked draw that fails to deliver is recomputed serially.
 .edid_boot_lapply <- function(X, FUN, cores, label) {
+  if (cores > 1L && .edid_fork_blas_unsafe() &&
+      !isTRUE(getOption("edid_allow_fork_blas", FALSE))) {
+    message(label, ": cores > 1 requested on macOS with an Accelerate (vecLib) BLAS, ",
+            "which is not fork-safe. Falling back to serial (cores = 1). ",
+            "Link a fork-safe BLAS, or set options(edid_allow_fork_blas = TRUE) ",
+            "to force the fork path at your own risk.")
+    cores <- 1L
+  }
   if (cores > 1L && .Platform$OS.type != "windows") {
     res <- suppressWarnings(parallel::mclapply(X, FUN, mc.cores = cores))
     bad <- vapply(res, is.null, logical(1L))
@@ -254,9 +259,10 @@
 #'   \code{NULL}, a base seed is taken from the current RNG stream.
 #' @param cores Number of forked workers for the draw loop
 #'   (\code{\link[parallel]{mclapply}}); fork-based, so no effect on Windows.
-#'   Numerically identical to \code{cores = 1L}: every draw re-seeds itself, and
-#'   a draw whose forked worker dies without delivering (e.g. under a
-#'   fork-unsafe multithreaded BLAS such as macOS Accelerate) is recomputed
+#'   Numerically identical to \code{cores = 1L}: every draw re-seeds itself. On
+#'   macOS with an Accelerate/vecLib BLAS, \code{cores > 1} is automatically
+#'   downgraded to serial unless \code{options(edid_allow_fork_blas = TRUE)};
+#'   otherwise, any forked draw that dies without delivering is recomputed
 #'   serially with the same per-draw seed, with a warning.
 #' @param agg Which aggregations to bootstrap alongside the \eqn{ATT(g,t)}
 #'   cells: any subset of \code{c("event_study", "overall", "group",
@@ -560,9 +566,9 @@ print.edid_refit_bootstrap <- function(x, digits = 4, ...) {
 #'   \code{seed + b} and consumes the nuisance draws in a fixed order, so
 #'   results are reproducible and identical for any \code{cores} value.
 #' @param cores Number of forked workers for the draw loop (fork-based; no
-#'   effect on Windows). Numerically identical to \code{cores = 1L}; draws a
-#'   forked worker fails to deliver are recomputed serially with the same
-#'   per-draw seed (see \code{\link{edid_refit_bootstrap}}).
+#'   effect on Windows). Numerically identical to \code{cores = 1L}; the same
+#'   macOS fork-unsafe BLAS fallback and failed-worker serial recompute behavior
+#'   as \code{\link{edid_refit_bootstrap}} applies.
 #' @param agg Which aggregations to report alongside the cells: any subset of
 #'   \code{c("event_study", "overall", "group", "calendar")} (default all).
 #'   Aggregates are linear in the cells with weights held fixed at the original

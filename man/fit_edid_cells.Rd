@@ -25,7 +25,7 @@ fit_edid_cells(
   min_pair_units = 5L,
   bs_df = 4L,
   ratio_method = c("exp", "direct"),
-  nocov_shrink = TRUE
+  nocov_shrink = FALSE
 )
 }
 \arguments{
@@ -60,11 +60,11 @@ propensity nuisances on the covariate path (see \code{\link{edid}} and
 Riesz regressions with full estimation-effect integration, \code{"direct"} reproduces
 the paper's legacy per-pair LS sieve bit-for-bit (retained for forensics)}
 
-\item{nocov_shrink}{logical (default \code{TRUE}): on the no-covariate PT-All
-path, shrink each cell's estimated moment covariance toward its
+\item{nocov_shrink}{logical (default \code{FALSE}): on the no-covariate PT-All
+path, optionally shrink each cell's estimated moment covariance toward its
 i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
-the weights (see \code{\link{edid}}); \code{FALSE} reproduces the
-unshrunk weights bit-for-bit}
+the weights (see \code{\link{edid}}); the default \code{FALSE} uses the
+unshrunk plug-in efficient weights}
 }
 \value{
 list with elements:

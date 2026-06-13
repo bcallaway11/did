@@ -232,9 +232,15 @@ test_that("the K x K increment: diagonal == per-cell var_add; cross entries matc
     cc <- f_ee$cells[[k]]
     prs <- cc$pairs
     Om  <- compute_omega_star_nocov_edid(cc$group, cc$time, prs, pn, "all")
-    sh  <- shrink_omega_nocov_edid(Om, cc$group, cc$time, prs, pn)
-    w   <- compute_efficient_weights_edid(sh$omega)
-    ee  <- compute_nocov_ee_correction_edid(cc$group, cc$time, prs, pn, Om, sh$omega, w, sh$lambda)
+    Om_w <- Om
+    lambda <- cc$nocov_shrink_lambda
+    if (is.finite(lambda) && lambda > 0) {
+      sh <- shrink_omega_nocov_edid(Om, cc$group, cc$time, prs, pn)
+      Om_w <- sh$omega
+      lambda <- sh$lambda
+    }
+    w   <- compute_efficient_weights_edid(Om_w)
+    ee  <- compute_nocov_ee_correction_edid(cc$group, cc$time, prs, pn, Om, Om_w, w, lambda)
     psi <- compute_psi_moments_nocov_edid(cc$group, cc$time, prs, pn)
     list(a = drop(psi %*% w), s = ee$s_vec)
   }

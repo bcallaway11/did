@@ -338,23 +338,20 @@
 #'   inv-p weight-channel first-step corrections cover all estimated channels -- conditional
 #'   means, never-treated, AND cross-cohort. The no-covariate path is bitwise invariant to
 #'   \code{ratio_method}.
-#' @param nocov_shrink Logical scalar (default \code{TRUE}): Ledoit-Wolf shrinkage of the
+#' @param nocov_shrink Logical scalar (default \code{FALSE}): optional Ledoit-Wolf shrinkage of the
 #'   no-covariate moment covariance toward its i.i.d.-pole structure. On the no-covariate
 #'   PT-All path each overidentified cell's weights invert the estimated \eqn{H \times H}
-#'   moment covariance \eqn{\widehat\Omega^*}; at small \eqn{n} the \eqn{H(H+1)/2} estimated
-#'   entries make those weights noisy, and a Monte Carlo audit found that this
-#'   weight-estimation noise alone costs the efficient estimator up to ~12\% realized
-#'   variance against the fixed i.i.d.-pole (imputation) weights at \eqn{n = 50} \emph{even
-#'   when the pole weights are optimal}. With \code{nocov_shrink = TRUE} the weights instead
+#'   moment covariance \eqn{\widehat\Omega^*}. The default \code{FALSE} reports the pure
+#'   plug-in efficient estimator that matches the semiparametric efficiency estimand in the
+#'   paper. With \code{nocov_shrink = TRUE} the weights instead
 #'   invert \eqn{(1-\hat\lambda)\,\widehat\Omega^* + \hat\lambda\,
 #'   \widehat\sigma^2 S}, where \eqn{S} is the cell's closed-form i.i.d.-pole covariance
 #'   structure at the sample shares (the covariance implied by i.i.d. shocks; the imputation
 #'   estimator's implicit weighting), \eqn{\widehat\sigma^2} is the Frobenius least-squares
 #'   scale, and \eqn{\hat\lambda \in [0, 1]} is the standard Ledoit-Wolf intensity
-#'   (variance-of-entries over distance-to-target). Off the pole \eqn{\hat\lambda =
-#'   O_p(1/n)}, so the asymptotic weights, efficiency gains, and inference are unchanged; at
-#'   the i.i.d. pole the target is consistent for the truth, so the shrunk weights converge
-#'   to imputation's and the finite-sample premium for adaptivity is removed by construction.
+#'   (variance-of-entries over distance-to-target). This finite-sample regularization can
+#'   stabilize very small or thin-cohort designs, but it changes the reported weights and can
+#'   give up plug-in efficiency gains in applications.
 #'   Only the \emph{weights} are stabilized: the standard error remains the empirical
 #'   (cluster-robust) variance of the realized weighted influence function at the weights
 #'   actually used -- the shrunk matrix never replaces the data's influence functions in the
@@ -557,7 +554,7 @@ edid <- function(
   min_pair_units    = 5L,
   bs_df             = 4L,
   ratio_method      = c("exp", "direct"),
-  nocov_shrink      = TRUE
+  nocov_shrink      = FALSE
 ) {
   ratio_method <- match.arg(ratio_method)
   cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
