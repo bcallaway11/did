@@ -3,8 +3,6 @@
 # These tests verify that `did` package results match the published article.
 # Tests are skipped if the JEL data file is not available.
 
-library(testthat)
-library(did)
 
 # Helper: resolve JEL data path, downloading from GitHub if needed (only called after skip_on_cran)
 get_jel_data_path <- function() {

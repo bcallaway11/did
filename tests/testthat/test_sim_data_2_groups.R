@@ -1,6 +1,3 @@
-library(DRDID)
-library(BMisc)
-library(tidyr)
 ## -----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 # test it works without covariates and only two gropups

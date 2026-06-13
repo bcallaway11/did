@@ -1,7 +1,3 @@
-library(DRDID)
-library(BMisc)
-# library(ggplot2)
-# library(ggpubr)
 
 
 #-----------------------------------------------------------------------------

@@ -2,8 +2,6 @@
 # error aggregates the influence function to cluster *sums*. For equal-sized clusters this coincides with
 # the previous cluster-mean aggregation; for unbalanced clusters and repeated cross-sections it follows
 # the cluster-sum form that aligns with the (1/n) empirical average defining the estimator.
-library(testthat)
-
 # small staggered panel with units grouped into clusters; bal controls equal vs unequal cluster sizes
 .make_clustered <- function(seed, bal, G = 40L) {
   set.seed(seed)

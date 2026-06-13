@@ -1,8 +1,6 @@
 # Analytical (no-bootstrap) cluster-robust standard errors. With a cluster variable and bstrap = FALSE,
 # att_gt() and aggte() report the cluster-robust variance (cluster sums of the influence function), the
 # same cluster-sum aggregation as the multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10).
-library(testthat)
-
 # panel in which units within a cluster are dependent: they share a common shock each period (e.g. a
 # state-by-year shock), so the cluster -- not the individual unit -- is the independent sampling unit
 .make_clustered_shocks <- function(seed, G = 50L) {

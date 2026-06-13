@@ -5,11 +5,6 @@
 #
 #-----------------------------------------------------------------------------
 
-library(DRDID)
-library(BMisc)
-#library(ggplot2)
-#library(ggpubr)
-
 
 test_that("conditional did pre-test", {
   skip_on_cran()  # bootstrap-based CvM test is time-consuming
