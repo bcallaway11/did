@@ -21,6 +21,7 @@ Icon?
 ^\.claude$
 ^CLAUDE\.md$
 ^\.lintr$
+^\.vscode$
 ^revdep_manual$
 ^vignettes/.*_cache$
 ^benchmark$
