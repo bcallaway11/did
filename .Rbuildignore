@@ -7,6 +7,7 @@
 ^cran-comments\.md$
 ^revdep$
 ^CRAN-RELEASE$
+^CITATION\.cff$
 ^pkgdown$
 ^doc$
 ^Meta$

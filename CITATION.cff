@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "did: Difference in Differences"
+version: 2.5.0
+year: 2026
+authors:
+  - family-names: Callaway
+    given-names: Brantly
+    email: brantly.callaway@uga.edu
+  - family-names: Sant'Anna
+    given-names: Pedro H.C.
+    email: pedro.santanna@emory.edu
+url: "https://bcallaway11.github.io/did/"
+repository-code: "https://github.com/bcallaway11/did"
+license: GPL-2.0
+abstract: >
+  Treatment effects with multiple periods and groups. Implements
+  difference-in-differences methods for settings with more than two periods
+  and variation in treatment timing, following Callaway and Sant'Anna (2021).
+references:
+  - type: article
+    title: "Difference-in-differences with multiple time periods"
+    authors:
+      - family-names: Callaway
+        given-names: Brantly
+      - family-names: Sant'Anna
+        given-names: Pedro H.C.
+    year: 2021
+    journal: "Journal of Econometrics"
+    doi: "10.1016/j.jeconom.2020.12.001"
