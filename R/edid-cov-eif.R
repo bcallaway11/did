@@ -1,0 +1,1568 @@
+# edid-cov-eif.R
+# Generated outcome and EIF computation for the EDiD covariate path.
+# Implements Chen, Sant'Anna & Xie (2025) Eq. (3.9), (3.10), (3.12), (4.4).
+
+# ---------------------------------------------------------------------------
+# Cell-level common-overlap trim structure
+# ---------------------------------------------------------------------------
+
+#' Cell-level common-overlap trim structure (dead pairs + common keep mask)
+#'
+#' Derives, for one (g, t) cell, the overlap-trim structure shared by the generated-outcome builder and the
+#' analytic ACH correction so both consume the IDENTICAL masks/masses (no drift):
+#' \itemize{
+#'   \item \code{dead}: pair j's OWN overlap mask (\code{keep_inf} for self/two-period pairs,
+#'     \code{keep_inf * keep_gp} for cross pairs) retains no treated mass. Such a pair identifies
+#'     nothing -- its Hajek mean has an empty numerator -- and must be DROPPED from the cell's moment
+#'     set (keeping it as a zero column under nonzero weight biases the cell ATT toward 0).
+#'   \item \code{keep_common} / \code{m_common}: the cell's kept population is the INTERSECTION of the
+#'     SURVIVING pairs' own masks, with kept-treated mass \code{m_common = E_n[G_g keep_common]}. Every
+#'     surviving moment is built and renormalized on this ONE common sub-population, so all moments
+#'     identify the SAME common-overlap ATT(g,t) -- the paper's common-target overidentification logic
+#'     (Lemma 2.2). Per-pair masks would make each moment target a DIFFERENT kept subpopulation, so the
+#'     weighted combination would mix estimands and the estimand would move with the moment set.
+#'   \item \code{full_trim}: every pair is dead, or the surviving intersection retains no treated mass;
+#'     the cell is unidentified at this trim level (caller returns an NA cell).
+#' }
+#' With \code{trim_keep = NULL} (trimming inactive) this is the all-ones fast path: \code{dead} all
+#' FALSE, \code{keep_common = 1}, \code{m_common = mean(G_g)} -- the byte-identical no-trim convention.
+#'
+#' @param panel_obj panel object (needs \code{cohort_masks}, \code{n})
+#' @param g scalar: treatment cohort
+#' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
+#' @param trim_keep named list of \{0,1\}/logical n-vectors keyed by comparison cohort, or NULL
+#' @param pt_assumption \code{"all"} or \code{"post"}
+#' @return list with \code{dead} (logical H), \code{keep_common} (numeric n), \code{m_common} (scalar),
+#'   \code{full_trim} (logical), \code{active} (trimming requested)
+#' @keywords internal
+#' @noRd
+edid_cell_trim_structure <- function(panel_obj, g, pairs, trim_keep, pt_assumption) {
+  n  <- panel_obj$n
+  H  <- nrow(pairs)
+  Ig <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  .keep <- function(key) {
+    if (is.null(trim_keep) || is.null(trim_keep[[key]])) rep(1, n) else as.numeric(trim_keep[[key]])
+  }
+  keep_inf    <- .keep("Inf")
+  is_self     <- (is.finite(pairs$gp) & pairs$gp == g) | identical(pt_assumption, "post")
+  dead        <- rep(FALSE, H)
+  keep_common <- rep(1, n)
+  if (!is.null(trim_keep)) {
+    own <- vector("list", H)
+    for (j in seq_len(H)) {
+      own[[j]] <- if (is_self[j]) keep_inf else keep_inf * .keep(as.character(pairs$gp[j]))
+      dead[j]  <- mean(Ig * own[[j]]) <= .Machine$double.eps
+    }
+    for (j in which(!dead)) keep_common <- keep_common * own[[j]]
+  }
+  m_common <- mean(Ig * keep_common)
+  list(dead        = dead,
+       keep_common = keep_common,
+       m_common    = m_common,
+       full_trim   = (H > 0L && all(dead)) || m_common <= .Machine$double.eps,
+       active      = !is.null(trim_keep))
+}
+
+# ---------------------------------------------------------------------------
+# Generated outcomes (doubly-robust, n x H matrix)
+# ---------------------------------------------------------------------------
+
+#' Compute doubly-robust generated outcomes for a (g, t) cell
+#'
+#' Returns the n x H matrix of generated outcomes where column j corresponds
+#' to pair j = \eqn{(g'_j, t_{pre,j})} and row i to unit i.  Implements
+#' Eq. (4.4) of Chen, Sant'Anna & Xie (2025).
+#'
+#' For self-comparison pairs (gp == g), the formula reduces to Eq. (3.2):
+#' \deqn{\tilde{Y} = (G_g/\pi_g - r_{g,\infty} G_\infty/\pi_g)(Y_t - Y_{tpre} - m_{\infty,t,tpre})}
+#'
+#' For cross-cohort pairs (gp != g), the doubly-robust generated outcome of
+#' Eq. (4.4) applies:
+#' \deqn{\tilde{Y} = (G_g/\pi_g)\,(Y_t - Y_1 - m_{\infty,t,tpre} - m_{g',tpre,1})
+#'        - \frac{p_g}{p_\infty}\,\frac{G_\infty}{\pi_g}\,(Y_t - Y_{tpre} - m_{\infty,t,tpre})
+#'        - \frac{p_g}{p_{g'}}\,\frac{G_{g'}}{\pi_g}\,(Y_{tpre} - Y_1 - m_{g',tpre,1}),}
+#' where \eqn{m_{\infty,t,tpre} = m_{\infty,t,1} - m_{\infty,tpre,1}}. The
+#' treated-cohort (G=g) term subtracts \emph{both} conditional-mean adjustments,
+#' \eqn{m_{\infty,t,tpre}} and \eqn{m_{g',tpre,1}}: this is what makes the moment
+#' doubly robust, identifying \eqn{ATT(g,t)} when either the outcome models or
+#' the propensity ratios (but not necessarily both) are correctly specified.
+#'
+#' @param panel_obj panel object from \code{prepare_edid_panel()}
+#' @param g scalar: treatment cohort
+#' @param t scalar: target time period
+#' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
+#' @param prop_ratios named list of n-vectors keyed by \code{as.character(gp)}:
+#'   cross-fitted propensity ratios. Must include key \code{"Inf"} for
+#'   \eqn{r_{g,\infty}} and keys for each cross-cohort gp.
+#' @param cond_means named list of n-vectors keyed by
+#'   \code{paste0(gp, "_", period)}: cross-fitted conditional means
+#'   \eqn{E[Y_{period} - Y_1 | G=gp, X]}. Must include never-treated keys.
+#' @param pt_assumption \code{"all"} or \code{"post"}
+#' @param trim_keep optional named list of \{0,1\} n-vectors keyed by comparison cohort (\code{"Inf"} /
+#'   \code{as.character(gp)}): DRDID-style overlap-trim masks; NULL or a missing key keeps all units for that
+#'   comparison. A pair's OWN mask is the product of the masks of the comparisons it uses; the cell's
+#'   COMMON mask is the intersection of the surviving pairs' own masks (see
+#'   \code{edid_cell_trim_structure}), and every surviving column is built/renormalized with that one
+#'   common mask and one common kept mass.
+#' @param return_trim_info logical: if TRUE return \code{list(gen_out, keep, m_kept, dead)} carrying the
+#'   common kept-treated mask + mass per surviving pair (\code{keep}/\code{m_kept} NULL when no unit was
+#'   trimmed) for the EIF's kept-treated-mass centering, plus \code{dead} (logical H, or NULL when no pair
+#'   is dead): pairs whose own mask retains no treated mass, which the caller must DROP from the cell's
+#'   moment set (their columns are zeroed here); if FALSE (default) return the bare n x H matrix.
+#'
+#' @return numeric matrix n x H (entries may be NA if nuisances are NA), or the list above when
+#'   \code{return_trim_info = TRUE}
+#' @keywords internal
+compute_generated_outcomes_cov_edid <- function(
+  panel_obj,
+  g,
+  t,
+  pairs,
+  prop_ratios,
+  cond_means,
+  pt_assumption,
+  trim_keep = NULL,
+  return_trim_info = FALSE
+) {
+  H    <- nrow(pairs)
+  n    <- panel_obj$n
+  ow   <- panel_obj$outcome_wide
+
+  mask_g  <- panel_obj$cohort_masks[[as.character(g)]]
+  pi_g    <- panel_obj$cohort_fractions[[as.character(g)]]
+  Ig      <- as.numeric(mask_g)
+
+  col_t   <- panel_obj$period_to_col[[as.character(t)]]
+  col_1   <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
+
+  # Overlap-trimming keep mask (DRDID-style, UNIT-level): at non-overlap X (propensity ratio or inverse
+  # propensity extreme) the WHOLE per-pair generated outcome is zeroed -- not just a comparison observation's
+  # reweighting term, but ALSO the treated term1, whose conditional means are extrapolated there and whose
+  # efficient weight w(X)=Omega*(X)^{-1}1/... is built from a 1/p-blown-up Omega. Zeroing the whole phi drops
+  # the unit from the moment AND its EIF, so a corrupted weight multiplies zero; the estimand becomes the ATT
+  # on the overlap sub-population (as in DRDID). The trimmed obs STILL contributes to nuisance estimation
+  # (Omega/m/r are unaffected). trim_keep is a named list of {0,1} n-vectors keyed by comparison cohort
+  # ("Inf" / as.character(gp)); NULL or a missing key => keep all (no trimming).
+  #
+  # CELL-LEVEL common-overlap structure (edid_cell_trim_structure):
+  #   (1) DEAD pairs -- a pair whose own mask (keep_inf, or keep_inf*keep_gp for cross pairs) retains no
+  #       treated mass identifies nothing; its column is zeroed here and flagged in `dead` so the caller
+  #       DROPS it from pairs/weights/Omega (a zero column under nonzero weight biases the ATT toward 0).
+  #   (2) COMMON mask -- every SURVIVING pair is masked and renormalized on the INTERSECTION of the
+  #       survivors' own masks, with the ONE common kept-treated mass m_common = E_n[G_g keep_common]. All
+  #       surviving moments then identify the SAME common-overlap ATT(g,t) (Lemma 2.2's common-target
+  #       overidentification logic); per-pair masks/masses would make each moment target a DIFFERENT kept
+  #       subpopulation, mixing estimands across the weighted combination.
+  #   (3) FULL trim -- all pairs dead, or the surviving intersection has no treated mass: every column is
+  #       zeroed and `keep` is returned all-zero (the caller's NA-cell detection).
+  # With trim_keep = NULL everything below is the all-ones fast path, byte-identical to no trimming.
+  trim_info   <- edid_cell_trim_structure(panel_obj, g, pairs, trim_keep, pt_assumption)
+  dead        <- trim_info$dead
+  keep_common <- trim_info$keep_common
+  m_common    <- trim_info$m_common
+  full_trim   <- trim_info$full_trim
+
+  # DRDID-style renormalization, now with the CELL-COMMON kept-treated mass. After the whole phi is zeroed at
+  # non-overlap X, the kept treated units must form a proper Hajek mean: rescale by pi_g / m_common. Zeroing
+  # ALONE under-weights the trimmed-treated term1 and biases the ATT toward 0 (verified); this rescale
+  # restores the common-overlap-ATT scale. The treated and the r-reweighted comparison masses coincide
+  # (E[keep p_g]), so one rescale renormalizes all components consistently. With no trimming
+  # m_common == pi_g => factor 1 (byte-identical).
+  renorm_fac <- if (!full_trim) pi_g / m_common else 0
+
+  # Never-treated indicator (used in all pairs)
+  I_inf   <- as.numeric(panel_obj$never_treated_mask)
+
+  gen_out_mat <- matrix(NA_real_, nrow = n, ncol = H)
+
+  # Overlap-trim record for the EIF's kept-treated-mass centering. The renorm divides every surviving pair's
+  # generated outcome by m_common = E_n[G_g keep_common] (the pi_g in the 1/pi_g terms CANCELS), so the
+  # estimator is a Hajek ratio in m_common -- NOT in pi_g. The EIF therefore centers on
+  # (G_g keep_common / m_common), not (G_g/pi_g); see compute_eif_cov_edid. keep_mat / m_kept_vec record the
+  # EXACT mask + mass the renorm used so the EIF reuses them (no re-deriving => no drift). Defaults
+  # (keep=1, mass=pi_g) = no trimming; dead / fully-trimmed pairs store the sentinel (keep=0, mass=1) so the
+  # centering basis stays well-defined.
+  keep_mat   <- matrix(1, nrow = n, ncol = H)
+  m_kept_vec <- rep(pi_g, H)
+
+  for (j in seq_len(H)) {
+    gp_j    <- pairs$gp[j]
+    tpre_j  <- pairs$tpre[j]
+    col_tp  <- panel_obj$period_to_col[[as.character(tpre_j)]]
+
+    # Dead pair (own mask retains no treated mass) or fully-trimmed cell: the moment identifies nothing.
+    # Zero the column and store the sentinel record; the caller drops dead pairs (full-trim => NA cell).
+    if (full_trim || dead[j]) {
+      gen_out_mat[, j] <- 0
+      keep_mat[, j]    <- 0
+      m_kept_vec[j]    <- 1
+      next
+    }
+
+    # Determine if this is a self-comparison / two-period DiD pair.
+    # Under PT-Post the single moment pair is (gp = Inf, tpre = g-1-anticipation): it is the
+    # two-period DiD (treated vs never-treated) on Y_t - Y_tpre, i.e. the SAME structure as a
+    # self-comparison pair (Eq 3.2), NOT the three-term cross-cohort formula. Route it to the
+    # self/two-period branch so the base period is tpre (= g-1), not period_1. (Without this the
+    # cross branch algebraically collapses to the PT-All moment (Y_t - Y_1 - m_{Inf,t,1}) for later
+    # cohorts g >= 3, biasing PT-Post; g = 2 coincides since g-1 = period_1. H = 1 here, so the
+    # pointwise weight is trivially 1 and Omega needs no PT-Post special case.)
+    is_self <- (is.finite(gp_j) && gp_j == g) || identical(pt_assumption, "post")
+
+    if (is_self) {
+      # -----------------------------------------------------------------
+      # Self-comparison pair (gp == g): uses never-treated as comparison
+      # Eq. (3.2): phi = (G_g/pi_g - r[g,Inf]*G_Inf/pi_g) *
+      #                   (Y_t - Y_tpre - m_{Inf,t,tpre}(X))
+      # -----------------------------------------------------------------
+      r_inf <- prop_ratios[["Inf"]]
+      # m_{Inf,t,tpre}(X) = E[Y_t - Y_tpre | G=Inf, X]
+      #                    = E[Y_t - Y_1 | G=Inf, X] - E[Y_tpre - Y_1 | G=Inf, X]
+      m_inf_t  <- cond_means[[paste0("Inf_", t)]]
+      m_inf_tp <- cond_means[[paste0("Inf_", tpre_j)]]
+
+      if (is.null(r_inf) || is.null(m_inf_t) || is.null(m_inf_tp)) {
+        warning(sprintf(
+          "compute_generated_outcomes_cov_edid: missing nuisance for self-pair (gp=%g, tpre=%g).",
+          gp_j, tpre_j
+        ))
+        next
+      }
+
+      m_inf_diff <- m_inf_t - m_inf_tp  # m_{Inf,t,tpre}(X)
+      y_diff     <- ow[, col_t] - ow[, col_tp]  # Y_t - Y_tpre
+
+      # Self-pair: zero the WHOLE phi_j (incl. the treated Ig term) at non-overlap X -- using the CELL-COMMON
+      # mask, so this moment is masked exactly like every other surviving moment in the cell -- so a corrupted
+      # efficient weight there multiplies zero, then renormalize by the common kept-treated mass.
+      phi_j <- (keep_common * (Ig / pi_g - r_inf * I_inf / pi_g) * (y_diff - m_inf_diff)) * renorm_fac
+
+    } else {
+      # -----------------------------------------------------------------
+      # Cross-cohort pair (gp != g): full three-term Eq. (4.4)
+      # phi = (G_g/pi_g) * (Y_t - Y_1 - m_{Inf,t,1}(X) - m_{g',tpre,1}(X))
+      #     - r[g,Inf] * (G_Inf/pi_g) * (Y_t - Y_tpre - m_{Inf,t,tpre}(X))
+      #     - r[g,g']  * (G_g'/pi_g)  * (Y_tpre - Y_1 - m_{g',tpre,1}(X))
+      # -----------------------------------------------------------------
+      gp_key <- as.character(gp_j)
+
+      # Propensity ratios
+      r_inf <- prop_ratios[["Inf"]]
+      r_gp  <- prop_ratios[[gp_key]]
+
+      # Conditional means
+      m_inf_t  <- cond_means[[paste0("Inf_", t)]]
+      m_inf_tp <- cond_means[[paste0("Inf_", tpre_j)]]
+      m_gp_tp  <- cond_means[[paste0(gp_key, "_", tpre_j)]]
+
+      if (is.null(r_inf) || is.null(r_gp) ||
+          is.null(m_inf_t) || is.null(m_inf_tp) || is.null(m_gp_tp)) {
+        warning(sprintf(
+          "compute_generated_outcomes_cov_edid: missing nuisance for cross-pair (gp=%g, tpre=%g).",
+          gp_j, tpre_j
+        ))
+        next
+      }
+
+      # Comparison cohort indicator
+      if (is.infinite(gp_j)) {
+        I_gp <- I_inf
+      } else {
+        mask_gp <- panel_obj$cohort_masks[[gp_key]]
+        if (is.null(mask_gp)) {
+          warning(sprintf("compute_generated_outcomes_cov_edid: no mask for gp=%g", gp_j))
+          next
+        }
+        I_gp <- as.numeric(mask_gp)
+      }
+
+      # m_{Inf,t,tpre}(X) = m_{Inf,t,1}(X) - m_{Inf,tpre,1}(X)
+      m_inf_diff <- m_inf_t - m_inf_tp
+
+      # Outcome differences
+      Y_t      <- ow[, col_t]
+      Y_1      <- ow[, col_1]
+      Y_tpre   <- ow[, col_tp]
+
+      # Three-term doubly-robust formula matching Eq. (4.4) of the paper:
+      # Y_tilde = (G_g/pi_g)(Y_t - Y_1 - m_{inf,t,t'}(X) - m_{g',t',1}(X))
+      #         - r_{g,inf}(G_inf/pi_g)(Y_t - Y_t' - m_{inf,t,t'}(X))
+      #         - r_{g,g'}(G_{g'}/pi_g)(Y_t' - Y_1 - m_{g',t',1}(X))
+      term1 <- (Ig / pi_g) * (Y_t - Y_1 - m_inf_diff - m_gp_tp)
+      term2 <- r_inf * (I_inf / pi_g) * (Y_t - Y_tpre - m_inf_diff)
+      term3 <- r_gp * (I_gp / pi_g) * (Y_tpre - Y_1 - m_gp_tp)
+
+      # Overlap trim is UNIT-level (the WHOLE generated outcome), not per comparison term: at non-overlap X the
+      # treated term1's conditional means are extrapolated AND the efficient weight w(X) = Omega*(X)^{-1}1/... is
+      # built from a 1/p-blown-up Omega, so the entire phi_j (incl. the treated term1) must be zeroed there --
+      # otherwise the treated unit stays in the estimand carrying a corrupted weight. keep_common = 0 drops the
+      # unit from EVERY surviving moment AND its EIF, so any corrupted weight multiplies zero; the common
+      # rescale (DRDID-style) then makes the kept units a proper Hajek mean on the shared kept population.
+      phi_j <- (keep_common * (term1 - term2 - term3)) * renorm_fac
+    }
+
+    # Record the common kept-treated mask + mass the renorm used (the dead/full-trim sentinel was stored at
+    # the top of the loop): the EIF centering basis reads EXACTLY these.
+    keep_mat[, j] <- keep_common
+    m_kept_vec[j] <- m_common
+
+    gen_out_mat[, j] <- phi_j
+  }
+
+  if (isTRUE(return_trim_info)) {
+    # keep/m_kept are non-NULL ONLY when the trim actually bit (trim_keep requested AND the common mask --
+    # or a dead/full-trim sentinel column -- has a zero). If trimming was requested but bit nothing
+    # (keep_common == 1 everywhere, no dead pair), return NULL so compute_eif_cov_edid takes its
+    # BYTE-IDENTICAL no-trim path (G_g/pi_g) -- the centering is mathematically equal there but differs at
+    # ~1e-15 in FP, which would needlessly perturb good-overlap baselines. `dead` is reported independently
+    # (non-NULL iff some pair died) so the caller can drop dead pairs even when the SURVIVORS' common mask
+    # is all-ones (keep = NULL then: the surviving moments are effectively untrimmed).
+    trimmed <- !is.null(trim_keep) && (full_trim || any(keep_common < 0.5))
+    return(list(gen_out = gen_out_mat,
+                keep    = if (trimmed) keep_mat   else NULL,
+                m_kept  = if (trimmed) m_kept_vec else NULL,
+                dead    = if (!is.null(trim_keep) && any(dead)) dead else NULL))
+  }
+  gen_out_mat
+}
+
+# ---------------------------------------------------------------------------
+# Conditional Omega* (H x H) via Nadaraya-Watson kernel
+# ---------------------------------------------------------------------------
+
+#' Cell-invariant Nadaraya-Watson kernel weights (bandwidths + n x n weight matrix)
+#'
+#' The NW bandwidths and the n x n kernel weight matrix K depend ONLY on the full covariate matrix, so they are
+#' identical across every (g,t) cell. Built once and reused (see \code{fit_edid_cells}) instead of rebuilt per cell.
+#' @param X_mat n x d numeric covariate matrix.
+#' @param bw optional length-d bandwidth vector; computed via \code{stats::bw.nrd0} per column when NULL.
+#' @return list with \code{bw} (length-d bandwidths) and \code{K} (n x n product-Gaussian kernel weight matrix).
+#' @keywords internal
+build_kernel_weights_edid <- function(X_mat, bw = NULL) {
+  X_mat <- as.matrix(X_mat); n <- nrow(X_mat); d <- ncol(X_mat)
+  # Centering avoids overflow in ||x_i - x_j||^2 when all covariates are large constants
+  # (e.g., 1e308): distances are shift-invariant, so pairwise kernels are unchanged but the
+  # inner-products no longer suffer from inf - inf cancellations.
+  Xc <- sweep(X_mat, 2L, apply(X_mat, 2L, stats::median), "-")
+  if (is.null(bw)) {
+    bw <- numeric(d)
+    for (k in seq_len(d)) {
+      h_k <- tryCatch(stats::bw.nrd0(Xc[, k]), error = function(e) 0)
+      if (!is.finite(h_k) || h_k < .Machine$double.eps) {
+        warning(sprintf("compute_omega_star_cov_edid: bandwidth for covariate %d is 0 or NA; using h=1.", k))
+        h_k <- 1
+      }
+      bw[k] <- h_k
+    }
+  }
+  # Product-Gaussian NW weights K[i,l] = prod_k dnorm((X_ik - X_lk)/bw_k)/bw_k
+  #   = exp(-0.5 * sum_k ((X_ik - X_lk)/bw_k)^2) / prod_k(bw_k * sqrt(2*pi)).
+  # Built via the squared-distance identity ||a-b||^2 = ||a||^2 + ||b||^2 - 2 a.b on the
+  # bandwidth-scaled covariates Xs = X/bw: ONE BLAS-3 tcrossprod replaces the d elementwise
+  # outer()+dnorm passes (8-13x faster build; agrees with the per-dim form to ~1e-13, the FP
+  # reassociation of exp(sum_k .) vs prod_k exp(.); the per-unit Omega inversion is well-
+  # conditioned (relative eigenfloor) so this does not perturb the estimates beyond ~1e-13).
+  Xs   <- sweep(Xc, 2L, bw, "/")
+  rs   <- rowSums(Xs * Xs)
+  D2   <- outer(rs, rs, "+") - 2 * tcrossprod(Xs)
+  if (!all(is.finite(D2))) stop("build_kernel_weights_edid: non-finite kernel squared distances; consider rescaling xformla covariates.", call. = FALSE)
+  D2[D2 < 0] <- 0                       # clamp tiny negative round-off (near-duplicate rows / diagonal)
+  K_mat <- exp(-0.5 * D2) / prod(bw * sqrt(2 * pi))
+  if (!all(is.finite(K_mat))) stop("build_kernel_weights_edid: non-finite kernel weights; consider rescaling xformla covariates.", call. = FALSE)
+  list(bw = bw, K = K_mat)
+}
+
+#' Compute the averaged conditional covariance matrix Omega*(X)
+#'
+#' Estimates \eqn{\Omega^* = n^{-1} \sum_i \hat\Omega^*(X_i)} using a faithful plug-in of Eq. (3.12) from
+#' Chen, Sant'Anna & Xie (2025). Each (j,k)-th element of Omega*(X) is estimated using Nadaraya-Watson kernel
+#' smoothing of outcome-change covariances within specific cohorts, scaled by propensity scores.
+#'
+#' \strong{Computational complexity}: O(n^2 * H^2). The cell-invariant kernel weight matrix is built once by
+#' \code{fit_edid_cells} and passed via \code{K_mat}; a standalone call builds it internally.
+#'
+#' @param panel_obj panel object (needs \code{covariate_matrix}, \code{outcome_wide}, \code{cohort_masks},
+#'   \code{never_treated_mask})
+#' @param g scalar: target treatment cohort
+#' @param t scalar: target time period
+#' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
+#' @param prop_ratios named list of n-vectors: cross-fitted propensity ratios
+#' @param cond_means named list of n-vectors: cross-fitted conditional means
+#' @param inv_propensities named list of n-vectors of conditional inverse propensities, or NULL
+#' @param bw numeric vector length d or NULL (auto from \code{bw.nrd0})
+#' @param K_mat optional precomputed n x n kernel weight matrix (cell-invariant); built internally when NULL
+#' @param return_pointwise logical: also return the per-unit Omega*(X_i) array (for pointwise efficient weights)
+#' @param kp_cache optional environment for memoizing the cell-invariant per-group kernel slices
+#'   (\code{K_mat[, idx]} + row sums). Pass a shared env to reuse the slices across the array build
+#'   (\code{compute_omega_star_kernel_fast_edid}) and this psi pass within a cell; NULL builds a local one.
+#' @param keep optional \{0,1\}/logical n-vector: the cell-common overlap-trim mask the generated
+#'   outcomes were built with (\code{edid_cell_trim_structure}'s \code{keep_common}). When supplied,
+#'   every Eq. (3.12) prefactor is zeroed at trimmed units, so Omega*(X) (and the psi_Omega channel)
+#'   estimate the covariance of the moments ACTUALLY used: the trimmed moment is
+#'   \eqn{keep_i \cdot renorm \cdot \phi_i}, hence \eqn{\Omega^{trim}(X_i) = keep_i\,renorm^2\,
+#'   \Omega(X_i)} -- the cell-common scalar \eqn{renorm^2} cancels in the (scale-invariant) weights
+#'   and is omitted; the per-unit \eqn{keep_i} does not and is applied here. Without it, the
+#'   1/p prefactors are largest exactly at the units trimming removed, so the weight and psi
+#'   channels were driven by observations the moments no longer contain (\code{trim_level} did not
+#'   reach the psi channel). \code{NULL} (default) is byte-identical to the previous behavior.
+#'
+#' @return numeric matrix H x H (positive semi-definite), or a list with the per-unit array when
+#'   \code{return_pointwise = TRUE}
+#' @keywords internal
+compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
+                                        prop_ratios, cond_means,
+                                        inv_propensities = NULL,
+                                        bw = NULL,
+                                        K_mat = NULL,
+                                        return_pointwise = FALSE,
+                                        psi_qw = NULL,
+                                        kp_cache = NULL,
+                                        keep = NULL) {
+  X_mat <- panel_obj$covariate_matrix
+  n     <- nrow(X_mat)
+  d     <- ncol(X_mat)
+  H     <- nrow(pairs)
+  ow    <- panel_obj$outcome_wide
+
+  # Performance note (not a correctness condition): the kernel loop is
+  # O(n^2 * H^2), which is only a concern for large n. Surface it as an
+  # informational message in interactive sessions, silenceable via
+  # options(edid_quiet = TRUE); never as a warning (n in the thousands is
+  # ordinary for DiD and does not indicate anything wrong with the results).
+  # (snake_case option name; the legacy dotted `edid.quiet` is still honored for back-compat.)
+  if (n > 5000L && interactive() && !isTRUE(getOption("edid_quiet", getOption("edid.quiet")))) {
+    message(sprintf(
+      "compute_omega_star_cov_edid: n=%d; the O(n^2) kernel loop may be slow.", n
+    ))
+  }
+
+  # -----------------------------------------------------------------------
+  # Steps 1-2: bandwidths + the n x n kernel weight matrix K_mat[i, ell]. Both are CELL-INVARIANT (they depend
+  # only on the full covariate matrix), so fit_edid_cells builds them ONCE and passes K_mat in; only a standalone
+  # call (K_mat = NULL) builds them here. Byte-identical values either way -- this just hoists the O(d*n^2) build.
+  # -----------------------------------------------------------------------
+  if (is.null(K_mat)) {
+    kk    <- build_kernel_weights_edid(X_mat, bw)
+    bw    <- kk$bw
+    K_mat <- kk$K
+  }
+
+  # -----------------------------------------------------------------------
+  # Step 3: Precompute outcome change residuals for each cohort
+  # For Eq. (3.12) we need:
+  #   Cov(Y_t - Y_1, Y_t - Y_1 | G=g, X)          [treated group]
+  #   Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X) [never-treated]
+  #   Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)      [cross-term, self-pairs]
+  #   Cov(Y_{t'_j} - Y_1, Y_{t'_k} - Y_1 | G=g'_j, X) [cross-cohort]
+  # -----------------------------------------------------------------------
+  col_t <- panel_obj$period_to_col[[as.character(t)]]
+  col_1 <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
+
+  mask_g   <- panel_obj$cohort_masks[[as.character(g)]]
+  mask_inf <- panel_obj$never_treated_mask
+
+  # -----------------------------------------------------------------------
+  # Omega* scaling terms: 1/p_g(X), 1/p_inf(X), 1/p_{g'}(X)
+  # Paper Eq. (3.12) uses conditional propensity scores as scalar
+  # pre-factors on each conditional covariance term.
+  # When inv_propensities is provided (from estimate_all_inverse_propensities),
+  # use the estimated conditional values. Otherwise fall back to unconditional.
+  # -----------------------------------------------------------------------
+  pi_g   <- panel_obj$cohort_fractions[[as.character(g)]]
+  pi_inf <- sum(mask_inf) / n
+
+  if (!is.null(inv_propensities)) {
+    inv_pg_vec   <- inv_propensities[[as.character(g)]]
+    inv_pinf_vec <- inv_propensities[["Inf"]]
+    if (is.null(inv_pg_vec))   inv_pg_vec   <- rep(1 / pi_g, n)
+    if (is.null(inv_pinf_vec)) inv_pinf_vec <- rep(1 / pi_inf, n)
+  } else {
+    inv_pg_vec   <- rep(1 / pi_g, n)
+    inv_pinf_vec <- rep(1 / pi_inf, n)
+  }
+  # Cell-common overlap-trim mask: zero every prefactor at trimmed units so Omega* (and the psi
+  # channel below) integrate only the population the trimmed moments actually use. The cov terms
+  # are nuisance fits and stay full-sample (trimmed obs still inform the smoother); each Eq.(3.12)
+  # term carries EXACTLY one prefactor, so scaling the prefactor vectors applies keep_i once per term.
+  kv <- NULL
+  if (!is.null(keep)) {
+    kv <- as.numeric(keep)
+    inv_pg_vec   <- inv_pg_vec * kv
+    inv_pinf_vec <- inv_pinf_vec * kv
+  }
+
+  # Kernel conditional covariance Cov_K(A,B | X_i) = E_K[AB|X_i] - E_K[A|X_i] E_K[B|X_i], with E_K[.|X_i]=(K_i .)/(K_i 1).
+  # The cell-INVARIANT kernel pieces (K_group = K_mat[,idx], K_sums = rowSums) depend ONLY on the group mask, so
+  # precompute them ONCE per distinct mask (get_kp, memoized in kpiece) instead of re-slicing + re-summing inside
+  # the O(H^2) (j,k) loop. kernel_cond_cov_kp() centers (A,B) by their group means (shift-invariant -> exact, avoids
+  # catastrophic cancellation) and BATCHES the three weighted sums into ONE matrix product (one dgemm). Algebraically
+  # identical to the per-call weighted-sums form; never materializes the n x n_group residual matrices.
+  # kp_cache (when supplied by fit_edid_cells) is SHARED with the array build so each cell-invariant slice
+  # K_mat[,idx] is cut once per cell, not once per pass; the entries are byte-identical across passes.
+  kpiece <- if (is.null(kp_cache)) new.env(parent = emptyenv()) else kp_cache
+  get_kp <- function(group_mask, key) {
+    if (exists(key, envir = kpiece, inherits = FALSE)) return(get(key, envir = kpiece))
+    idx <- which(group_mask)
+    if (length(idx) < 2L) {
+      kp <- list(ok = FALSE)
+    } else {
+      Kg <- K_mat[, idx, drop = FALSE]; Ks <- rowSums(Kg); Ks[Ks < 1e-15] <- NA_real_
+      kp <- list(ok = TRUE, idx = idx, Kg = Kg, Ks = Ks)
+    }
+    assign(key, kp, envir = kpiece)
+    kp
+  }
+  kernel_cond_cov_kp <- function(A, B, kp) {
+    if (!isTRUE(kp$ok)) return(rep(0, n))
+    idx <- kp$idx
+    A_c <- A[idx] - mean(A[idx])           # center (shift-invariant) for numerical stability
+    B_c <- B[idx] - mean(B[idx])
+    # EXACT original arithmetic (three separate matrix-vector products, same accumulation order): a single dgemm
+    # over cbind(A_c,B_c,A_c*B_c) reorders the BLAS summation and the kernel-Omega inversion amplifies that into a
+    # ~1e-3 shift in the validated output, so we keep the three dgemv. The win is the cached Kg/Ks (not rebuilt per (j,k)).
+    mu_A  <- drop(kp$Kg %*% A_c) / kp$Ks              # E_K[A - Abar | X_i]
+    mu_B  <- drop(kp$Kg %*% B_c) / kp$Ks              # E_K[B - Bbar | X_i]
+    mu_AB <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks      # E_K[(A-Abar)(B-Bbar) | X_i]
+    cov_vals <- mu_AB - mu_A * mu_B
+    cov_vals[is.na(cov_vals)] <- 0
+    cov_vals
+  }
+
+  # -----------------------------------------------------------------------
+  # Step 4: Build Omega* by computing each (j,k) element via Eq. (3.12)
+  # then averaging over units
+  # -----------------------------------------------------------------------
+  Omega_hat <- matrix(0, nrow = H, ncol = H)
+  # Per-unit Omega*(X_i) array (n x H x H), built only when requested (paper's
+  # pointwise efficient weights use Omega*(X_i)^{-1} per observation).
+  Omega_array <- if (return_pointwise) array(0, dim = c(n, H, H)) else NULL
+
+  # Precompute outcome changes we'll need repeatedly
+  Y_t_minus_Y1 <- ow[, col_t] - ow[, col_1]
+
+  # Cell-fixed kernel pieces (the target cohort g and never-treated masks recur in every (j,k) term), and the
+  # CELL-CONSTANT Term 1 of Eq. (3.12): Cov_K(Y_t-Y_1, Y_t-Y_1 | G=g) depends on neither j nor k, so compute it
+  # ONCE here instead of H^2 times in the double loop below. Identical value.
+  kp_g   <- get_kp(mask_g,   as.character(g))
+  kp_inf <- get_kp(mask_inf, "Inf")
+  term1_const <- inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_t_minus_Y1, kp_g)
+
+  # ---- Weight-estimation channel (Sigma_Omega), DATA channel, opt-in via psi_qw. ----
+  # psi_Omega,l = -sum_{terms} coup * sum_i pref_i * omega^c_il * [(A_l-muA_i)(B_l-muB_i) - C_i] : the NW local-cov
+  # influence function of the kernel Omega estimator (04_psiomega_fiveterm_spec.md). The per-entry coupling coup
+  # is the eigen-floor-aware Daleckii-Krein gradient C = dtheta/dOmega of the FLOORED inverse when psi_qw$C is
+  # supplied (per-unit n x H x H array for "efficient", pooled H x H for "averaged"), else the smooth adjoint
+  # q_j w_k (+ q_k w_j off-diagonal). The smooth adjoint is exact only while no eigenvalue floors; the floor
+  # demonstrably binds in high-H cells (most eigenvalues at the relative floor), where the floored directions do
+  # not respond to dOmega and the smooth coupling mis-scales the channel. Eq.(3.12) Term 1 (cell-constant) sums
+  # to (q'1)(w'1) = 0 under the smooth adjoint and is skipped there; under the DK coupling 1'C1 != 0 wherever
+  # the floor binds, so its contribution is added explicitly below (exactly zero when nothing floors).
+  # Vectorized: with KK[i,l] = pref_i Kg[i,l]/Ks_i, the inner sum_i is
+  #   A_c_l B_c_l S0[l] - A_c_l SB[l] - B_c_l SA[l] + SC[l],  S0=colSums(KK), SA=mu_A'KK, SB=mu_B'KK, SC=(mu_A mu_B - C)'KK.
+  # Sigma_Omega accumulation: averaged (pooled; return_pointwise=FALSE) OR efficient (pointwise per-unit; rides
+  # the return_pointwise array pass). Inert + Omega/array byte-identical when psi_qw is NULL.
+  do_psi <- !is.null(psi_qw)
+  pw_psi <- do_psi && isTRUE(psi_qw$pointwise)
+  psi_omega <- if (do_psi) numeric(n) else NULL
+  cpl <- if (do_psi) new.env(parent = emptyenv()) else NULL   # coupled_C per inv_p group, for the analytic inv_p Gamma
+  C_arr <- NULL; C_pooled <- FALSE; .shr <- 1
+  if (do_psi) {
+    if (pw_psi) { Q_mat <- psi_qw$Q; W_mat <- psi_qw$W } else { q_vec <- psi_qw$q; w_vec <- psi_qw$w }
+    # Eigen-floor-aware coupling gradient: preferred over the smooth Q/W or q/w adjoint when present. A 3D array
+    # (n x H x H) is the per-unit (efficient) gradient; a 2D matrix (H x H) is the pooled (averaged) gradient,
+    # broadcast as a constant coupling across cells (same convention as the sieve channel).
+    C_arr    <- psi_qw$C
+    C_pooled <- !is.null(C_arr) && length(dim(C_arr)) == 2L
+    # Leading-order shrinkage correction. The per-unit Omega is regularized to Omega^shrunk = (1-lam)Omega_i +
+    # lam*Omega_bar before inversion, and the adjoint/coupling is computed on Omega^shrunk; the covariance term
+    # enters Omega_i with coefficient (1-lam), so dtheta = (1-lam) * coup : dOmega_i. Omitting the factor
+    # over-states the channel wherever lam is non-negligible (lam ~ 0.5 is common in floored designs). The
+    # data-driven dlam and dOmega_bar terms are higher-order and omitted, as in the sieve channel. Pooled
+    # (averaged) callers pass no lambda => .shr = 1.
+    .lam_shr <- suppressWarnings(as.numeric(psi_qw$lambda))
+    if (length(.lam_shr) != 1L || !is.finite(.lam_shr)) .lam_shr <- 0
+    .shr <- min(1, max(0, 1 - .lam_shr))
+  }
+  # Per-(vector, group) conditional-mean cache: each centered difference vector's E_K[.|X] is recomputed for
+  # EVERY (j,k) it appears in (e.g. Y_t-Y_1 in group g recurs in every self pair). Memoize the centered vector and
+  # its raw kernel mean once per (vkey, gkey) -- the SAME caching kernel_fast already uses -- then term_psi reads
+  # them. The raw mu is cached (NOT bad-zeroed); the bad-handling stays inside term_psi, so the arithmetic and
+  # accumulation order are byte-identical to the per-call form (only the redundant H^2 -> H mu matmuls are removed).
+  # When fit_edid_cells supplies the per-cell kp_cache it ALREADY carries the array pass's "mu:"/"cov:" entries
+  # (compute_omega_star_kernel_fast_edid caches the SAME expressions on the SAME shared kp slices, so the values
+  # are byte-identical); read those instead of recomputing, falling back to the local computation on a miss
+  # (e.g. the "kernel_orig" array build, the averaged pass's BLAS-batched term-2/5, or a standalone call).
+  .muc <- if (is.null(kp_cache)) new.env(parent = emptyenv()) else kp_cache
+  cmean_psi <- function(v, vkey, kp, gkey) {
+    key <- paste0("mu:", vkey, "@", gkey)
+    if (exists(key, envir = .muc, inherits = FALSE)) {
+      hit <- get(key, envir = .muc)   # array-pass entries store the centered vector as $vc, local ones as $v_c
+      return(list(v_c = if (!is.null(hit$vc)) hit$vc else hit$v_c, mu = hit$mu))
+    }
+    idx <- kp$idx; v_c <- v[idx] - mean(v[idx]); mu <- drop(kp$Kg %*% v_c) / kp$Ks
+    out <- list(v_c = v_c, mu = mu); assign(key, out, envir = .muc); out
+  }
+  # Kernel conditional covariance for term_psi, memoized under the array pass's "cov:" keys: T3/T4 recur across
+  # the (j,k) loop (each depends on a single index), and under the default fast build every five-term covariance
+  # was ALREADY computed by the array pass. cv is exactly ccov's value (raw-mu cross-moment, then NA -> 0); the
+  # bad-row zeroing of mu_A/mu_B stays in term_psi, so accumulation is byte-identical to the inline form.
+  .cov_psi <- function(A_c, B_c, mu_A, mu_B, kp, akey, bkey, gkey) {
+    ck  <- paste0("cov:", akey, "@", gkey, "|", bkey, "@", gkey)
+    if (exists(ck, envir = .muc, inherits = FALSE)) return(get(ck, envir = .muc))
+    ck2 <- paste0("cov:", bkey, "@", gkey, "|", akey, "@", gkey)   # cov is FP-symmetric in (A, B): A_c*B_c == B_c*A_c exactly
+    if (exists(ck2, envir = .muc, inherits = FALSE)) return(get(ck2, envir = .muc))
+    cv <- drop(kp$Kg %*% (A_c * B_c)) / kp$Ks - mu_A * mu_B
+    cv[is.na(cv)] <- 0
+    assign(ck, cv, envir = .muc); cv
+  }
+  term_psi <- function(A, B, kp, pref_vec, coup, akey, bkey, gkey, grp_sign = 1) {
+    if (!isTRUE(kp$ok)) return(invisible(NULL))
+    if (length(coup) == 1L && coup == 0) return(invisible(NULL))   # pooled all-zero coupling: nothing to add
+    idx <- kp$idx; grp_key <- gkey
+    ca <- cmean_psi(A, akey, kp, gkey); cb <- cmean_psi(B, bkey, kp, gkey)
+    A_c <- ca$v_c; B_c <- cb$v_c; mu_A <- ca$mu; mu_B <- cb$mu
+    cov_vals <- .cov_psi(A_c, B_c, mu_A, mu_B, kp, akey, bkey, gkey)
+    bad <- is.na(kp$Ks); mu_A[bad] <- 0; mu_B[bad] <- 0
+    scal <- pref_vec / kp$Ks; scal[bad] <- 0
+    # coup is SCALAR (pooled/averaged: q_j w_k, constant across units) or LENGTH-n (pointwise/efficient: Q[,j] W[,k],
+    # per-unit). For the pointwise case fold the per-unit coup into scal so each unit i carries its own q_i,w_i; the
+    # pooled case keeps the late scalar multiply (oc), which is byte-identical to the validated averaged path.
+    # Memory-optimized either way: fold scal into the left factor and crossprod the CACHED kp$Kg in ONE matmul,
+    # never materializing KK = scal*Kg (an n x n_group transient ~0.8 GB at n=1e4 with a dominant group).
+    pw_coup <- length(coup) > 1L
+    sc <- if (pw_coup) scal * coup else scal
+    Smat <- crossprod(cbind(sc, mu_A * sc, mu_B * sc, (mu_A * mu_B - cov_vals) * sc), kp$Kg)  # 4 x n_group
+    S0 <- Smat[1, ]; SA <- Smat[2, ]; SB <- Smat[3, ]; SC <- Smat[4, ]
+    oc <- if (pw_coup) 1 else coup
+    psi_omega[idx] <<- psi_omega[idx] - oc * (A_c * B_c * S0 - A_c * SB - B_c * SA + SC)
+    # coupled_C for the inv_p Gamma: dOmega/dbeta_c collects sign_term * coup * C_i (per-unit cov) for the term's inv_p
+    # group c. dtheta_w/dbeta_c = -(1/n) crossprod(B_masked, coupled_C_c). (grp_sign*coup)*cov_vals is length-n in both
+    # the scalar (broadcast) and pointwise (per-unit) cases, so this expression is scheme-agnostic.
+    # Under overlap trimming the prefactor is keep_i * s_c,i, so dOmega_i/ds_c,i carries keep_i: fold kv into the
+    # cov side ONCE here (pref_vec already carries it for the data channel above).
+    if (!is.null(grp_key)) {
+      cur <- if (exists(grp_key, envir = cpl, inherits = FALSE)) get(grp_key, envir = cpl) else numeric(n)
+      assign(grp_key, cur + (grp_sign * coup) * (if (is.null(kv)) cov_vals else kv * cov_vals), envir = cpl)
+    }
+    invisible(NULL)
+  }
+
+  # Eq.(3.12) Term 1 channel (cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), prefactor +1/p_g(X)): it appears in
+  # EVERY (j,k) entry, so its coupling is the SUM of the per-entry couplings -- 0 exactly under the smooth
+  # adjoint ((q'1)(w'1) = 0, the cancellation this channel used to rely on), but -1'C1 != 0 under the DK
+  # coupling wherever the eigen floor binds (measured |1'C1|/||C||_F ~ 0.2-0.5 there). Added ONCE with the
+  # summed coupling; the relative gate makes it an exact no-op when nothing floors (1'C1 = 0 then, up to FP).
+  if (do_psi && !is.null(C_arr)) {
+    tot_coup <- if (C_pooled) -sum(C_arr) * .shr else -rowSums(C_arr, dims = 1L) * .shr
+    mxC <- suppressWarnings(max(abs(C_arr)))
+    if (is.finite(mxC) && mxC > 0 && max(abs(tot_coup)) > 1e-10 * mxC)
+      term_psi(Y_t_minus_Y1, Y_t_minus_Y1, kp_g, inv_pg_vec, tot_coup,
+               "w", "w", as.character(g), 1)                                  # T1 channel
+  }
+
+  for (j in seq_len(H)) {
+    gp_j   <- pairs$gp[j]
+    tpre_j <- pairs$tpre[j]
+    col_tj <- panel_obj$period_to_col[[as.character(tpre_j)]]
+
+    is_self_j <- is.finite(gp_j) && gp_j == g
+
+    Y_t_minus_Ytj <- ow[, col_t] - ow[, col_tj]
+    Y_tj_minus_Y1 <- ow[, col_tj] - ow[, col_1]
+
+    for (k in j:H) {
+      gp_k   <- pairs$gp[k]
+      tpre_k <- pairs$tpre[k]
+      col_tk <- panel_obj$period_to_col[[as.character(tpre_k)]]
+
+      is_self_k <- is.finite(gp_k) && gp_k == g
+
+      Y_t_minus_Ytk <- ow[, col_t] - ow[, col_tk]
+      Y_tk_minus_Y1 <- ow[, col_tk] - ow[, col_1]
+
+      # Sigma_Omega entry coupling for (j,k); entry (k,j) shares the IF, hence the doubled off-diagonal.
+      # Preferred: the eigen-floor-aware Daleckii-Krein gradient C (pooled scalar -C[j,k] or per-unit length-n
+      # -C[,j,k]; the sign maps dtheta = C : dOmega onto this channel's +sym(q w') convention, to which it
+      # reduces exactly when nothing floors). Fallback (no C): the smooth adjoint q_j w_k. The (1-lam)
+      # shrinkage-IF factor .shr scales every term (1 when the caller passes no lambda).
+      coup <- if (!do_psi) 0 else if (C_pooled) {
+        if (j == k) -C_arr[j, j] else -2 * C_arr[j, k]
+      } else if (!is.null(C_arr)) {
+        if (j == k) -C_arr[, j, j] else -2 * C_arr[, j, k]
+      } else if (pw_psi) {
+        if (j == k) Q_mat[, j] * W_mat[, j] else Q_mat[, j] * W_mat[, k] + Q_mat[, k] * W_mat[, j]
+      } else {
+        if (j == k) q_vec[j] * w_vec[j] else q_vec[j] * w_vec[k] + q_vec[k] * w_vec[j]
+      }
+      if (do_psi) coup <- coup * .shr
+
+      # Eq. (3.12) term by term, using conditional 1/p_g(X):
+      # Term 1: cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), hoisted above the loops.
+      term1 <- term1_const
+
+      # Term 2: (1/p_inf(X)) * Cov(Y_t - Y_{t'_j}, Y_t - Y_{t'_k} | G=Inf, X)
+      # Speed: in psi mode the per-unit covariance feeds only the (discarded) Omega; term_psi recomputes the same
+      # kernel cov it needs, so skip the cov computation here when do_psi (the caller uses psi / coupled_C only).
+      term2 <- 0
+      if (!do_psi) term2 <- inv_pinf_vec * kernel_cond_cov_kp(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf)
+      if (do_psi) term_psi(Y_t_minus_Ytj, Y_t_minus_Ytk, kp_inf, inv_pinf_vec, coup,
+                           paste0("u", col_tj), paste0("u", col_tk), "Inf", 1)   # T2 channel
+
+      # Term 3: -1{g == g'_j}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_j} - Y_1 | G=g, X)
+      term3 <- 0
+      if (is_self_j) {
+        if (!do_psi) term3 <- -inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g)
+        if (do_psi) term_psi(Y_t_minus_Y1, Y_tj_minus_Y1, kp_g, -inv_pg_vec, coup,
+                             "w", paste0("v", col_tj), as.character(g), -1)  # T3 channel
+      }
+
+      # Term 4: -1{g == g'_k}/p_g(X) * Cov(Y_t - Y_1, Y_{t'_k} - Y_1 | G=g, X)
+      term4 <- 0
+      if (is_self_k) {
+        if (!do_psi) term4 <- -inv_pg_vec * kernel_cond_cov_kp(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g)
+        if (do_psi) term_psi(Y_t_minus_Y1, Y_tk_minus_Y1, kp_g, -inv_pg_vec, coup,
+                             "w", paste0("v", col_tk), as.character(g), -1)  # T4 channel
+      }
+
+      # Term 5: 1{g'_j == g'_k}/p_{g'_j}(X) * Cov(Y_{t'_j}-Y_1, Y_{t'_k}-Y_1 | G=g'_j, X)
+      # g'_j is the TRUE comparison-cohort label (= g for self-pairs). Conditioning must be on
+      # G=g'_j with prefactor 1/p_{g'_j}, exactly as printed in Eq (3.12) and as the no-covariate
+      # path does (edid-nocov.R term_d at gp_j==gp_k). Do NOT remap self-pairs to G=Inf: that
+      # conditions term5 on the never-treated pre-period covariance instead of the treated
+      # cohort's own, corrupting Omega* (and the efficient weights, e.g. negative weights) whenever
+      # the cohorts have different pre-period covariance.
+      term5 <- 0
+      gp_j_eff <- gp_j
+      gp_k_eff <- gp_k
+      if (identical(gp_j_eff, gp_k_eff)) {
+        gp_key_jk <- as.character(gp_j_eff)
+        if (is.infinite(gp_j_eff)) {
+          inv_pgp_vec <- inv_pinf_vec
+          mask_gp_jk <- mask_inf
+        } else {
+          if (!is.null(inv_propensities) && !is.null(inv_propensities[[gp_key_jk]])) {
+            inv_pgp_vec <- inv_propensities[[gp_key_jk]]
+          } else {
+            pi_gp <- panel_obj$cohort_fractions[[gp_key_jk]]
+            inv_pgp_vec <- if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n)
+          }
+          if (!is.null(kv)) inv_pgp_vec <- inv_pgp_vec * kv      # overlap-trim mask (see keep)
+          mask_gp_jk <- panel_obj$cohort_masks[[gp_key_jk]]
+          if (is.null(mask_gp_jk)) mask_gp_jk <- rep(FALSE, n)
+        }
+        if (!do_psi) term5 <- inv_pgp_vec * kernel_cond_cov_kp(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk))
+        if (do_psi) term_psi(Y_tj_minus_Y1, Y_tk_minus_Y1, get_kp(mask_gp_jk, gp_key_jk), inv_pgp_vec, coup,
+                             paste0("v", col_tj), paste0("v", col_tk), gp_key_jk, 1)  # T5 channel
+      }
+
+      # Per-unit Omega*[j,k](X_i), then its average over units. (Skipped in psi mode: the Omega is discarded by the
+      # caller, which uses only psi / coupled_C -- the cov terms above are not computed there.)
+      if (!do_psi) {
+        omega_jk_i <- term1 + term2 + term3 + term4 + term5
+        omega_jk   <- mean(omega_jk_i)
+        Omega_hat[j, k] <- omega_jk
+        if (k != j) Omega_hat[k, j] <- omega_jk
+        if (return_pointwise) {
+          Omega_array[, j, k] <- omega_jk_i
+          if (k != j) Omega_array[, k, j] <- omega_jk_i
+        }
+      }
+    }
+  }
+
+  # Speed: psi mode discarded the per-unit covariance (the cov terms, the Omega/array, the shrinkage, and the
+  # eigenfloor below all operate on the Omega the caller does not use), so return the weight-estimation channel
+  # directly. lambda for the efficient warning comes from the FIRST (array-building) compute_omega call, not here.
+  if (do_psi) return(list(psi = psi_omega, coupled_C = as.list(cpl)))
+
+  # Per-unit array path: shrink each pointwise Omega*(X_i) toward the pooled Omega-bar
+  # (= Omega_hat) before returning; stabilization/inversion is done downstream by
+  # compute_pointwise_weights_edid().
+  #
+  # Why shrink. The pointwise estimator must estimate an H x H conditional covariance LOCALLY
+  # (kernel), which is far noisier than the single pooled Omega-bar used by the constant-weight
+  # ("averaged") scheme. When Omega*(X) varies little in X (the common case under good overlap),
+  # that extra noise inflates the variance of the efficient estimator BELOW the efficiency the
+  # bound promises -- it can do worse than "averaged" in finite samples. Shrinking toward Omega-bar
+  # with a data-driven intensity lambda removes that noise: lambda -> 1 (revert to the stable pooled
+  # weight) when the across-unit spread of Omega*(X_i) is mostly sampling noise, and lambda -> 0
+  # (keep the pointwise weights) when the spread reflects genuine shape variation. Because the
+  # kernel estimate sharpens as n grows, lambda -> 0 asymptotically and the estimator coincides with
+  # the paper's pointwise-efficient estimator in the limit (the shrinkage is an asymptotically
+  # negligible finite-sample regularization, like the eigenvalue floor). Ledoit-Wolf-style rule:
+  # lambda = (within-unit sampling variance) / (across-unit variance of Omega*(X_i)), capped to [0,1].
+  if (return_pointwise) {
+    Hh      <- dim(Omega_array)[2]
+    lam_opt <- suppressWarnings(as.numeric(getOption("edid_shrink_lambda", NA_real_)))  # NA = data-driven; 0 disables
+    if (length(lam_opt) == 1L && is.finite(lam_opt)) {
+      lam <- min(1, max(0, lam_opt))
+    } else {
+      m_eff     <- attr(K_mat, "edid_m_eff")                      # cell-invariant; precomputed once by fit_edid_cells
+      if (is.null(m_eff)) { ksum <- rowSums(K_mat); ksq <- rowSums(K_mat^2)  # standalone fallback (Kish local n; same value)
+        m_eff <- stats::median(ksum^2 / pmax(ksq, .Machine$double.eps)) }
+      shape_var <- mean(apply(Omega_array, c(2, 3), stats::var))  # across-unit spread (signal + noise)
+      dg        <- diag(Omega_hat)
+      samp_var  <- mean(outer(dg, dg) + Omega_hat^2) / max(m_eff, 1)  # within-unit kernel sampling noise
+      lam       <- min(1, max(0, samp_var / max(shape_var, .Machine$double.eps)))
+    }
+    if (lam > 0)
+      for (jj in seq_len(Hh)) for (kk in seq_len(Hh))
+        Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
+    attr(Omega_array, "shrink_lambda") <- lam
+    attr(Omega_array, "omega_bar") <- Omega_hat   # pooled: target for the per-unit PD-blend (parity with the fast build)
+    return(Omega_array)   # (do_psi already returned above; the efficient psi rides the FIRST array call's lambda)
+  }
+
+  # Ensure positive semi-definiteness AND cap the condition number via a RELATIVE eigenvalue floor on the
+  # CORRELATION scale (diagonal-preserving). The floor must dominate the estimation noise of the matrix it
+  # floors; the pooled Omega-bar is a cross-unit average -- sqrt(n)-consistent with NO curse of
+  # dimensionality (the same property the averaged scheme's documentation claims) -- so its admissible floor
+  # band is 0 < a < 1/2 and we take a = 1/3 (strictly interior), NOT the pointwise kernel exponent
+  # 0.7*(5-d)/10 (at d = 4 that is 0.07, i.e. a condition cap of ~1.7, which erased the per-moment variance
+  # ordering and forced near-uniform weights over moments whose variances differ by orders of magnitude --
+  # the audited with-X SE degeneracy). Flooring the correlation matrix D^{-1/2} Omega D^{-1/2} keeps the
+  # diagonal (the well-estimated per-moment variances) intact and regularizes only the correlation SHAPE,
+  # where the genuine near-collinearity of the moment noises lives. The legacy raw-scale d-dependent floor
+  # is reachable via options(edid_legacy_floor = TRUE) (forensics).
+  if (isTRUE(getOption("edid_legacy_floor"))) {
+    eig     <- eigen(Omega_hat, symmetric = TRUE)
+    d_cov   <- ncol(panel_obj$covariate_matrix)
+    a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
+    mx      <- max(eig$values)
+    floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
+    lam_raw <- eig$values                                     # raw (pre-floor) eigenvalues, for the coupling IF
+    eig$values <- pmax(eig$values, floor_v)
+    Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+    attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    return(Omega_hat)
+  }
+  # DEGENERATE moments (zero pooled variance -- e.g. the structurally-zero self pair with tpre == t that
+  # the t-independent pair enumeration produces in PRE-treatment cells) get scale 0: they are EXCLUDED
+  # from the GLS system (their floored-Omega rows are zeroed, so the weight solver routes them through the
+  # pseudoinverse and assigns them zero weight -- the same treatment the no-covariate path's pinv gives an
+  # exactly-degenerate moment). Flooring them instead would hand the zero-variance moment ALL the weight.
+  dgo <- diag(Omega_hat)
+  if (all(is.finite(dgo)) && any(dgo > 0)) {
+    pos <- dgo > max(dgo) * 1e-12
+    dsc <- ifelse(pos, 1 / sqrt(pmax(dgo, max(dgo) * 1e-300)), 0)
+    inv_dsc <- ifelse(pos, sqrt(pmax(dgo, 0)), 0)   # pmax: ifelse evaluates both branches (avoid sqrt(<0) NaN warnings)
+  } else {
+    dsc <- rep(1, H); inv_dsc <- rep(1, H)
+  }
+  S   <- t(t(Omega_hat * dsc) * dsc)
+  S   <- 0.5 * (S + t(S))
+  eig <- eigen(S, symmetric = TRUE)
+  mx  <- max(eig$values)
+  floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-1/3) else 1e-12
+  lam_raw <- eig$values                                       # raw (pre-floor) SCALED eigenvalues, for the coupling IF
+  eig$values <- pmax(eig$values, floor_v)
+  Sf <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  Omega_hat <- t(t(Sf * inv_dsc) * inv_dsc)
+  # Scaled eigendecomposition + scale for the AVERAGED weight channel's eigen-floor-aware coupling
+  # (Daleckii-Krein derivative of the FLOORED inverse, on the scaled system) -- same attachment as the sieve
+  # and fast-kernel pooled builders. Inert for the estimate (attributes are stripped by solve/%*%); read only
+  # by compute_obar_coupling_edid (which maps dtheta/dS back to dtheta/dOmega via the stored scale).
+  attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
+
+  Omega_hat   # (do_psi returns its list above)
+}
+
+# ---------------------------------------------------------------------------
+# EIF with covariate adjustment
+# ---------------------------------------------------------------------------
+
+#' Compute the efficient influence function for a cell with covariates
+#'
+#' The estimator is the ratio \eqn{\widehat{ATT}_{g,t} = \mathbb{E}_n[w' \tilde{Y}] /
+#' \mathbb{E}_n[G_g]} (the \eqn{G_g/\pi_g} factors inside \eqn{\tilde{Y}} make it a
+#' ratio in \eqn{\widehat\pi_g}). Its first-order influence function is
+#' \deqn{EIF_i = w(X_i)' \tilde{Y}_i - \frac{G_{g,i}}{\pi_g} ATT(g,t),}
+#' i.e. the centering is \eqn{-(G_{g,i}/\pi_g)\,ATT}, NOT the constant \eqn{-ATT}.
+#' The constant centering omits the first-order contribution of the estimated
+#' treated-cohort share \eqn{\widehat\pi_g = \mathbb{E}_n[G_g]} and inflates the
+#' variance by \eqn{ATT^2 (1/\pi_g - 1)} with no asymptotic shrinkage. The
+#' standard error is \eqn{\widehat{SE} = \sqrt{\sum_i EIF_i^2}/n}.
+#'
+#' @param panel_obj panel object (needs cohort_masks, cohort_fractions)
+#' @param gen_out_mat numeric matrix n x H (generated outcomes)
+#' @param weights either a length-H vector (constant weights) or an n x H matrix
+#'   of per-observation pointwise weights \eqn{w(X_i)}
+#' @param att_gt scalar point estimate (= sum_j w_j * colMeans(gen_out_mat))
+#' @param g scalar: target treatment cohort (unused; kept for API compatibility)
+#' @param trim_keep_mat optional n x H matrix of the kept-treated masks that
+#'   \code{compute_generated_outcomes_cov_edid} actually used (its \code{return_trim_info = TRUE} output;
+#'   under the cell-level common-overlap convention every surviving column equals the cell's COMMON mask);
+#'   NULL (no overlap trimming) selects the byte-identical \eqn{G_g/\pi_g} centering below.
+#' @param m_kept optional length-H vector of the kept-treated masses \eqn{m_j = \mathbb{E}_n[G_g keep_j]}
+#'   the renormalization divided by (all equal to the common mass for surviving pairs); required
+#'   (non-NULL) iff \code{trim_keep_mat} is non-NULL.
+#'
+#' @return numeric vector length n, mean approximately 0
+#' @keywords internal
+compute_eif_cov_edid <- function(panel_obj, gen_out_mat, weights, att_gt, g,
+                                 trim_keep_mat = NULL, m_kept = NULL) {
+  # Correct first-order influence function for the ratio estimator
+  #   ATT_hat = E_n[w' Ytilde] / E_n[G_g]:
+  #     EIF_i = w' Ytilde_i - (G_{g,i} / pi_g) * ATT.
+  # The constant centering (w' Ytilde_i - ATT) omits the first-order influence
+  # of the estimated treated-cohort share pi_hat_g = E_n[G_g]; it inflates the
+  # variance by ATT^2 (1/pi_g - 1) with no asymptotic shrinkage. The mean of
+  # EIF below is 0 by construction (E_n[G_g] = pi_g), so no de-meaning is used.
+  Gg   <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
+  # w' Ytilde_i : constant weights (length-H vector) or pointwise weights (n x H matrix)
+  wY   <- if (is.matrix(weights)) rowSums(gen_out_mat * weights) else drop(gen_out_mat %*% weights)
+
+  if (is.null(trim_keep_mat) || is.null(m_kept)) {
+    # No overlap trimming: ratio in pi_hat_g => centering -(G_g/pi_g)*ATT (the standard line).
+    return(wY - (Gg / pi_g) * att_gt)
+  }
+
+  # Overlap trimming active. The builder divided every surviving pair's generated outcome by the cell-common
+  # kept mass m_common = E_n[G_g keep_common], and the 1/pi_g in each term CANCELS against the pi_g in the
+  # renorm factor -- so the estimator is a Hajek ratio in m_common (= pi_g,kept), NOT in pi_g. Each pair
+  # contributes att_j = E_n[w_j Ytilde_j] (sum_j att_j = att_gt), and the delta method for sum_j N_j/m_kept_j
+  # gives the centering
+  #     EIF_i = wY_i - sum_j att_j * (G_{g,i} keep_{j,i} / m_kept_j),
+  # which under the common-mask convention (keep_j == keep_common, m_kept_j == m_common for every surviving
+  # pair) collapses to wY_i - (G_{g,i} keep_common,i / m_common) * att_gt. The omitted pi_g-only centering
+  # used above mis-states the variance under trimming with no shrinkage; this restores it (and reduces
+  # EXACTLY to the no-trim line when keep == 1 and m_kept == pi_g). Mean-zero is preserved exactly:
+  # E_n[G_g keep_j]/m_kept_j = 1 => E_n[EIF] = att_gt - sum_j att_j = 0.
+  WY_mat <- if (is.matrix(weights)) gen_out_mat * weights else sweep(gen_out_mat, 2L, weights, "*")
+  att_j  <- colMeans(WY_mat)                                   # per-pair weighted contribution; sum_j att_j = att_gt
+  cbasis <- sweep(trim_keep_mat, 2L, m_kept, "/") * Gg         # n x H: G_g * keep_j / m_kept_j (Gg recycled down cols)
+  wY - as.numeric(cbasis %*% att_j)
+}
+
+#' Analytic ACH first-step correction (closed-form Gamma; default path).
+#'
+#' The weighted moment M(theta) = E_n[sum_j W_ij phi_ij(theta)] is LINEAR in each nuisance prediction (the
+#' generated outcome phi is linear in r and in m separately, with the overlap trim frozen at theta_hat). So the
+#' basis-coefficient sensitivity for nuisance key K is Gamma_K = (1/n) B_K' s_K, where the per-unit weighted-
+#' moment sensitivity s_{K,i} = sum_j W_ij d phi_ij / d pred_{K,i} is assembled in ONE pass from the SAME bilinear
+#' coefficients compute_generated_outcomes_cov_edid uses (so d phi/d pred is correct by construction; FD-cross-
+#' checked in test-edid-ach-correction). Replaces the per-COEFFICIENT finite difference (sum_K ncol(B_K) generated-
+#' outcome rebuilds) with a few crossprods -- exact (no eps), no rebuilds. The frozen-trim scale
+#' sc = (pi_g / m_common) * keep_common[i] is folded into the weight, reproducing the builder's COMMON-mask
+#' renormalization; the trim structure is derived from trim_keep via the SAME edid_cell_trim_structure the
+#' builder uses (so masks/masses cannot drift), and the signature is unchanged (no keep_mat arg).
+#' @keywords internal
+#' @noRd
+compute_ach_correction_analytic_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                                     weights, m_aux, r_aux, pt_assumption = "all",
+                                                     trim_keep = NULL) {
+  n     <- panel_obj$n; ow <- panel_obj$outcome_wide
+  pi_g  <- panel_obj$cohort_fractions[[as.character(g)]]
+  Ig    <- as.numeric(panel_obj$cohort_masks[[as.character(g)]])
+  I_inf <- as.numeric(panel_obj$never_treated_mask)
+  col_t <- panel_obj$period_to_col[[as.character(t)]]
+  col_1 <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
+  Y_t   <- ow[, col_t]; Y_1 <- ow[, col_1]
+  # Cell-common overlap-trim scale (frozen at theta_hat), identical to the builder's: every surviving pair is
+  # rescaled by sc = (pi_g / m_common) * keep_common. Dead pairs are dropped by the caller before this
+  # correction runs; the defensive skip below zeroes any that slip through (their phi is identically 0, so
+  # they carry no nuisance sensitivity).
+  trim_info <- edid_cell_trim_structure(panel_obj, g, pairs, trim_keep, pt_assumption)
+  sc <- if (!trim_info$full_trim) (pi_g / trim_info$m_common) * trim_info$keep_common else numeric(n)
+  # per-key per-unit sensitivity s_K = sum_j W_ij d phi_ij / d pred_K  (mirror of the phi construction, term by term)
+  svec <- new.env(parent = emptyenv())
+  adds <- function(key, v) { cur <- if (exists(key, envir = svec, inherits = FALSE)) get(key, envir = svec) else numeric(n)
+                             assign(key, cur + v, envir = svec) }
+  for (j in seq_len(nrow(pairs))) {
+    gp_j <- pairs$gp[j]; tpre_j <- pairs$tpre[j]; col_tp <- panel_obj$period_to_col[[as.character(tpre_j)]]
+    if (trim_info$dead[j]) next                                                               # dead pair: phi == 0, no sensitivity
+    wj   <- if (is.matrix(weights)) weights[, j] else rep(weights[j], n)
+    is_self <- (is.finite(gp_j) && gp_j == g) || identical(pt_assumption, "post")
+    wj <- wj * sc                                                                             # W_ij * sc_i (common renorm)
+    r_inf  <- prop_ratios[["Inf"]]
+    md_inf <- cond_means[[paste0("Inf_", t)]] - cond_means[[paste0("Inf_", tpre_j)]]          # m_{Inf,t} - m_{Inf,tpre}
+    if (is_self) {                                                                            # phi = sc (Ig/pi_g - r_inf I_inf/pi_g)(yd - md_inf)
+      yd   <- Y_t - ow[, col_tp]
+      pref <- Ig / pi_g - r_inf * (I_inf / pi_g)
+      adds("Inf",                 wj * (-(I_inf / pi_g)) * (yd - md_inf))                     # d/d r_inf
+      adds(paste0("Inf_", t),     wj * pref * (-1))                                           # d/d m_{Inf,t}
+      adds(paste0("Inf_", tpre_j),wj * pref * ( 1))                                           # d/d m_{Inf,tpre}
+    } else {                                                                                  # cross: sc (term1 - term2 - term3)
+      gpk     <- as.character(gp_j); r_gp <- prop_ratios[[gpk]]
+      I_gp    <- if (is.infinite(gp_j)) I_inf else as.numeric(panel_obj$cohort_masks[[gpk]])
+      m_gp_tp <- cond_means[[paste0(gpk, "_", tpre_j)]]; Y_tpre <- ow[, col_tp]
+      adds(paste0("Inf_", t),      wj * (-(Ig / pi_g) + r_inf * (I_inf / pi_g)))              # d/d m_{Inf,t}  (term1 + (-term2))
+      adds(paste0("Inf_", tpre_j), wj * ( (Ig / pi_g) - r_inf * (I_inf / pi_g)))              # d/d m_{Inf,tpre}
+      adds(paste0(gpk, "_", tpre_j), wj * (-(Ig / pi_g) + r_gp * (I_gp / pi_g)))              # d/d m_{gp,tpre} (term1 + (-term3))
+      adds("Inf", wj * (-(I_inf / pi_g)) * (Y_t - Y_tpre - md_inf))                           # d/d r_inf  (-term2)
+      adds(gpk,   wj * (-(I_gp / pi_g)) * (Y_tpre - Y_1 - m_gp_tp))                           # d/d r_gp   (-term3)
+    }
+  }
+  correction <- numeric(n)
+  add_corr <- function(key, a) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test) || !exists(key, envir = svec, inherits = FALSE)) return(invisible())
+    Gamma <- as.vector(crossprod(a$B_test, get(key, envir = svec))) / n                       # (1/n) B' s
+    correction <<- correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  for (key in names(r_aux)) add_corr(key, r_aux[[key]])
+  for (key in names(m_aux)) add_corr(key, m_aux[[key]])
+  correction
+}
+
+#' ACH (Ackerberg, Chen & Hahn 2012) first-step nuisance-estimation correction
+#'
+#' Returns the length-n vector to SUBTRACT from the plug-in EIF so the influence function
+#' accounts for estimation of the first-step sieve nuisances entering the generated outcomes
+#' --- the conditional means \eqn{m} and propensity ratios \eqn{r}. The corrected EIF is
+#' \eqn{\psi_i - \sum_k [\,\text{score}_k \, H_k^{-1} \Gamma_k\,]_i}, where
+#' \eqn{\Gamma_k = \partial E_n[w'\tilde Y]/\partial\theta_k} is the pathwise derivative of the
+#' UNCENTERED weighted moment (the centered \eqn{\psi} is mean-zero, so its derivative is the
+#' wrong, ~0 object). \eqn{\Gamma_k} is computed numerically by perturbing the fitted prediction
+#' along each basis direction and recomputing \eqn{\tilde Y}, with the WEIGHTS HELD FIXED so the
+#' \eqn{\Omega}/weight-estimation channel is not re-introduced or double-counted (production keeps
+#' \eqn{\Omega} fixed). This is a practical (numerical) form of the ACH two-step variance estimator;
+#' \eqn{\tilde Y} is linear in each prediction, so the finite difference is exact up to roundoff.
+#' Valid for the plug-in (K = 1, train = test = full) regime; \code{fit_edid_cells} enforces this.
+#'
+#' @param panel_obj,g,t,pairs,pt_assumption as in \code{compute_generated_outcomes_cov_edid}
+#' @param prop_ratios,cond_means named lists of fitted nuisance prediction vectors
+#' @param weights frozen weights: length-H vector or n x H matrix (NOT recomputed here)
+#' @param m_aux,r_aux named lists (keyed as \code{cond_means}/\code{prop_ratios}) of per-nuisance
+#'   pieces \code{list(B_test, score_mat, H_inv, is_fallback)} from the \code{return_aux} path
+#' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+#'   held FIXED at \eqn{\hat\theta} so \eqn{\Gamma} is the trimmed moment's nuisance sensitivity
+#' @param eps_rel relative finite-difference step for the nuisance-sensitivity Gamma. Kept at the standard
+#'   first-difference optimum 1e-6: although the weighted moment is linear in each prediction in exact arithmetic,
+#'   in finite samples (extreme propensity ratios / near-degenerate sieve folds) it carries mild single-nuisance
+#'   curvature, so a larger step trades truncation error for the saved rounding and is NOT safe (it shifts Gamma's
+#'   direction; see test-edid-ach-correction). The residual ~2e-8 build-sensitivity this leaves in the
+#'   estimation_effect channel is negligible (8 significant digits); an exact analytic Gamma could remove even
+#'   that but is not warranted for a 2e-8 gain.
+#' @return numeric vector length n (the term to subtract from the plug-in EIF)
+#' @keywords internal
+compute_ach_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios,
+                                            cond_means, weights, m_aux, r_aux,
+                                            pt_assumption = "all", trim_keep = NULL, eps_rel = 1e-6) {
+  # Analytic Gamma (default): exact closed form, no finite differences, no per-coefficient generated-outcome
+  # rebuilds (the FD below did sum_K ncol(B_K) of them, the dominant cost of estimation_effect). The forced-FD
+  # fallback (options(edid_ach = "fd")) is kept as an oracle for validation / any future non-linear moment.
+  if (!identical(getOption("edid_ach", "analytic"), "fd"))
+    return(compute_ach_correction_analytic_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                                    weights, m_aux, r_aux, pt_assumption, trim_keep = trim_keep))
+  # trim_keep is held FIXED at theta_hat while the nuisances perturb: Gamma must be the sensitivity of the
+  # ACTUAL (trimmed/renormalized) moment, and the overlap trim set is treated as fixed (DRDID-style; the
+  # non-smooth boundary indicator's derivative is negligible and would otherwise inject a spurious FD jump).
+  wmoment <- function(pr, cm) {
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption, trim_keep = trim_keep)
+    if (is.matrix(weights)) rowSums(go * weights) else drop(go %*% weights)
+  }
+  m0         <- mean(wmoment(prop_ratios, cond_means))   # uncentered moment at theta_hat
+  n          <- panel_obj$n
+  correction <- numeric(n)
+
+  # one nuisance key: numerical Gamma along each basis column, then score %*% (H_inv %*% Gamma)
+  add_term <- function(correction, a, base, recompute) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) return(correction)
+    B   <- a$B_test; p <- ncol(B)
+    eps <- eps_rel * (1 + max(abs(base)))
+    Gamma <- vapply(seq_len(p), function(j) (mean(recompute(base + eps * B[, j])) - m0) / eps, numeric(1))
+    correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+
+  for (key in names(r_aux)) {                            # propensity ratios r_{g,gp}
+    correction <- add_term(correction, r_aux[[key]], prop_ratios[[key]],
+                           function(newp) { pr <- prop_ratios; pr[[key]] <- newp; wmoment(pr, cond_means) })
+  }
+  for (key in names(m_aux)) {                            # conditional means m_{gp,period,1}
+    correction <- add_term(correction, m_aux[[key]], cond_means[[key]],
+                           function(newp) { cm <- cond_means; cm[[key]] <- newp; wmoment(prop_ratios, cm) })
+  }
+  correction
+}
+
+#' gmm weight-channel nuisance correction: ACH correction for the QUADRATIC moment u'C w (C = cov(Ytilde)).
+#'
+#' The gmm weight inverts the unconditional sample covariance C = cov(Ytilde), a SECOND moment that (unlike the
+#' linear att moment) is NOT protected by Neyman orthogonality, so it inherits the first-step estimation of the
+#' (r, m) nuisances that enter Ytilde. The plug-in sample-cov weight IF psi = -(u.d)(w.d) + u'Cw omits this; the
+#' jackknife two-step IF includes it. This adds the ACH correction for the directional moment q = u'C w =
+#' `E_n[(u'd_i)(w'd_i)]` (d_i = Ytilde_i - mbar), holding u, w fixed at their plug-in values: Gamma_c = dq/dbeta_c (FD
+#' along basis column c), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. The augmented gmm weight IF is then
+#' psi - correction (sign jackknife-locked). inv_p does NOT enter (the gmm Ytilde uses r, m only).
+#' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+#'   held FIXED at \eqn{\hat\theta} so C = cov(Ytilde) is the trimmed/renormalized covariance the gmm weights invert
+#' @keywords internal
+compute_gmm_weight_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                                   u, w, m_aux, r_aux, pt_assumption = "all",
+                                                   trim_keep = NULL, eps_rel = 1e-6) {
+  n <- panel_obj$n
+  # trim_keep fixed at theta_hat (see compute_ach_correction_cov_edid): C = cov(Ytilde) must be the covariance of
+  # the trimmed/renormalized generated outcomes the gmm weights actually invert.
+  qmoment <- function(pr, cm) {                                # per-unit (u'd_i)(w'd_i); mean = u'C w
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption, trim_keep = trim_keep)
+    d  <- sweep(go, 2L, colMeans(go), "-")
+    as.numeric(d %*% u) * as.numeric(d %*% w)
+  }
+  m0 <- mean(qmoment(prop_ratios, cond_means))
+  correction <- numeric(n)
+  add_term <- function(correction, a, base, recompute) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) return(correction)
+    B <- a$B_test; p <- ncol(B); eps <- eps_rel * (1 + max(abs(base)))
+    Gamma <- vapply(seq_len(p), function(j) (mean(recompute(base + eps * B[, j])) - m0) / eps, numeric(1))
+    correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  for (key in names(r_aux)) correction <- add_term(correction, r_aux[[key]], prop_ratios[[key]],
+    function(np) { pr <- prop_ratios; pr[[key]] <- np; qmoment(pr, cond_means) })
+  for (key in names(m_aux)) correction <- add_term(correction, m_aux[[key]], cond_means[[key]],
+    function(np) { cm <- cond_means; cm[[key]] <- np; qmoment(prop_ratios, cm) })
+  correction
+}
+
+#' inv_p nuisance channel of Sigma_Omega: ACH correction for the estimated inverse-propensity prefactors
+#'
+#' The Omega prefactors inv_pg/inv_pinf/inv_pgp(X) are propensity-sieve estimates; perturbing the sieve coef beta_c
+#' moves pref -> Omega-bar -> w -> theta_w = w'mbar. ACH two-step IF (same machinery + sign as
+#' \code{compute_ach_correction_cov_edid}): `Gamma_c[j] = d theta_w / d beta_c[j]` (FD along basis column j, perturbing the
+#' inv_p prediction where it is unclamped), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. The weight-channel IF
+#' contribution is then \code{psi_invp = -correction} (added to the data channel; sign FD-locked vs the recovery oracle).
+#' @keywords internal
+compute_invp_correction_cov_edid <- function(panel_obj, g, t, pairs, prop_ratios, cond_means,
+                                             inv_propensities, invp_aux, weights, mbar,
+                                             bw = NULL, K_mat = NULL, eps_rel = 1e-6, keep = NULL) {
+  n <- panel_obj$n; correction <- numeric(n)
+  if (is.null(invp_aux)) return(correction)
+  theta0 <- sum(weights * mbar)
+  theta_fun <- function(ip) {                                  # recompute Omega-bar -> averaged w -> theta_w
+    om <- compute_omega_star_cov_edid(panel_obj, g, t, pairs, prop_ratios, cond_means, ip, bw = bw, K_mat = K_mat,
+                                      keep = keep)             # same trim mask as the weights' Omega
+    sum(compute_efficient_weights_edid(om) * mbar)
+  }
+  for (key in names(invp_aux)) {
+    a <- invp_aux[[key]]
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
+    base <- inv_propensities[[key]]; B <- a$B_test; spos <- a$s_pos
+    # Step size: for the LINEAR sieve, B columns are O(1) basis values and the absolute step
+    # eps_rel*(1+max|s|) probes the coefficient scale. For the EXP link, B_test is already the
+    # chain-rule Jacobian, so the coefficient step is eps_rel itself (a 1e-6 RELATIVE
+    # perturbation of s along the Jacobian column); the absolute heuristic would perturb s by
+    # O(s) at large-s units and destroy the difference quotient.
+    eps  <- if (identical(a$link, "exp")) eps_rel
+            else eps_rel * (1 + max(abs(base)))
+    Gamma <- vapply(seq_len(ncol(B)), function(j) {
+      ip <- inv_propensities; ip[[key]] <- base + eps * B[, j] * spos       # perturb where s>0 (= dpref/dbeta support)
+      (theta_fun(ip) - theta0) / eps
+    }, numeric(1))
+    correction <- correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  correction
+}
+
+#' Analytic inv_p correction (replaces the FD Gamma of \code{compute_invp_correction_cov_edid}).
+#'
+#' Uses \code{coupled_C} (the sum over terms using group c of the sign-weighted coupling C_i, accumulated in the kernel loop of
+#' \code{compute_omega_star_cov_edid} when \code{psi_qw} is set): Gamma_c = -(1/n) crossprod(B_masked, coupled_C_c)
+#' (B masked to the unclamped rows s>0), correction = `sum_c score_c %*% (H_inv_c %*% Gamma_c)`. O(p) per group, no
+#' Omega recompute -- this is the optimized inv_p channel; it reproduces the FD version to FP tolerance.
+#' @keywords internal
+compute_invp_correction_analytic_cov_edid <- function(n, invp_aux, coupled_C) {
+  correction <- numeric(n)
+  if (is.null(invp_aux) || is.null(coupled_C)) return(correction)
+  for (key in names(invp_aux)) {
+    a <- invp_aux[[key]]
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
+    cc <- coupled_C[[key]]; if (is.null(cc)) next
+    B_masked <- a$B_test * a$s_pos                                # dpref/dbeta support: rows where s_raw > 0
+    Gamma    <- -as.vector(crossprod(B_masked, cc)) / n           # dtheta_w/dbeta_c = -(1/n) B_masked' coupled_C_c
+    correction <- correction + as.vector(a$score_mat %*% drop(a$H_inv %*% Gamma))
+  }
+  correction
+}
+
+#' Enumerate a cell's non-fallback sieve-nuisance blocks for the higher-order Hessian
+#'
+#' Returns the ordered list of nuisance blocks (propensity ratios first, then conditional means,
+#' each in the order of \code{r_aux} / \code{m_aux}) that carry first-step coefficient pieces. Each
+#' block is \code{list(key, is_prop, B, p, score_mat, H_inv)} with \code{B = a$B_test} the sieve
+#' basis (n x p) and \code{p = ncol(B)}. Fallback blocks (\code{is_fallback}, or missing \code{B_test})
+#' are dropped: they have no estimated coefficients, so contribute no higher-order variance. This is the
+#' production analogue of the prototype's \code{infos} list; the block order fixes the stacked-coefficient
+#' indexing used by \code{compute_cell_hessian_edid} and \code{sigma_quad_edid}.
+#'
+#' @param m_aux,r_aux named lists of per-nuisance ACH pieces (\code{list(B_test, score_mat, H_inv,
+#'   is_fallback)}) from the \code{return_aux} path; same keying as \code{cond_means} / \code{prop_ratios}.
+#' @return list of blocks (possibly empty if all nuisances are fallbacks).
+#' @keywords internal
+edid_nuisance_blocks <- function(m_aux, r_aux) {
+  blocks <- list()
+  add <- function(a, key, is_prop) {
+    if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) return(NULL)
+    list(key = key, is_prop = is_prop, B = a$B_test, p = ncol(a$B_test),
+         score_mat = a$score_mat, H_inv = a$H_inv)
+  }
+  for (key in names(r_aux)) { b <- add(r_aux[[key]], key, TRUE);  if (!is.null(b)) blocks[[length(blocks) + 1L]] <- b }
+  for (key in names(m_aux)) { b <- add(m_aux[[key]], key, FALSE); if (!is.null(b)) blocks[[length(blocks) + 1L]] <- b }
+  blocks
+}
+
+#' Cell Hessian of att(theta) in the stacked sieve coefficients (higher-order "Wick" path)
+#'
+#' Returns the P x P Hessian (P = total stacked nuisance coefficients across this cell's non-fallback
+#' nuisance blocks) of
+#' \deqn{att(\theta) = \mathbb{E}_n\big[\,\mathrm{rowSums}(W \odot \tilde Y(\theta))\,\big],\quad
+#'        \tilde Y(\theta) = \texttt{compute\_generated\_outcomes\_cov\_edid}(\dots,\ \text{predictions} = B\theta_{block}),}
+#' with the efficient weights \eqn{W} held FIXED. Because the doubly-robust generated outcome is linear in
+#' each prediction, \eqn{att(\theta)} is EXACTLY QUADRATIC in \eqn{\theta}, so the Hessian is constant and
+#' the central second differences are exact up to roundoff. Perturbing coefficient \eqn{i} of block \eqn{k}
+#' by \eqn{\epsilon} equals perturbing that block's prediction by \eqn{\epsilon\,B_k[,i]} (same identity the
+#' ACH correction's \code{add_term} uses), so we never need the fitted coefficient vector itself. Mirrors the
+#' prototype \code{exp10_vroute_supt.R::Hess_k} / \code{analytical_se_edid.R} \code{grad_hess} exactly
+#' (\code{eps = 1e-4}, symmetric second-difference cross-partials).
+#'
+#' @param panel_obj,g,t,pairs,prop_ratios,cond_means,pt_assumption as in
+#'   \code{compute_generated_outcomes_cov_edid}.
+#' @param W frozen weights: length-H vector or n x H matrix (NOT recomputed here).
+#' @param m_aux,r_aux named lists of ACH first-step pieces (see \code{edid_nuisance_blocks}).
+#' @param trim_keep optional overlap-trim mask list (as in \code{compute_generated_outcomes_cov_edid}),
+#'   held FIXED at \eqn{\hat\theta} so the Hessian is of the trimmed moment (keeping \eqn{att(\theta)} quadratic).
+#' @param eps finite-difference step (coefficient units). Default 1e-4 (matches the prototype).
+#' @return list with \code{H} (P x P numerical Hessian) and \code{blocks} (the ordered nuisance blocks
+#'   used, from \code{edid_nuisance_blocks}); \code{H} is a 0 x 0 matrix when there are no estimated blocks.
+#' @keywords internal
+#' Analytic per-cell Hessian (closed form). att(theta) is exactly quadratic and the generated outcome is bilinear
+#' ONLY in (propensity-ratio r_c x its paired conditional-mean m_c): every pair contributes
+#' +r_inf (I_inf/pi_g)(m_inf,t - m_inf,tpre); cross pairs also +r_gp (I_gp/pi_g) m_gp,tpre. Hence the only nonzero
+#' Hessian blocks are H[r_block, m_block] = (1/n) B_r' diag(s) B_m with s_i = sum_j W_ij coef_ij -- a few
+#' crossprods, NO finite differences and NO att_fun rebuilds.
+#'
+#' Overlap-trim regime: with \code{trim_keep} held FIXED at theta_hat (so att(theta) stays exactly quadratic),
+#' every surviving pair's generated outcome is (pi_g / m_common) * keep_common * phi_j -- the cell-COMMON
+#' constant rescale times the cell-COMMON 0/1 mask (keep_mat columns all equal the common mask; m_kept entries
+#' all equal the common mass). Folding sc_j = (pi_g / m_kept[j]) * keep_mat[, i, j] into the per-pair weight
+#' reproduces that scaling EXACTLY -- the closed-form Hessian is therefore valid under trimming too (it was the only
+#' reason the slow finite-difference fallback existed). \code{keep_mat = NULL} (no trimming) gives sc_j == 1, i.e. the
+#' byte-identical no-trim closed form.
+#' @keywords internal
+#' @noRd
+compute_cell_hessian_analytic_edid <- function(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption = "all",
+                                               keep_mat = NULL, m_kept = NULL) {
+  blocks <- edid_nuisance_blocks(m_aux, r_aux)
+  if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
+  ps <- vapply(blocks, function(b) b$p, 1L); starts <- cumsum(c(0L, ps[-length(ps)])); P <- sum(ps)
+  bk <- vapply(blocks, function(b) b$key, character(1)); bprop <- vapply(blocks, function(b) isTRUE(b$is_prop), logical(1))
+  idx_of <- function(key, want_prop) { w <- which(bk == key & bprop == want_prop); if (length(w)) w[1L] else NA_integer_ }
+  n <- panel_obj$n; pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
+  I_inf <- as.numeric(panel_obj$never_treated_mask); Hm <- matrix(0, P, P)
+  svecs <- new.env(parent = emptyenv())
+  adds <- function(rk, mk, v) { key <- paste0(rk, "||", mk)
+    cur <- if (exists(key, envir = svecs, inherits = FALSE)) get(key, envir = svecs) else numeric(n)
+    assign(key, cur + v, envir = svecs) }
+  gp <- pairs$gp; tpre <- pairs$tpre; mt_key <- paste0("Inf_", t)
+  for (j in seq_len(nrow(pairs))) {
+    wj <- if (is.matrix(W)) W[, j] else rep(W[j], n)
+    # Overlap-trim rescale (frozen at theta_hat): sc_j = (pi_g / m_kept_j) * keep_j[,i] reproduces .renorm exactly.
+    # Folded into wj so it propagates to BOTH the r_inf and the cross r_gp coefficients below. Identity when no trim.
+    if (!is.null(keep_mat)) wj <- wj * ((pi_g / m_kept[j]) * keep_mat[, j])
+    is_self <- (is.finite(gp[j]) && gp[j] == g) || identical(pt_assumption, "post")
+    coef_inf <- wj * (I_inf / pi_g)
+    adds("Inf", mt_key, coef_inf)                                # +r_inf * m_inf,t
+    adds("Inf", paste0("Inf_", tpre[j]), -coef_inf)              # -r_inf * m_inf,tpre
+    if (!is_self) {                                              # cross pair: + r_gp * m_gp,tpre
+      gpk <- as.character(gp[j])
+      I_gp <- if (is.infinite(gp[j])) I_inf else as.numeric(panel_obj$cohort_masks[[gpk]])
+      adds(gpk, paste0(gpk, "_", tpre[j]), wj * (I_gp / pi_g))
+    }
+  }
+  for (key in ls(svecs)) {
+    pr <- strsplit(key, "||", fixed = TRUE)[[1]]; ri <- idx_of(pr[1], TRUE); mi <- idx_of(pr[2], FALSE)
+    if (is.na(ri) || is.na(mi)) next                            # a referenced nuisance is a fallback => no coefs
+    s <- get(key, envir = svecs); blk <- crossprod(blocks[[ri]]$B, s * blocks[[mi]]$B) / n  # p_r x p_m
+    ir <- starts[ri] + seq_len(ps[ri]); im <- starts[mi] + seq_len(ps[mi])
+    Hm[ir, im] <- Hm[ir, im] + blk; Hm[im, ir] <- Hm[im, ir] + t(blk)
+  }
+  list(H = Hm, blocks = blocks)
+}
+
+compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
+                                      cond_means, W, m_aux, r_aux,
+                                      pt_assumption = "all", trim_keep = NULL, eps = 5e-2,
+                                      keep_mat = NULL, m_kept = NULL) {
+  # Analytic Hessian (default): closed-form bilinear (r x paired-m) crossprods -- no finite differences, no
+  # att_fun rebuilds. The analytic form now ALSO handles overlap-trimming (frozen trim_keep => the per-pair
+  # renorm is a fixed sc_j scaling folded into the weight; see compute_cell_hessian_analytic_edid), so the slow
+  # FD fallback is only taken when explicitly forced via options(edid_hessian = "fd"). The FD path divides the
+  # generated-outcome differences by eps^2; since att(theta) is EXACTLY quadratic (frozen trim) the forward
+  # second difference has zero truncation error, so eps is chosen LARGE (5e-2, not the generic ~1e-4 optimum)
+  # to minimise the eps^-2 amplification of rounding noise -- the old eps=1e-4 made the FD Hessian both unstable
+  # (kernel-FP-sensitive) and ~2% inaccurate vs this closed form.
+  if (!identical(getOption("edid_hessian", "analytic"), "fd"))
+    return(compute_cell_hessian_analytic_edid(panel_obj, g, t, pairs, W, m_aux, r_aux, pt_assumption,
+                                              keep_mat = keep_mat, m_kept = m_kept))
+  blocks <- edid_nuisance_blocks(m_aux, r_aux)
+  if (length(blocks) == 0L) return(list(H = matrix(0, 0L, 0L), blocks = blocks))
+
+  ps     <- vapply(blocks, function(b) b$p, 1L)
+  starts <- cumsum(c(0L, ps[-length(ps)]))                 # 0-based stacked-coef offset of each block
+  P      <- sum(ps)
+
+  # att as a function of a stacked-coefficient PERTURBATION delta (delta = 0 at theta_hat). Each block's
+  # prediction is shifted by B_k %*% delta_block, then the generated outcomes are recomputed (W frozen).
+  att_fun <- function(delta) {
+    pr <- prop_ratios; cm <- cond_means
+    for (k in seq_along(blocks)) {
+      dk <- delta[starts[k] + seq_len(ps[k])]
+      if (all(dk == 0)) next
+      shift <- as.vector(blocks[[k]]$B %*% dk)
+      if (blocks[[k]]$is_prop) pr[[blocks[[k]]$key]] <- pr[[blocks[[k]]$key]] + shift
+      else                     cm[[blocks[[k]]$key]] <- cm[[blocks[[k]]$key]] + shift
+    }
+    # trim_keep fixed at theta_hat: att(theta) must be the trimmed/renormalized moment whose Hessian we want
+    # (same fixed-trim-set treatment as the ACH correction; keeps att(theta) exactly quadratic in theta).
+    go <- compute_generated_outcomes_cov_edid(panel_obj, g, t, pairs, pr, cm, pt_assumption, trim_keep = trim_keep)
+    mean(if (is.matrix(W)) rowSums(go * W) else drop(go %*% W))
+  }
+
+  z0 <- numeric(P); f0 <- att_fun(z0)
+  fp <- numeric(P); Hm <- matrix(0, P, P)
+  # att(theta) is exactly quadratic AND linear in each prediction separately => zero diagonal / within-block
+  # curvature (H_ii = 0 exactly). So forward differences are exact and we need only att(e_i): no -e_i evals and
+  # no diagonal second differences. This halves the FD evaluations vs the central scheme; Hm stays 0 on the diagonal.
+  for (i in seq_len(P)) { e <- numeric(P); e[i] <- eps; fp[i] <- att_fun(e) }
+  # att(theta) is EXACTLY QUADRATIC and the generated outcome is LINEAR in each prediction separately, so the
+  # Hessian is zero on the diagonal and WITHIN every block; the only nonzero cross-partials couple a propensity-
+  # ratio block with ITS OWN paired conditional-mean block (Eq.(4.4) terms 2-3: r_{g,c} multiplies m_{c,.}).
+  # Skipping the provably-zero (i,j) pairs makes the cross loop O(sum p_r*p_m) FD evals instead of O(P^2); the
+  # skipped entries are exactly 0, so the Hessian matches the full FD version up to roundoff (the entries it
+  # drops are ~1e-10 FD noise around true zero). Pairing is by key prefix: r-block "Inf"/"<gp>" pairs with
+  # m-block "Inf_*"/"<gp>_*". (Profile: the full O(P^2) loop is ~98% of the misspec_robust default's runtime.)
+  coef_blk <- rep(seq_along(blocks), times = ps)                # block index of each stacked coefficient
+  blk_key  <- vapply(blocks, function(b) b$key, character(1))
+  blk_prop <- vapply(blocks, function(b) isTRUE(b$is_prop), logical(1))
+  pair_ok  <- matrix(FALSE, length(blocks), length(blocks))
+  for (a in seq_along(blocks)) for (b in seq_along(blocks)) {
+    if (blk_prop[a] == blk_prop[b]) next                       # r-r or m-m: no bilinear product
+    rk <- if (blk_prop[a]) blk_key[a] else blk_key[b]          # propensity-ratio key
+    mk <- if (blk_prop[a]) blk_key[b] else blk_key[a]          # conditional-mean key
+    pair_ok[a, b] <- startsWith(mk, paste0(rk, "_"))           # mean belongs to this ratio's comparison cohort
+  }
+  for (i in seq_len(P)) for (j in seq_len(P)[-seq_len(i)]) {   # symmetric cross-partials (nonzero block-pairs only)
+    if (!pair_ok[coef_blk[i], coef_blk[j]]) next               # structurally-zero entry: leave Hm[i, j] = 0
+    ei <- numeric(P); ei[i] <- eps; ej <- numeric(P); ej[j] <- eps
+    Hm[i, j] <- (att_fun(ei + ej) - fp[i] - fp[j] + f0) / (eps^2)   # forward diff; exact for the quadratic att
+    Hm[j, i] <- Hm[i, j]
+  }
+  list(H = Hm, blocks = blocks)
+}
+
+#' Pointwise efficient weights w(X_i) = Omega*(X_i)^(-1) 1 / (1' Omega*(X_i)^(-1) 1)
+#'
+#' Per-observation semiparametric-efficient weights from the conditional-covariance array. Each
+#' Omega*(X_i) is regularized by a DIMENSION-AWARE relative eigenvalue floor.
+#' The kernel Omega*(X) is estimated at the uniform Nadaraya-Watson rate rho_n,
+#' whose variance exponent is (5-d)/10 (product Gaussian kernel, per-covariate
+#' bw.nrd0 ~ n^(-1/5); d = number of covariates). Asymptotic negligibility
+#' requires the floor TOL = f(n) to vanish but DOMINATE rho_n, i.e. TOL = n^(-a)
+#' with 0 < a < (5-d)/10. We take a = c*(5-min(d,4))/10 with c = 0.7 (strictly
+#' interior to the admissible band for d <= 4; for d >= 5 the band (0,(5-d)/10) is
+#' EMPTY -- d is clamped to 4 giving fallback a = 0.07, where efficiency is no
+#' longer claimed, see the d >= 5 warning in fit_edid_cells): the floor is
+#' asymptotically negligible
+#' (estimator stays pointwise-efficient and the plug-in SE is consistent in the
+#' limit) yet stays above the NW eigenvalue noise for finite-sample stability.
+#' Condition number is capped at ~n^(a). Pure per-unit inversion (no floor) is
+#' unstable: a few near-singular Omega*(X_i) produce enormous weights. Degenerate
+#' units fall back to uniform (1/H).
+#'
+#' @param omega_array numeric array n x H x H of per-unit Omega*(X_i), from
+#'   \code{compute_omega_star_cov_edid(..., return_pointwise = TRUE)}
+#' @param d integer, number of covariates entering the kernel (sets the floor rate)
+#' @return numeric matrix n x H, each row summing to 1
+#' @keywords internal
+compute_pointwise_weights_edid <- function(omega_array, d = 1L, gen_out_mat = NULL, need_coup = FALSE) {
+  n   <- dim(omega_array)[1]
+  H   <- dim(omega_array)[2]
+  one <- rep(1, H)
+  W   <- matrix(NA_real_, n, H)
+  # POOLED-SCALE flooring (default). The relative eigenvalue floor caps the condition number of the
+  # matrix it floors at 1/tol -- at d = 4 covariates tol = n^(-0.07) ~ 0.5-0.6, i.e. a cap of ~1.7-2.
+  # Applied to the raw covariance Omega(X_i) (the legacy map), that cap ERASES the per-moment variance
+  # ordering: when a cell mixes low-variance self moments with cross-cohort moments whose 1/p_{g'}
+  # prefactors make them 1e2-1e4 times noisier, the floored inverse is near-uniform across moments and
+  # the "efficient" weights load on the noisiest moments (the audited with-X degeneracy: SEs 7-30x).
+  # The scale information lives in the DIAGONAL of the pooled Omega-bar -- a cross-unit average,
+  # sqrt(n)-consistent with no curse of dimensionality -- so the floor is now applied on the
+  # pooled-diagonal scale: with D = diag(diag(Omega-bar)),
+  #     S_i = D^{-1/2} Omega(X_i) D^{-1/2},  S_i^{fl} = floor(S_i),  Minv_i = D^{-1/2} (S_i^{fl})^{-1} D^{-1/2},
+  # i.e. the conservative d-dependent cap regularizes only the SHAPE (where the kernel noise lives),
+  # while the well-estimated pooled variance ordering passes through. Same limit (floor vanishes =>
+  # Minv_i -> Omega(X_i)^{-1}, full pointwise efficiency), same q'1 = 0 identity (Minv_i is symmetric
+  # PD and shared by w_i and q_i). The legacy raw-scale map remains reachable via
+  # options(edid_legacy_floor = TRUE) (forensics), and is used automatically when the builder did not
+  # attach the pooled Omega-bar (e.g. hand-built arrays in validation harnesses).
+  # DEGENERATE moments (zero pooled variance -- e.g. the structurally-zero self pair with tpre == t in
+  # PRE-treatment cells) get scale 0: weight exactly 0 (excluded from every unit's GLS combination and
+  # renormalized over the rest), matching the no-covariate path's pseudoinverse treatment. Flooring them
+  # instead would hand the zero-variance moment all the weight (a 0-variance "moment" is the GLS optimum).
+  ds <- NULL
+  if (!isTRUE(getOption("edid_legacy_floor"))) {
+    .ob2 <- attr(omega_array, "omega_bar")
+    if (!is.null(.ob2)) {
+      dbar <- diag(0.5 * (.ob2 + t(.ob2)))
+      if (all(is.finite(dbar)) && any(dbar > 0)) {
+        ds <- ifelse(dbar > max(dbar) * 1e-12,
+                     1 / sqrt(pmax(dbar, max(dbar) * 1e-300, 0)), 0)
+      }
+    }
+  }
+  # Speed: when gen_out_mat is supplied (efficient misspec_robust / diagnostic), ALSO return the per-unit adjoint
+  # q_i = Minv_i (M_i - theta_i 1) from the SAME per-unit eigendecomposition (one eigen pass instead of two; the q
+  # is bit-identical to compute_pointwise_q_edid). gen_out_mat = NULL keeps the default weights path unchanged.
+  do_q <- !is.null(gen_out_mat)
+  Q    <- if (do_q) matrix(0, n, H) else NULL
+  # need_coup: ALSO return the per-unit EIGEN-FLOOR-AWARE coupling gradient C_i = dtheta_i / dOmega_i^shrunk --
+  # the Daleckii-Krein derivative of the FLOORED inverse M = V diag(1/max(lambda, c)) V', NOT the smooth
+  # -sym(q w'). It reduces to -sym(q w') when nothing floors, so the (well-conditioned) kernel is unaffected;
+  # the sieve's per-unit Omega is heavily floored, and the smooth adjoint there over-states the weight channel
+  # several-fold. Used by the sieve weight-channel psi (the kernel path keeps Q/W).
+  C    <- if (do_q && need_coup) array(0, dim = c(n, H, H)) else NULL
+  # Dimension-aware floor exponent a = c*(5-d)/10, c = 0.7. clamp d to <=4 so a>0
+  # (the band (0,(5-d)/10) is empty for d>=5, where the NW conditional covariance
+  # is not uniformly consistent; a=0.07 is a conservative fallback there).
+  a_floor <- 0.7 * (5 - min(as.integer(d), 4L)) / 10
+  tol     <- n^(-a_floor)
+  # Diagnostic override (default behavior unchanged): getOption("edid_eig_tol") sets the
+  # relative eigenvalue floor directly (condition-number cap = 1/tol). Used to study how
+  # regularization strength affects pointwise efficiency; NA/unset keeps the rate above.
+  tol_ov <- suppressWarnings(as.numeric(getOption("edid_eig_tol", NA_real_)))
+  if (length(tol_ov) == 1L && is.finite(tol_ov) && tol_ov > 0) tol <- tol_ov
+  # Per-unit adaptive PD-blend (opt-in: edid_pd_blend). When a unit's Omega(X_i) is non-PD / near-singular, blend
+  # it toward the pooled, well-conditioned Omega-bar (PSD, estimated from ALL units) just enough to restore
+  # conditioning, instead of flooring the raw (unreliable) per-unit estimate. Well-conditioned units are left
+  # untouched (full pointwise efficiency). Blend weight is closed-form via Weyl's inequality
+  # lambda_min((1-a)Mi + a*OB) >= (1-a) lambda_min(Mi) + a lambda_min(OB): smallest a giving lambda_min >= eps.
+  # Asymptotically negligible (activates only where the per-unit estimate is not consistently estimable); same
+  # mechanism for the kernel and sieve scenarios.
+  .blend <- isTRUE(getOption("edid_pd_blend")); .ob <- attr(omega_array, "omega_bar")
+  if (.blend && !is.null(.ob)) {
+    .ob <- 0.5 * (.ob + t(.ob)); eo <- eigen(.ob, symmetric = TRUE); mbo <- max(eo$values)
+    if (is.finite(mbo) && mbo > 0) {
+      obF <- eo$vectors %*% diag(pmax(eo$values, mbo * tol), H) %*% t(eo$vectors)   # PSD-floored pooled target
+      mu_bar <- min(pmax(eo$values, mbo * tol))                                     # > 0
+    } else .blend <- FALSE
+  } else .blend <- FALSE
+  for (i in seq_len(n)) {
+    Mi <- omega_array[i, , ]
+    Mi <- 0.5 * (Mi + t(Mi))
+    if (any(!is.finite(Mi))) {
+      W[i, ] <- one / H
+      next
+    }
+    e  <- eigen(Mi, symmetric = TRUE)
+    mx <- max(e$values)
+    if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }
+    if (.blend) {                                                                  # restore PD by pooling, not flooring
+      mu_i <- min(e$values)
+      # Trigger ONLY on genuine indefiniteness (a negative eigenvalue beyond machine noise). Normal near-low-rank
+      # conditioning -- the H moments in a cell are correlated, so most eigenvalues are small relative to the max --
+      # is handled exactly by the eigen-floor and is NOT a defect; blending it would needlessly distort good units.
+      if (mu_i < -mx * 1e-8) {
+        eps <- mx * tol                                                            # blend up to the floor target
+        a_i <- if (mu_bar > mu_i) min(1, max(0, (eps - mu_i) / (mu_bar - mu_i))) else 1
+        Mi  <- (1 - a_i) * Mi + a_i * obF
+        e   <- eigen(0.5 * (Mi + t(Mi)), symmetric = TRUE); mx <- max(e$values)
+      }
+    }
+    # Pooled-diagonal scaling (see the `ds` note above): floor the SHAPE matrix S_i = D^{-1/2} Mi D^{-1/2},
+    # then apply Minv_eff = D^{-1/2} (S_i^fl)^{-1} D^{-1/2}. sv = D^{-1/2} 1 carries the scale through every
+    # Minv application; sv = 1 (ds NULL / legacy option) reproduces the raw-scale map exactly.
+    if (!is.null(ds)) {
+      Si <- t(t(Mi * ds) * ds)
+      Si <- 0.5 * (Si + t(Si))
+      e  <- eigen(Si, symmetric = TRUE)
+      mx <- max(e$values)
+      if (!is.finite(mx) || mx <= 0) { W[i, ] <- one / H; next }
+    }
+    sv <- if (is.null(ds)) one else ds
+    ev_floored <- pmax(e$values, mx * tol)
+    # Apply Omega(X_i)^{-1} to the vectors we actually need (1, and gen_out_i - theta_i) straight from the
+    # eigenpairs: Minv z = V ((V' z) / lambda_floored). This skips forming the H x H Minv = V diag(1/lam) V'
+    # and the extra H x H matmul, n times over (the per-unit loop is O(n H^3); this removes the H^3 rebuild,
+    # leaving the eigendecomposition as the only H^3 step). Same value up to FP reassociation (~1e-13).
+    Vt   <- e$vectors
+    v    <- sv * drop(Vt %*% (crossprod(Vt, sv) / ev_floored))                 # Minv_eff %*% 1
+    den  <- sum(v)
+    if (is.finite(den) && abs(den) > 1e-12) {
+      W[i, ] <- v / den
+      if (do_q) {                                                              # same Minv_eff => q_i'1 = 0
+        theta_i <- sum(W[i, ] * gen_out_mat[i, ])
+        z       <- sv * (gen_out_mat[i, ] - theta_i)                           # D^{-1/2}(gen_out_i - theta_i)
+        Q[i, ]  <- sv * drop(Vt %*% (crossprod(Vt, z) / ev_floored))           # Minv_eff (gen_out_i - theta_i)
+        if (need_coup) {                                                        # eigen-floor-aware coupling gradient
+          # dtheta = (1/s) 1'(dM)(gen_out - theta), dM = V[f^{[1]} o (V'dS V)]V' (Daleckii-Krein) on the SCALED
+          # system, mapped back as dtheta/dOmega = D^{-1/2}[dtheta/dS]D^{-1/2};
+          # f(lam)=1/max(lam,c): floored directions are clamped (f'=0), so their inverse does NOT respond to
+          # dOmega -- exactly the variance reduction the smooth -sym(q w') adjoint ignores. The floor level
+          # c = mx*tol AND the pooled scale D are held FIXED here (their d(mx)/dOmega and d(Omega-bar)
+          # dependence, and the data-driven shrinkage lambda derivative, are higher-order and omitted -- the
+          # same asymptotically-negligible-stabilization convention the kernel path documents).
+          atil <- drop(crossprod(Vt, sv)); util <- drop(crossprod(Vt, z))      # V'(D^{-1/2}1) , V'(D^{-1/2}(gen-theta))
+          lam  <- e$values; invfl <- 1 / ev_floored; c_fl <- mx * tol
+          fp   <- ifelse(lam > c_fl, -1 / lam^2, 0)                            # f'(lam) (clamped to 0 when floored)
+          dl   <- outer(lam, lam, "-")
+          Dm   <- outer(invfl, invfl, "-") / dl                                # divided differences f^{[1]}_kl
+          near <- abs(dl) < 1e-8 * (abs(mx) + 1e-300)                          # degenerate / diagonal -> derivative
+          if (any(near)) Dm[near] <- outer(fp, fp, function(a, b) 0.5 * (a + b))[near]
+          Smat <- 0.5 * (outer(atil, util) + outer(util, atil))                # sym(a~ u~')
+          Cm   <- (Vt %*% (Dm * Smat) %*% t(Vt)) / den                         # (1/s) V[f^{[1]} o sym] V' (dtheta/dS)
+          C[i, , ] <- if (is.null(ds)) Cm else t(t(Cm * ds) * ds)              # back to the raw Omega scale
+        }
+      }
+    } else {
+      W[i, ] <- one / H                                                        # degenerate => uniform weight, q stays 0
+    }
+  }
+  if (do_q) list(W = W, Q = Q, C = C) else W
+}
+
+#' Pooled (averaged-scheme) eigen-floor-aware coupling gradient
+#'
+#' Returns the H x H gradient \eqn{C = d\theta / d\bar\Omega} for the constant ("averaged") weight
+#' \eqn{\bar w = M^{-1}1 / (1' M^{-1}1)}, where \eqn{M^{-1}} is the FLOORED inverse of the pooled
+#' \eqn{\bar\Omega} (\eqn{M^{-1} = V \,\mathrm{diag}(1/\max(\lambda,c))\, V'}). The smooth \eqn{-\mathrm{sym}(q\bar w')}
+#' adjoint ignores the eigenvalue floor; this is the Daleckii-Krein derivative of the floored inverse, so the
+#' floored directions are clamped (\eqn{f'=0}) and do NOT respond to \eqn{d\bar\Omega}. This matters for the
+#' averaged+sieve channel in high-H cells where the pooled floor binds and the smooth adjoint over-states
+#' \eqn{\psi_\Omega} (jackknife slope/sign break). It reduces EXACTLY to \eqn{-\mathrm{sym}(q\bar w')} when nothing
+#' floors -- the same per-unit construction as \code{compute_pointwise_weights_edid(need_coup = TRUE)}, for one
+#' pooled matrix instead of n. The fixed floor level \eqn{c} (and \eqn{d(\mathrm{mx})/d\bar\Omega}) are
+#' higher-order and omitted, matching the kernel/pointwise convention.
+#'
+#' @param omega_floored floored pooled Omega-bar carrying \code{attr(., "eig_floor")} =
+#'   \code{list(values = raw eigenvalues, vectors = V, floor = c)} (attached by
+#'   \code{compute_omega_star_sieve_edid}'s averaged path). If absent, returns \code{NULL}.
+#' @param mbar length-H mean generated outcome; \eqn{\theta = \sum_h \bar w_h \,\mathrm{mbar}_h}
+#' @param att scalar plug-in att for this cell (\eqn{= \bar w' \mathrm{mbar}})
+#' @return H x H matrix \eqn{C}, or \code{NULL} if the eigendecomposition attribute is absent or the
+#'   normalizer is degenerate (caller then falls back to the smooth q/w coupling).
+#' @keywords internal
+compute_obar_coupling_edid <- function(omega_floored, mbar, att) {
+  ef <- attr(omega_floored, "eig_floor"); if (is.null(ef)) return(NULL)
+  Vt  <- ef$vectors; lam <- ef$values; c_fl <- ef$floor
+  H   <- length(lam); if (H < 1L) return(NULL)
+  # Pooled-scale flooring (default builders): the stored eigendecomposition is of the SCALED system
+  # S = D^{-1/2} Omega-bar D^{-1/2} with D = diag(diag(Omega-bar)) and ef$scale = diag(D^{-1/2}); the weight
+  # map is w = D^{-1/2} fl(S)^{-1} D^{-1/2} 1 / (...), so the directional derivative is computed on the
+  # scaled system (a0 = D^{-1/2}1, z0 = D^{-1/2}(mbar - att)) and mapped back as
+  # dtheta/dOmega = D^{-1/2} [dtheta/dS] D^{-1/2} (the pooled scale held fixed -- the same higher-order
+  # omission convention as the floor level c). ef$scale absent (legacy floor / hand-built attrs) => sc = 1,
+  # which reduces EXACTLY to the raw-scale coupling.
+  sc  <- if (!is.null(ef$scale)) ef$scale else rep(1, H)
+  ev_floored <- pmax(lam, c_fl); invfl <- 1 / ev_floored
+  a0  <- sc; z0 <- sc * (mbar - att)
+  den <- sum(sc * drop(Vt %*% (crossprod(Vt, a0) / ev_floored)))         # 1' Minv_eff 1
+  if (!is.finite(den) || abs(den) < 1e-12) return(NULL)
+  atil <- drop(crossprod(Vt, a0)); util <- drop(crossprod(Vt, z0))      # V'(D^{-1/2}1) , V'(D^{-1/2}(mbar - theta))
+  fp   <- ifelse(lam > c_fl, -1 / lam^2, 0)                             # f'(lam) clamped to 0 when floored
+  dl   <- outer(lam, lam, "-")
+  Dm   <- outer(invfl, invfl, "-") / dl                                 # divided differences f^{[1]}
+  mx   <- max(lam); near <- abs(dl) < 1e-8 * (abs(mx) + 1e-300)
+  if (any(near)) Dm[near] <- outer(fp, fp, function(a, b) 0.5 * (a + b))[near]
+  Smat <- 0.5 * (outer(atil, util) + outer(util, atil))                # sym(a~ u~')
+  Cm   <- (Vt %*% (Dm * Smat) %*% t(Vt)) / den                         # dtheta/dS
+  t(t(Cm * sc) * sc)                                                   # back to the raw Omega-bar scale
+}

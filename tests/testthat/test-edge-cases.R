@@ -92,8 +92,8 @@ test_that("data with no never-treated group warns with nevertreated", {
 
 test_that("groups treated in first period are dropped", {
   set.seed(20260401)
-  sp <- did::reset.sim()
-  data_fp <- did::build_sim_dataset(sp)
+  sp <- reset.sim()
+  data_fp <- build_sim_dataset(sp)
   # Add units treated in the very first period
   first_per <- min(data_fp$period)
   extra <- data_fp[data_fp$G == sort(unique(data_fp$G[data_fp$G > 0]))[1], ]
@@ -146,8 +146,8 @@ test_that("non-consecutive group values work", {
 
 test_that("allow_unbalanced_panel=TRUE with balanced data proceeds normally", {
   set.seed(20260401)
-  sp <- did::reset.sim()
-  data_bal <- did::build_sim_dataset(sp)
+  sp <- reset.sim()
+  data_bal <- build_sim_dataset(sp)
 
   result <- suppressMessages(
     att_gt(yname = "Y", data = data_bal, tname = "period", idname = "id",
@@ -159,8 +159,8 @@ test_that("allow_unbalanced_panel=TRUE with balanced data proceeds normally", {
 
 test_that("allow_unbalanced_panel=TRUE with truly unbalanced data", {
   set.seed(20260401)
-  sp <- did::reset.sim()
-  data_ub <- did::build_sim_dataset(sp)
+  sp <- reset.sim()
+  data_ub <- build_sim_dataset(sp)
   # Drop a few rows to make it unbalanced
   data_ub <- data_ub[-c(1, 5, 10), ]
 

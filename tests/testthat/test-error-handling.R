@@ -4,8 +4,8 @@
 
 # Shared setup
 set.seed(20260401)
-sp <- did::reset.sim()
-data_eh <- did::build_sim_dataset(sp)
+sp <- reset.sim()
+data_eh <- build_sim_dataset(sp)
 
 # =============================================================================
 # att_gt() validation errors
@@ -404,8 +404,8 @@ test_that("aggte errors on invalid type", {
 })
 
 test_that("aggte errors when ATTs contain NA and na.rm=FALSE", {
-  sp <- did::reset.sim()
-  data <- did::build_sim_dataset(sp)
+  sp <- reset.sim()
+  data <- build_sim_dataset(sp)
   mp_na <- suppressWarnings(suppressMessages(
     att_gt(yname = "Y", data = data, tname = "period", idname = "id",
            gname = "G", bstrap = FALSE)
@@ -425,9 +425,9 @@ test_that("aggte errors when ATTs contain NA and na.rm=FALSE", {
 test_that("att_gt handles singular covariance for Wald test gracefully", {
   # When covariance matrix is singular, W and Wpval should be NULL
   # and the result should still be a valid MP object
-  small_sp <- did::reset.sim()
+  small_sp <- reset.sim()
   small_sp$n <- 50
-  small_data <- did::build_sim_dataset(small_sp)
+  small_data <- build_sim_dataset(small_sp)
   result <- suppressWarnings(
     att_gt(yname = "Y", data = small_data, tname = "period", idname = "id",
            gname = "G", bstrap = FALSE)

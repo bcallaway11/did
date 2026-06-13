@@ -56,7 +56,7 @@ test_that("missing covariates", {
 
 test_that("repeated cross sections small groups with covariates", {
   # from https://github.com/bcallaway11/did/issues/64
-  sp <- did::reset.sim(time.periods=3)
+  sp <- reset.sim(time.periods=3)
   data <- build_sim_dataset(sp, panel=FALSE)
   data$X2 <- rnorm(nrow(data))
   data$X3 <- rnorm(nrow(data))
@@ -81,7 +81,7 @@ test_that("fewer time periods than groups", {
   # can easily circumvent all of these issues by
   # manually recoding the groups
   time.periods <- 6
-  sp <- did::reset.sim(time.periods=time.periods)
+  sp <- reset.sim(time.periods=time.periods)
   sp$te <- 0
   sp$te.e <- 1:time.periods
   data <- build_sim_dataset(sp)
@@ -109,7 +109,7 @@ test_that("fewer time periods than groups", {
 
 test_that("0 pre-treatment estimates when outcomes are 0", {
   # from https://github.com/bcallaway11/did/issues/126
-  sp <- did::reset.sim(time.periods=10)
+  sp <- reset.sim(time.periods=10)
   data <- build_sim_dataset(sp)
   data <- subset(data, G != 0) # drop never treated
   data <- subset(data, G > 6)
@@ -137,7 +137,7 @@ test_that("0 pre-treatment estimates when outcomes are 0", {
 })
 
 test_that("variables not in dataset", {
-  sp <- did::reset.sim(time.periods=3)
+  sp <- reset.sim(time.periods=3)
   data <- build_sim_dataset(sp)
 
   X2  <- factor(data$cluster)

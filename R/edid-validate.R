@@ -1,0 +1,393 @@
+# edid-validate.R
+# Input validation for edid(). All checks are performed before any computation.
+
+#' Validate inputs to \code{edid()}
+#'
+#' Performs all structural and type checks on user-supplied arguments.
+#' Returns invisibly \code{TRUE} on success; stops with an informative message
+#' on any failure.
+#'
+#' @param data data.frame or coercible
+#' @param yname character scalar: outcome column name
+#' @param idname character scalar: unit id column name
+#' @param tname character scalar: time column name
+#' @param gname character scalar: first-treatment-period column name
+#' @param covariates character vector or NULL
+#' @param pt_assumption character scalar, already matched via \code{match.arg}
+#' @param alp numeric scalar in (0, 1)
+#' @param clustervars character scalar or NULL
+#' @param biters non-negative integer (internal bootstrap iterations)
+#' @param anticipation non-negative integer
+#' @param survey_design always NULL (survey not yet implemented)
+#'
+#' @return invisibly TRUE
+#' @keywords internal
+validate_edid_inputs <- function(
+  data, yname, idname, tname, gname, xformla = NULL, covariates,
+  pt_assumption, alp, clustervars,
+  biters, anticipation, survey_design
+) {
+
+  # ------------------------------------------------------------------
+  # 1. data is data.frame-like and has rows
+  # ------------------------------------------------------------------
+  if (!is.data.frame(data) && !inherits(data, "data.table") &&
+      !inherits(data, "tbl_df")) {
+    # try coercing
+    tryCatch(
+      data <- as.data.frame(data),
+      error = function(e) stop("`data` must be a data.frame or coercible to one.")
+    )
+  }
+  if (nrow(data) == 0L) {
+    stop("`data` has no rows.")
+  }
+
+  # ------------------------------------------------------------------
+  # 2. yname / idname / tname / gname are character scalars naming
+  #    existing columns
+  # ------------------------------------------------------------------
+  .check_col <- function(arg, argname) {
+    if (!is.character(arg) || length(arg) != 1L) {
+      stop(sprintf("`%s` must be a character scalar (column name).", argname))
+    }
+    if (!arg %in% names(data)) {
+      stop(sprintf("`%s` = \"%s\" is not a column in `data`.", argname, arg))
+    }
+  }
+  .check_col(yname,  "yname")
+  .check_col(idname, "idname")
+  .check_col(tname,  "tname")
+  .check_col(gname,  "gname")
+
+  # Columns must be distinct
+  col_names <- c(yname, idname, tname, gname)
+  if (anyDuplicated(col_names)) {
+    stop("`yname`, `idname`, `tname`, and `gname` must name distinct columns.")
+  }
+
+  # Reserved internal names: as_MP_edid() builds a per-unit frame with a `.w` sampling-weight
+  # column and a `.edid_cluster` cluster column; a user column with one of these names would be
+  # silently shadowed there and corrupt aggregation weights.
+  reserved <- c(".w", ".edid_cluster")
+  bad_reserved <- intersect(col_names, reserved)
+  if (length(bad_reserved) > 0L) {
+    stop(sprintf("Column name(s) %s are reserved for internal use; rename the column.",
+                 paste(sprintf("`%s`", bad_reserved), collapse = ", ")))
+  }
+
+  # ------------------------------------------------------------------
+  # 3. yname column is numeric; no NA; all finite
+  # ------------------------------------------------------------------
+  y_col <- data[[yname]]
+  if (!is.numeric(y_col)) {
+    stop(sprintf("Column `%s` (yname) must be numeric.", yname))
+  }
+  if (anyNA(y_col)) {
+    stop(sprintf("Column `%s` (yname) contains NA values. ", yname),
+         "edid() requires a complete, balanced panel with no missing outcomes.")
+  }
+  if (!all(is.finite(y_col))) {
+    stop(sprintf("Column `%s` (yname) contains non-finite values (Inf/-Inf/NaN). ", yname),
+         "edid() requires all outcomes to be finite.")
+  }
+
+  # ------------------------------------------------------------------
+  # 4. tname column is numeric; no NA
+  # ------------------------------------------------------------------
+  t_col <- data[[tname]]
+  if (!is.numeric(t_col)) {
+    stop(sprintf("Column `%s` (tname) must be numeric.", tname))
+  }
+  if (anyNA(t_col)) {
+    stop(sprintf("Column `%s` (tname) contains NA values.", tname))
+  }
+  if (!all(is.finite(t_col))) {
+    stop(sprintf("Column `%s` (tname) contains non-finite values (Inf/-Inf/NaN); time periods must be finite.", tname))
+  }
+
+  # ------------------------------------------------------------------
+  # 5. gname column is numeric; no NA
+  # ------------------------------------------------------------------
+  ft_col <- data[[gname]]
+  if (!is.numeric(ft_col)) {
+    stop(sprintf("Column `%s` (gname) must be numeric.", gname))
+  }
+  if (anyNA(ft_col)) {
+    stop(sprintf("Column `%s` (gname) contains NA values. ", gname),
+         "Use Inf to denote never-treated units.")
+  }
+  if (!any(is.finite(ft_col))) {
+    stop(sprintf(paste0("Column `%s` (gname) has no finite (treated) cohort: every unit is never-treated ",
+         "(Inf). edid() needs at least one treated cohort to estimate ATT(g,t)."), gname))
+  }
+
+  # ------------------------------------------------------------------
+  # 5b. No NA unit ids
+  # ------------------------------------------------------------------
+  # An NA id passes the balance arithmetic below (unique() keeps NA) but
+  # prepare_edid_panel()'s sort(unique(.)) drops it, so the unit's data would
+  # silently vanish from the fit; two NA-id units trip the duplicate-rows error
+  # with a misleading message. Reject explicitly.
+  if (anyNA(data[[idname]])) {
+    stop(sprintf("Column `%s` (idname) contains NA values.", idname))
+  }
+
+  # ------------------------------------------------------------------
+  # 6. No duplicate (idname, tname) rows
+  # ------------------------------------------------------------------
+  ut_key <- paste(data[[idname]], data[[tname]], sep = "___")
+  if (anyDuplicated(ut_key)) {
+    stop("Duplicate (idname, tname) pairs found in `data`. ",
+         "edid() requires a balanced panel with exactly one observation per unit-period.")
+  }
+
+  # ------------------------------------------------------------------
+  # 7. Panel is balanced: every unit appears in every time period
+  # ------------------------------------------------------------------
+  all_units_v  <- unique(data[[idname]])
+  all_times_v  <- unique(data[[tname]])
+  n_units      <- length(all_units_v)
+  n_times      <- length(all_times_v)
+  expected_obs <- n_units * n_times
+  if (nrow(data) != expected_obs) {
+    stop(sprintf(
+      "Panel is unbalanced: expected %d rows (%d units x %d periods) but found %d. ",
+      expected_obs, n_units, n_times, nrow(data)),
+      "edid() requires a balanced panel.")
+  }
+
+  # ------------------------------------------------------------------
+  # 8. Treatment is absorbing: gname is constant within unit
+  # ------------------------------------------------------------------
+  ft_by_unit <- tapply(data[[gname]], data[[idname]], function(x) length(unique(x)))
+  if (any(ft_by_unit > 1L)) {
+    bad <- names(ft_by_unit)[ft_by_unit > 1L]
+    stop(sprintf(
+      "`%s` (gname) is not constant within unit for %d unit(s) (e.g., %s). ",
+      gname, length(bad), bad[1]),
+      "Treatment must be absorbing.")
+  }
+
+  # ------------------------------------------------------------------
+  # 9-10. Never-treated control availability
+  # ------------------------------------------------------------------
+  # Get time-invariant gname per unit (one row per unit)
+  unit_ft <- tapply(data[[gname]], data[[idname]], `[`, 1L)
+
+  n_never <- sum(is.infinite(unit_ft))
+  if (n_never == 0L) {
+    stop("No never-treated units found (`gname == Inf`). ",
+         "edid() requires never-treated units.")
+  }
+
+  # Cohorts with fewer than 2 units give a degenerate group sampling variance: on the no-covariate path
+  # cov_nn_edid(.)/n_g for a singleton cohort contributes ~0, so the reported SE is understated with no
+  # other signal (the covariate path already guards each sieve fit at n_gp < 2). Warn so the user knows
+  # inference for the affected cells is unreliable.
+  if (n_never < 2L) {
+    warning("Only ", n_never, " never-treated unit(s): the comparison-group sampling variance is ",
+            "degenerate and edid() standard errors are unreliable.", call. = FALSE)
+  }
+  # Under pt_assumption = "all" this legacy warning is SUBSUMED by the thin-cohort guard
+  # (min_pair_units >= 2 always covers cohorts with fewer than 2 units, and the guard's
+  # warning in fit_edid_cells() is more specific: it names the cohorts, states that their
+  # cells are pinned to the just-identified moment, and recommends edid_refit_bootstrap()).
+  # Keep it for pt_assumption = "post", where the guard is inert by design (the moment set
+  # is already just-identified) but the degenerate-variance problem is still real.
+  finite_cohort_sizes <- table(unit_ft[is.finite(unit_ft)])
+  small_cohorts <- names(finite_cohort_sizes)[finite_cohort_sizes < 2L]
+  if (length(small_cohorts) > 0L && identical(pt_assumption, "post")) {
+    warning("Treated cohort(s) ", paste(small_cohorts, collapse = ", "), " have fewer than 2 units: ",
+            "their group-time sampling variance is degenerate and the reported standard errors for ",
+            "those cells are understated.", call. = FALSE)
+  }
+
+  # ------------------------------------------------------------------
+  # 11. covariates is deprecated: error with redirect message
+  # ------------------------------------------------------------------
+  if (!is.null(covariates)) {
+    stop(
+      "The 'covariates' argument has been replaced by 'xformla'. ",
+      "Pass a formula like xformla = ~ X1 + X2."
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # 11b. xformla validation (enhanced: NA, time-invariance, formula)
+  # ------------------------------------------------------------------
+  if (!is.null(xformla)) {
+    if (!inherits(xformla, "formula")) {
+      stop("`xformla` must be a one-sided formula (e.g., ~ X1 + X2) or NULL.")
+    }
+    # Extract RHS variable names (skip ~1)
+    rhs_vars <- all.vars(xformla)
+    if (length(rhs_vars) > 0L) {
+      missing_vars <- setdiff(rhs_vars, names(data))
+      if (length(missing_vars) > 0L) {
+        stop(sprintf(
+          "Variable(s) in `xformla` not found in `data`: %s",
+          paste(missing_vars, collapse = ", ")
+        ))
+      }
+
+      # Check all covariate columns are numeric or factor
+      for (v in rhs_vars) {
+        if (!is.numeric(data[[v]]) && !is.factor(data[[v]])) {
+          stop(sprintf("Covariate column `%s` must be numeric or factor.", v))
+        }
+      }
+
+      # NA check: reject any NA in covariate columns
+      for (v in rhs_vars) {
+        if (anyNA(data[[v]])) {
+          stop(sprintf(
+            "Covariate column `%s` contains NA values. ",
+            v),
+            "edid() requires complete covariate data for all units and periods.")
+        }
+      }
+
+      # Time-invariance check: covariates must be constant within unit
+      for (v in rhs_vars) {
+        n_unique_by_unit <- tapply(data[[v]], data[[idname]],
+                                   function(x) length(unique(x)))
+        if (any(n_unique_by_unit > 1L)) {
+          bad_units <- names(n_unique_by_unit)[n_unique_by_unit > 1L]
+          stop(sprintf(
+            "Covariate `%s` is time-varying for %d unit(s) (e.g., unit %s). ",
+            v, length(bad_units), bad_units[1]),
+            "edid() requires all covariates in `xformla` to be time-invariant (constant within unit).")
+        }
+      }
+
+      # Validate that model.matrix() can expand the formula without error
+      # Build a one-row-per-unit test frame
+      test_idx <- match(unique(data[[idname]]), data[[idname]])
+      test_df  <- data[test_idx, , drop = FALSE]
+      tryCatch({
+        mm <- stats::model.matrix(xformla, data = test_df)
+        # Remove intercept if present
+        if ("(Intercept)" %in% colnames(mm)) {
+          mm <- mm[, colnames(mm) != "(Intercept)", drop = FALSE]
+        }
+        if (ncol(mm) == 0L) {
+          stop("`xformla` expands to zero non-intercept columns. Use xformla = NULL for no covariates.")
+        }
+        if (anyNA(mm)) {
+          stop("`xformla` expansion via model.matrix() produces NA values. Check for unsupported formula features.")
+        }
+        if (any(!is.finite(mm))) {
+          stop("`xformla` expansion via model.matrix() produces non-finite values.")
+        }
+      }, error = function(e) {
+        stop(sprintf(
+          "Cannot expand `xformla` via model.matrix(): %s",
+          conditionMessage(e)
+        ))
+      })
+
+      # Rank check: collinear / redundant covariates fall back to a pseudoinverse downstream -- still
+      # consistent, but with no user-facing signal. WARN (do not stop: the estimate is valid) so the
+      # user knows the design is rank-deficient. Exclude all-zero columns first, so empty factor levels
+      # (e.g. a covariate that is constant within the estimation sample -- a benign degeneracy the
+      # estimator handles) do not trigger a spurious warning; only genuinely collinear non-constant
+      # columns (e.g. ~ x1 + I(2 * x1)) do.
+      mm_nz   <- mm[, colSums(mm != 0) > 0L, drop = FALSE]
+      mm_rank <- if (ncol(mm_nz) > 0L) qr(mm_nz)$rank else 0L
+      if (mm_rank < ncol(mm_nz)) {
+        warning(sprintf(
+          paste0("`xformla` expands to a rank-deficient design: %d non-constant covariate column(s) but ",
+                 "rank %d (collinear or redundant covariates). The estimator proceeds via a pseudoinverse; ",
+                 "consider dropping the linearly dependent term(s)."),
+          ncol(mm_nz), mm_rank), call. = FALSE)
+      }
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # 12. survey_design != NULL -> stop (stub)
+  # ------------------------------------------------------------------
+  if (!is.null(survey_design)) {
+    stop("survey_design not yet implemented in edid(). ",
+         "Pass survey_design = NULL or omit the argument.")
+  }
+
+  # ------------------------------------------------------------------
+  # 13. alp in (0, 1)
+  # ------------------------------------------------------------------
+  if (!is.numeric(alp) || length(alp) != 1L ||
+      is.na(alp) || !is.finite(alp) || alp <= 0 || alp >= 1) {
+    stop("`alp` must be a numeric scalar strictly between 0 and 1.")
+  }
+
+  # ------------------------------------------------------------------
+  # 14. biters >= 0 integer
+  # ------------------------------------------------------------------
+  if (!is.numeric(biters) || length(biters) != 1L ||
+      is.na(biters) || !is.finite(biters) ||
+      biters < 0 || biters != floor(biters)) {
+    stop("`biters` must be a non-negative integer.")
+  }
+
+  # ------------------------------------------------------------------
+  # 15. anticipation >= 0 integer; effective pre-treatment check
+  # ------------------------------------------------------------------
+  if (!is.numeric(anticipation) || length(anticipation) != 1L ||
+      is.na(anticipation) || !is.finite(anticipation) ||
+      anticipation < 0 || anticipation != floor(anticipation)) {
+    stop("`anticipation` must be a non-negative integer.")
+  }
+  min_ft <- min(unit_ft[is.finite(unit_ft)])
+  min_t  <- min(all_times_v)
+  if (min_ft - anticipation <= min_t) {
+    stop(sprintf(
+      "With `anticipation = %d`, the earliest treatment cohort (%g) would be treated at or before ",
+      anticipation, min_ft),
+      sprintf("the first observed period (%g). ", min_t),
+      "There must be at least one pre-treatment period available.")
+  }
+
+  # ------------------------------------------------------------------
+  # 16. clustervars column checks
+  # ------------------------------------------------------------------
+  if (!is.null(clustervars)) {
+    if (!is.character(clustervars) || length(clustervars) != 1L) {
+      stop("`clustervars` must be a character scalar naming a column in `data`, or NULL.")
+    }
+    if (!clustervars %in% names(data)) {
+      stop(sprintf("`clustervars` = \"%s\" is not a column in `data`.", clustervars))
+    }
+    # Clustering on a design column corrupts downstream aggregation: as_MP_edid()'s per-unit
+    # frame would have its cohort/id/time column overwritten by cluster codes (silently wrong
+    # group shares), and clustering on the outcome is never meaningful.
+    if (clustervars %in% col_names) {
+      stop(sprintf(
+        "`clustervars` = \"%s\" coincides with yname/idname/tname/gname. Clustering at the unit level is the default (no `clustervars` needed); to cluster at the cohort level, add a copy of the cohort column under a different name.",
+        clustervars))
+    }
+    cl_col <- data[[clustervars]]
+    if (anyNA(cl_col)) {
+      stop(sprintf("Cluster column `%s` contains NA values.", clustervars))
+    }
+    # Time-invariant within unit
+    cl_by_unit <- tapply(cl_col, data[[idname]], function(x) length(unique(x)))
+    if (any(cl_by_unit > 1L)) {
+      bad <- names(cl_by_unit)[cl_by_unit > 1L]
+      stop(sprintf(
+        "Cluster variable `%s` is not time-invariant for %d unit(s) (e.g., %s). ",
+        clustervars, length(bad), bad[1]),
+        "Cluster variable must be constant within unit.")
+    }
+    # Cluster-robust SEs need >= 2 distinct clusters; a single cluster yields an all-NA covariance.
+    # Warn loudly rather than returning NA SEs silently.
+    n_clusters <- length(unique(cl_col))
+    if (n_clusters < 2L) {
+      warning(sprintf(
+        "Cluster variable `%s` has only %d distinct cluster(s): cluster-robust standard errors are undefined and will be returned as NA. Provide at least 2 clusters, or drop clustervars.",
+        clustervars, n_clusters), call. = FALSE)
+    }
+  }
+
+  invisible(TRUE)
+}

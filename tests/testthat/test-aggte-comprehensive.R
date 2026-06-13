@@ -4,9 +4,9 @@
 
 # Shared setup: known DGP with treatment effect = 1
 set.seed(20260401)
-sp <- did::reset.sim()
+sp <- reset.sim()
 sp$te <- 1  # constant treatment effect
-data_agg <- did::build_sim_dataset(sp)
+data_agg <- build_sim_dataset(sp)
 
 mp_agg <- suppressWarnings(suppressMessages(
   att_gt(yname = "Y", xformla = ~X, data = data_agg, tname = "period",

@@ -4,8 +4,8 @@
 
 # Shared setup
 set.seed(20260401)
-sp <- did::reset.sim()
-data_gg <- did::build_sim_dataset(sp)
+sp <- reset.sim()
+data_gg <- build_sim_dataset(sp)
 
 mp_gg <- suppressWarnings(suppressMessages(
   att_gt(yname = "Y", xformla = ~X, data = data_gg, tname = "period",

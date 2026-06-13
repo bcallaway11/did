@@ -7,6 +7,10 @@ Description: The standard Difference-in-Differences (DID) setup involves two per
 Depends:
     R (>= 4.1.0)
 License: GPL-2
+Copyright: The package authors, except the lookup tables in
+    inst/extdata/aks_lookup/, which are Copyright (c) 2023 Sophie Sun (MIT
+    License), vendored from the MissAdapt replication package of Armstrong,
+    Kline & Sun (2025, Econometrica). See inst/COPYRIGHTS.
 Encoding: UTF-8
 LazyData: true
 Imports:
@@ -17,6 +21,8 @@ Imports:
     DRDID (>= 1.3.0),
     generics,
     methods,
+    parallel,
+    splines,
     tidyr,
     fastglm,
     data.table (>= 1.15.4),
@@ -30,5 +36,10 @@ Suggests:
     knitr,
     covr,
     backports,
-    broom
+    broom,
+    testthat,
+    withr,
+    callr,
+    remotes,
+    R.matlab
 Config/roxygen2/version: 8.0.0

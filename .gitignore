@@ -13,9 +13,27 @@ desktop.ini
 /Meta/
 did.Rproj
 ..Rcheck/
+*.Rcheck/
+*.tar.gz
 .claude/
 CLAUDE.md
 .vscode/
 .revdep_manual/
 vignettes/*_cache/
 benchmark-results/
+
+# Personal working files (not part of the package)
+CSX2026.pdf
+Efficient_DiD.pdf
+Rplots.pdf
+CODEX_AUDIT_HANDOFF.md
+EDID_implemention.md
+IMPLEMENTATION_PLAN.md
+METHODOLOGY_REVIEW.md
+audit.md
+audit_cov.md
+comprehension.md
+implementation.md
+mailbox.md
+spec.md
+test-spec.md

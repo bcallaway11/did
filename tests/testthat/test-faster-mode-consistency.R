@@ -4,8 +4,8 @@
 
 # Shared setup
 set.seed(20260401)
-sp <- did::reset.sim()
-data_fm <- did::build_sim_dataset(sp)
+sp <- reset.sim()
+data_fm <- build_sim_dataset(sp)
 
 # Unbalanced version
 data_ub <- data_fm[-c(1, 5, 10), ]
