@@ -20,3 +20,8 @@ CLAUDE.md
 vignettes/*_cache/
 benchmark-results/
 dev/
+.revdeplite/*.rds
+.revdeplite/*.tar.gz
+.revdeplite/*.md
+.revdeplite/github/
+.revdeplite/results/

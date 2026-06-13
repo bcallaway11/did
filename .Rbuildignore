@@ -25,3 +25,4 @@ Icon?
 ^vignettes/.*_cache$
 ^benchmark-results$
 ^dev$
+^\.revdeplite$

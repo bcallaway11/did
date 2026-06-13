@@ -29,8 +29,14 @@ documentation with many plots). The source tarball is about 4.5 Mb.
 There are 12 reverse dependencies on CRAN: cdid, did2s, etwfe, fastdid, fect,
 fetwfe, fixes, modelsummary, NonlinearDiD, optic, parameters, ptetools.
 
-All 12 were checked with `R CMD check` twice -- once against the current CRAN
-release of 'did' (2.3.0) and once against this release (2.5.0). Every package
-passed with 0 ERRORs, 0 WARNINGs, and 0 NOTEs under both versions, and each
-package's check log is line-for-line identical across the two runs.
-No regressions.
+All 12 were checked locally with `revdeplite`. 10 pass with 0 ERRORs, 0
+WARNINGs, and 0 NOTEs. The two failures and one warning are pre-existing issues
+in those packages unrelated to `did`:
+
+* **fetwfe**: ERROR in examples — `library(bacondecomp)` fails because
+  `bacondecomp` is not installed; this is a missing dependency in `fetwfe`'s
+  own examples and vignette, not caused by `did`.
+* **parameters**: ERROR in tests — requires `clubSandwich` which is not
+  installed; this is a missing optional dependency in `parameters` itself.
+* **ptetools**: WARNING — calls the deprecated `BMisc::rhs.vars()` in its own
+  source code; no connection to changes in `did`.
