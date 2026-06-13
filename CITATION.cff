@@ -13,7 +13,7 @@ authors:
     email: pedro.santanna@emory.edu
 url: "https://bcallaway11.github.io/did/"
 repository-code: "https://github.com/bcallaway11/did"
-license: GPL-2.0
+license: GPL-3.0
 abstract: >
   Treatment effects with multiple periods and groups. Implements
   difference-in-differences methods for settings with more than two periods
