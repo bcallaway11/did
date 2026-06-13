@@ -18,7 +18,7 @@
 )
 }
 \arguments{
-\item{object}{either a \code{MP} object or \code{AGGTEobj} object. See \code{help(ggdid.MP)} and \code{help(ggdid.AGGTEobj)}.}
+\item{object}{an \code{AGGTEobj} object, as returned by \code{aggte}.}
 
 \item{ylim}{optional y limits for the plot; setting here makes the y limits
 the same across different plots}

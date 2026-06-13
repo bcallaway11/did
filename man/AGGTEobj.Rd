@@ -62,7 +62,7 @@ dynamic effects for.  By default, \code{max_e = Inf} so that effects at
 all lengths of exposure are computed.}
 
 \item{balance_e}{If set (and if one computes dynamic effects), it balances
-the sample with respect to event time.  For example, if \code{balance.e=2},
+the sample with respect to event time.  For example, if \code{balance_e=2},
 \code{aggte} will drop groups that are not exposed to treatment for
 at least three periods. (the initial period when \code{e=0} as well as the
 next two periods when \code{e=1} and the \code{e=2}).  This ensures that

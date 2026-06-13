@@ -20,7 +20,7 @@
 #'   time periods; here the overall effect averages the effect across each
 #'   time period).
 #' @param balance_e If set (and if one computes dynamic effects), it balances
-#'  the sample with respect to event time.  For example, if `balance.e=2`,
+#'  the sample with respect to event time.  For example, if `balance_e=2`,
 #'  `aggte` will drop groups that are not exposed to treatment for
 #'  at least three periods. (the initial period when `e=0` as well as the
 #'  next two periods when `e=1` and the `e=2`).  This ensures that
@@ -31,7 +31,7 @@
 #' @param max_e For event studies, this is the largest event time to compute
 #'  dynamic effects for.  By default, `max_e = Inf` so that effects at
 #'  all lengths of exposure are computed.
-#' @param na.rm Logical value if we are to remove missing Values from analyses. Defaults is FALSE.
+#' @param na.rm Logical value if we are to remove missing values from analyses. Default is FALSE.
 #' @param bstrap Boolean for whether or not to compute standard errors using
 #'  the multiplier bootstrap.  Default is value set in the MP object.  If `bstrap=FALSE`, then analytical
 #'  standard errors are reported; these are cluster-robust when a cluster variable was supplied to `att_gt`.

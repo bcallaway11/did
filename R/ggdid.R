@@ -45,6 +45,7 @@ ggdid <- function(object, ...) {
 #' @description A function to plot `MP` objects
 #'
 #' @inheritParams ggdid
+#' @param object an `MP` object, as returned by `att_gt`.
 #' @param ylim optional y limits for the plot; setting here makes the y limits
 #'  the same across different plots
 #' @param xlab optional x-axis label
@@ -119,6 +120,7 @@ ggdid.MP <- function(object,
 #' @description A function to plot `AGGTEobj` objects
 #'
 #' @inheritParams ggdid.MP
+#' @param object an `AGGTEobj` object, as returned by `aggte`.
 #'
 #' @export
 ggdid.AGGTEobj <- function(object,

@@ -69,11 +69,6 @@ This is an example of a very simple model for untreated potential outcomes that 
 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
 library(did)
-# Source the currently version of the did package (based on our Dropbox)
-#fldr <- here::here("R/")
-#sapply(paste0(fldr,list.files(fldr)), source)
-# Source simulation designs
-#source(here::here("vignettes/setup_sims.R"))
 ```
 
 ```{r, message = FALSE, warning = FALSE}
