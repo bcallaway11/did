@@ -1,5 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.vscode$
 ^docs$
 ^README\.Rmd$
 ^README-.*\.png$

@@ -253,3 +253,21 @@ solve_ols_edid <- function(X, y, weights = NULL) {
   args$data <- NULL
   lapply(args, function(a) eval(a, envir = envir))
 }
+
+# Refit helpers need to preserve no-covariate shrinkage targets that are
+# configured through global options rather than formal edid() arguments. Legacy
+# fits without these fields fall through to the caller's current options, as
+# before.
+.edid_with_nocov_shrink_options <- function(fit, expr) {
+  target <- fit$nocov_shrink_target
+  if (is.null(target) || length(target) != 1L || is.na(target)) {
+    return(eval.parent(substitute(expr)))
+  }
+  target <- as.character(target)
+  rho <- fit$nocov_shrink_rho
+  if (is.null(rho) || length(rho) != 1L || !is.finite(rho)) rho <- 0
+  old <- options(edid_nocov_shrink_target = target,
+                 edid_nocov_ar1_rho = as.numeric(rho))
+  on.exit(options(old), add = TRUE)
+  eval.parent(substitute(expr))
+}

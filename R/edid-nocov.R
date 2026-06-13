@@ -145,20 +145,55 @@ compute_omega_star_nocov_edid <- function(
 # Pole-target Ledoit-Wolf shrinkage of Omega* (no-covariate path; nocov_shrink)
 # ---------------------------------------------------------------------------
 
-#' i.i.d.-pole structure matrix for a no-covariate cell's moment covariance
+# Validate the experimental no-covariate shrinkage target configuration.
+# The default is the existing i.i.d. pole (rho = 0).  AR(1) is deliberately
+# opt-in until simulation/application gates justify any automatic choice.
+.validate_nocov_ar1_rho_edid <- function(rho, name = "rho") {
+  if (!is.numeric(rho) || length(rho) != 1L || !is.finite(rho) || abs(rho) >= 1) {
+    stop(sprintf("`%s` must be a finite numeric scalar in (-1, 1).", name), call. = FALSE)
+  }
+  as.numeric(rho)
+}
+
+#' @keywords internal
+nocov_shrink_target_edid <- function() {
+  target <- getOption("edid_nocov_shrink_target", "iid")
+  if (!is.character(target) || length(target) != 1L || is.na(target)) {
+    stop("`options(edid_nocov_shrink_target=...)` must be either 'iid' or 'ar1'.",
+         call. = FALSE)
+  }
+  target <- tolower(target)
+  if (!target %in% c("iid", "ar1")) {
+    stop("`options(edid_nocov_shrink_target=...)` must be either 'iid' or 'ar1'.",
+         call. = FALSE)
+  }
+  rho <- 0
+  if (identical(target, "ar1")) {
+    rho <- .validate_nocov_ar1_rho_edid(
+      getOption("edid_nocov_ar1_rho", NA_real_),
+      "options(edid_nocov_ar1_rho)"
+    )
+  }
+  list(target = target, rho = rho)
+}
+
+#' Serial-correlation target structure matrix for a no-covariate cell's moment covariance
 #'
-#' Builds the \eqn{H \times H} matrix \eqn{S} such that under i.i.d. shocks
-#' \eqn{\varepsilon_{i,t}} with variance \eqn{\sigma^2} (plus arbitrary unit
-#' effects and deterministic period effects, which difference out), the
-#' population covariance of the cell's identifying moments is exactly
-#' \eqn{\sigma^2 S} at the sample cohort sizes. It is the term-by-term mirror
-#' of \code{compute_omega_star_nocov_edid()} (PT-All branch) with every
-#' empirical covariance \code{cov_nn_edid(delta_a_b, delta_c_d)} replaced by
-#' the i.i.d.-shock kernel
+#' Builds the \eqn{H \times H} matrix \eqn{S_\rho} such that under shocks
+#' \eqn{\varepsilon_{i,t}} with variance \eqn{\sigma^2} and serial correlation
+#' \eqn{Corr(\varepsilon_{i,a}, \varepsilon_{i,b}) = \rho^{|a-b|}} (plus
+#' arbitrary unit effects and deterministic period effects, which difference
+#' out), the population covariance of the cell's identifying moments is exactly
+#' \eqn{\sigma^2 S_\rho} at the sample cohort sizes. The default \code{rho = 0}
+#' is the original i.i.d.-shock pole, so
 #' \deqn{Cov(\varepsilon_a-\varepsilon_b, \varepsilon_c-\varepsilon_d)/\sigma^2
-#'   = 1\{a=c\} - 1\{a=d\} - 1\{b=c\} + 1\{b=d\},}
-#' so entries depend only on the pair set and the group sizes (shares), per
-#' the paper's closed-form pole covariance (the imputation/network algebra).
+#'   = 1\{a=c\} - 1\{a=d\} - 1\{b=c\} + 1\{b=d\}.}
+#' The builder is the term-by-term mirror of
+#' \code{compute_omega_star_nocov_edid()} (PT-All branch), replacing every
+#' empirical covariance \code{cov_nn_edid(delta_a_b, delta_c_d)} by the
+#' corresponding AR(1) kernel. Entries depend only on the pair set, group sizes
+#' (shares), and \code{rho}. For \code{rho = 0} they reduce exactly to the
+#' paper's closed-form i.i.d. pole covariance (the imputation/network algebra).
 #' All edge cases (\code{tpre == period_1} degenerate self pairs, shared base
 #' periods) are handled by the kernel mechanically, exactly as the empirical
 #' builder handles them through zero/overlapping difference vectors.
@@ -168,10 +203,13 @@ compute_omega_star_nocov_edid <- function(
 #' @param pairs data.frame with columns \code{gp} and \code{tpre}; H rows
 #'   (PT-All enumeration: \code{gp} finite)
 #' @param panel_obj panel object from \code{prepare_edid_panel()}
+#' @param rho AR(1) serial-correlation target in \code{(-1, 1)}. The default
+#'   \code{0} is the original i.i.d. pole.
 #'
-#' @return numeric matrix H x H (unit-\eqn{\sigma^2} pole covariance)
+#' @return numeric matrix H x H (unit-\eqn{\sigma^2} target covariance)
 #' @keywords internal
-compute_pole_structure_nocov_edid <- function(target_g, target_t, pairs, panel_obj) {
+compute_pole_structure_nocov_edid <- function(target_g, target_t, pairs, panel_obj, rho = 0) {
+  rho <- .validate_nocov_ar1_rho_edid(rho)
   H  <- nrow(pairs)
   t1 <- panel_obj$period_1
   n_g   <- sum(panel_obj$cohort_masks[[as.character(target_g)]])
@@ -179,9 +217,23 @@ compute_pole_structure_nocov_edid <- function(target_g, target_t, pairs, panel_o
   n_gp  <- vapply(pairs$gp, function(gp)
     sum(panel_obj$cohort_masks[[as.character(gp)]]), numeric(1L))
 
-  # Cov(eps_a - eps_b, eps_c - eps_d) / sigma2 under i.i.d. shocks
+  times_all <- unique(as.numeric(c(target_t, t1, pairs$tpre)))
+  if (rho < 0) {
+    gaps <- abs(outer(times_all, times_all, "-"))
+    if (any(abs(gaps - round(gaps)) > 1e-8)) {
+      stop("negative `rho` requires integer-spaced time periods.", call. = FALSE)
+    }
+  }
+
+  corr <- function(x, y) {
+    lag <- abs(as.numeric(x) - as.numeric(y))
+    if (rho < 0) rho^round(lag) else rho^lag
+  }
+
+  # Cov(eps_a - eps_b, eps_c - eps_d) / sigma2 under the chosen AR(1) target.
+  # At rho = 0 this is exactly the old i.i.d. indicator kernel (0^0 == 1).
   kern <- function(a, b, cc, d) {
-    (a == cc) - (a == d) - (b == cc) + (b == d)
+    corr(a, cc) - corr(a, d) - corr(b, cc) + corr(b, d)
   }
 
   S <- matrix(0, nrow = H, ncol = H)
@@ -263,14 +315,14 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
   psi
 }
 
-#' Ledoit-Wolf shrinkage of Omega* toward its i.i.d.-pole structure
+#' Ledoit-Wolf shrinkage of Omega* toward a serial-correlation target
 #'
 #' Implements the \code{nocov_shrink} option of \code{\link{edid}} for one
-#' (g, t) cell on the no-covariate PT-All path. The target is the closed-form
-#' pole covariance at the sample shares,
+#' (g, t) cell on the no-covariate PT-All path. The default target is the
+#' closed-form i.i.d. pole covariance at the sample shares,
 #' \eqn{T = \hat\sigma^2 S} with \eqn{S} from
-#' \code{compute_pole_structure_nocov_edid()} and the method-of-moments scale
-#' \eqn{\hat\sigma^2 = \langle\hat\Omega, S\rangle_F / \langle S, S\rangle_F}
+#' \code{compute_pole_structure_nocov_edid(rho = 0)} and the method-of-moments
+#' scale \eqn{\hat\sigma^2 = \langle\hat\Omega, S\rangle_F / \langle S, S\rangle_F}
 #' (the Frobenius least-squares projection, i.e. the \eqn{\sigma^2} minimizing
 #' \eqn{\|\hat\Omega - \sigma^2 S\|_F}). The intensity is the standard
 #' Ledoit-Wolf ratio (variance-of-entries over distance-to-target, clamped to
@@ -284,7 +336,10 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
 #' the entry scale, so \eqn{\hat\lambda \to 0} and the asymptotic weights (and
 #' gains) are unchanged; at the pole the target is consistent for the truth, so
 #' a large \eqn{\hat\lambda} costs nothing asymptotically and removes the
-#' finite-sample weight-estimation noise.
+#' finite-sample weight-estimation noise. For diagnostics,
+#' \code{options(edid_nocov_shrink_target = "ar1", edid_nocov_ar1_rho = r)}
+#' replaces the i.i.d. target with \eqn{S_r}; this is experimental and not an
+#' automatic selector.
 #'
 #' Returns the input unchanged (with \code{lambda = NA}) for degenerate inputs
 #' (H < 2, non-finite or all-zero \code{omega}, non-positive projection scale,
@@ -293,15 +348,17 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
 #' @param omega numeric H x H matrix from \code{compute_omega_star_nocov_edid()}
 #' @inheritParams compute_pole_structure_nocov_edid
 #' @return list with \code{omega} (the shrunk matrix), \code{lambda} (the
-#'   intensity in \eqn{[0,1]}, or \code{NA} when shrinkage did not apply), and
-#'   \code{sigma2} (the method-of-moments scale)
+#'   intensity in \eqn{[0,1]}, or \code{NA} when shrinkage did not apply),
+#'   \code{sigma2} (the method-of-moments scale), \code{target}, and \code{rho}
 #' @keywords internal
 shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj) {
-  no_op <- list(omega = omega, lambda = NA_real_, sigma2 = NA_real_)
+  cfg <- nocov_shrink_target_edid()
+  no_op <- list(omega = omega, lambda = NA_real_, sigma2 = NA_real_,
+                target = cfg$target, rho = cfg$rho)
   H <- nrow(omega)
   if (is.null(H) || H < 2L || any(!is.finite(omega)) || all(omega == 0)) return(no_op)
 
-  S <- compute_pole_structure_nocov_edid(target_g, target_t, pairs, panel_obj)
+  S <- compute_pole_structure_nocov_edid(target_g, target_t, pairs, panel_obj, rho = cfg$rho)
   ss <- sum(S * S)
   if (!is.finite(ss) || ss <= 0) return(no_op)
   sigma2 <- sum(omega * S) / ss
@@ -311,7 +368,8 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
   d2 <- sum((omega - target)^2)
   # Omega already (numerically) equals its pole projection: shrinking is a no-op.
   if (d2 <= .Machine$double.eps * max(sum(omega * omega), .Machine$double.xmin)) {
-    return(list(omega = omega, lambda = 0, sigma2 = sigma2))
+    return(list(omega = omega, lambda = 0, sigma2 = sigma2,
+                target = cfg$target, rho = cfg$rho))
   }
 
   n   <- panel_obj$n
@@ -325,7 +383,8 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
   lambda <- min(1, max(0, b2) / d2)
 
   list(omega = (1 - lambda) * omega + lambda * target,
-       lambda = lambda, sigma2 = sigma2)
+       lambda = lambda, sigma2 = sigma2,
+       target = cfg$target, rho = cfg$rho)
 }
 
 # ---------------------------------------------------------------------------
@@ -405,7 +464,8 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #' so the perturbed weights keep summing to one (\eqn{B\mathbf 1 = 0}).
 #'
 #' \strong{Differentiating through the shrinkage} (\code{nocov_shrink}; engaged when
-#' the cell's \code{shrink_lambda} is in \eqn{(0, 1]}): with
+#' the cell's \code{shrink_lambda} is in \eqn{(0, 1]}): with the same target
+#' \eqn{S} and \code{shrink_rho} the weight path used,
 #' \eqn{\Omega_{sh}(\Omega) = (1-\lambda)\Omega + \lambda\sigma^2 S},
 #' \eqn{\sigma^2 = \langle\Omega, S\rangle_F/\langle S,S\rangle_F}, and the
 #' Ledoit-Wolf \eqn{\lambda = \min(1, \max(0, b^2)/d^2)} (holding \eqn{S}, \eqn{n},
@@ -447,6 +507,8 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #' @param shrink_lambda the cell's Ledoit-Wolf intensity (\code{NA} or 0 when the
 #'   shrinkage did not bind; the chain rule through the shrinkage is applied for
 #'   \code{shrink_lambda > 0})
+#' @param shrink_rho AR(1) target rho used by the shrinkage path. The default
+#'   \code{0} is the i.i.d. pole.
 #' @param return_D logical: include the n x H matrix of per-unit directions
 #'   \eqn{d_i} in the result (tests / diagnostics only)
 #'
@@ -459,7 +521,7 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #' @keywords internal
 compute_nocov_ee_correction_edid <- function(
   target_g, target_t, pairs, panel_obj, omega_raw, omega_used, weights,
-  shrink_lambda = NA_real_, return_D = FALSE
+  shrink_lambda = NA_real_, shrink_rho = 0, return_D = FALSE
 ) {
   # warn = FALSE marks a STRUCTURAL skip: the cell's weights are not the smooth inverse-map
   # estimator (pseudoinverse/uniform fallback on an exactly-singular Omega, e.g. duplicated
@@ -502,7 +564,7 @@ compute_nocov_ee_correction_edid <- function(
     D <- -((a / n) * Bpsi - matrix(BOw, n, H, byrow = TRUE))
   } else {
     # Chain rule through Omega_sh = (1 - lambda) Omega + lambda sigma2 S (see roxygen above).
-    S  <- compute_pole_structure_nocov_edid(target_g, target_t, pairs, panel_obj)
+    S  <- compute_pole_structure_nocov_edid(target_g, target_t, pairs, panel_obj, rho = shrink_rho)
     ss <- sum(S * S)
     if (!is.finite(ss) || ss <= 0) return(skip("degenerate pole structure"))
     sigma2  <- sum(omega_raw * S) / ss

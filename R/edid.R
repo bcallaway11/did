@@ -359,13 +359,16 @@
 #'   (cluster-robust) variance of the realized weighted influence function at the weights
 #'   actually used -- the shrunk matrix never replaces the data's influence functions in the
 #'   variance. The per-cell intensity is recorded as
-#'   \code{$cells[[k]]$nocov_shrink_lambda} (\code{NA} where no weights are estimated:
+#'   \code{$cells[[k]]$nocov_shrink_lambda}; the target provenance is recorded as
+#'   \code{$cells[[k]]$nocov_shrink_target} and \code{$cells[[k]]$nocov_shrink_rho}
+#'   and mirrored on the fit as \code{$nocov_shrink_target} / \code{$nocov_shrink_rho}.
+#'   These are \code{NA} where no weights are estimated:
 #'   covariate path, \code{weight_scheme = "uniform"}, PT-Post, or just-identified
 #'   \eqn{H = 1} cells, including thin-cohort-guard-pinned ones). \code{nocov_shrink =
 #'   FALSE} reproduces the unshrunk weights bit-for-bit. No effect on the covariate path.
 #'
 #' @section Advanced options (set via \code{options()}):
-#' These global options expose escape hatches and tuning knobs for the covariate path. All have safe
+#' These global options expose escape hatches and tuning knobs. All have safe
 #' defaults; they are intended for diagnostics, reproducibility studies, and large-\eqn{n} scaling. Except
 #' where noted, they change only the reported standard errors / bands, not the point estimate \eqn{ATT(g,t)}.
 #' (The number of parallel workers is the \code{cores} argument, not an option.)
@@ -396,6 +399,15 @@
 #'   \item{\code{edid_shrink_lambda}}{Numeric, or \code{NA} (default) for the data-driven Ledoit-Wolf
 #'     shrinkage intensity of the pointwise \eqn{\hat\Omega^*(X_i)} toward \eqn{\bar\Omega^*}. \code{0}
 #'     disables shrinkage; a value in \eqn{[0,1]} fixes the intensity.}
+#'   \item{\code{edid_nocov_shrink_target}, \code{edid_nocov_ar1_rho}}{
+#'     Experimental no-covariate \code{nocov_shrink} target. The default
+#'     \code{edid_nocov_shrink_target = "iid"} is the audited i.i.d. pole
+#'     (\code{rho = 0}). Setting \code{edid_nocov_shrink_target = "ar1"} and
+#'     \code{edid_nocov_ar1_rho = r}, \code{r} in \eqn{(-1,1)}, shrinks toward
+#'     the AR(1) target covariance \eqn{Corr(\epsilon_t,\epsilon_s)=r^{|t-s|}}
+#'     instead. This can change point estimates by changing the weights; it is a
+#'     diagnostic/development lever, not an automatic selector or a default
+#'     efficiency claim.}
 #'   \item{\code{edid_eig_tol}}{Numeric, or \code{NA} (default) for the rate-based relative eigenvalue floor
 #'     \eqn{n^{-a}}. A positive value sets the floor directly (condition-number cap \eqn{= 1/}\code{tol}).}
 #'   \item{\code{edid_allow_fork_blas}}{Logical (default \code{FALSE}). On macOS with an Apple Accelerate
@@ -861,6 +873,23 @@ edid <- function(
   eif_matrix <- fit_result$eif_matrix
   cell_index <- fit_result$cell_index
 
+  nocov_shrink_targets <- vapply(cells, function(x) {
+    v <- x$nocov_shrink_target
+    if (is.null(v) || length(v) != 1L || is.na(v)) NA_character_ else as.character(v)
+  }, character(1L))
+  nocov_shrink_rhos <- vapply(cells, function(x) {
+    v <- x$nocov_shrink_rho
+    if (is.null(v) || length(v) != 1L || !is.finite(v)) NA_real_ else as.numeric(v)
+  }, numeric(1L))
+  .nst <- unique(nocov_shrink_targets[!is.na(nocov_shrink_targets)])
+  .nsr <- unique(nocov_shrink_rhos[is.finite(nocov_shrink_rhos)])
+  if (length(.nst) > 1L || length(.nsr) > 1L) {
+    stop("internal error: inconsistent no-covariate shrinkage targets across cells.",
+         call. = FALSE)
+  }
+  nocov_shrink_target_fit <- if (length(.nst) == 1L) .nst else NA_character_
+  nocov_shrink_rho_fit    <- if (length(.nsr) == 1L) .nsr else NA_real_
+
   # ------------------------------------------------------------------
   # Convenience att_gt table
   # ------------------------------------------------------------------
@@ -1098,6 +1127,8 @@ edid <- function(
     moment_set       = moment_set,                 # advanced pair restriction (NULL = full enumeration); see edid_sargan()
     min_pair_units   = min_pair_units,             # thin-cohort guard threshold (5 = default; 2 = legacy behavior)
     nocov_shrink     = nocov_shrink,               # Ledoit-Wolf pole-target weight shrinkage on the no-covariate path
+    nocov_shrink_target = nocov_shrink_target_fit, # "iid" by default; "ar1" only under the experimental option
+    nocov_shrink_rho = nocov_shrink_rho_fit,       # 0 for iid; AR(1) rho when the experimental target is used
     thin_cohorts     = fit_result$thin_cohorts,    # data.frame of thin cohorts the guard acted on, or NULL
     diagnostics      = .edid_build_diagnostics(fit_result$diagnostics_raw, cells,
                                                pt_assumption = pt_assumption,
