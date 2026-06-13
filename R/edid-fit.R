@@ -574,8 +574,6 @@ fit_edid_cells <- function(
           inference_valid = FALSE,
           thin_cohort_degraded = thin_deg,
           nocov_shrink_lambda = NA_real_,
-          nocov_shrink_target = NA_character_,
-          nocov_shrink_rho = NA_real_,
           eif             = NULL,
           ho              = NULL
         ),
@@ -592,8 +590,6 @@ fit_edid_cells <- function(
       cond_means       <- NULL; m_aux <- NULL
       ho_cell          <- NULL   # higher-order per-cell pieces (nuisance blocks + Hessian), set on cov path
       shrink_lambda    <- NA_real_   # nocov_shrink Ledoit-Wolf intensity (no-cov PT-All cells only)
-      shrink_target    <- NA_character_  # no-cov shrinkage target actually used ("iid" / "ar1")
-      shrink_rho       <- NA_real_   # AR(1) rho for the no-cov shrinkage target; 0 for the i.i.d. pole
       ee_cell          <- NULL   # no-cov weight-estimation correction record (estimation_effect, no-cov path)
       n_nocov_ee_skip  <- 0L     # cells where the correction was requested but could not be applied
 
@@ -938,8 +934,6 @@ fit_edid_cells <- function(
           sh <- shrink_omega_nocov_edid(omega, g, t, pairs, panel_obj)
           omega         <- sh$omega
           shrink_lambda <- sh$lambda
-          shrink_target <- sh$target
-          shrink_rho    <- sh$rho
         }
         # condition number of the matrix the weights actually invert (the shrunk one
         # when nocov_shrink applied; bit-identical to the raw Omega* otherwise)
@@ -958,7 +952,7 @@ fit_edid_cells <- function(
         if (nocov_ee && pt_assumption == "all" && nrow(pairs) > 1L) {
           ee_cell <- compute_nocov_ee_correction_edid(
             g, t, pairs, panel_obj, omega_raw = omega_raw, omega_used = omega,
-            weights = weights, shrink_lambda = shrink_lambda, shrink_rho = shrink_rho)
+            weights = weights, shrink_lambda = shrink_lambda)
           # Structural skips (fallback / pseudoinverse weights: no smooth channel exists, the plug-in SE
           # is the correct treatment) are recorded per cell but NOT warned; only numeric failures count.
           if (!isTRUE(ee_cell$applied) && isTRUE(ee_cell$warn)) n_nocov_ee_skip <- n_nocov_ee_skip + 1L
@@ -1035,8 +1029,6 @@ fit_edid_cells <- function(
         inference_valid = inf_res$inference_valid,
         thin_cohort_degraded = thin_deg,   # TRUE when the thin-cohort guard pinned this cohort to the just-identified moment
         nocov_shrink_lambda = shrink_lambda,   # Ledoit-Wolf intensity (NA: covariate path / uniform / H = 1 / nocov_shrink = FALSE)
-        nocov_shrink_target = shrink_target,
-        nocov_shrink_rho = shrink_rho,
         nocov_ee        = ee_cell,  # no-cov weight-estimation correction record (NULL unless engaged on this cell)
         ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )

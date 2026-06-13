@@ -2,7 +2,7 @@
 % Please edit documentation in R/edid-nocov.R
 \name{shrink_omega_nocov_edid}
 \alias{shrink_omega_nocov_edid}
-\title{Ledoit-Wolf shrinkage of Omega* toward a serial-correlation target}
+\title{Ledoit-Wolf shrinkage of Omega* toward its i.i.d.-pole structure}
 \usage{
 shrink_omega_nocov_edid(omega, target_g, target_t, pairs, panel_obj)
 }
@@ -20,16 +20,16 @@ shrink_omega_nocov_edid(omega, target_g, target_t, pairs, panel_obj)
 }
 \value{
 list with \code{omega} (the shrunk matrix), \code{lambda} (the
-intensity in \eqn{[0,1]}, or \code{NA} when shrinkage did not apply),
-\code{sigma2} (the method-of-moments scale), \code{target}, and \code{rho}
+intensity in \eqn{[0,1]}, or \code{NA} when shrinkage did not apply), and
+\code{sigma2} (the method-of-moments scale)
 }
 \description{
 Implements the \code{nocov_shrink} option of \code{\link{edid}} for one
-(g, t) cell on the no-covariate PT-All path. The default target is the
-closed-form i.i.d. pole covariance at the sample shares,
+(g, t) cell on the no-covariate PT-All path. The target is the closed-form
+pole covariance at the sample shares,
 \eqn{T = \hat\sigma^2 S} with \eqn{S} from
-\code{compute_pole_structure_nocov_edid(rho = 0)} and the method-of-moments
-scale \eqn{\hat\sigma^2 = \langle\hat\Omega, S\rangle_F / \langle S, S\rangle_F}
+\code{compute_pole_structure_nocov_edid()} and the method-of-moments scale
+\eqn{\hat\sigma^2 = \langle\hat\Omega, S\rangle_F / \langle S, S\rangle_F}
 (the Frobenius least-squares projection, i.e. the \eqn{\sigma^2} minimizing
 \eqn{\|\hat\Omega - \sigma^2 S\|_F}). The intensity is the standard
 Ledoit-Wolf ratio (variance-of-entries over distance-to-target, clamped to
@@ -43,10 +43,7 @@ where \eqn{B_i = \psi_i\psi_i'/n} is unit \eqn{i}'s contribution
 the entry scale, so \eqn{\hat\lambda \to 0} and the asymptotic weights (and
 gains) are unchanged; at the pole the target is consistent for the truth, so
 a large \eqn{\hat\lambda} costs nothing asymptotically and removes the
-finite-sample weight-estimation noise. For diagnostics,
-\code{options(edid_nocov_shrink_target = "ar1", edid_nocov_ar1_rho = r)}
-replaces the i.i.d. target with \eqn{S_r}; this is experimental and not an
-automatic selector.
+finite-sample weight-estimation noise.
 }
 \details{
 Returns the input unchanged (with \code{lambda = NA}) for degenerate inputs

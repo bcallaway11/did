@@ -39,20 +39,6 @@
   }, numeric(1L))
 }
 
-.shrink_cell_targets <- function(fit) {
-  vapply(fit$cells, function(cc) {
-    v <- cc$nocov_shrink_target
-    if (is.null(v)) NA_character_ else v
-  }, character(1L))
-}
-
-.shrink_cell_rhos <- function(fit) {
-  vapply(fit$cells, function(cc) {
-    v <- cc$nocov_shrink_rho
-    if (is.null(v)) NA_real_ else v
-  }, numeric(1L))
-}
-
 # ---------------------------------------------------------------------------
 # 1. Finite-sample identity: Omega* == crossprod(psi)/n^2
 #    (the LW entry-variance estimate is coherent with the Omega* builder)
@@ -80,7 +66,6 @@ test_that("compute_pole_structure_nocov_edid() matches the empirical Omega* on a
                                       panel$period_1, "all", 0L)
   om <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
   S  <- compute_pole_structure_nocov_edid(3L, 4L, pairs, panel)
-  expect_identical(S, compute_pole_structure_nocov_edid(3L, 4L, pairs, panel, rho = 0))
   # unit shocks (sigma2 = 1): Omega-hat -> S entrywise; 60k draw ~ 1% Frobenius
   expect_lt(max(abs(om - S)) / max(abs(S)), 0.05)
   expect_true(isSymmetric(S))
@@ -88,19 +73,6 @@ test_that("compute_pole_structure_nocov_edid() matches the empirical Omega* on a
   # vector, so its D-column contribution must mirror the empirical builder's zeros
   j1 <- which(pairs$gp == 3L & pairs$tpre == panel$period_1)
   expect_length(j1, 1L)
-})
-
-test_that("compute_pole_structure_nocov_edid() matches a large AR(1) draw when rho is supplied", {
-  df    <- .shrink_test_panel(60000L, rho = 0.6, seed = 17L, nt_inf = TRUE)
-  panel <- prepare_edid_panel(df, "y", "id", "time", "gvar")
-  pairs <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
-                                      panel$period_1, "all", 0L)
-  om <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
-  S0 <- compute_pole_structure_nocov_edid(3L, 4L, pairs, panel)
-  Sr <- compute_pole_structure_nocov_edid(3L, 4L, pairs, panel, rho = 0.6)
-  expect_false(isTRUE(all.equal(S0, Sr, tolerance = 1e-12)))
-  expect_lt(max(abs(om - Sr)) / max(abs(Sr)), 0.05)
-  expect_true(isSymmetric(Sr))
 })
 
 # ---------------------------------------------------------------------------
@@ -145,59 +117,6 @@ test_that("lambda-hat is ~1 at the iid pole and decays with n off the pole", {
   l_big   <- lam_mean(4000L, rho = 0.7, seed = 12L)
   expect_gt(l_small, l_big + 0.2)                          # decays with n off the pole
   expect_lt(l_big, 0.10)                                   # and is asymptotically negligible
-})
-
-test_that("experimental AR(1) shrink target is opt-in and records provenance", {
-  df    <- .shrink_test_panel(90L, rho = 0.6, seed = 41L, nt_inf = TRUE)
-  panel <- prepare_edid_panel(df, "y", "id", "time", "gvar")
-  pairs <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
-                                      panel$period_1, "all", 0L)
-  om <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
-
-  old <- options(edid_nocov_shrink_target = "iid", edid_nocov_ar1_rho = NULL)
-  on.exit(options(old), add = TRUE)
-  sh_iid <- shrink_omega_nocov_edid(om, 3L, 4L, pairs, panel)
-  expect_identical(sh_iid$target, "iid")
-  expect_identical(sh_iid$rho, 0)
-
-  options(edid_nocov_shrink_target = "ar1", edid_nocov_ar1_rho = 0.6)
-  sh_ar1 <- shrink_omega_nocov_edid(om, 3L, 4L, pairs, panel)
-  expect_identical(sh_ar1$target, "ar1")
-  expect_equal(sh_ar1$rho, 0.6, tolerance = 0)
-  expect_false(isTRUE(all.equal(sh_iid$omega, sh_ar1$omega, tolerance = 1e-12)))
-
-  df_fit <- .shrink_test_panel(90L, rho = 0.6, seed = 41L)
-  fit <- suppressWarnings(
-    edid(df_fit, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE))
-  expect_identical(fit$nocov_shrink_target, "ar1")
-  expect_equal(fit$nocov_shrink_rho, 0.6, tolerance = 0)
-  ok <- !is.na(.shrink_cell_targets(fit))
-  expect_true(any(ok))
-  expect_true(all(.shrink_cell_targets(fit)[ok] == "ar1"))
-  expect_true(all(.shrink_cell_rhos(fit)[ok] == 0.6))
-})
-
-test_that("refit helpers restore the fit's no-covariate AR(1) shrink target", {
-  df <- .shrink_test_panel(80L, rho = 0.6, seed = 43L)
-  old <- options(edid_nocov_shrink_target = "ar1", edid_nocov_ar1_rho = 0.6)
-  on.exit(options(old), add = TRUE)
-  fit <- suppressWarnings(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE))
-
-  options(edid_nocov_shrink_target = "iid", edid_nocov_ar1_rho = 0)
-  refit <- .edid_with_nocov_shrink_options(
-    fit,
-    suppressWarnings(edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-                          pt_assumption = "all", weight_scheme = "efficient",
-                          aggregate = "none", cband = FALSE))
-  )
-  expect_identical(refit$nocov_shrink_target, "ar1")
-  expect_equal(refit$nocov_shrink_rho, 0.6, tolerance = 0)
-  expect_equal(refit$att_gt$att, fit$att_gt$att, tolerance = 1e-12)
 })
 
 # ---------------------------------------------------------------------------
@@ -284,23 +203,6 @@ test_that("nocov_shrink validation rejects non-logical input", {
     edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
          nocov_shrink = NA),
     "logical scalar")
-})
-
-test_that("experimental no-covariate shrink target options validate loudly", {
-  df    <- .shrink_test_panel(60L, rho = 0.5, seed = 53L, nt_inf = TRUE)
-  panel <- prepare_edid_panel(df, "y", "id", "time", "gvar")
-  pairs <- enumerate_valid_pairs_edid(3L, panel$treatment_groups, panel$time_periods,
-                                      panel$period_1, "all", 0L)
-  om <- compute_omega_star_nocov_edid(3L, 4L, pairs, panel, "all")
-
-  old <- options(edid_nocov_shrink_target = "bogus", edid_nocov_ar1_rho = 0.5)
-  on.exit(options(old), add = TRUE)
-  expect_error(shrink_omega_nocov_edid(om, 3L, 4L, pairs, panel),
-               "edid_nocov_shrink_target")
-
-  options(edid_nocov_shrink_target = "ar1", edid_nocov_ar1_rho = 1)
-  expect_error(shrink_omega_nocov_edid(om, 3L, 4L, pairs, panel),
-               "edid_nocov_ar1_rho")
 })
 
 # ---------------------------------------------------------------------------

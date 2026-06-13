@@ -2,15 +2,9 @@
 % Please edit documentation in R/edid-nocov.R
 \name{compute_pole_structure_nocov_edid}
 \alias{compute_pole_structure_nocov_edid}
-\title{Serial-correlation target structure matrix for a no-covariate cell's moment covariance}
+\title{i.i.d.-pole structure matrix for a no-covariate cell's moment covariance}
 \usage{
-compute_pole_structure_nocov_edid(
-  target_g,
-  target_t,
-  pairs,
-  panel_obj,
-  rho = 0
-)
+compute_pole_structure_nocov_edid(target_g, target_t, pairs, panel_obj)
 }
 \arguments{
 \item{target_g}{scalar cohort value}
@@ -21,29 +15,23 @@ compute_pole_structure_nocov_edid(
 (PT-All enumeration: \code{gp} finite)}
 
 \item{panel_obj}{panel object from \code{prepare_edid_panel()}}
-
-\item{rho}{AR(1) serial-correlation target in \code{(-1, 1)}. The default
-\code{0} is the original i.i.d. pole.}
 }
 \value{
-numeric matrix H x H (unit-\eqn{\sigma^2} target covariance)
+numeric matrix H x H (unit-\eqn{\sigma^2} pole covariance)
 }
 \description{
-Builds the \eqn{H \times H} matrix \eqn{S_\rho} such that under shocks
-\eqn{\varepsilon_{i,t}} with variance \eqn{\sigma^2} and serial correlation
-\eqn{Corr(\varepsilon_{i,a}, \varepsilon_{i,b}) = \rho^{|a-b|}} (plus
-arbitrary unit effects and deterministic period effects, which difference
-out), the population covariance of the cell's identifying moments is exactly
-\eqn{\sigma^2 S_\rho} at the sample cohort sizes. The default \code{rho = 0}
-is the original i.i.d.-shock pole, so
+Builds the \eqn{H \times H} matrix \eqn{S} such that under i.i.d. shocks
+\eqn{\varepsilon_{i,t}} with variance \eqn{\sigma^2} (plus arbitrary unit
+effects and deterministic period effects, which difference out), the
+population covariance of the cell's identifying moments is exactly
+\eqn{\sigma^2 S} at the sample cohort sizes. It is the term-by-term mirror
+of \code{compute_omega_star_nocov_edid()} (PT-All branch) with every
+empirical covariance \code{cov_nn_edid(delta_a_b, delta_c_d)} replaced by
+the i.i.d.-shock kernel
 \deqn{Cov(\varepsilon_a-\varepsilon_b, \varepsilon_c-\varepsilon_d)/\sigma^2
-  = 1\{a=c\} - 1\{a=d\} - 1\{b=c\} + 1\{b=d\}.}
-The builder is the term-by-term mirror of
-\code{compute_omega_star_nocov_edid()} (PT-All branch), replacing every
-empirical covariance \code{cov_nn_edid(delta_a_b, delta_c_d)} by the
-corresponding AR(1) kernel. Entries depend only on the pair set, group sizes
-(shares), and \code{rho}. For \code{rho = 0} they reduce exactly to the
-paper's closed-form i.i.d. pole covariance (the imputation/network algebra).
+  = 1\{a=c\} - 1\{a=d\} - 1\{b=c\} + 1\{b=d\},}
+so entries depend only on the pair set and the group sizes (shares), per
+the paper's closed-form pole covariance (the imputation/network algebra).
 All edge cases (\code{tpre == period_1} degenerate self pairs, shared base
 periods) are handled by the kernel mechanically, exactly as the empirical
 builder handles them through zero/overlapping difference vectors.

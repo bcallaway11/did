@@ -383,10 +383,7 @@ edid_refit_bootstrap <- function(fit, data = NULL, B = 199L, seed = NULL, cores 
     set.seed(seed_base + b)
     dfb <- .edid_boot_resample(data, idname, clustervar)
     fb  <- tryCatch(
-      .edid_with_nocov_shrink_options(
-        fit,
-        suppressMessages(suppressWarnings(do.call(edid, c(list(data = dfb), args))))
-      ),
+      suppressMessages(suppressWarnings(do.call(edid, c(list(data = dfb), args)))),
       error = function(e) e)
     if (inherits(fb, "error")) return(list(error = conditionMessage(fb)))
     out_cells <- stats::setNames(fb$att_gt$att, paste(fb$att_gt$group, fb$att_gt$time, sep = "_"))

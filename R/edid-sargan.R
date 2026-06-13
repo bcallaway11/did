@@ -64,7 +64,7 @@
     args$estimation_effect <- FALSE
     args$higher_order      <- FALSE
   }
-  .edid_with_nocov_shrink_options(fit, do.call(edid, args))
+  do.call(edid, args)
 }
 
 #' Incremental Sargan moment-selection procedure for edid

@@ -25,7 +25,7 @@ mk_ee_panel <- function(n, seed, rho = 0, Tn = 6L) {
 }
 
 # internal-pieces fixture for one cell (uses Inf never-treated convention directly)
-ee_cell_pieces <- function(n, seed, rho, gg, tt, use_shrink, shrink_target_rho = 0) {
+ee_cell_pieces <- function(n, seed, rho, gg, tt, use_shrink) {
   df <- mk_ee_panel(n, seed, rho)
   df$g <- ifelse(df$g == 0L, Inf, df$g)
   pn  <- prepare_edid_panel(df, "y", "id", "time", "g", anticipation = 0L)
@@ -33,21 +33,14 @@ ee_cell_pieces <- function(n, seed, rho, gg, tt, use_shrink, shrink_target_rho =
                                     pn$period_1, "all", 0L)
   Om  <- compute_omega_star_nocov_edid(gg, tt, prs, pn, "all")
   psi <- compute_psi_moments_nocov_edid(gg, tt, prs, pn)
-  lam <- NA_real_; Omu <- Om; srho <- 0
+  lam <- NA_real_; Omu <- Om
   if (use_shrink) {
-    old <- if (shrink_target_rho == 0) {
-      options(edid_nocov_shrink_target = "iid", edid_nocov_ar1_rho = NULL)
-    } else {
-      options(edid_nocov_shrink_target = "ar1", edid_nocov_ar1_rho = shrink_target_rho)
-    }
-    on.exit(options(old), add = TRUE)
     sh <- shrink_omega_nocov_edid(Om, gg, tt, prs, pn)
-    lam <- sh$lambda; Omu <- sh$omega; srho <- sh$rho
+    lam <- sh$lambda; Omu <- sh$omega
   }
   w  <- compute_efficient_weights_edid(Omu)
   ee <- compute_nocov_ee_correction_edid(gg, tt, prs, pn, omega_raw = Om, omega_used = Omu,
-                                         weights = w, shrink_lambda = lam,
-                                         shrink_rho = srho, return_D = TRUE)
+                                         weights = w, shrink_lambda = lam, return_D = TRUE)
   list(df = df, pn = pn, prs = prs, Om = Om, Omu = Omu, psi = psi, w = w, lam = lam, ee = ee,
        q4 = sum(rowSums(psi * psi)^2))
 }
@@ -72,18 +65,13 @@ test_that("FD oracle: analytic Jacobian directions and var_add match finite diff
   for (cfg in list(list(seed = 101, n = 60,  rho = 0.0, shrink = FALSE, g = 3L, t = 4L),
                    list(seed = 202, n = 80,  rho = 0.7, shrink = FALSE, g = 5L, t = 6L),
                    list(seed = 505, n = 100, rho = 0.5, shrink = TRUE,  g = 5L, t = 5L),
-                   list(seed = 606, n = 150, rho = 0.9, shrink = TRUE,  g = 3L, t = 4L),
-                   list(seed = 719, n = 140, rho = 0.6, shrink = TRUE,  g = 3L, t = 4L,
-                        shrink_target_rho = 0.7))) {
-    srho <- cfg$shrink_target_rho %||% 0
-    p <- ee_cell_pieces(cfg$n, cfg$seed, cfg$rho, cfg$g, cfg$t, cfg$shrink,
-                        shrink_target_rho = srho)
+                   list(seed = 606, n = 150, rho = 0.9, shrink = TRUE,  g = 3L, t = 4L))) {
+    p <- ee_cell_pieces(cfg$n, cfg$seed, cfg$rho, cfg$g, cfg$t, cfg$shrink)
     skip_if(!isTRUE(p$ee$applied), "correction not applied on this draw")
     # the lambda = 1 clamp is a kink (one-sided derivative; correction identically the Bessel
     # piece there) -- FD comparison is only meaningful at interior lambda / no shrink
     skip_if(cfg$shrink && (!is.finite(p$lam) || p$lam <= 0 || p$lam >= 1), "lambda clamped")
-    shr <- if (cfg$shrink) list(S = compute_pole_structure_nocov_edid(cfg$g, cfg$t, p$prs, p$pn,
-                                                                      rho = srho),
+    shr <- if (cfg$shrink) list(S = compute_pole_structure_nocov_edid(cfg$g, cfg$t, p$prs, p$pn),
                                 n = p$pn$n, q4 = p$q4) else NULL
     n_u <- p$pn$n; H <- nrow(p$prs)
     h <- 1e-6 * max(abs(p$Om))

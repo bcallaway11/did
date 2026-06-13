@@ -13,7 +13,6 @@ compute_nocov_ee_correction_edid(
   omega_used,
   weights,
   shrink_lambda = NA_real_,
-  shrink_rho = 0,
   return_D = FALSE
 )
 }
@@ -37,9 +36,6 @@ when \code{nocov_shrink} applied; \code{== omega_raw} otherwise)}
 \item{shrink_lambda}{the cell's Ledoit-Wolf intensity (\code{NA} or 0 when the
 shrinkage did not bind; the chain rule through the shrinkage is applied for
 \code{shrink_lambda > 0})}
-
-\item{shrink_rho}{AR(1) target rho used by the shrinkage path. The default
-\code{0} is the i.i.d. pole.}
 
 \item{return_D}{logical: include the n x H matrix of per-unit directions
 \eqn{d_i} in the result (tests / diagnostics only)}
@@ -124,8 +120,7 @@ is conditionally unbiased given \eqn{\hat\Omega} under PT).
 so the perturbed weights keep summing to one (\eqn{B\mathbf 1 = 0}).
 
 \strong{Differentiating through the shrinkage} (\code{nocov_shrink}; engaged when
-the cell's \code{shrink_lambda} is in \eqn{(0, 1]}): with the same target
-\eqn{S} and \code{shrink_rho} the weight path used,
+the cell's \code{shrink_lambda} is in \eqn{(0, 1]}): with
 \eqn{\Omega_{sh}(\Omega) = (1-\lambda)\Omega + \lambda\sigma^2 S},
 \eqn{\sigma^2 = \langle\Omega, S\rangle_F/\langle S,S\rangle_F}, and the
 Ledoit-Wolf \eqn{\lambda = \min(1, \max(0, b^2)/d^2)} (holding \eqn{S}, \eqn{n},
