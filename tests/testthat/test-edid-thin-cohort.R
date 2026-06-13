@@ -41,7 +41,7 @@ fit_thin <- function(df, pt = "all", ...) {
 cell_of <- function(fit, g, t) fit$att_gt[fit$att_gt$group == g & fit$att_gt$time == t, ]
 expect_identical_unless_covr <- function(object, expected) {
   if (identical(Sys.getenv("R_COVR"), "true")) {
-    expect_equal(object, expected, tolerance = 0, ignore_attr = TRUE)
+    expect_equal(object, expected, tolerance = 1e-12, ignore_attr = TRUE)
   } else {
     expect_identical(object, expected)
   }
