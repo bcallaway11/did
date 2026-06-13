@@ -1,0 +1,97 @@
+name: R-CMD-check
+
+on:
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macOS-latest,   r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,   r: 'release'}
+          - {os: ubuntu-latest,   r: 'oldrel-1'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - uses: r-lib/actions/setup-pandoc@v2
+
+    - uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: ${{ matrix.config.r }}
+        http-user-agent: ${{ matrix.config.http-user-agent }}
+        use-public-rspm: true
+
+    - name: Install qpdf (macOS)
+      if: runner.os == 'macOS'
+      run: brew install qpdf
+
+    - name: Install qpdf (Ubuntu)
+      if: runner.os == 'Linux'
+      run: sudo apt-get update && sudo apt-get install -y qpdf
+
+    - name: Remove lockfile
+      run: rm -f .github/pkg.lock
+      shell: bash
+
+    - uses: r-lib/actions/setup-r-dependencies@v2
+      with:
+        extra-packages: any::rcmdcheck
+        needs: check
+        cache-version: 2
+
+    - uses: r-lib/actions/check-r-package@v2
+      with:
+        upload-snapshots: true
+        build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+    - name: Summarize check results
+      if: always()
+      shell: bash
+      run: |
+        CHECK_DIR=$(find . -maxdepth 1 -name "*.Rcheck" -type d | head -1)
+        if [ -z "$CHECK_DIR" ]; then
+          echo "No .Rcheck directory found." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        echo "## R CMD check: \`$CHECK_DIR\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+
+        LOG="$CHECK_DIR/00check.log"
+        if [ -f "$LOG" ]; then
+          STATUS=$(grep "^Status:" "$LOG" || true)
+          [ -n "$STATUS" ] && echo "**$STATUS**" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          FLAGGED=$(grep -E "\b(ERROR|WARNING|NOTE)\b" "$LOG" || true)
+          if [ -n "$FLAGGED" ]; then
+            echo "### Issues" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "$FLAGGED" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        fi
+
+        FAIL="$CHECK_DIR/tests/testthat.Rout.fail"
+        if [ -f "$FAIL" ]; then
+          echo "### Test failures" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 100 "$FAIL" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+        fi
