@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Pre-Testing in a DiD Setup using the did Package">
 </head>
@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">did</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
                         <h4 data-toc-skip class="author">Brantly
 Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 data-toc-skip class="date">2025-12-12</h4>
+            <h4 data-toc-skip class="date">2026-06-13</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/pre-testing.Rmd" class="external-link"><code>vignettes/pre-testing.Rmd</code></a></small>
       <div class="d-none name"><code>pre-testing.Rmd</code></div>
@@ -71,14 +71,14 @@ Callaway and Pedro H.C. Sant'Anna</h4>
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
 <p>This vignette provides a discussion of how to conduct pre-tests in
-DiD setups using the <strong>did</strong> package</p>
+DiD setups using the <strong>did</strong> package.</p>
 <ul>
 <li>
 <p>One appealing feature of many DiD applications with multiple
 periods is that the researcher can pre-test the parallel trends
 assumptions.</p>
 <ul>
-<li><p>The idea here is simple: although one can not always test whether
+<li><p>The idea here is simple: although one cannot always test whether
 parallel trends itself holds, one can check if it holds in periods
 before treated units actually become treated.</p></li>
 <li><p>Importantly, this is just a pre-test; it is different from an
@@ -229,8 +229,8 @@ event-study regression will work.</li>
 <span><span class="co">#&gt; Balanced Panel: n = 6988, T = 4, N = 27952</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Residuals:</span></span>
-<span><span class="co">#&gt;       Min.    1st Qu.     Median    3rd Qu.       Max. </span></span>
-<span><span class="co">#&gt; -9.8577453 -0.7594999  0.0066022  0.7639995 11.6570179 </span></span>
+<span><span class="co">#&gt;    Min. 1st Qu.  Median 3rd Qu.    Max. </span></span>
+<span><span class="co">#&gt; -9.8577 -0.7595  0.0066  0.7640 11.6570 </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
 <span><span class="co">#&gt;        Estimate Std. Error t-value Pr(&gt;|t|)    </span></span>
@@ -272,7 +272,7 @@ event-study regression will work.</li>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html" class="external-link">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="op">(</span><span class="va">coefs</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span>, ymax <span class="op">=</span> <span class="op">(</span><span class="va">coefs</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span><span class="op">)</span>, width <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>You will notice that everything looks good here. The pre-test
 performs well (the caveat to this is that the standard errors are
 “pointwise” and would be better to have uniform confidence bands though
@@ -280,7 +280,7 @@ this does not seem to be standard practice in applications).</p>
 <p>We can compare this to what happens using the <code>did</code>
 package:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># estimate group-group time average treatment effects</span></span>
+<code class="sourceCode R"><span><span class="co"># estimate group-time average treatment effects</span></span>
 <span><span class="va">did_att_gt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
 <span>                     tname <span class="op">=</span> <span class="st">"period"</span>,</span>
 <span>                     idname <span class="op">=</span> <span class="st">"id"</span>,</span>
@@ -316,14 +316,14 @@ package:</p>
 <span></span>
 <span><span class="co"># plot them</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_att_gt</span><span class="op">)</span></span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-5-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># aggregate them into event study plot</span></span>
 <span><span class="va">did_es</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">did_att_gt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># plot the event study</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did_es</span><span class="op">)</span></span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-6-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>Overall, everything looks good using either approach. (Just to keep
 things fair, we report pointwise confidence intervals for group-time
 average treatment effects, but it is easy to get uniform confidence
@@ -387,8 +387,8 @@ selective treatment timing.</p>
 <span><span class="co">#&gt; Balanced Panel: n = 6988, T = 4, N = 27952</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Residuals:</span></span>
-<span><span class="co">#&gt;       Min.    1st Qu.     Median    3rd Qu.       Max. </span></span>
-<span><span class="co">#&gt; -10.158205  -0.751216   0.023376   0.805780  11.190180 </span></span>
+<span><span class="co">#&gt;     Min.  1st Qu.   Median  3rd Qu.     Max. </span></span>
+<span><span class="co">#&gt; -10.1582  -0.7512   0.0234   0.8058  11.1902 </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
 <span><span class="co">#&gt;        Estimate Std. Error t-value  Pr(&gt;|t|)    </span></span>
@@ -415,7 +415,7 @@ selective treatment timing.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html" class="external-link">geom_errorbar</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>ymin <span class="op">=</span> <span class="op">(</span><span class="va">coefs</span><span class="op">-</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span>, ymax <span class="op">=</span> <span class="op">(</span><span class="va">coefs</span><span class="op">+</span><span class="fl">1.96</span><span class="op">*</span><span class="va">ses</span><span class="op">)</span><span class="op">)</span>, width <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/lims.html" class="external-link">ylim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-13-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>In contrast to the last case, it is clear that things have gone wrong
 here. <strong>Parallel trends holds in all time periods and for all
 groups here</strong>, but the event study regression incorrectly rejects
@@ -424,10 +424,10 @@ timing.</p>
 <p>We can compare this to what happens using the <code>did</code>
 package:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># estimate group-group time average treatment effects</span></span>
+<code class="sourceCode R"><span><span class="co"># estimate group-time average treatment effects</span></span>
 <span><span class="va">did.att.gt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/att_gt.html">att_gt</a></span><span class="op">(</span>yname <span class="op">=</span> <span class="st">"Y"</span>,</span>
 <span>                     tname <span class="op">=</span> <span class="st">"period"</span>,</span>
-<span>                     idnam <span class="op">=</span> <span class="st">"id"</span>,</span>
+<span>                     idname <span class="op">=</span> <span class="st">"id"</span>,</span>
 <span>                     gname <span class="op">=</span> <span class="st">"G"</span>,</span>
 <span>                     data <span class="op">=</span> <span class="va">data</span></span>
 <span>                     <span class="op">)</span></span>
@@ -459,14 +459,14 @@ package:</p>
 <span></span>
 <span><span class="co"># plot them</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.att.gt</span><span class="op">)</span></span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-14-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># aggregate them into event study plot</span></span>
 <span><span class="va">did.es</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aggte.html">aggte</a></span><span class="op">(</span><span class="va">did.att.gt</span>, type <span class="op">=</span> <span class="st">"dynamic"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># plot the event study</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">did.es</span><span class="op">)</span></span></code></pre></div>
-<p><img src="pre-testing_files/figure-html/unnamed-chunk-15-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="pre-testing_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>This is the correct performance (up to aforementioned caveats about
 multiple hypothesis testing).</p>
 </div>
@@ -539,7 +539,7 @@ Econometrics, Vol. 225, No. 2, pp. 175-199, 2021</a></p></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.2.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

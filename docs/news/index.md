@@ -1,0 +1,692 @@
+# Changelog
+
+## did 2.5.0
+
+This is a large release that consolidates all development since 2.3.0.
+Headline changes: a substantially faster engine (group-time ATTs are
+roughly 2.5-3x faster in common settings, and the conditional pre-test
+is several times faster and far lighter on memory), first-class
+clustered and unbalanced-panel inference, support for transformation and
+factor covariates, a point-estimates-only mode, and a long list of
+correctness fixes. Numerical results are unchanged up to floating-point
+precision except where a bug fix is explicitly noted.
+
+### Dependencies
+
+- Requires `DRDID (>= 1.3.0)`, which provides faster and more robust 2x2
+  DiD estimators (used internally for every group-time ATT) and guards
+  against silently-incorrect standard errors on ill-conditioned
+  (near-singular) designs.
+
+### New features
+
+- New `compute_inffunc` argument in
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  (default `TRUE`). Set `compute_inffunc = FALSE` for a
+  **point-estimates-only** run: it returns the group-time ATT point
+  estimates (identical to a full run) without influence functions,
+  standard errors, uniform bands, or the pre-test. This is faster and
+  uses much less memory (no influence-function matrix is ever formed or
+  bootstrapped), which helps for quick exploration or very large
+  datasets. The result cannot be passed to
+  [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md)
+  (which now errors with a clear message); `bstrap` and `cband` are set
+  to `FALSE` automatically.
+
+- Covariate formulas (`xformla`) may now use transformations and other
+  model-matrix terms, e.g. `~ I(X^2)`, `~ log(X)`, `~ poly(X, 2)`,
+  `~ X1 * X2`. These previously errored because pre-processing stored
+  the evaluated model frame (losing the raw variable and creating
+  matrix-valued columns) instead of the raw covariates. Pre-processing
+  now keeps the raw covariates so the design matrix can be rebuilt, and
+  drops rows whose evaluated design is non-finite
+  (e.g. [`log()`](https://rdrr.io/r/base/Log.html) of a non-positive
+  value).
+
+- Factor covariates now produce exactly the same estimates, standard
+  errors, and warning messages as adding their dummy columns by hand.
+  Previously the `faster_mode = FALSE` path applied
+  [`droplevels()`](https://rdrr.io/r/base/droplevels.html) within each
+  2x2 comparison, so a factor level absent from a comparison changed the
+  design (and could error with “contrasts can be applied only to factors
+  with 2 or more levels”). The design matrix is now built once over the
+  full sample, with global factor levels, and row-subset per cell.
+
+- New `fix_weights` argument in
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  for explicit control over how time-varying sampling weights are
+  resolved in each 2x2 comparison: `NULL` (default, prior behavior),
+  `"varying"` (per-observation weights via the RC estimators),
+  `"base_period"` (fix at g-1), or `"first_period"`. See
+  [`?att_gt`](https://bcallaway11.github.io/did/reference/att_gt.md). A
+  runtime message points users to it when time-varying weights are
+  detected in balanced panel data.
+
+- [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  accepts `...` to forward additional arguments to a custom `est_method`
+  function.
+
+- Added [`nobs()`](https://rdrr.io/r/stats/nobs.html) S3 methods for
+  `MP` and `AGGTEobj` objects (number of unique cross-sectional units),
+  and `statistic` (t-statistic) and `p.value` (pointwise, two-sided)
+  columns to [`tidy()`](https://generics.r-lib.org/reference/tidy.html)
+  output for both classes, following `broom` conventions.
+
+- The influence-function matrix returned in `MP$inffunc` now carries the
+  unit ids as rownames (the `idname` values; an internal observation
+  index for repeated cross sections), and its row-order contract is
+  documented in
+  [`?att_gt`](https://bcallaway11.github.io/did/reference/att_gt.md) and
+  [`?MP`](https://bcallaway11.github.io/did/reference/MP.md). The row
+  ORDER is mode-specific – `faster_mode = FALSE` sorts units by id while
+  `faster_mode = TRUE` uses an internal (period, cohort, id) ordering –
+  so external consumers of the influence functions (e.g. sensitivity
+  analyses or custom cluster aggregation) must align rows by rowname,
+  never by position. Values are unchanged; only the labels are new.
+
+### Performance and memory
+
+- `att_gt(faster_mode = TRUE)` (the default) is about 2.5-3x faster on
+  common problems, with identical results. Each (g,t) cell previously
+  built and extracted a `data.table` even though the cohort vectors are
+  already materialized in the pre-computed tensors; the per-cell cohort
+  is now a plain list of vectors passed straight to the DRDID estimators
+  (panel, repeated cross-section, and unbalanced-panel paths), and the
+  unbalanced-panel influence-function aggregation applies a sparse
+  unit-aggregation operator built once per call (bit-identical to the
+  previous per-cell
+  [`rowsum()`](https://rdrr.io/r/base/rowsum.html)/`data.table`
+  group-by, but without re-hashing the row-to-unit map for every (g,t)
+  cell — about 2x faster end-to-end on large unbalanced panels). Earlier
+  (g,t) work also feeds in: cumulative cohort sizes, cached
+  pre-treatment periods, pre-computed cohort and period-membership masks
+  on the repeated-cross-section / unbalanced-panel path, and
+  sparse-triplet influence-matrix construction. One intentional
+  edge-case change in the unbalanced-panel aggregation: `NA`/`NaN`
+  entries in a 2x2 influence function (only reachable with a custom
+  `est_method` that returns a finite ATT alongside a partially-`NA`
+  influence function) now propagate to that unit’s aggregated influence
+  value, so the affected (g,t) standard error is `NA`, matching
+  `faster_mode = FALSE`; previously the fast path silently zeroed them,
+  understating the standard error.
+
+- The per-(g,t) overlap-check propensity logit (fit for every `dr`/`ipw`
+  cell to detect propensity-score overlap violations) now uses
+  `fastglm`’s low-level entry point (`fastglmPure`) instead of the
+  `fastglm()` wrapper, skipping its per-call input coercion and
+  family/deviance bookkeeping. The fitted values – and therefore the
+  overlap decision – are bit-identical.
+
+- Two further per-cell guard speedups, in both `faster_mode` paths, with
+  bit-identical estimates, standard errors, influence functions, and
+  warnings. (1) For intercept-only designs (`xformla = NULL`/`~1`, the
+  default) the overlap and regression-feasibility guards use their
+  closed forms – an unweighted intercept-only logit fits every unit at
+  `mean(D)`, and the control-unit Gram matrix is the scalar control
+  count – skipping the per-cell logit fit entirely; within `1e-6` of the
+  `0.999` cutoff the real fit is still used, so knife-edge decisions are
+  unchanged. (2) For panel data with `control_group = "nevertreated"`
+  and non-varying weights, the guard booleans are computed once per
+  (group, covariate-period, weight-period) instead of being refit for
+  every post-treatment cell of a group (the guards’ inputs are
+  bit-identical across those cells); failed cells still warn once per
+  cell, and `options(did.disable_check_cache = TRUE)` restores the
+  per-cell checks. Together these make a default no-covariate
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  run roughly 10-15% faster, with similar gains on covariate runs using
+  never-treated controls.
+
+- `att_gt(faster_mode = FALSE)` builds the covariate design matrix once
+  and assembles each 2x2 cell directly from precomputed per-period
+  blocks (outcomes, weights, design) indexed by position, instead of
+  rebuilding
+  [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) and
+  reshaping (`get_wide_data()`) the long data for every cell.
+  Bit-identical, with about half the transient allocation;
+  `options(did.disable_precompute = TRUE)` restores the original
+  per-cell assembly (the once-built design matrix is used either way, so
+  the option is a debugging escape hatch for the cell assembly only,
+  with identical results). The repeated-cross-section / unbalanced-panel
+  slow path gets the same treatment: each (g,t) cell is assembled
+  positionally from per-period row indices and plain column vectors
+  precomputed once per call, replacing two full `data.table` subsets, a
+  full-data `%in%`, and a
+  [`droplevels()`](https://rdrr.io/r/base/droplevels.html) per cell
+  (about 1.7x faster end-to-end on both the repeated-cross-section and
+  unbalanced-panel paths, bit-identical, behind the same escape hatch);
+  the `fix_weights = "base_period"`/`"first_period"` weight lookup
+  likewise uses per-period vectors instead of a per-cell full-table
+  subset. The repeated-cross-section / unbalanced influence-function
+  aggregation now uses [`rowsum()`](https://rdrr.io/r/base/rowsum.html)
+  instead of
+  [`stats::aggregate()`](https://rdrr.io/r/stats/aggregate.html) (about
+  40x faster on that step). `faster_mode = TRUE` and
+  `faster_mode = FALSE` remain identical to numerical precision for
+  every supported option.
+
+- Pre-processing for `faster_mode = TRUE` is leaner, with identical
+  outputs: only the columns the call references
+  (id/time/group/outcome/weights/cluster plus the raw `xformla`
+  variables) are copied out of the input data, so wide data frames no
+  longer pay a full-table copy (cutting the transient memory peak by
+  roughly the size of the unused columns); the balanced-panel checks use
+  an arithmetic row-count test instead of full by-unit groupings (the
+  grouping now only runs when unbalanced units actually need to be
+  identified); guaranteed no-op complete-case passes are short-circuited
+  behind [`anyNA()`](https://rdrr.io/r/base/NA.html); the temporary
+  `asif_never_treated`/`treated_first_period` columns are replaced by
+  local vectors; and the period/crosstable count tables are derived
+  without re-grouping the unit-level table.
+
+- The conditional pre-test
+  ([`conditional_did_pretest()`](https://bcallaway11.github.io/did/reference/conditional_did_pretest.md))
+  is several times faster end-to-end and far lighter on memory. Its
+  multiplier bootstrap
+  ([`test.mboot()`](https://bcallaway11.github.io/did/reference/test.mboot.md))
+  previously looped over `biters` draws, each multiplying the full
+  `n x k x nX` influence array by fresh weights – `O(n^2 k)` work
+  **and** an `O(n^2 k)` transient allocation per draw (over 1 GB per
+  draw at a few thousand units). It is now a single tiled matrix
+  contraction (100x+ faster on that step, with the per-draw gigabyte
+  allocations eliminated), numerically identical to the old loop up to
+  floating-point summation order; the
+  [`indicator()`](https://bcallaway11.github.io/did/reference/indicator.md)
+  weighting function is also vectorized.
+
+- Internal speedups with identical results: vectorized the
+  multiplier-bootstrap post-processing
+  ([`mboot()`](https://bcallaway11.github.io/did/reference/mboot.md)),
+  removed a duplicated `n x k` matrix construction in the aggregation
+  estimated-weight influence term
+  ([`wif()`](https://bcallaway11.github.io/did/reference/wif.md)),
+  preallocated the sparse influence-function assembly, and removed
+  redundant work in pre-processing and simulation.
+
+### Clustered and unbalanced-panel inference
+
+- Clustered standard errors are now available **without** the bootstrap.
+  With `clustervars` set and `bstrap = FALSE`,
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  and [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md)
+  report cluster-robust standard errors computed analytically from the
+  cluster sums of the influence function, at every aggregation level
+  (group-time, simple, group, dynamic, calendar), and the pre-test Wald
+  statistic is reported under clustering.
+
+- The cluster-robust multiplier bootstrap (`mboot`) now follows Callaway
+  & Sant’Anna (2021), Remark 10: it draws one multiplier per cluster and
+  aggregates the influence function to cluster sums. Identical to before
+  for equal-sized clusters; correct cluster-sum aggregation for
+  unbalanced clusters and repeated cross sections.
+
+- Clustered inference (bootstrap and analytical) is supported for panel
+  data, unbalanced panels, and repeated cross sections, and is identical
+  under `faster_mode = TRUE` and `faster_mode = FALSE`. For repeated
+  cross sections without an `idname`, the internal observation id is
+  used to align the cluster identifiers with the influence function
+  (`idname` itself is required whenever `panel = TRUE`; see below).
+
+- [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md) no
+  longer silently ignores a `clustervars` request it cannot honor (the
+  aggregation can only use the cluster information
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  retained). It now warns – including when an override names a different
+  variable than
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  clustered on – and falls back to non-clustered standard errors,
+  instead of silently returning the i.i.d. error or crashing in
+  [`mboot()`](https://bcallaway11.github.io/did/reference/mboot.md).
+
+- Fixed two `faster_mode = TRUE` clustered-standard-error bugs on
+  **unbalanced panels** so the fast path reproduces the slow path: (1)
+  the analytical clustered SE silently fell back to the i.i.d. error
+  because the stored per-unit cluster vector was observation-length and
+  no longer aligned with the influence function; and (2) in
+  [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md), the
+  estimated-weight influence term was added in id-sorted order while the
+  influence function is in first-appearance order, misattributing it and
+  giving a wrong aggregated SE (point estimates were unaffected).
+  Balanced panels and repeated cross sections were unaffected.
+
+### Bug fixes
+
+- Fixed the conditional parallel-trends pre-test
+  ([`conditional_did_pretest()`](https://bcallaway11.github.io/did/reference/conditional_did_pretest.md)),
+  which had silently broken under R \>= 4.0 and spuriously rejected
+  almost always whenever there was more than one pre-treatment ATT(g,t)
+  cell. The observed Cramér-von Mises statistic was left in
+  `(n_gt x nX)` orientation while its bootstrap null distribution is
+  `(nX x n_gt)`, scaling the observed statistic by `n / n_gt` and
+  driving the p-value to ~0. The root cause was
+  `ifelse(class(J) == "matrix", ...)`:
+  [`class()`](https://rdrr.io/r/base/class.html) of a matrix became
+  length-2 (`c("matrix","array")`) in R 4.0, so
+  [`ifelse()`](https://rdrr.io/r/base/ifelse.html) evaluated both
+  branches and the no-transpose branch always won. The orientation is
+  now selected with [`is.matrix()`](https://rdrr.io/r/base/matrix.html).
+
+- `aggte(type = "group", na.rm = TRUE)` with a finite `max_e` no longer
+  errors (“No valid att_gt() estimates found …”) when a group’s only
+  non-missing ATT(g,t) lies past `max_e`; the group filter now applies
+  the same `max_e` window. The default `max_e = Inf` is unchanged.
+
+- Duplicated `(idname, tname)` rows (the same unit observed more than
+  once in a period, a common long-format data-prep mistake) are now
+  rejected with a clear error in **both** code paths. Previously only
+  `faster_mode = TRUE` caught this; `faster_mode = FALSE` silently
+  produced incorrect estimates.
+
+- A `weightsname` column with negative values or a non-positive mean is
+  now rejected with a clear, identical error in both code paths, instead
+  of silently producing `NA`/`NaN` estimates.
+
+- Fixed `faster_mode = TRUE` vs `FALSE` ATT disagreement when sampling
+  weights (`weightsname`) vary across time: the fast path was always
+  using first-period weights and now uses the same period’s weights as
+  the slow path.
+
+- Fixed influence-function aggregation for `fix_weights = "varying"` on
+  balanced panels (now aggregates by unit id with
+  [`rowsum()`](https://rdrr.io/r/base/rowsum.html) rather than assuming
+  stacked order), and a length mismatch for
+  `fix_weights = "base_period"`/`"first_period"` on unbalanced panels
+  after weight-based unit dropping.
+
+- Fixed
+  [`glance.MP()`](https://bcallaway11.github.io/did/reference/glance.MP.md)
+  returning `NULL` for `ngroup`/`ntime` under `faster_mode = TRUE`.
+
+- Fixed an
+  [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md)
+  crash (“Error in get(gname): invalid first argument”) when the group
+  column is literally named `gname` and `dreamerr >= 1.5.0` is installed
+  (data.table’s [`get()`](https://rdrr.io/r/base/get.html) was
+  intercepted; replaced with `set()`).
+
+- [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md) no
+  longer modifies the data stored inside the `MP` object by reference:
+  under `faster_mode = TRUE` it previously recoded the never-treated
+  `gname` value `Inf` to `0` in `MP$DIDparams$data` as a side effect.
+  The input object is now left untouched; all results are unchanged.
+
+- Fixed groups treated after the last observed period but within the
+  anticipation window being coerced to never-treated (contaminating the
+  control group with anticipation effects), and a data-filter
+  inconsistency for always-treated units when `anticipation > 0`. Added
+  an informative message clarifying that never-treated units are
+  unaffected by `anticipation`.
+
+- When internal 2x2 estimation fails for a specific (g,t) cell (e.g. a
+  singular design),
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  now warns and sets that cell’s ATT to `NA` instead of crashing, in
+  both `faster_mode = TRUE` and `FALSE`
+  ([\#185](https://github.com/bcallaway11/did/issues/185),
+  [\#190](https://github.com/bcallaway11/did/issues/190)).
+
+- `pl = TRUE` on Windows now warns and falls back to sequential
+  processing instead of crashing
+  ([\#176](https://github.com/bcallaway11/did/issues/176)).
+
+### Validation and clearer errors
+
+- Misspelled `yname`, `idname`, `tname`, `gname`, `weightsname`, or
+  `clustervars` now produce a clear message listing the missing columns
+  ([\#203](https://github.com/bcallaway11/did/issues/203)).
+
+- Column names reserved for internal use by `did` (`.w`, `.rowid`, `.G`,
+  `.C`, `post`, `asif_never_treated`, `treated_first_period`) are now
+  rejected with a clear error when used as `yname`, `tname`, `idname`,
+  `gname`, `weightsname`, or `clustervars`, or referenced in `xformla`.
+  Previously they could silently collide with the columns `did` creates
+  internally; rename such columns before calling
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md).
+
+- `control_group` and `base_period` must now exactly match one of their
+  documented values, in both modes. Previously `faster_mode = TRUE`
+  accepted partial and case-insensitive abbreviations
+  (e.g. `control_group = "never"`), and `faster_mode = FALSE` silently
+  treated any unrecognized `base_period` value as `"varying"`.
+
+- An invalid `est_method` (an unrecognized string or an unquoted
+  variable) now errors clearly instead of silently defaulting to `"dr"`
+  ([\#194](https://github.com/bcallaway11/did/issues/194)).
+
+- `fix_weights = "base_period"`/`"first_period"` are blocked for
+  repeated cross sections (`panel = FALSE`); `fix_weights = "varying"`
+  is blocked with a custom `est_method` function (whose signature
+  differs from the internal RC path). Both with clear messages.
+
+- `anticipation` must now be a non-negative number in both modes.
+  Previously only `faster_mode = TRUE` enforced this; the
+  `faster_mode = FALSE` path silently accepted negative values (shifting
+  the base period later than the treatment period), which was
+  undocumented and inconsistent across modes.
+
+- `panel = TRUE` (the default) without `idname` now errors with “Must
+  provide idname when panel = TRUE. Set panel = FALSE for repeated cross
+  sections.” Previously this failed with a cryptic internal `data.table`
+  error (`faster_mode = TRUE`) or a misleading “All observations dropped
+  while converting data to balanced panel” message
+  (`faster_mode = FALSE`).
+
+- A non-numeric outcome variable (`yname`) is now rejected up front with
+  a clear message in both code paths (logical 0/1 outcomes remain
+  allowed). Previously a character or factor outcome “ran” to completion
+  with all-`NA` ATTs and misleading per-cell warnings, and a list-column
+  outcome failed with a cryptic
+  [`complete.cases()`](https://rdrr.io/r/stats/complete.cases.html)
+  error.
+
+- The per-(g,t) regression-feasibility check now reports the real cause
+  when it fails: “Covariate matrix for control units is singular or
+  numerically ill-conditioned … consider centering/rescaling covariates
+  or removing collinear terms” instead of the misleading “Not enough
+  control units … to run specified regression” (which fired even with
+  thousands of control units, e.g. for a quadratic in a year-scale
+  covariate). The check itself is unchanged (and now uses
+  [`crossprod()`](https://rdrr.io/r/base/crossprod.html)); affected
+  cells still return `NA` with a warning.
+
+- `alp` must now be a single number strictly between 0 and 1
+  (e.g. `alp = 1.5` previously inverted the confidence bands silently or
+  errored deep inside
+  [`quantile()`](https://rdrr.io/r/stats/quantile.html)), and `biters`
+  must be a single positive whole number when `bstrap = TRUE` (a
+  negative value previously crashed inside the bootstrap’s
+  linear-algebra code with no hint about the cause).
+
+- Cleaner failed-cell warnings under `faster_mode = FALSE`: each failed
+  (g,t) cell now warns exactly once with the same text as
+  `faster_mode = TRUE` (“overlap condition violated for group g in time
+  period t”). Previously the slow path warned twice per failed
+  overlap/rank check – the diagnostic plus a wrapper warning leaking the
+  internal sentinel
+  (`"... : overlap. The ATT for this cell will be set to NA."`). Genuine
+  estimator errors are still surfaced by the wrapper warning.
+  Additionally, when the Wald pre-test is unavailable, the warning now
+  distinguishes “pre-treatment ATT(g,t) estimates exist but all have
+  missing/zero variance” from “no pre-treatment cells exist at all” (the
+  latter previously mis-diagnosed the former as “all groups are first
+  treated early in the panel”).
+
+- The documented `clustervars` contract – at most one cluster variable
+  beyond `idname`, and it must be time-invariant within unit – is now
+  enforced up front in **both** code paths, with one shared,
+  plainly-worded error message (also used by
+  [`mboot()`](https://bcallaway11.github.io/did/reference/mboot.md)).
+  Previously `faster_mode = FALSE` with `bstrap = FALSE` (the analytical
+  clustered-SE path) accepted extra cluster variables and **silently
+  clustered on the first one only**; a time-varying cluster variable on
+  that path triggered a fallback warning advising `bstrap = TRUE`,
+  advice that then errored in
+  [`mboot()`](https://bcallaway11.github.io/did/reference/mboot.md) for
+  the very same input; and the `faster_mode = TRUE` error exposed
+  internal argument names (“args\$clustervars must be … a character
+  scalar”), contradicting the documented vector interface.
+
+- Per-cell empty-cell warnings under `faster_mode = FALSE` now name the
+  period that is actually empty. Under `base_period = "universal"` (and
+  for post-treatment cells under `"varying"`), the
+  repeated-cross-section path warned “No units in group g in time period
+  t” with the cell’s *current* period – a period where the group does
+  have observations – instead of the empty base period;
+  `faster_mode = TRUE` already reported the base period correctly.
+
+- Aligned two pre-processing warnings across modes: the
+  `faster_mode = TRUE` “no never-treated group” warning now also
+  discloses that data from periods on/after the last cohort’s treatment
+  date is filtered out (both modes always dropped those periods; only
+  the slow path said so), and the `faster_mode = FALSE` balanced-panel
+  coercion warning now reports the number of dropped *units* (“k units
+  are missing in some periods. Converting to balanced panel by dropping
+  them.”, same text as `faster_mode = TRUE`) instead of mislabeling the
+  unit count as “observations” (an undercount of the rows actually
+  removed).
+
+### Documentation, namespace, and internals
+
+- Reduced namespace pollution: replaced blanket `import(stats)`,
+  `import(utils)`, and `import(BMisc)` with selective `importFrom()`
+  calls. `did` no longer re-exports
+  [`stats::filter`](https://rdrr.io/r/stats/filter.html)/[`stats::lag`](https://rdrr.io/r/stats/lag.html)
+  (which previously masked
+  [`dplyr::filter`](https://dplyr.tidyverse.org/reference/filter.html)/[`dplyr::lag`](https://dplyr.tidyverse.org/reference/lead-lag.html)).
+  `R CMD check` passes with 0 code-related NOTEs.
+
+- Replaced fragile `ifelse(cond, x <- a, x <- b)` side-effect idioms
+  (which relied on R’s branch-evaluation order) with `if/else`, and
+  [`get()`](https://rdrr.io/r/base/get.html)/`:=` with `set()` inside
+  `data.table` loops, throughout; behavior is unchanged.
+
+- Substantially expanded the test suite:
+  [`glance()`](https://generics.r-lib.org/reference/glance.html),
+  [`ggdid()`](https://bcallaway11.github.io/did/reference/ggdid.md),
+  error handling, edge cases, all aggregation types, systematic
+  `faster_mode` consistency across dozens of parameter combinations, and
+  JEL replication tests. The suite now runs with 0 warnings (previously
+  66+). Added a GitHub Action to auto-bump the dev version in
+  `DESCRIPTION` on PR merge.
+
+- Expanded `weightsname` documentation (how time-varying weights are
+  handled for balanced panels vs. repeated cross sections / unbalanced
+  panels); grammar and typo fixes across docs, vignettes, and error
+  messages; corrected the `mpdta` data documentation.
+
+- Replaced deprecated `BMisc` function names (`getListElement`,
+  `rhs.vars`) with their snake_case equivalents (`get_list_element`,
+  `rhs_vars`).
+
+## did 2.3.0
+
+CRAN release: 2025-12-13
+
+- Code improvements that make the package faster and more memory
+  efficient
+
+- Improved automated testing and regression testing
+
+- Check if data is balanced if `panel = TRUE` and
+  `allow_unbalanced_panel = TRUE`. If it is, disable
+  `allow_unbalanced_panel` and proceed with panel data setup. This is
+  different from the previous behavior, which would always proceed as if
+  `panel = FALSE`.
+
+- Significantly reduced the number of recursive package dependencies,
+  enabling faster installation times and a smaller build footprint.
+
+## did 2.2.0
+
+- Skipped, as the number of changes was large enough to warrant a minor
+  version bump
+
+## did 2.1.2
+
+CRAN release: 2022-07-20
+
+- Added wrapper function for HonestDiD package
+
+- Fix bug for setups where `gname` is not contained in `tname` (but is
+  in the `tname` range)
+
+- Fix bug for including too many groups with universal base period in
+  pre-treatment periods
+
+- Bug fix for anticipation using `notyettreated` comparison group
+
+## did 2.1.1
+
+CRAN release: 2022-01-27
+
+- Bug fixes related to unbalanced panel and clustered standard errors
+
+- Bug fixes for conditional_did_pretest
+
+- Even faster bootstrap code (thanks Kyle Butts)
+
+- Updated version requirement for `BMisc` package
+
+- Bug fix for unbalanced panel and repeated cross sections in
+  pre-treatment periods using universal base period
+
+## did 2.1.0
+
+CRAN release: 2021-12-10
+
+- Code is substantially faster/more memory efficient
+
+- Support for *universal* base period
+
+- Major improvements to unit testing
+
+- Completely removed `mp.spatt` and `mp.spatt.test` functions (which
+  were the original names for `att_gt`)
+
+- Simulation/testing code now exported
+
+- Removed some slow running checks
+
+- Multiplier bootstrap code is now written in C++
+
+- Improvements to error handling, added some additional warning
+  messages, removed some unnecessary warning messages
+
+- Bug fixes for NA standard errors that occur with very small groups
+
+## did 2.0.1
+
+- Improved plots
+
+- Maximum event time for event studies
+
+- Compute critical value for simultaneous confidence bands even when
+  some standard error is zero (set these to NA)
+
+- Improved codes for unbalanced panel data: faster and more memory
+  efficient
+
+- Correct estimates of P(G=g\|Eventually treated) with unbalanced panel
+  data. This affects **aggte** objects with unbalanced panel data
+
+- Bug fixes for summary **aggte** objects
+
+- Allow clustering for unbalanced panel data
+
+- Fixed error in calendar-type aggregation within **aggte** function
+  (point estimates were not being weighted by group-size; now they are).
+
+- Additional error handling
+
+## did 2.0.0
+
+CRAN release: 2020-12-11
+
+- Big improvement on code base / functionality / testing
+
+- Deprecated **mp.spatt** function and replaced it with **att_gt**
+  function
+
+- Calling **att_gt** is similar to calling **mp.spatt**; instead of
+  formula for outcome of the form `y~treat`, now just pass the name of
+  the outcome variable
+
+- Deprecated **mp.spatt** function and replaced it with
+  **conditional_did_pretest** function
+
+- New **est_method** parameter. Can call any function for 2x2 DID in the
+  **DRDID** package (default is now doubly robust estimation, but
+  inverse probability weights and regression estimators are also
+  supported) as well as provide custom 2x2 DID estimators
+
+- Bug fixes for including groups that are *already treated* in the first
+  period
+
+- Allow for user to select control group – either *never treated* or
+  *not yet treated*
+
+- Add functionality for uniform confidence bands for all aggregated
+  treatment effect parameters
+
+- Introduced dynamic effects in pre-treatment periods. These allow for
+  users to report event study plots that are common that include
+  pre-treatment periods and are common in applied work. The event study
+  plots in the **did** package are robust to selective treatment timing
+  (unlike standard regression event study plots)
+
+- Support for using repeated cross sections data instead of panel data
+  is much improved
+
+- Support for using sampling weights is much improved
+
+- Big improvement to website, vignettes, and code documentation
+
+- Code for dealing with unbalanced panels
+
+- Allow for event studies to be computed over subsets of event times
+
+- Allow for treatment anticipation via *anticipation* argument
+
+## did 1.2.3
+
+CRAN release: 2020-02-17
+
+- Corrected check problems
+
+## did 1.2.2
+
+CRAN release: 2019-06-21
+
+- Improved ways to summarize aggregated treatment effect parameters
+
+- Fixed bug related to needing new version of BMisc
+
+- Fixed bug related to plotting with no pre-treatment periods
+
+- Improved ways to easily plot aggregated treatment effect parameters
+
+## did 1.2.1
+
+CRAN release: 2019-06-14
+
+- Added some error handling for some cases with small group sizes, and
+  fixed some cryptic error messages
+
+- Fixes handling for data being in format besides *data.frame*
+  (e.g. *tibble*)
+
+- Add warnings about small group sizes which are a very common source of
+  trouble
+
+## did 1.2.0
+
+CRAN release: 2018-10-16
+
+- Updates for handling repeated cross sections data, both estimation and
+  inference
+
+## did 1.1.2
+
+CRAN release: 2018-09-11
+
+- bug fixes for testing without covariates, allowed to pass NULL in
+  addition to ~1
+
+## did 1.1.1
+
+- fixed issues between BMisc and formula.tools
+
+- added point estimates for repeated cross sections data
+
+## did 1.1.0
+
+CRAN release: 2018-07-11
+
+- bug fixes for the case without any covariates
+
+## did 1.0.0
+
+CRAN release: 2018-04-03
+
+- first version of package, functions for computing group-time average
+  treatment effects, combining them into a smaller number of parameters,
+  and pre-testing the common trends assumption

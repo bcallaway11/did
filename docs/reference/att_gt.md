@@ -1,0 +1,471 @@
+# Group-Time Average Treatment Effects
+
+`att_gt` computes average treatment effects in DID setups where there
+are more than two periods of data and allowing for treatment to occur at
+different points in time and allowing for treatment effect heterogeneity
+and dynamics. See Callaway and Sant'Anna (2021) for a detailed
+description.
+
+## Usage
+
+``` r
+att_gt(
+  yname,
+  tname,
+  idname = NULL,
+  gname,
+  xformla = NULL,
+  data,
+  panel = TRUE,
+  allow_unbalanced_panel = FALSE,
+  control_group = c("nevertreated", "notyettreated"),
+  anticipation = 0,
+  weightsname = NULL,
+  fix_weights = NULL,
+  alp = 0.05,
+  bstrap = TRUE,
+  cband = TRUE,
+  biters = 1000,
+  clustervars = NULL,
+  est_method = "dr",
+  base_period = "varying",
+  faster_mode = TRUE,
+  print_details = FALSE,
+  pl = FALSE,
+  cores = 1,
+  compute_inffunc = TRUE,
+  ...
+)
+```
+
+## Arguments
+
+- yname:
+
+  The name of the outcome variable
+
+- tname:
+
+  The name of the column containing the time periods
+
+- idname:
+
+  The individual (cross-sectional unit) id name
+
+- gname:
+
+  The name of the variable in `data` that contains the first period when
+  a particular observation is treated. This should be a positive number
+  for all observations in treated groups. It defines which "group" a
+  unit belongs to. It should be 0 for units in the untreated group.
+
+- xformla:
+
+  A formula for the covariates to include in the model. It should be of
+  the form `~ X1 + X2`. Default is NULL which is equivalent to
+  `xformla=~1`. This is used to create a matrix of covariates which is
+  then passed to the 2x2 DID estimator chosen in `est_method`.
+
+  For time-varying covariates: (1) With balanced panel data, in each 2x2
+  comparison, the covariates are taken to be the value of the covariates
+  in the earlier time period, and all of the underlying computations
+  involve changes in Y as a function of those values of covariates. (2)
+  With repeated cross sections data and unbalanced panel data, the
+  covariates are taken from each time period and computations involve
+  Y_post conditional on X_post minus Y_pre conditional on X_pre. A
+  byproduct of this is that, with balanced panel data and in the
+  presence of time-varying covariates, it is possible to get different
+  numerical results according to whether or not
+  `allow_unbalanced_panel=TRUE` or `FALSE`.
+
+- data:
+
+  The name of the data.frame that contains the data
+
+- panel:
+
+  Whether or not the data is a panel dataset. The panel dataset should
+  be provided in long format – that is, where each row corresponds to a
+  unit observed at a particular point in time. The default is TRUE. When
+  using a panel dataset, the variable `idname` must be set. When
+  `panel=FALSE`, the data is treated as repeated cross sections.
+
+- allow_unbalanced_panel:
+
+  Whether or not function should "balance" the panel with respect to
+  time and id. The default value is `FALSE` which means that `att_gt()`
+  will drop all units where data is not observed in all periods. The
+  advantage of this is that the computations are faster (sometimes
+  substantially).
+
+- control_group:
+
+  Which units to use as the control group. The default is "nevertreated"
+  which sets the control group to be the group of units that never
+  participate in the treatment. This group does not change across groups
+  or time periods. The other option is to set `group="notyettreated"`.
+  In this case, the control group is set to the group of units that have
+  not yet participated in the treatment in that time period. This
+  includes all never treated units, but it includes additional units
+  that eventually participate in the treatment, but have not
+  participated yet.
+
+- anticipation:
+
+  The number of time periods before participating in the treatment where
+  units can anticipate participating in the treatment and therefore it
+  can affect their untreated potential outcomes
+
+- weightsname:
+
+  The name of the column containing the sampling weights. If not set,
+  all observations have same weight. When weights are time-invariant
+  (constant within each unit across periods), all `fix_weights` options
+  produce identical results and no special handling is needed.
+
+  When weights vary across time (e.g., time-varying population sizes),
+  the default behavior differs by panel type:
+
+  Balanced panel
+
+  :   Each 2x2 DiD comparison uses the weight from the earlier of the
+      two time periods involved. For post-treatment cells, this is the
+      base period (g-1). For pre-treatment cells with
+      `base_period="varying"`, this is the pre-treatment period itself.
+      The panel DRDID estimators are used.
+
+  Repeated cross sections and unbalanced panels
+
+  :   Both periods' per-observation weights are passed directly to the
+      RC DRDID estimators, so each observation carries its own
+      period-specific weight.
+
+  Use the `fix_weights` argument to override the default behavior.
+
+- fix_weights:
+
+  Controls how time-varying sampling weights are resolved. Only relevant
+  when weights vary across time; with time-invariant weights, all
+  options produce identical results. Options:
+
+  `NULL` (default)
+
+  :   For balanced panel: uses the weight from the earlier of the two
+      time periods in each 2x2 comparison. For post-treatment cells,
+      this is the base period (g-1). For pre-treatment cells, this
+      depends on the `base_period` setting. For RC/unbalanced panel:
+      uses per-observation weights from both periods.
+
+  `"varying"`
+
+  :   Uses per-observation, period-specific weights for all panel types.
+      For balanced panel data, this switches to the repeated
+      cross-section DRDID estimators so that pre-period and post-period
+      observations each carry their own weight. Covariates are held
+      fixed at their pre-period values (same as the default panel
+      estimator). This is the most flexible option for weights but
+      sacrifices the efficiency of the panel estimator. For
+      RC/unbalanced panel, this is identical to the default. Not
+      supported with custom `est_method` functions.
+
+  `"base_period"`
+
+  :   Fixes weights at the base period (g-1) for all (g,t) cells within
+      a group, for both pre-treatment and post-treatment comparisons.
+      Ensures all cells within a group use the same weights. For
+      unbalanced panels, units not observed in the base period are
+      dropped with a warning. Not supported for repeated cross sections
+      (`panel = FALSE`).
+
+  `"first_period"`
+
+  :   Fixes weights at the first time period in the dataset for all
+      (g,t) cells. For unbalanced panels, units not observed in the
+      first period are dropped with a warning. Not supported for
+      repeated cross sections (`panel = FALSE`).
+
+- alp:
+
+  the significance level, default is 0.05
+
+- bstrap:
+
+  Boolean for whether or not to compute standard errors using the
+  multiplier bootstrap. Default is `TRUE` (in addition, cband is also by
+  default `TRUE` indicating that uniform confidence bands will be
+  returned). If `bstrap=FALSE`, analytical standard errors are reported;
+  these are cluster-robust when `clustervars` is supplied.
+
+- cband:
+
+  Boolean for whether or not to compute a uniform confidence band that
+  covers all of the group-time average treatment effects with fixed
+  probability `1-alp`. In order to compute uniform confidence bands,
+  `bstrap` must also be set to `TRUE`. The default is `TRUE`.
+
+- biters:
+
+  The number of bootstrap iterations to use. The default is 1000, and
+  this is only applicable if `bstrap=TRUE`.
+
+- clustervars:
+
+  A vector of variables names to cluster on. At most, there can be two
+  variables (otherwise will throw an error) and one of these must be the
+  same as idname which allows for clustering at the individual level.
+  Clustered standard errors are available with the multiplier bootstrap
+  (`bstrap=TRUE`) or analytically (`bstrap=FALSE`).
+
+- est_method:
+
+  the method to compute group-time average treatment effects. The
+  default is "dr" which uses the doubly robust approach in the `DRDID`
+  package. Other built-in methods include "ipw" for inverse probability
+  weighting and "reg" for first step regression estimators. The user can
+  also pass their own function for estimating group time average
+  treatment effects. The required signature depends on the data
+  structure:
+
+  **Panel data** (`panel=TRUE`):
+  `f(y1, y0, D, covariates, i.weights, inffunc, ...)` where `y1` is an
+  `n x 1` vector of post-treatment outcomes, `y0` is an `n x 1` vector
+  of pre-treatment outcomes, `D` is a binary vector indicating treatment
+  group membership, `covariates` is an `n x k` matrix, `i.weights` is a
+  vector of sampling weights, and `inffunc` is a logical requesting
+  influence-function computation.
+
+  **Repeated cross sections / unbalanced panel** (`panel=FALSE`):
+  `f(y, post, D, covariates, i.weights, inffunc, ...)` where `y` is the
+  outcome vector (length `n`), `post` is a binary indicator for the
+  post-treatment period, `D` is a binary treatment indicator,
+  `covariates` is an `n x k` matrix, `i.weights` is a vector of sampling
+  weights, and `inffunc` is a logical.
+
+  In both cases the function should return a list that includes `ATT`
+  (the estimated group-time average treatment effect) and `att.inf.func`
+  (an `n x 1` influence function — one entry per observation passed into
+  the estimator). The function can return other things as well, but
+  these are the only two that are required. With no covariates
+  (`xformla = NULL`), the built-in methods ("dr", "ipw", "reg") all
+  reduce to the unconditional difference-in-differences estimator, so
+  the choice among them is irrelevant; a custom `est_method` function is
+  still called (with an intercept-only `covariates` matrix) and
+  determines the estimates.
+
+- base_period:
+
+  Whether to use a "varying" base period or a "universal" base period.
+  Either choice results in the same post-treatment estimates of
+  ATT(g,t)'s. In pre-treatment periods, using a varying base period
+  amounts to computing a pseudo-ATT in each treatment period by
+  comparing the change in outcomes for a particular group relative to
+  its comparison group in the pre-treatment periods (i.e., in
+  pre-treatment periods this setting computes changes from period t-1 to
+  period t, but repeatedly changes the value of t)
+
+  A universal base period fixes the base period to always be
+  (g-anticipation-1). This does not compute pseudo-ATT(g,t)'s in
+  pre-treatment periods, but rather reports average changes in outcomes
+  from period t to (g-anticipation-1) for a particular group relative to
+  its comparison group. This is analogous to what is often reported in
+  event study regressions.
+
+  Using a varying base period results in an estimate of ATT(g,t) being
+  reported in the period immediately before treatment. Using a universal
+  base period normalizes the estimate in the period right before
+  treatment (or earlier when the user allows for anticipation) to be
+  equal to 0, but one extra estimate in an earlier period.
+
+- faster_mode:
+
+  This option enables a faster version of `did`, optimizing computation
+  time for large datasets by improving data management within the
+  package. The default is set to `TRUE`. Both modes produce identical
+  results up to numerical precision; while the difference is minimal for
+  small datasets, the speedup is substantial for large ones.
+
+- print_details:
+
+  Whether or not to show details/progress of computations. Default is
+  `FALSE`.
+
+- pl:
+
+  Whether or not to use parallel processing
+
+- cores:
+
+  The number of cores to use for parallel processing
+
+- compute_inffunc:
+
+  Whether or not to compute the influence functions. The default is
+  `TRUE`. The influence functions are required for standard errors,
+  uniform confidence bands, the parallel-trends pre-test, and for
+  aggregating the group-time effects with
+  [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md). Set
+  `compute_inffunc = FALSE` to obtain the group-time ATT *point
+  estimates only*: this is faster and uses substantially less memory (no
+  \\n \times k\\ influence-function matrix is formed or bootstrapped),
+  but the returned object has no standard errors / pre-test and cannot
+  be passed to
+  [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md). The
+  point estimates are identical to those from a full run. When
+  `compute_inffunc = FALSE`, `bstrap` and `cband` are set to `FALSE`
+  automatically.
+
+- ...:
+
+  Additional arguments to be passed to a custom `est_method` function.
+  These are ignored when using built-in estimation methods (`"dr"`,
+  `"ipw"`, `"reg"`).
+
+## Value
+
+an [`MP`](https://bcallaway11.github.io/did/reference/MP.md) object
+containing all the results for group-time average treatment effects
+
+The returned `inffunc` matrix collects the estimated influence
+functions, with one column per ATT(g,t) and one row per cross-sectional
+unit (one row per observation with repeated cross sections). Its
+rownames hold the unit ids (`idname`; an internal observation index for
+repeated cross sections) and are the authoritative link between rows and
+units: the row ORDER is mode-specific (`faster_mode = FALSE` sorts units
+by id, while `faster_mode = TRUE` uses an internal (period, cohort, id)
+ordering), so external consumers of the influence functions must align
+rows by rowname, never by position.
+
+## Options
+
+When `faster_mode = FALSE`, setting
+`options(did.disable_precompute = TRUE)` disables the one-time
+positional precompute and assembles every 2x2 comparison from the long
+data per cell, as in earlier versions. The covariate design matrix is
+still built once over the full sample under both settings, so results
+are identical either way; the option exists only as a debugging escape
+hatch.
+
+## Examples:
+
+**Basic `att_gt()` call:**
+
+    # Example data
+    data(mpdta)
+    set.seed(09152024)
+    out1 <- att_gt(yname="lemp",
+                   tname="year",
+                   idname="countyreal",
+                   gname="first.treat",
+                   xformla=NULL,
+                   data=mpdta)
+    summary(out1)
+    #>
+    #> Call:
+    #> att_gt(yname = "lemp", tname = "year", idname = "countyreal",
+    #>     gname = "first.treat", xformla = NULL, data = mpdta)
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #> Group-Time Average Treatment Effects:
+    #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]
+    #>   2004 2004  -0.0105     0.0258       -0.0809      0.0599
+    #>   2004 2005  -0.0704     0.0341       -0.1635      0.0227
+    #>   2004 2006  -0.1373     0.0384       -0.2423     -0.0322 *
+    #>   2004 2007  -0.1008     0.0354       -0.1976     -0.0040 *
+    #>   2006 2004   0.0065     0.0235       -0.0578      0.0708
+    #>   2006 2005  -0.0028     0.0192       -0.0554      0.0499
+    #>   2006 2006  -0.0046     0.0184       -0.0548      0.0456
+    #>   2006 2007  -0.0412     0.0207       -0.0977      0.0153
+    #>   2007 2004   0.0305     0.0161       -0.0135      0.0746
+    #>   2007 2005  -0.0027     0.0157       -0.0456      0.0401
+    #>   2007 2006  -0.0311     0.0184       -0.0815      0.0193
+    #>   2007 2007  -0.0261     0.0176       -0.0741      0.0220
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> P-value for pre-test of parallel trends assumption:  0.16812
+    #> Control Group:  Never Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust
+
+**Using covariates:**
+
+    out2 <- att_gt(yname="lemp",
+                   tname="year",
+                   idname="countyreal",
+                   gname="first.treat",
+                   xformla=~lpop,
+                   data=mpdta)
+    summary(out2)
+    #>
+    #> Call:
+    #> att_gt(yname = "lemp", tname = "year", idname = "countyreal",
+    #>     gname = "first.treat", xformla = ~lpop, data = mpdta)
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #> Group-Time Average Treatment Effects:
+    #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]
+    #>   2004 2004  -0.0145     0.0222       -0.0737      0.0446
+    #>   2004 2005  -0.0764     0.0303       -0.1570      0.0041
+    #>   2004 2006  -0.1404     0.0382       -0.2421     -0.0388 *
+    #>   2004 2007  -0.1069     0.0358       -0.2021     -0.0117 *
+    #>   2006 2004  -0.0005     0.0231       -0.0618      0.0609
+    #>   2006 2005  -0.0062     0.0188       -0.0561      0.0437
+    #>   2006 2006   0.0010     0.0204       -0.0534      0.0553
+    #>   2006 2007  -0.0413     0.0210       -0.0971      0.0145
+    #>   2007 2004   0.0267     0.0140       -0.0104      0.0639
+    #>   2007 2005  -0.0046     0.0170       -0.0498      0.0407
+    #>   2007 2006  -0.0284     0.0187       -0.0782      0.0213
+    #>   2007 2007  -0.0288     0.0161       -0.0715      0.0140
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> P-value for pre-test of parallel trends assumption:  0.23267
+    #> Control Group:  Never Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust
+
+**Specify comparison units:**
+
+    out3 <- att_gt(yname="lemp",
+                   tname="year",
+                   idname="countyreal",
+                   gname="first.treat",
+                   xformla=~lpop,
+                   control_group = "notyettreated",
+                   data=mpdta)
+    summary(out3)
+    #>
+    #> Call:
+    #> att_gt(yname = "lemp", tname = "year", idname = "countyreal",
+    #>     gname = "first.treat", xformla = ~lpop, data = mpdta, control_group = "notyettreated")
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #> Group-Time Average Treatment Effects:
+    #>  Group Time ATT(g,t) Std. Error [95% Simult.  Conf. Band]
+    #>   2004 2004  -0.0212     0.0217       -0.0788      0.0365
+    #>   2004 2005  -0.0816     0.0324       -0.1676      0.0044
+    #>   2004 2006  -0.1382     0.0368       -0.2361     -0.0403 *
+    #>   2004 2007  -0.1069     0.0344       -0.1984     -0.0154 *
+    #>   2006 2004  -0.0075     0.0233       -0.0693      0.0544
+    #>   2006 2005  -0.0046     0.0184       -0.0533      0.0442
+    #>   2006 2006   0.0087     0.0182       -0.0397      0.0570
+    #>   2006 2007  -0.0413     0.0205       -0.0956      0.0130
+    #>   2007 2004   0.0269     0.0136       -0.0091      0.0630
+    #>   2007 2005  -0.0042     0.0153       -0.0448      0.0364
+    #>   2007 2006  -0.0284     0.0191       -0.0792      0.0223
+    #>   2007 2007  -0.0288     0.0167       -0.0732      0.0157
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> P-value for pre-test of parallel trends assumption:  0.23326
+    #> Control Group:  Not Yet Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust
+
+## References
+
+Callaway, Brantly and Pedro H.C. Sant'Anna. \\Difference-in-Differences
+with Multiple Time Periods.\\ Journal of Econometrics, Vol. 225, No. 2,
+pp. 200-230, 2021.
+[doi:10.1016/j.jeconom.2020.12.001](https://doi.org/10.1016/j.jeconom.2020.12.001)
+, <https://arxiv.org/abs/1803.09015>
