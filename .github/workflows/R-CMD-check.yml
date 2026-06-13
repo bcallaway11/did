@@ -63,7 +63,7 @@ jobs:
       if: always()
       shell: bash
       run: |
-        CHECK_DIR=$(find . -maxdepth 1 -name "*.Rcheck" -type d | head -1)
+        CHECK_DIR=$(find . -maxdepth 4 -name "*.Rcheck" -type d 2>/dev/null | head -1)
         if [ -z "$CHECK_DIR" ]; then
           echo "No .Rcheck directory found." >> "$GITHUB_STEP_SUMMARY"
           exit 0
