@@ -122,6 +122,8 @@ except where a bug fix is explicitly noted.
 
   * Expanded `weightsname` documentation (how time-varying weights are handled for balanced panels vs. repeated cross sections / unbalanced panels); grammar and typo fixes across docs, vignettes, and error messages; corrected the `mpdta` data documentation.
 
+  * Replaced deprecated `BMisc` function names (`getListElement`, `rhs.vars`) with their snake_case equivalents (`get_list_element`, `rhs_vars`).
+
 # did 2.3.0
 
   * Code improvements that make the package faster and more memory efficient
