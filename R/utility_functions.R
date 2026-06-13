@@ -27,7 +27,7 @@ trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notye
                            (this.data[,gname] == 0), ]
   }
   this.data$D <- 1*this.data[,gname]==g
-  this.pscore_reg <- glm(BMisc::toformula("D", BMisc::rhs.vars(xformla)),
+  this.pscore_reg <- glm(BMisc::toformula("D", BMisc::rhs_vars(xformla)),
                          data=this.data,
                          family=binomial(link="logit"))
   this.pscore <- predict(this.pscore_reg, type="response")

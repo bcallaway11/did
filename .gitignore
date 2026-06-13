@@ -19,3 +19,4 @@ CLAUDE.md
 .revdep_manual/
 vignettes/*_cache/
 benchmark-results/
+dev/

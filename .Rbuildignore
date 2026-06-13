@@ -7,7 +7,6 @@
 ^cran-comments\.md$
 ^revdep$
 ^CRAN-RELEASE$
-^tests$
 ^pkgdown$
 ^doc$
 ^Meta$
@@ -24,3 +23,4 @@ Icon?
 ^revdep_manual$
 ^vignettes/.*_cache$
 ^benchmark-results$
+^dev$

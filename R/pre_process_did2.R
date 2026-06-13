@@ -406,7 +406,7 @@ did_standardization <- function(data, args){
   gsize <- data[, .N / length(tlist), by = get(args$gname)]
 
   # How many in each group before giving a warning
-  reqsize <- length(BMisc::rhs.vars(args$xformla)) + 5
+  reqsize <- length(BMisc::rhs_vars(args$xformla)) + 5
 
   # Filter groups smaller than reqsize
   gsize <- gsize[V1 < reqsize]

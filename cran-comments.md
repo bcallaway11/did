@@ -1,5 +1,6 @@
 ## Test environments
 
+* local Ubuntu 24.04.4 LTS (x86_64), R 4.6.0
 * local macOS 26.5 (aarch64-apple-darwin), R 4.6.0
 * GitHub Actions (macOS-latest): R release
 * GitHub Actions (windows-latest): R release
