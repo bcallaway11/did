@@ -28,9 +28,25 @@ jobs:
 
       - name: Test coverage
         run: |
-          covr::codecov(
-            quiet = FALSE,
-            clean = FALSE,
-            install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
+          fail_root <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
+          tryCatch(
+            covr::codecov(
+              quiet = FALSE,
+              clean = FALSE,
+              install_path = fail_root
+            ),
+            error = function(e) {
+              fail_files <- if (dir.exists(fail_root)) {
+                list.files(fail_root, pattern = "\\.Rout\\.fail$", recursive = TRUE, full.names = TRUE)
+              } else {
+                character()
+              }
+              for (fail_file in fail_files) {
+                cat("\n===== ", fail_file, " =====\n", sep = "")
+                cat(readLines(fail_file, warn = FALSE), sep = "\n")
+                cat("\n===== end ", fail_file, " =====\n", sep = "")
+              }
+              stop(e)
+            }
           )
         shell: Rscript {0}
