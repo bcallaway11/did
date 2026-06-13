@@ -27,26 +27,47 @@ jobs:
           needs: coverage
 
       - name: Test coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
           fail_root <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
-          tryCatch(
-            covr::codecov(
+
+          print_failures <- function() {
+            fail_files <- if (dir.exists(fail_root)) {
+              list.files(fail_root, pattern = "\\.Rout\\.fail$", recursive = TRUE, full.names = TRUE)
+            } else {
+              character()
+            }
+            for (fail_file in fail_files) {
+              cat("\n===== ", fail_file, " =====\n", sep = "")
+              cat(readLines(fail_file, warn = FALSE), sep = "\n")
+              cat("\n===== end ", fail_file, " =====\n", sep = "")
+            }
+          }
+
+          coverage <- tryCatch(
+            covr::package_coverage(
               quiet = FALSE,
               clean = FALSE,
               install_path = fail_root
             ),
             error = function(e) {
-              fail_files <- if (dir.exists(fail_root)) {
-                list.files(fail_root, pattern = "\\.Rout\\.fail$", recursive = TRUE, full.names = TRUE)
-              } else {
-                character()
-              }
-              for (fail_file in fail_files) {
-                cat("\n===== ", fail_file, " =====\n", sep = "")
-                cat(readLines(fail_file, warn = FALSE), sep = "\n")
-                cat("\n===== end ", fail_file, " =====\n", sep = "")
-              }
+              print_failures()
               stop(e)
             }
           )
+
+          print(coverage)
+
+          codecov_token <- Sys.getenv("CODECOV_TOKEN", "")
+          if (nzchar(codecov_token)) {
+            tryCatch(
+              covr::codecov(coverage = coverage, quiet = FALSE, token = codecov_token),
+              error = function(e) {
+                warning("Codecov upload failed: ", conditionMessage(e), call. = FALSE)
+              }
+            )
+          } else {
+            message("CODECOV_TOKEN is not set; skipping Codecov upload.")
+          }
         shell: Rscript {0}
