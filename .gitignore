@@ -20,6 +20,7 @@ CLAUDE.md
 .vscode/
 .revdep_manual/
 vignettes/*_cache/
+benchmark-results/
 
 # Personal working files (not part of the package)
 CSX2026.pdf
@@ -36,4 +37,3 @@ implementation.md
 mailbox.md
 spec.md
 test-spec.md
-updates_made.md

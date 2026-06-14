@@ -16,7 +16,8 @@ compute_omega_star_cov_edid(
   K_mat = NULL,
   return_pointwise = FALSE,
   psi_qw = NULL,
-  kp_cache = NULL
+  kp_cache = NULL,
+  keep = NULL
 )
 }
 \arguments{
@@ -44,6 +45,17 @@ compute_omega_star_cov_edid(
 \item{kp_cache}{optional environment for memoizing the cell-invariant per-group kernel slices
 (\code{K_mat[, idx]} + row sums). Pass a shared env to reuse the slices across the array build
 (\code{compute_omega_star_kernel_fast_edid}) and this psi pass within a cell; NULL builds a local one.}
+
+\item{keep}{optional \{0,1\}/logical n-vector: the cell-common overlap-trim mask the generated
+outcomes were built with (\code{edid_cell_trim_structure}'s \code{keep_common}). When supplied,
+every Eq. (3.12) prefactor is zeroed at trimmed units, so Omega*(X) (and the psi_Omega channel)
+estimate the covariance of the moments ACTUALLY used: the trimmed moment is
+\eqn{keep_i \cdot renorm \cdot \phi_i}, hence \eqn{\Omega^{trim}(X_i) = keep_i\,renorm^2\,
+\Omega(X_i)} -- the cell-common scalar \eqn{renorm^2} cancels in the (scale-invariant) weights
+and is omitted; the per-unit \eqn{keep_i} does not and is applied here. Without it, the
+1/p prefactors are largest exactly at the units trimming removed, so the weight and psi
+channels were driven by observations the moments no longer contain (\code{trim_level} did not
+reach the psi channel). \code{NULL} (default) is byte-identical to the previous behavior.}
 }
 \value{
 numeric matrix H x H (positive semi-definite), or a list with the per-unit array when

@@ -86,6 +86,15 @@
 #'   Default is `FALSE`.
 #' @param pl Whether or not to use parallel processing
 #' @param cores The number of cores to use for parallel processing
+#' @param compute_inffunc Whether or not to compute the influence functions. The
+#'  default is `TRUE`. The influence functions are required for standard errors,
+#'  uniform confidence bands, the parallel-trends pre-test, and for aggregating the
+#'  group-time effects with [aggte()]. Set `compute_inffunc = FALSE` to obtain the
+#'  group-time ATT *point estimates only*: this is faster and uses substantially less
+#'  memory (no \eqn{n \times k} influence-function matrix is formed or bootstrapped),
+#'  but the returned object has no standard errors / pre-test and cannot be passed to
+#'  [aggte()]. The point estimates are identical to those from a full run. When
+#'  `compute_inffunc = FALSE`, `bstrap` and `cband` are set to `FALSE` automatically.
 #' @param est_method the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 #' approach in the `DRDID` package.  Other built-in methods
 #' include "ipw" for inverse probability weighting and "reg" for
@@ -113,8 +122,12 @@
 #' `att.inf.func` (an `n x 1` influence function — one entry per
 #' observation passed into the estimator).
 #' The function can return other things as well, but these are
-#' the only two that are required. `est_method` is only used
-#' if covariates are included.
+#' the only two that are required. With no covariates
+#' (`xformla = NULL`), the built-in methods ("dr", "ipw", "reg") all
+#' reduce to the unconditional difference-in-differences estimator, so
+#' the choice among them is irrelevant; a custom `est_method` function
+#' is still called (with an intercept-only `covariates` matrix) and
+#' determines the estimates.
 #' @param xformla A formula for the covariates to include in the
 #'  model.  It should be of the form `~ X1 + X2`.  Default
 #'  is NULL which is equivalent to `xformla=~1`.  This is
@@ -162,8 +175,9 @@
 #'  treatment and therefore it can affect their untreated potential outcomes
 #' @param faster_mode This option enables a faster version of `did`, optimizing
 #' computation time for large datasets by improving data management within the package.
-#' The default is set to `FALSE`. While the difference is minimal for small datasets,
-#' it is recommended for use with large datasets.
+#' The default is set to `TRUE`. Both modes produce identical results up to
+#' numerical precision; while the difference is minimal for small datasets,
+#' the speedup is substantial for large ones.
 #' @param base_period Whether to use a "varying" base period or a
 #'  "universal" base period.  Either choice results in the same
 #'  post-treatment estimates of ATT(g,t)'s.  In pre-treatment
@@ -193,10 +207,28 @@
 #'  function. These are ignored when using built-in estimation methods
 #'  (`"dr"`, `"ipw"`, `"reg"`).
 #'
+#' @section Options:
+#'  When `faster_mode = FALSE`, setting `options(did.disable_precompute = TRUE)`
+#'  disables the one-time positional precompute and assembles every 2x2
+#'  comparison from the long data per cell, as in earlier versions. The
+#'  covariate design matrix is still built once over the full sample under
+#'  both settings, so results are identical either way; the option exists
+#'  only as a debugging escape hatch.
+#'
 #' @references Callaway, Brantly and Pedro H.C. Sant'Anna.  \"Difference-in-Differences with Multiple Time Periods.\" Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. \doi{10.1016/j.jeconom.2020.12.001}, <https://arxiv.org/abs/1803.09015>
 #'
 #' @return an [`MP`] object containing all the results for group-time average
 #'  treatment effects
+#'
+#'  The returned `inffunc` matrix collects the estimated influence functions,
+#'  with one column per ATT(g,t) and one row per cross-sectional unit (one row
+#'  per observation with repeated cross sections). Its rownames hold the unit
+#'  ids (`idname`; an internal observation index for repeated cross sections)
+#'  and are the authoritative link between rows and units: the row ORDER is
+#'  mode-specific (`faster_mode = FALSE` sorts units by id, while
+#'  `faster_mode = TRUE` uses an internal (period, cohort, id) ordering), so
+#'  external consumers of the influence functions must align rows by rowname,
+#'  never by position.
 #'
 #' @details # Examples:
 #'
@@ -265,9 +297,21 @@ att_gt <- function(yname,
                    print_details = FALSE,
                    pl = FALSE,
                    cores = 1,
+                   compute_inffunc = TRUE,
                    ...) {
   # Capture extra arguments for custom est_method
   extra_args <- list(...)
+
+  # Validate compute_inffunc (point-estimates-only switch)
+  if (!is.logical(compute_inffunc) || length(compute_inffunc) != 1 || is.na(compute_inffunc)) {
+    stop("compute_inffunc must be a single logical (TRUE or FALSE).")
+  }
+  # When influence functions are not computed there are no standard errors, no
+  # uniform bands, and no parallel-trends pre-test, so the bootstrap is moot.
+  if (!compute_inffunc) {
+    bstrap <- FALSE
+    cband <- FALSE
+  }
 
   # Warn if extra arguments passed with built-in est_method
   if (length(extra_args) > 0 && !inherits(est_method, "function")) {
@@ -303,6 +347,25 @@ att_gt <- function(yname,
     }
     if (!(est_method %in% c("dr", "ipw", "reg"))) {
       stop("est_method must be one of \"dr\", \"ipw\", or \"reg\". Received: \"", est_method, "\".")
+    }
+  }
+
+  # Require idname for panel data: without it the pre-processors fail with
+  # confusing internal errors instead of pointing at the missing argument
+  if (panel && is.null(idname)) {
+    stop("Must provide idname when panel = TRUE. Set panel = FALSE for repeated cross sections.")
+  }
+
+  # Validate alp (significance level)
+  if (!is.numeric(alp) || length(alp) != 1 || is.na(alp) || alp <= 0 || alp >= 1) {
+    stop("alp must be a single number strictly between 0 and 1.")
+  }
+
+  # Validate biters (number of bootstrap iterations) when the bootstrap is used
+  if (bstrap) {
+    if (!is.numeric(biters) || length(biters) != 1 || is.na(biters) ||
+        biters < 1 || biters != round(biters)) {
+      stop("biters must be a single positive whole number.")
     }
   }
 
@@ -344,6 +407,8 @@ att_gt <- function(yname,
 
     # attach extra args for custom est_method
     dp$extra_args <- extra_args
+    # whether to compute influence functions (FALSE = point estimates only)
+    dp$compute_inffunc <- compute_inffunc
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
@@ -379,6 +444,8 @@ att_gt <- function(yname,
 
     # attach extra args for custom est_method
     dp$extra_args <- extra_args
+    # whether to compute influence functions (FALSE = point estimates only)
+    dp$compute_inffunc <- compute_inffunc
 
     #-----------------------------------------------------------------------------
     # Compute all ATT(g,t)
@@ -389,6 +456,23 @@ att_gt <- function(yname,
   # extract ATT(g,t) and influence functions
   attgt.list <- results$attgt.list
   inffunc <- results$inffunc
+
+  # Label the influence-function rows with the internal unit ids (the user's idname
+  # for panels; ".rowid", one per observation, for repeated cross sections). The ROW
+  # ORDER of inffunc is mode-specific: faster_mode = FALSE sorts units by id, while
+  # faster_mode = TRUE keeps the internal (period, cohort, id) ordering -- so row
+  # POSITIONS are not comparable across modes. The rownames attached here are the
+  # authoritative unit labels; external consumers (e.g. sensitivity analyses or
+  # custom cluster aggregation) must align rows by rowname, never by position.
+  # Values are unchanged; only dimnames are added.
+  if (!is.null(inffunc) && !is.null(dp$idname)) {
+    inffunc_ids <- if (faster_mode) dp$time_invariant_data[[dp$idname]] else dp$data[[dp$idname]]
+    # collapse per-observation ids (panel: one per period; unbalanced panel: one per
+    # observation) to one label per influence-function row; unique() preserves the
+    # first-appearance order, which is exactly each mode's inffunc row order.
+    if (anyDuplicated(inffunc_ids)) inffunc_ids <- unique(inffunc_ids)
+    if (length(inffunc_ids) == nrow(inffunc)) rownames(inffunc) <- as.character(inffunc_ids)
+  }
 
   # process results
   # attgt.results <- process_attgt(attgt.list)
@@ -417,7 +501,11 @@ att_gt <- function(yname,
   # analytical standard errors
   # estimate variance. The i.i.d. form is clustered at the unit level; with a coarser cluster variable
   # the variance is formed from cluster sums instead (the cluster_analytic branch below).
-  n <- ifelse(faster_mode, dp$id_count, dp$n)
+  n <- if (faster_mode) dp$id_count else dp$n
+
+  # All inference below requires the influence functions. With compute_inffunc = FALSE
+  # (point estimates only) skip it entirely; see the else-branch before return().
+  if (compute_inffunc) {
   # Analytical variance of the ATT(g,t)'s. With a cluster variable (beyond idname) and no bootstrap, use
   # the cluster-robust form -- the cluster sums of the influence function -- mirroring the cluster-sum
   # aggregation of the multiplier bootstrap (Callaway & Sant'Anna 2021, Remark 10). It is kept on the same
@@ -428,17 +516,30 @@ att_gt <- function(yname,
   # cross-sections / unbalanced panels (where the user may omit idname), mirroring how mboot() identifies units.
   unit_id <- dp$idname
   extra_clustervars <- clustervars[!(clustervars %in% c(unit_id, idname, ""))]
-  # Per-unit cluster identifiers aligned with the rows of inffunc. faster_mode supplies dp$cluster_vector;
-  # in slower mode derive it from the data exactly as mboot() does -- one row per cross-sectional unit,
-  # keyed on the internal unit id -- and store it back, so the analytical clustered SE and aggte()
-  # downstream work for faster_mode TRUE and FALSE (including repeated cross-sections with idname omitted).
-  if (is.null(dp$cluster_vector) && length(extra_clustervars) > 0 && !is.null(dp$data) && !is.null(unit_id)) {
+  # Per-unit cluster identifiers aligned with the rows of inffunc. faster_mode supplies dp$cluster_vector,
+  # but for unbalanced panels (internally panel = FALSE, so the time-invariant data keeps every
+  # observation) that vector is observation-length rather than unit-length and no longer aligns with the
+  # unit-level influence function. Derive the vector from the data exactly as mboot() does -- one row per
+  # cross-sectional unit, keyed on the internal unit id -- and store it back whenever it is missing OR does
+  # not align with inffunc. This keeps the analytical clustered SE and aggte() working for faster_mode TRUE
+  # and FALSE and for balanced and unbalanced panels; repeated cross sections (where the per-observation
+  # vector already has one row per unit and aligns) fall through unchanged.
+  if (length(extra_clustervars) > 0 && !is.null(dp$data) && !is.null(unit_id) &&
+      (is.null(dp$cluster_vector) || length(dp$cluster_vector) != nrow(inffunc))) {
     cdat <- as.data.frame(dp$data)
     if (all(c(unit_id, extra_clustervars[1L]) %in% names(cdat))) {
-      dp$cluster_vector <- as.vector(unique(cdat[, c(unit_id, extra_clustervars[1L])])[, 2L])
+      rebuilt_cv <- as.vector(unique(cdat[, c(unit_id, extra_clustervars[1L])])[, 2L])
+      # only adopt the rebuilt vector if it lines up with the influence-function rows
+      if (length(rebuilt_cv) == nrow(inffunc)) dp$cluster_vector <- rebuilt_cv
     }
   }
   cluster_vec <- dp$cluster_vector
+  # Record which variable cluster_vec represents (when it is valid), so aggte() can tell whether an
+  # inherited or overridden clustervars can be honored from this object -- and refuse to silently cluster
+  # on the wrong variable.
+  if (length(extra_clustervars) > 0 && !is.null(cluster_vec) && length(cluster_vec) == nrow(inffunc)) {
+    dp$cluster_vector_var <- extra_clustervars[1L]
+  }
   cluster_analytic <- (length(extra_clustervars) > 0) && !bstrap &&
     !is.null(cluster_vec) && length(cluster_vec) == nrow(inffunc)
   if (cluster_analytic) {
@@ -463,7 +564,7 @@ att_gt <- function(yname,
 
   # bootstrap variance matrix
   if (bstrap) {
-    bout <- mboot(inffunc, DIDparams = dp, pl = pl, cores = cores)
+    bout <- mboot(inffunc, DIDparams = dp, pl = pl, cores = cores, return_V = FALSE)
     bres <- bout$bres
 
     if (length(zero_na_sd_entry) > 0) {
@@ -507,6 +608,10 @@ att_gt <- function(yname,
   if (is.null(wald_invalid)) {
     # select which periods are pre-treatment
     pre <- which(group > tt)
+    # number of pre-treatment cells before the variance filter below, so the
+    # no-pre-periods warning can distinguish "no pre-treatment cells exist"
+    # from "all pre-treatment cells were dropped for NA/zero variance"
+    n_pre_cells <- length(pre)
 
     # Drop group-periods that have variance equal to zero (singularity problems)
     if (length(zero_na_sd_entry) > 0) {
@@ -520,13 +625,24 @@ att_gt <- function(yname,
 
     # check if there are actually any pre-treatment periods
     if (length(preV) == 0) {
-      msg <- paste0(
-        "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
-        "This can happen when all groups are first treated early in the panel ",
-        "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
-      )
-      if (anticipation > 0) {
-        msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+      if (n_pre_cells > 0) {
+        # pre-treatment cells existed, but every one was dropped by the
+        # zero/NA-variance filter above
+        msg <- paste0(
+          "No pre-treatment periods available for the Wald pre-test of parallel trends: ",
+          "pre-treatment ATT(g,t) estimates exist, but all of them have missing or zero ",
+          "variance (e.g., because the underlying 2x2 estimation failed for those cells), ",
+          "so they were dropped from the pre-test."
+        )
+      } else {
+        msg <- paste0(
+          "No pre-treatment periods available for the Wald pre-test of parallel trends. ",
+          "This can happen when all groups are first treated early in the panel ",
+          "(e.g., in the second time period) so that no pre-treatment ATT(g,t) estimates exist."
+        )
+        if (anticipation > 0) {
+          msg <- paste0(msg, " Note: anticipation=", anticipation, " further reduces the number of available pre-treatment periods.")
+        }
       }
       warning(msg)
       W <- NULL
@@ -563,25 +679,48 @@ att_gt <- function(yname,
       # for uniform confidence band
       # compute new critical value
       # see paper for details
-      bSigma <- apply(
-        bres, 2,
-        function(b) {
-          (quantile(b, .75, type = 1, na.rm = T) -
-            quantile(b, .25, type = 1, na.rm = T)) / (qnorm(.75) - qnorm(.25))
-        }
-      )
+      # Vectorized like mboot(): both quantiles of each bootstrap column are
+      # taken in a single type = 1 call (one sort per column instead of two),
+      # with the qnorm normalization hoisted out of the per-column loop.
+      iqr_norm <- qnorm(.75) - qnorm(.25)
+      bSigma <- apply(bres, 2, function(b) {
+        qs <- quantile(b, c(.25, .75), type = 1, na.rm = TRUE)
+        (qs[2L] - qs[1L]) / iqr_norm
+      })
 
       bSigma[bSigma <= sqrt(.Machine$double.eps) * 10] <- NA
 
-      # sup-t confidence band
-      bT <- apply(bres, 1, function(b) max(abs(b / bSigma), na.rm = TRUE))
-      cval <- quantile(bT, 1 - alp, type = 1, na.rm = T)
+      # sup-t confidence band: per bootstrap draw, the max over columns of
+      # |b / bSigma|, as a pmax column-fold (equivalent to the previous row-wise
+      # apply(max, na.rm = TRUE): NA entries are ignored via -Inf, and an all-NA
+      # row yields -Inf, exactly as before).
+      if (ncol(bres) == 0L) {
+        # every bootstrap dimension was degenerate (mboot dropped all columns):
+        # the previous row-wise apply(max, na.rm = TRUE) returned -Inf per row
+        bT <- rep(-Inf, nrow(bres))
+      } else {
+        scaled <- abs(bres / rep(bSigma, each = nrow(bres)))
+        scaled[is.na(scaled)] <- -Inf
+        bT <- scaled[, 1L]
+        for (j in seq_len(ncol(scaled))[-1L]) bT <- pmax(bT, scaled[, j])
+      }
+      cval <- quantile(bT, 1 - alp, type = 1, na.rm = TRUE)
       if (cval >= 7) {
         warning("Simultaneous critical value is arguably `too large' to be reliable. This usually happens when the number of observations per group is small and/or there is not much variation in outcomes.")
       }
     }
   }
 
+
+  } else {
+    # point estimates only (compute_inffunc = FALSE): no influence functions were
+    # computed, so there are no standard errors, uniform bands, or pre-test.
+    se <- rep(NA_real_, length(att))
+    V <- NULL
+    cval <- qnorm(1 - alp / 2)
+    W <- NULL
+    Wpval <- NULL
+  }
 
   # Return this list
   return(MP(group = group, t = tt, att = att, V_analytical = V, se = se, c = cval, inffunc = inffunc, n = n, W = W, Wpval = Wpval, alp = alp, DIDparams = dp))

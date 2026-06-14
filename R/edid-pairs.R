@@ -116,3 +116,110 @@ enumerate_valid_pairs_edid <- function(
   if (length(out_gp) == 0L) return(empty)
   .restrict(data.frame(gp = out_gp, tpre = out_tpre, stringsAsFactors = FALSE))
 }
+
+#' Apply the thin-cohort guard to an enumerated pair set
+#'
+#' Implements the \code{min_pair_units} guard of \code{\link{edid}} on the
+#' (possibly \code{moment_set}-restricted) pair enumeration of one target
+#' cohort, under \code{pt_assumption = "all"}:
+#' \itemize{
+#'   \item If the \emph{target} cohort \code{target_g} has fewer than
+#'     \code{min_pair_units} units, the pair set is restricted to the single
+#'     just-identified moment -- the self pair \code{(target_g, max tpre)},
+#'     i.e. the never-treated comparison with the most recent pre-treatment
+#'     base period, numerically the \code{pt_assumption = "post"} moment.
+#'     (\code{degraded = TRUE}; if a user \code{moment_set} removed every self
+#'     pair, the result is a 0-row pair set and the cell is \code{NA}, per the
+#'     documented \code{moment_set} contract.)
+#'   \item Otherwise, cross-cohort pairs whose \emph{comparison} cohort
+#'     \code{gp} has fewer than \code{min_pair_units} units are excised
+#'     (\code{excised_gp} records the removed comparison cohorts): a thin
+#'     comparison cohort's sampling noise otherwise contaminates the target
+#'     cohort's overidentified cells.
+#' }
+#' Under \code{pt_assumption = "post"} the moment set is already the single
+#' just-identified never-treated comparison, so the guard is inert. When
+#' nothing fires the input \code{pairs} object is returned unchanged
+#' (byte-identical legacy behavior).
+#'
+#' @param target_g scalar: treatment cohort being estimated
+#' @param pairs data.frame with columns \code{gp}, \code{tpre} (the enumerated
+#'   pair set for \code{target_g}); may have 0 rows
+#' @param cohort_sizes named numeric vector: unit counts per finite treated
+#'   cohort (names \code{as.character(cohort)}); cohorts absent from the table
+#'   (e.g. \code{Inf}) are treated as large (never thin)
+#' @param min_pair_units integer \code{>= 2}: minimum cohort size for a cohort
+#'   to support overidentified moments (see \code{\link{edid}})
+#' @param pt_assumption character: \code{"all"} or \code{"post"}
+#'
+#' @return list with elements \code{pairs} (the guarded pair set),
+#'   \code{degraded} (logical: target cohort pinned to the just-identified
+#'   moment), and \code{excised_gp} (numeric: thin comparison cohorts whose
+#'   pairs were removed)
+#' @keywords internal
+apply_thin_cohort_guard_edid <- function(
+  target_g, pairs, cohort_sizes, min_pair_units, pt_assumption
+) {
+  res <- list(pairs = pairs, degraded = FALSE, excised_gp = numeric(0L))
+  if (!identical(pt_assumption, "all") || is.null(pairs) || nrow(pairs) == 0L) {
+    return(res)
+  }
+  size_of <- function(h) {
+    v <- unname(cohort_sizes[as.character(h)])
+    if (length(v) != 1L || is.na(v)) Inf else v   # unknown cohort (defensive) -> never thin
+  }
+
+  # Thin TARGET cohort: pin the cell to the just-identified moment (self pair at
+  # the most recent base period) regardless of weight_scheme -- the overidentified
+  # efficient combination is the audited failure mode below min_pair_units.
+  if (size_of(target_g) < min_pair_units) {
+    res$degraded <- TRUE
+    self <- is.finite(pairs$gp) & pairs$gp == target_g
+    keep <- if (any(self)) self & pairs$tpre == max(pairs$tpre[self]) else self
+    out  <- pairs[keep, , drop = FALSE]
+    rownames(out) <- NULL
+    res$pairs <- out
+    return(res)
+  }
+
+  # Healthy target: excise cross pairs whose COMPARISON cohort is thin.
+  cross_thin <- is.finite(pairs$gp) & pairs$gp != target_g &
+    vapply(pairs$gp, size_of, numeric(1L)) < min_pair_units
+  if (any(cross_thin)) {
+    res$excised_gp <- sort(unique(pairs$gp[cross_thin]))
+    out <- pairs[!cross_thin, , drop = FALSE]
+    rownames(out) <- NULL
+    res$pairs <- out
+  }
+  res
+}
+
+# Identify cross-cohort comparison cohorts whose propensity ratio is unstable post-trim.
+# The post-trim half of the estimability auto-guard (opt-in; see
+# options(edid_auto_excise_unstable_pairs) in edid()). For each finite CROSS-cohort
+# comparison cohort gp != target_g in the pair set, checks whether its propensity ratio
+# r_{g,g'}(X) is STILL extreme (max |r| > EDID_RATIO_EXCISE_THRESH, i.e. > 100 on the
+# fitted scale) on the units that SURVIVE trimming, or whether trimming removed essentially
+# all of that comparison's mass (< EDID_RATIO_EXCISE_MINKEEP kept) -- the signature of a
+# cross-cohort moment that is unestimable on a thin cohort and poisons the cell (Bailey-GB
+# full-skeleton). Self pairs (gp == target_g) and the never-treated pair (gp = Inf) are
+# never candidates. Returns list(drop_gp = comparison cohorts to excise).
+# @keywords internal
+.edid_ratio_unstable_pairs <- function(pairs, target_g, prop_ratios, trim_keep) {
+  drop_gp <- numeric(0L)
+  if (is.null(pairs) || nrow(pairs) == 0L || is.null(prop_ratios)) return(list(drop_gp = drop_gp))
+  cross_gp <- unique(pairs$gp[is.finite(pairs$gp) & pairs$gp != target_g])
+  for (gp in cross_gp) {
+    rr <- prop_ratios[[as.character(gp)]]
+    if (is.null(rr)) next
+    keep <- if (!is.null(trim_keep)) trim_keep[[as.character(gp)]] else rep(TRUE, length(rr))
+    if (is.null(keep)) keep <- rep(TRUE, length(rr))
+    rk <- rr[keep & is.finite(rr)]
+    # (a) extreme ratio survives the trim, or (b) the trim removed (nearly) all mass for
+    # this comparison -- both mean the cross moment is not credibly estimable here.
+    survived_extreme <- length(rk) > 0L && max(abs(rk)) > EDID_RATIO_EXCISE_THRESH
+    mass_gone <- sum(keep) < EDID_RATIO_EXCISE_MINKEEP
+    if (survived_extreme || mass_gone) drop_gp <- c(drop_gp, gp)
+  }
+  list(drop_gp = sort(unique(drop_gp)))
+}

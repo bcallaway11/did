@@ -31,7 +31,10 @@ edid(
   trim_level = 200,
   cores = getOption("edid_mc_cores", 1L),
   moment_set = NULL,
-  bs_df = 4L
+  min_pair_units = 5L,
+  bs_df = 4L,
+  ratio_method = c("exp", "direct"),
+  nocov_shrink = FALSE
 )
 }
 \arguments{
@@ -129,12 +132,39 @@ under correct specification (it leaves the variance bound unchanged in the limit
 finite-sample robustness when a first-step nuisance is misspecified, where the doubly-robust point
 estimate remains consistent. It is a practical (numerical-derivative) form of the two-step variance
 estimator and is supported only for the default plug-in nuisances (covariate path).
-\strong{Scope:} the correction is for the sieve nuisances (m, r) that enter the generated outcome,
-computed with the estimated efficient weights held FIXED. It does \emph{not} correct the
-weight-estimation channel (the kernel \eqn{\Omega^*}, its Ledoit-Wolf shrinkage, and the eigenvalue
-floor that map to \eqn{w(X)}); that channel is asymptotically negligible separately but is not part of
-this correction. With the rich default sieve the correction is empirically small; its value is
-robustness when a nuisance is genuinely misspecified.}
+\strong{Scope (covariate path):} the correction is for the sieve nuisances (m, r) that enter the
+generated outcome, computed with the estimated efficient weights held FIXED. It does \emph{not}
+correct the weight-estimation channel (the kernel \eqn{\Omega^*}, its Ledoit-Wolf shrinkage, and the
+eigenvalue floor that map to \eqn{w(X)}); that channel is asymptotically negligible separately but is
+not part of this correction. With the rich default sieve the correction is empirically small; its
+value is robustness when a nuisance is genuinely misspecified.
+
+\strong{No-covariate path: the weight-estimation variance correction.} With \code{xformla = NULL}
+there are no first-step nuisances, but the efficient weights are still \emph{estimated}: each
+overidentified PT-All cell inverts the estimated \eqn{H \times H} moment covariance
+\eqn{\widehat\Omega^*} (optionally through the \code{nocov_shrink} map). There,
+\code{estimation_effect = TRUE} engages a closed-form second-order variance correction for that
+weight-estimation channel: the corrected cell variance is
+\eqn{\widehat{V}_{plug} + \Delta_{DF} + 2\widehat{Q}}, where \eqn{\Delta_{DF}} is the exact
+small-sample (Bessel) gap of the plug-in's group covariances and \eqn{\widehat{Q} \ge 0} is the
+second-order in-sample optimism of evaluating the minimized quadratic
+\eqn{\hat w'\widehat\Omega^*\hat w} at the weights chosen to minimize it -- computed from the exact
+per-unit moment influence functions and the analytic Jacobian of the (possibly shrinkage-composed)
+weight map (finite-difference verified). Both pieces are \eqn{O(1/n)} relative, so large-sample
+inference is unchanged; at small \eqn{n} they restore the SE calibration that a Monte Carlo audit
+found the plug-in SE to understate (mean SE / MC SD \eqn{\approx} 0.73--0.85 at \eqn{n = 50}). The
+point estimate is unchanged; since the term is a degenerate second-order quantity (no per-unit
+influence function), it enters the cell SEs, the analytic sup-t covariance, and the aggregations as
+an additive variance increment (\code{$sigma_nocov_ee}; per-cell record in
+\code{$cells[[k]]$nocov_ee}), and cannot be carried by the multiplier bootstrap (which warns).
+Cells whose weights came from a fallback (pseudoinverse / uniform; e.g. degenerate pre-period pair
+sets) are skipped silently -- there is no smooth weight map to correct there -- and uniform weights
+(no estimated weights) warn-disable the flag. Derived under unit-level sampling and (approximately)
+Gaussian shocks: under Gaussianity the group means and group-demeaned covariances are independent, so
+the cross term \eqn{\mathrm{Cov}} of the leading and second-order terms is exactly zero and the
+estimator has no second-order bias; under non-Gaussian shocks the omitted remainder is
+\eqn{O(n^{-3/2})} relative. An explicit \code{misspec_robust = TRUE} on a no-covariate fit
+auto-enables this correction (see \code{misspec_robust}).}
 
 \item{cband}{Logical: whether to report simultaneous (uniform) confidence bands across the cells and the
 event-study / group coefficients. Default \code{TRUE}; \code{FALSE} gives pointwise bands.}
@@ -162,10 +192,13 @@ correct specification; its value is finite-sample honesty in covariate-rich desi
 errors: when \code{TRUE}, the reported SE accounts for \emph{every} applicable estimation effect --- the
 weight-estimation channel (described below), the first-step nuisance ACH correction
 (\code{estimation_effect}), and the higher-order ("Wick") nuisance term (\code{higher_order}) --- each
-enabled only where it applies and silently skipped where it does not (no covariates; multiplier path; the
-weight-estimation channel for \code{weight_scheme = "uniform"}), so default calls do not warn. An explicitly-set \code{estimation_effect}
-or \code{higher_order} overrides that piece, and \code{misspec_robust = FALSE} reverts to the plug-in
-efficient-IF SE. The weight-estimation channel \eqn{\psi_\Omega} is the first-step estimation effect of the
+enabled only where it applies and silently skipped where it does not (the default no-covariate path;
+multiplier path; the weight-estimation channel for \code{weight_scheme = "uniform"}), so default calls
+do not warn and default no-covariate SEs are unchanged. An \emph{explicit} \code{misspec_robust = TRUE}
+on a no-covariate fit opts into the no-covariate weight-estimation variance correction by auto-enabling
+\code{estimation_effect} (see that argument; uniform weights have no channel). An explicitly-set
+\code{estimation_effect} or \code{higher_order} overrides that piece, and \code{misspec_robust = FALSE}
+reverts to the plug-in efficient-IF SE. The weight-estimation channel \eqn{\psi_\Omega} is the first-step estimation effect of the
 efficient weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})} (the sibling of
 \code{estimation_effect}'s nuisance correction that it explicitly leaves out). It yields standard errors
 that are robust to misspecification of the weighting model: under correct specification \eqn{\psi_\Omega}
@@ -206,14 +239,25 @@ bootstrap tools provide finite-sample inference beyond any analytic SE option:
 draw) and \code{\link{edid_perturbation_bootstrap}} (a cheap no-refit sieve-coefficient perturbation).
 Neither changes \code{edid()}'s defaults or output; both consume a fitted \code{edid_fit}.}
 
-\item{trim_level}{Numeric (default \code{200}). Overlap-trimming threshold (covariate path only). A
-unit is dropped from an \eqn{(g,t)} cell's moments and efficient weights when its
-estimated propensity ratio \eqn{r(X)} OR inverse propensity \eqn{1/p_{g'}(X)} has absolute value
-\eqn{\ge} \code{trim_level} -- mirroring DRDID's \code{trim.level = 0.995} (a control IPW-weight cap of
-\eqn{\approx 200}). The observation still contributes to nuisance estimation; only its outcome-side
-weight is zeroed. This guards against severe lack of overlap and redefines the target to the overlap
-sub-population (as in DRDID). \code{trim_level = Inf} disables trimming (byte-identical to no
-trimming). No effect on the no-covariate path.
+\item{trim_level}{Numeric (default \code{200}). Overlap-trimming threshold (covariate path only),
+\emph{ratio-targeted}: a unit is dropped from an \eqn{(g,t)} cell's moments and efficient weights
+when an estimated propensity ratio entering one of the cell's pairs is extreme at its covariates --
+\eqn{|\hat r_{g,\infty}(X)| \ge} \code{trim_level} or \eqn{1/\hat p_{NT}(X) \ge} \code{trim_level}
+for the never-treated comparison (every pair), and \eqn{|\hat r_{g,g'}(X)| \ge} \code{trim_level}
+for a cross-cohort pair's comparison cohort \eqn{g'} -- mirroring DRDID's
+\code{trim.level = 0.995} (a control IPW-weight cap of \eqn{\approx 200}). The ratios are the
+moments' actual reweighting factors; the \emph{inverse propensity} \eqn{1/\hat p_{g'}(X)} of a
+finite comparison cohort is deliberately NOT thresholded (it is an \eqn{\Omega^*} variance
+prefactor whose absolute scale is \eqn{\approx 1/\pi_{g'}}, so a fixed threshold would
+mechanically excise every pair whose comparison cohort is small, regardless of actual overlap).
+The observation still contributes to nuisance estimation; only its outcome-side weight is zeroed.
+When trimming binds, the cell-common keep mask is also applied inside the \eqn{\Omega^*(X)}
+builders and the \code{misspec_robust} weight-estimation channel, so the efficient weights and
+SEs are computed from the covariance of the moments \emph{actually used} (the kept population),
+not from 1/p prefactors at the very units trimming removed. This guards against severe lack of
+overlap and redefines the target to the overlap sub-population (as in DRDID).
+\code{trim_level = Inf} disables trimming (byte-identical to no trimming). No effect on the
+no-covariate path.
 
 \strong{Estimand under binding trimming (cell-common overlap).} When trimming binds in a cell, all of
 the cell's moments are masked and renormalized on ONE common kept population -- the \emph{intersection}
@@ -249,6 +293,29 @@ of admissible \eqn{(g', t_{pre})} choices. It is intended for
 \code{pt_assumption = "all"}, whose moment set it subsets. With
 \code{moment_set = NULL} the estimator is byte-identical to previous behavior.}
 
+\item{min_pair_units}{Integer scalar \code{>= 2} (default \code{5L}): the thin-cohort guard.
+Under \code{pt_assumption = "all"} a cohort must have at least \code{min_pair_units} units to
+support overidentified moments: (i) a \emph{comparison} cohort \eqn{g'} with fewer units
+contributes no cross-cohort pairs to \emph{any} cell (its pairs are excised from other cohorts'
+moment sets), and (ii) a \emph{target} cohort \eqn{g} with fewer units has its cells restricted
+to the single just-identified moment (never-treated comparison, base period \eqn{g-1} -- exactly
+the \code{pt_assumption = "post"} moment) regardless of \code{weight_scheme}. The default
+\code{5L} is evidence-based: a Monte Carlo audit of the no-covariate efficient path found that
+with a 3-unit cohort at \eqn{n = 2000} the overidentified cells' analytic SEs understate the
+true sampling SD by up to 9--25x (cell coverage 0.29--0.71; sup-t 0.08), the "efficient" cells
+are \emph{noisier} than the just-identified ones, and with a 1-unit cohort the contamination
+spills over into healthy cohorts' cells -- while the just-identified moment remains calibrated
+(coverage 0.93--0.97) and uniform weights do \emph{not} repair it (0.78). \code{min_pair_units
+= 2} reproduces the legacy (pre-guard) behavior bit-for-bit on any design whose cohorts all
+have at least 2 units; below \code{min_pair_units} the guard restores the just-identified
+calibration, but the analytic SE of a 1--2-unit cohort's own cell is still degenerate (its
+group sampling variance cannot be estimated), so for genuinely thin cohorts use
+\code{\link{edid_refit_bootstrap}}. When the guard fires, a warning names the affected cohorts,
+each affected cell carries \code{$cells[[k]]$thin_cohort_degraded = TRUE}, and the fit records
+\code{$thin_cohorts} (a data.frame: \code{cohort}, \code{n_units}, \code{degraded_target},
+\code{excised_comparison}). Under \code{pt_assumption = "post"} the moment set is already
+just-identified and the guard is inert.}
+
 \item{bs_df}{B-spline degrees of freedom for the first-step sieve nuisances
 (the propensity ratios \eqn{r_{g,g'}(X)}, inverse propensities
 \eqn{s_{g'}(X) = 1/p_{g'}(X)}, and conditional means \eqn{m_{g',s,1}(X)}) on
@@ -272,11 +339,99 @@ channels (\code{estimation_effect}, \code{higher_order},
 they work unchanged. The conditional-covariance smoother for
 \eqn{\Omega^*(X)} is a separate object (kernel by default) and is \emph{not}
 affected by \code{bs_df}. No effect on the no-covariate path.}
+
+\item{ratio_method}{How the propensity nuisances -- the ratios
+\eqn{r_{g,g'}(X) = p_g(X)/p_{g'}(X)} (the reweighting factors
+of the moments, Eq. (4.4)) and the finite-cohort inverse
+propensities \eqn{1/p_{g'}(X)} (the \eqn{\Omega^*} variance prefactors) -- are
+estimated on the covariate path.
+\describe{
+\item{\code{"exp"} (default)}{per-target \emph{exponential-link Riesz regressions}
+within the paper's direct-loss framework: each ratio \eqn{r_{g,g'}} -- INCLUDING
+the never-treated ratio \eqn{r_{g,\infty}} -- and each finite-cohort inverse
+propensity \eqn{1/p_{g'}} is an independently fitted \eqn{\exp(\psi^K(X)'\hat\beta)}
+on the same B-spline basis, so positivity holds by construction while the per-target
+structure of Eq. (4.1)-(4.2) is retained. The primary fitting criterion is the
+tailored convex loss \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - (\psi'\beta) G_g]}
+(for \eqn{s}: \eqn{\mathbb{E}_n[e^{\psi'\beta} G_{g'} - \psi'\beta]}), whose
+first-order condition is exact basis-mean balancing
+\eqn{\mathbb{E}_n[\psi \hat r G_{g'}] = \mathbb{E}_n[\psi G_g]} and whose population
+minimizer is the log ratio (log inverse propensity) -- the same estimand as the
+paper's quadratic loss, on the log scale. Newton with step-halving, warm starts,
+and a scale-normalized ridge rescue for (rare) infeasible balancing. Crucially, the
+\code{estimation_effect} / \code{higher_order} / inv-p weight-channel /
+perturbation-bootstrap first-step corrections COVER every exp fit (no
+fallback-skipping): the M-estimator aux is returned in full, with the exp-link chain
+rule \eqn{\partial\hat r/\partial\beta = \hat r\,\psi} as the
+coefficient-perturbation direction, the tailored-loss score
+\eqn{\psi(G_{g'}\hat r - G_g)}, and Hessian
+\eqn{\mathbb{E}_n[\psi\psi' e^{\psi'\beta} G_{g'}]} (finite-difference-oracled).
+(Internal cross-check: \code{options(edid_exp_loss = "paper")} refits by the literal
+paper loss \eqn{\mathbb{E}_n[e^{2\psi'\beta} G_{g'} - 2 e^{\psi'\beta} G_g]} via
+quasi-Newton from the tailored solution; under correct specification the two agree.)
+This is the recommended construction: positivity of every consumed ratio and exact
+basis-mean balancing make it robust where the legacy LS sieve degenerates, and a
+thin-cohort-share Monte Carlo confirmed materially better confidence-interval
+coverage than the (now removed) multinomial-logit alternative.}
+\item{\code{"direct"}}{the paper's literal linear construction, retained for
+forensics: each cross-cohort ratio and each inverse propensity is fit by an
+independent per-target least-squares sieve (losses
+\eqn{\mathbb{E}_n[r^2 G_{g'} - 2 r G_g]} and \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]}).
+Both Gram matrices use only the \eqn{n_{g'}} comparison-cohort observations, so
+basis directions thin on \eqn{g'} explode: on real staggered designs this produced
+large NEGATIVE fitted "ratios" on sizable shares of the comparison cohort,
+\eqn{|r| > 10^4} tails, and fitted inverse propensities of order \eqn{10^8} against
+a true scale of \eqn{10^2} -- even under healthy cohort-vs-never-treated overlap --
+poisoning the cross-cohort moments, the \eqn{\Omega^*} variance prefactors, the
+efficient weights, and the overlap-trim masks. Use only to reproduce pre-fix
+results or the paper's exact quadratic-loss sieves.}
+}
+The never-treated inverse propensity \eqn{1/p_{NT}} is ALWAYS the paper's LS sieve
+(its comparison group is the large never-treated pool, the well-conditioned case);
+under \code{"direct"} the never-treated ratio \eqn{r_{g,\infty}} is also the LS sieve,
+so \code{pt_assumption = "post"} fits differ between \code{"exp"} (exp-link
+\eqn{r_{g,\infty}}) and \code{"direct"} (LS \eqn{r_{g,\infty}}). All constructions are
+consistent nuisance estimators and the moment is Neyman-orthogonal in \eqn{r}, so the
+estimand, the influence-function structure, and first-order inference are unchanged;
+under EITHER \code{ratio_method} the \code{estimation_effect} / \code{higher_order} /
+inv-p weight-channel first-step corrections cover all estimated channels -- conditional
+means, never-treated, AND cross-cohort. The no-covariate path is bitwise invariant to
+\code{ratio_method}.}
+
+\item{nocov_shrink}{Logical scalar (default \code{FALSE}): optional Ledoit-Wolf shrinkage of the
+no-covariate moment covariance toward its i.i.d.-pole structure. On the no-covariate
+PT-All path each overidentified cell's weights invert the estimated \eqn{H \times H}
+moment covariance \eqn{\widehat\Omega^*}. The default \code{FALSE} reports the pure
+plug-in efficient estimator that matches the semiparametric efficiency estimand in the
+paper. With \code{nocov_shrink = TRUE} the weights instead
+invert \eqn{(1-\hat\lambda)\,\widehat\Omega^* + \hat\lambda\,
+\widehat\sigma^2 S}, where \eqn{S} is the cell's closed-form i.i.d.-pole covariance
+structure at the sample shares (the covariance implied by i.i.d. shocks; the imputation
+estimator's implicit weighting), \eqn{\widehat\sigma^2} is the Frobenius least-squares
+scale, and \eqn{\hat\lambda \in [0, 1]} is the standard Ledoit-Wolf intensity
+(variance-of-entries over distance-to-target). This finite-sample regularization can
+stabilize very small or thin-cohort designs, but it changes the reported weights and can
+give up plug-in efficiency gains in applications.
+Only the \emph{weights} are stabilized: the standard error remains the empirical
+(cluster-robust) variance of the realized weighted influence function at the weights
+actually used -- the shrunk matrix never replaces the data's influence functions in the
+variance. The per-cell intensity is recorded as
+\code{$cells[[k]]$nocov_shrink_lambda} (\code{NA} where no weights are estimated:
+covariate path, \code{weight_scheme = "uniform"}, PT-Post, or just-identified
+\eqn{H = 1} cells, including thin-cohort-guard-pinned ones). \code{nocov_shrink =
+FALSE} reproduces the unshrunk weights bit-for-bit. No effect on the covariate path.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:
 \describe{
 \item{\code{call}}{The matched call.}
+\item{\code{args}}{Named list of the evaluated call arguments (everything
+except \code{data}), captured at fit time. The internal refit tools
+(\code{\link{edid_sargan}}, \code{\link{edid_refit_bootstrap}},
+\code{\link{edid_perturbation_bootstrap}}) consume this snapshot instead
+of re-evaluating the stored call in the caller's environment, so refits
+are unaffected by variables that changed or vanished after fitting and
+work for programmatically constructed calls.}
 \item{\code{att_gt}}{data.frame of cell-level estimates (group, time,
 att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
 \item{\code{overall}}{A \code{did::AGGTEobj}: the HEADLINE aggregation -- the dynamic event-study
@@ -294,6 +449,24 @@ is requested.}
 \item{\code{bs_df_selected}}{Under \code{bs_df = "ic"} on the covariate path, a tidy
 data.frame of the IC-selected sieve dimensions, one row per nuisance fit
 (\code{g}, \code{nuisance}, \code{key}, \code{bs_df}); otherwise \code{NULL}.}
+\item{\code{thin_cohorts}}{\code{NULL} when the thin-cohort guard did not fire; otherwise a
+data.frame with one row per cohort having fewer than \code{min_pair_units} units:
+\code{cohort}, \code{n_units}, \code{degraded_target} (its own cells were restricted to the
+just-identified moment), \code{excised_comparison} (its cross-cohort pairs were removed
+from other cohorts' cells). Affected cells additionally carry
+\code{$cells[[k]]$thin_cohort_degraded = TRUE}.}
+\item{\code{diagnostics}}{A list of stability read-outs (informational; computed from
+conditions already detected during fitting, so it changes no estimate). Elements:
+\code{n_extreme_ratio} / \code{n_psi_unstable} / \code{n_pairs_dropped} / \code{n_fulltrim}
+(the same counts the one-shot fit warnings report); \code{net_hedge_mass} /
+\code{gross_hedge_mass} (mean over post cells of the cross-cohort moment mass, signed vs
+absolute) and \code{net_hedge_flag} (the broken-fit red flag, \code{TRUE} when net mass
+\eqn{\ge} the calibrated threshold and \eqn{\approx} gross); \code{min_finite_cohort};
+\code{small_cohorts} (finite cohorts in \code{[min_pair_units, 36)} flagged by the
+thin-cohort radar, or \code{NULL}); \code{cohort_sizes}; \code{use_cov_path}; and
+\code{unstable}, the single summary the Section-5 toolkit's broken-leg guards key on
+(\code{TRUE} when extreme ratios entered, the weight channel was not a credible influence
+function, or the cross-cohort hedges carry the estimand).}
 \item{\code{bstrap}}{Logical: whether the multiplier bootstrap was requested. \code{bstrap = TRUE}
 with \code{cband_method} left at its default selects the multiplier bootstrap, so the cell SEs and
 the aggregations use the did multiplier bootstrap (\code{\link[did]{mboot}} / \code{\link[did]{aggte}});
@@ -345,6 +518,22 @@ shrinkage intensity of the pointwise \eqn{\hat\Omega^*(X_i)} toward \eqn{\bar\Om
 disables shrinkage; a value in \eqn{[0,1]} fixes the intensity.}
 \item{\code{edid_eig_tol}}{Numeric, or \code{NA} (default) for the rate-based relative eigenvalue floor
 \eqn{n^{-a}}. A positive value sets the floor directly (condition-number cap \eqn{= 1/}\code{tol}).}
+\item{\code{edid_allow_fork_blas}}{Logical (default \code{FALSE}). On macOS with an Apple Accelerate
+(vecLib) BLAS -- which is not fork-safe -- \code{cores > 1} is automatically downgraded to serial
+(with a one-time message), because forked workers can segfault inside BLAS calls and silently drop
+results. Set \code{TRUE} to force the fork path anyway (e.g. once a fork-safe BLAS such as OpenBLAS
+is linked). No effect off macOS or on a non-Accelerate BLAS. Does not change any number; it only
+governs parallelism (the serial and parallel paths are bit-identical).}
+\item{\code{edid_auto_excise_unstable_pairs}}{Logical (default \code{FALSE}). When \code{TRUE}, the
+covariate-path estimability auto-guard excises a cross-cohort comparison pair whose fitted propensity
+ratio \eqn{r_{g,g'}(X)} remains extreme (\eqn{|r| > 100}) on the units surviving overlap trimming, or
+that loses essentially all its kept mass -- the unestimable cross moments that blow up the with-X
+efficient fit on thin / continuous-covariate designs. This generalizes \code{moment_set = "own"}
+(which drops \emph{all} cross-cohort pairs a priori) to the offending pairs only; self pairs and the
+never-treated comparison are never excised, so the surviving cells estimate \eqn{ATT(g,t)} from their
+healthy moments and a named warning lists what was dropped. \strong{Changes the point estimate where
+it fires} -- it is OFF by default so the standard paths are byte-identical, and it acts only on the
+genuinely degenerate covariate fits it is designed to repair.}
 }
 Other \code{edid_*} options are internal development / diagnostic hooks (e.g. \code{edid_fixed_weights},
 \code{edid_fixed_wpw}, \code{edid_store_psiomega}, \code{edid_psiomega_fd}) and are unsupported.

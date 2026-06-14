@@ -37,9 +37,10 @@ and identical for any \code{cores} value and any draw scheduling. With
 
 \item{cores}{Number of forked workers for the draw loop
 (\code{\link[parallel]{mclapply}}); fork-based, so no effect on Windows.
-Numerically identical to \code{cores = 1L}: every draw re-seeds itself, and
-a draw whose forked worker dies without delivering (e.g. under a
-fork-unsafe multithreaded BLAS such as macOS Accelerate) is recomputed
+Numerically identical to \code{cores = 1L}: every draw re-seeds itself. On
+macOS with an Accelerate/vecLib BLAS, \code{cores > 1} is automatically
+downgraded to serial unless \code{options(edid_allow_fork_blas = TRUE)};
+otherwise, any forked draw that dies without delivering is recomputed
 serially with the same per-draw seed, with a warning.}
 
 \item{agg}{Which aggregations to bootstrap alongside the \eqn{ATT(g,t)}

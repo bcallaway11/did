@@ -46,12 +46,22 @@ fits' finite post-treatment event times). Ignored for
 }
 \value{
 An object of class \code{edid_hausman}: a list with elements
-\code{statistic}, \code{df}, \code{p_value} (the joint test), \code{d}
+\code{statistic}, \code{df}, \code{p_value} (the joint test),
+\code{degenerate} (\code{TRUE} when the joint contrast was degenerate and
+the \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} guard applied), \code{d}
 (the estimate difference vector, unrestricted minus restricted), \code{D}
 (the estimated asymptotic covariance of \eqn{\sqrt{n}\,d}), \code{scalar}
 (data.frame of per-coordinate eqn (5.5) statistics, including an
 \code{ES_avg} row), \code{parameter}, \code{e_set}, \code{n},
-\code{clustered}.
+\code{clustered}, plus the round-3 sanity guards:
+\code{leg_unstable} (\code{TRUE} when a constituent fit is numerically
+degenerate -- extreme propensity ratios, a non-credible weight channel,
+cross-cohort hedges carrying the estimand, or non-finite reported SEs --
+so a non-rejection is \emph{hollow}; a loud warning is also emitted),
+\code{leg_reasons} (the per-leg breakage descriptions; empty when healthy),
+\code{few_clusters} (\code{TRUE} when the fits carry fewer than 5 clusters,
+so the cluster-robust statistic is unreliable -- a few-cluster artifact,
+not PT evidence), and \code{n_clusters}.
 }
 \description{
 Implements the Hausman-type specification test of Theorem 5.1 in Chen,
@@ -83,7 +93,13 @@ The returned object also reports the scalar per-coordinate statistics
 \eqn{H_{\theta,n} = n(\widehat\theta_U - \widehat\theta_R)^2/\widehat{D}}
 of eqn (5.5) for each \eqn{ES(e)} and for \eqn{ES_{\mathrm{avg}}}, with a
 degenerate-\eqn{\widehat{D}} guard (coordinates where the two estimators
-coincide report \eqn{H = 0}, \eqn{p = 1}).
+coincide report \eqn{H = 0}, \eqn{p = 1}). The joint statistic carries the
+same guard: when the two estimators coincide on every coordinate --- e.g.
+both fits pinned to the same just-identified moments by the thin-cohort
+guard, so \eqn{\widehat{D}} is numerical noise relative to the estimators'
+own variances --- the joint contrast is degenerate and is reported as
+\eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} (with a message and
+\code{degenerate = TRUE}) rather than ranking the noise.
 }
 \section{Methods (by generic)}{
 \itemize{

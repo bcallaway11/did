@@ -57,6 +57,7 @@ test_that("pooled Omega-bar coupling matches the numerical directional derivativ
   omega <- suppressWarnings(compute_omega_star_cov_edid(panel, g, t, pairs, pr, cm, ip))
   ef    <- attr(omega, "eig_floor")
   expect_false(is.null(ef))                              # the pooled builder attaches the eigendecomposition
+  expect_false(is.null(ef$scale))                        # ... of the SCALED system + the pooled scale (2026-06)
   H     <- nrow(pairs)
   gen   <- compute_generated_outcomes_cov_edid(panel, g, t, pairs, pr, cm, "all")
   mbar  <- colMeans(gen)
@@ -65,43 +66,67 @@ test_that("pooled Omega-bar coupling matches the numerical directional derivativ
   C     <- compute_obar_coupling_edid(omega, mbar, att)
   expect_false(is.null(C))
 
-  # Two maps. theta_fixed floors at the SAME fixed level c the coupling differentiates (the documented
-  # convention: the floor level's d(max-eig)/dOmega dependence is omitted as higher-order); theta_moving
-  # is the full production map, which recomputes c = max(eig) * n^(-a) (d = 1 covariate).
-  a_fl <- 0.7 * (5 - 1) / 10
+  # Two maps for the POOLED-SCALE floor (2026-06 re-derivation): the builder floors the scaled system
+  # S = D^{-1/2} Omega D^{-1/2} (D = diag(diag(Omega)), exponent 1/3 -- the pooled Omega-bar is a
+  # sqrt(n) object) and the weights invert D^{-1/2} fl(S)^{-1} D^{-1/2}. theta_fixed holds BOTH the
+  # floor level c AND the pooled scale D at their fitted values (the documented convention: their
+  # derivatives are omitted as higher-order); theta_moving is the full production map, which
+  # recomputes the scale from diag(M) and the floor from max(eig) * n^(-1/3).
+  sc0 <- ef$scale
   theta_fixed <- function(M) {
-    e  <- eigen(0.5 * (M + t(M)), symmetric = TRUE)
+    S  <- 0.5 * (M + t(M)); S <- t(t(S * sc0) * sc0); S <- 0.5 * (S + t(S))
+    e  <- eigen(S, symmetric = TRUE)
     ev <- pmax(e$values, ef$floor)
-    v  <- drop(e$vectors %*% (crossprod(e$vectors, rep(1, H)) / ev))
+    v  <- sc0 * drop(e$vectors %*% (crossprod(e$vectors, sc0) / ev))
     sum((v / sum(v)) * mbar)
   }
   theta_moving <- function(M) {
-    e  <- eigen(0.5 * (M + t(M)), symmetric = TRUE)
-    fl <- max(e$values) * panel$n^(-a_fl)
+    M  <- 0.5 * (M + t(M))
+    dg <- diag(M); dsc <- 1 / sqrt(pmax(dg, max(dg) * 1e-12))
+    S  <- t(t(M * dsc) * dsc); S <- 0.5 * (S + t(S))
+    e  <- eigen(S, symmetric = TRUE)
+    fl <- max(e$values) * panel$n^(-1/3)
     ev <- pmax(e$values, fl)
-    v  <- drop(e$vectors %*% (crossprod(e$vectors, rep(1, H)) / ev))
+    v  <- dsc * drop(e$vectors %*% (crossprod(e$vectors, dsc) / ev))
     sum((v / sum(v)) * mbar)
   }
-  M0 <- ef$vectors %*% diag(ef$values, H) %*% t(ef$vectors)   # the RAW pooled Omega-bar
+  # the RAW pooled Omega-bar: unscale the stored (scaled-system) eigendecomposition
+  M0s <- ef$vectors %*% diag(ef$values, H) %*% t(ef$vectors)
+  M0  <- t(t(M0s / sc0) / sc0)
   expect_equal(theta_moving(M0), att, tolerance = 1e-8)       # sanity: the map reproduces the plug-in att
   expect_equal(theta_fixed(M0),  att, tolerance = 1e-8)       # (they coincide AT M0 by construction)
+
+  # Floor-only moving map: the pooled scale held at sc0, the floor level recomputed from max(eig).
+  # Isolates the original documented omission (the d(floor) term) from the d(scale) channel.
+  theta_move_floor <- function(M) {
+    S  <- 0.5 * (M + t(M)); S <- t(t(S * sc0) * sc0); S <- 0.5 * (S + t(S))
+    e  <- eigen(S, symmetric = TRUE)
+    fl <- max(e$values) * panel$n^(-1/3)
+    ev <- pmax(e$values, fl)
+    v  <- sc0 * drop(e$vectors %*% (crossprod(e$vectors, sc0) / ev))
+    sum((v / sum(v)) * mbar)
+  }
 
   set.seed(7)
   for (r in 1:3) {
     D <- matrix(rnorm(H * H), H); D <- 0.5 * (D + t(D)); D <- D / sqrt(sum(D^2))
     eps    <- 1e-6 * max(abs(ef$values))
     num_fx <- (theta_fixed(M0 + eps * D)  - theta_fixed(M0 - eps * D))  / (2 * eps)
+    num_mf <- (theta_move_floor(M0 + eps * D) - theta_move_floor(M0 - eps * D)) / (2 * eps)
     num_mv <- (theta_moving(M0 + eps * D) - theta_moving(M0 - eps * D)) / (2 * eps)
     pred   <- sum(C * D)
-    # (i) The IMPLEMENTED identity is exact: the coupling is the derivative of the fixed-floor map.
+    # (i) The IMPLEMENTED identity is exact: the coupling is the derivative of the fixed-floor,
+    # fixed-scale map.
     expect_equal(pred, num_fx, tolerance = 1e-6)
-    # (ii) Against the full production (moving-floor) map the only gap is the documented fixed-floor
-    # convention. On this tiny design (n = 150) the floor binds HARD -- 3 of the 4 raw eigenvalues sit
-    # below c = max(eig) * n^(-0.28) -- which is the worst case for the omitted d(floor) term: the
-    # measured relative gap is 0.20-0.39 here (the ~10%-and-below regime applies when the floor binds
-    # on a minority of directions; the omission vanishes as n grows). Same SIGN and order of magnitude.
-    expect_lt(abs(num_mv - pred) / max(abs(num_mv), abs(pred), 1e-12), 0.5)
-    expect_gt(sign(pred) * sign(num_mv), 0)
+    # (ii) Against the floor-only moving map the gap is the documented fixed-floor convention
+    # (d(floor) omitted as higher-order): bounded relative gap, same sign -- the original calibration.
+    expect_lt(abs(num_mf - pred) / max(abs(num_mf), abs(pred), 1e-12), 0.5)
+    expect_gt(sign(pred) * sign(num_mf), 0)
+    # (iii) The FULL production map additionally recomputes the pooled scale from diag(M); that
+    # d(scale) channel is also omitted by convention (diag(Omega-bar) is sqrt(n)-consistent, so the
+    # omission vanishes as n grows), but on this n = 150 worst case it can dominate single random
+    # directions (measured relative gap up to ~1, occasional sign flips). Bound the magnitude only.
+    expect_lt(abs(num_mv - pred), 5 * max(abs(num_mv), abs(pred), 1e-12))
   }
 })
 
@@ -157,13 +182,19 @@ test_that("Daleckii-Krein coupling is the exact derivative of the FIXED-floor in
 # (c) Common-overlap estimand under binding trimming.
 # ---------------------------------------------------------------------------
 
-# DGP with a dead cross pair: cohort 4's support is essentially x > 1.2, so under trim_level = 3 the
-# (g = 3 vs g' = 4) cross pairs retain no treated mass and must be DROPPED -- not kept as zero columns
-# (the pre-fix behavior halved the cell ATT: ~0.5 when the truth is 1.0).
+# DGP with a dead cross pair: cohort 4's support is essentially x > 1.2 while cohort 3 lives ONLY at
+# x <= 1.2 (disjoint treated supports), so under trim_level = 3 the (g = 3 vs g' = 4) cross pairs --
+# whose ratio-targeted mask keys on r_{3,4}(X) = p_3/p_4, huge everywhere cohort 3 lives -- retain no
+# treated mass and must be DROPPED, not kept as zero columns (the pre-fix behavior halved the cell
+# ATT: ~0.5 when the truth is 1.0). (2026-06: the masks are ratio-only for finite cohorts and the
+# default ratios are the exp-link Riesz fits, so the supports must be genuinely disjoint for the
+# pair to die; the old s-based mask killed it through the 1/p_4 scale alone. This test deliberately
+# uses ratio_method = "direct" -- the LS sieve's extreme fitted values reliably kill the
+# disjoint-support cross pair at trim_level = 3, exercising the construction-agnostic drop machinery.)
 make_deadpair_panel <- function(n2 = 600, Tt = 5, seed = 1) {
   set.seed(seed)
   x2 <- rnorm(n2)
-  p3 <- plogis(0.3 * x2)
+  p3 <- plogis(0.3 * x2) * (x2 <= 1.2)
   p4 <- ifelse(x2 > 1.2, 0.96, 0.005)
   u  <- runif(n2)
   gv <- ifelse(u < 0.25 * p3, 3, ifelse(u < 0.25 * p3 + 0.5 * p4, 4, Inf))
@@ -178,10 +209,16 @@ make_deadpair_panel <- function(n2 = 600, Tt = 5, seed = 1) {
 test_that("dead pairs are dropped (not zero-padded): post ATT recovers ~1.0 with a warning", {
   skip_on_cran()
   df <- make_deadpair_panel()
+  # ratio_method = "direct": this test guards the DEAD-PAIR MACHINERY (drop vs zero-pad), which is
+  # construction-agnostic; the direct LS ratio's extreme fitted values reliably kill the disjoint-support
+  # cross pair at trim_level = 3 on this single seed. Under the default exp-link ratios the smooth sieve
+  # (like any smooth sieve) cannot represent this DGP's DISCONTINUOUS log-odds jump and under-
+  # estimates the contrast near the boundary, so a sliver of treated mass stays kept -- the pair is then
+  # legitimately alive-but-trimmed (the cell-common-overlap machinery, tested below, handles that case).
   res <- .collect_warnings_id(
     edid(df, "y", "id", "time", "g", xformla = ~ x, weight_scheme = "uniform",
          pt_assumption = "all", aggregate = "none", cband = FALSE,
-         trim_level = 3, misspec_robust = FALSE))
+         trim_level = 3, misspec_robust = FALSE, ratio_method = "direct"))
   fit <- res$value
   expect_true(any(grepl("dropped from their cells' moment sets", res$warnings)))
   # g = 3 cells: the (3 vs 4) cross pairs are dead and dropped; the surviving self pairs carry the cell
@@ -240,15 +277,12 @@ test_that("binding trim with heterogeneous tau(X): all weight schemes target the
   cross <- pairs[is.finite(pairs$gp) & pairs$gp != g, , drop = FALSE]
   if (nrow(cross) > 0L) pfn <- unique(rbind(pfn, data.frame(gp = Inf, tpre = unique(cross$tpre))))
   fid <- rep(1L, panel$n)
-  pr <- suppressWarnings(estimate_all_propensity_ratios(panel, g, pfn, bs_df = 4L, K_folds = 1L, fold_id = fid))
-  ip <- suppressWarnings(estimate_all_inverse_propensities(panel, g, pairs, bs_df = 4L, K_folds = 1L, fold_id = fid))
-  ks <- union(names(pr), names(ip))
-  trim_keep <- stats::setNames(lapply(ks, function(k) {
-    keep <- rep(TRUE, panel$n)
-    if (!is.null(pr[[k]])) keep <- keep & (abs(pr[[k]]) < tl)
-    if (!is.null(ip[[k]])) keep <- keep & (abs(ip[[k]]) < tl)
-    keep
-  }), ks)
+  # mirror the fit's default construction exactly: exp-link nuisances + the shared ratio-targeted mask
+  pr <- suppressWarnings(estimate_all_propensity_ratios(panel, g, pfn, bs_df = 4L, K_folds = 1L,
+                                                        fold_id = fid, ratio_method = "exp"))
+  ip <- suppressWarnings(estimate_all_inverse_propensities(panel, g, pairs, bs_df = 4L, K_folds = 1L,
+                                                           fold_id = fid, ratio_method = "exp"))
+  trim_keep <- build_trim_keep_edid(pr, ip, tl, panel$n)
   ti <- edid_cell_trim_structure(panel, g, pairs, trim_keep, "all")
   expect_true(any(ti$keep_common < 0.5))                  # the trim binds
   expect_false(ti$full_trim)

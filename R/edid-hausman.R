@@ -55,6 +55,48 @@
   invisible(TRUE)
 }
 
+# ---------------------------------------------------------------------------
+# Leg-health guards for the Section-5 toolkit (broken-leg + few-cluster)
+# ---------------------------------------------------------------------------
+
+# Number of clusters feeding a fit's cluster-robust covariance (G; n when unclustered,
+# i.e. unit-level / iid). The few-cluster guard compares this to EDID_FEWCLUSTER_MIN.
+.edid_n_clusters <- function(fit) {
+  ci <- fit$cluster_indices
+  if (is.null(ci)) (fit$n %||% length(unique(fit$all_units))) else length(unique(ci))
+}
+
+# Is a fit a numerically degenerate leg? A non-rejection (or a point estimate) built on
+# such a leg is HOLLOW -- the restricted/efficient fit carried extreme propensity ratios,
+# a non-credible weight channel, or cross-cohort hedges that carry the estimand, or its
+# reported SEs are non-finite. Reads the fit's own $diagnostics read-out (set by edid())
+# plus the aggregation SEs the test will difference. Returns a list with a logical
+# `broken` and a character vector of `reasons` (empty when healthy). Older fits without
+# $diagnostics degrade gracefully to the SE-finiteness check only.
+.edid_leg_health <- function(fit, label) {
+  reasons <- character(0L)
+  d <- fit$diagnostics
+  if (!is.null(d)) {
+    if (isTRUE(d$unstable)) {
+      if ((d$n_extreme_ratio %||% 0L) > 0L)
+        reasons <- c(reasons, sprintf("extreme propensity ratios in %d estimation step(s)", d$n_extreme_ratio))
+      if ((d$n_psi_unstable %||% 0L) > 0L)
+        reasons <- c(reasons, sprintf("weight-estimation channel not a credible IF in %d cell(s)", d$n_psi_unstable))
+      if (isTRUE(d$net_hedge_flag))
+        reasons <- c(reasons, sprintf("cross-cohort hedges carry the estimand (net hedge mass %.2f ~ gross %.2f)",
+                                      d$net_hedge_mass %||% NA_real_, d$gross_hedge_mass %||% NA_real_))
+    }
+  }
+  # Non-finite reported SEs on the headline (overall) aggregation: a hard breakage signal
+  # available even without $diagnostics.
+  ov <- fit$overall
+  se_ov <- if (!is.null(ov)) suppressWarnings(ov$overall.se) else NULL
+  if (!is.null(se_ov) && length(se_ov) && any(!is.finite(se_ov))) {
+    reasons <- c(reasons, "non-finite reported standard error on the overall aggregation")
+  }
+  list(broken = length(reasons) > 0L, reasons = unique(reasons), label = label)
+}
+
 # Dynamic (event-study) AGGTEobj of a fit: reuse the stored one, else aggregate
 # on the fly with the same machinery edid() uses (aggte_edid -> did::aggte).
 .edid_dynamic_aggte <- function(fit) {
@@ -128,11 +170,27 @@
 # rank-deficient branch additionally requires the estimated rank to be
 # consistent for the true rank; the eigenvalue threshold is the standard
 # practical device but is not a formal guarantee.
-.edid_if_diff_quadform <- function(d, xi, n, cluster_indices) {
+#
+# `v_scale` is the absolute variance scale of the constituent estimators (the
+# largest per-coordinate asymptotic variance of either fit; 1 if unknown). It
+# feeds the degenerate-contrast guard, the joint-path mirror of the scalar
+# .edid_scalar_hausman() guard: when the two estimators coincide (e.g. both
+# fits pinned to the same just-identified moments by the thin-cohort guard),
+# xi is pure float dust (differences ~1e-17, D entries ~1e-33) and the
+# RELATIVE eigenvalue threshold below would still "find" rank in that noise,
+# returning an arbitrary large H with a tiny p-value. A D that is negligible
+# on the ABSOLUTE scale of the estimators' own variances carries no testable
+# contrast: report H = 0, df = 0, p = 1 with degenerate = TRUE instead.
+.edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1) {
   xi <- as.matrix(xi)
   D  <- n * cluster_cov_edid(xi, cluster_indices, n)     # = E_n[xi xi'] when iid
   if (any(!is.finite(D))) {
-    return(list(statistic = NA_real_, df = NA_integer_, p_value = NA_real_, D = D))
+    return(list(statistic = NA_real_, df = NA_integer_, p_value = NA_real_, D = D,
+                degenerate = NA))
+  }
+  eps_D <- .Machine$double.eps^0.5
+  if (max(abs(D)) <= eps_D * max(v_scale, 1)) {          # degenerate contrast: estimators coincide
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
   }
   ev  <- eigen(D, symmetric = TRUE)
   mx  <- max(ev$values, 0)
@@ -140,7 +198,7 @@
   pos <- ev$values > tol
   rk  <- sum(pos)
   if (rk == 0L) {                                        # degenerate D: no power, report p = 1
-    return(list(statistic = 0, df = 0L, p_value = 1, D = D))
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
   }
   if (rk == length(d)) {
     H <- as.numeric(n * crossprod(d, solve(D, d)))       # full rank: exact inverse
@@ -149,7 +207,8 @@
     H <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / ev$values[pos])))
   }
   list(statistic = H, df = rk,
-       p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D)
+       p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D,
+       degenerate = FALSE)
 }
 
 # Scalar Hausman component H = n d^2 / D with the degenerate-D guard of
@@ -222,15 +281,31 @@
 #' \eqn{H_{\theta,n} = n(\widehat\theta_U - \widehat\theta_R)^2/\widehat{D}}
 #' of eqn (5.5) for each \eqn{ES(e)} and for \eqn{ES_{\mathrm{avg}}}, with a
 #' degenerate-\eqn{\widehat{D}} guard (coordinates where the two estimators
-#' coincide report \eqn{H = 0}, \eqn{p = 1}).
+#' coincide report \eqn{H = 0}, \eqn{p = 1}). The joint statistic carries the
+#' same guard: when the two estimators coincide on every coordinate --- e.g.
+#' both fits pinned to the same just-identified moments by the thin-cohort
+#' guard, so \eqn{\widehat{D}} is numerical noise relative to the estimators'
+#' own variances --- the joint contrast is degenerate and is reported as
+#' \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} (with a message and
+#' \code{degenerate = TRUE}) rather than ranking the noise.
 #'
 #' @return An object of class \code{edid_hausman}: a list with elements
-#'   \code{statistic}, \code{df}, \code{p_value} (the joint test), \code{d}
+#'   \code{statistic}, \code{df}, \code{p_value} (the joint test),
+#'   \code{degenerate} (\code{TRUE} when the joint contrast was degenerate and
+#'   the \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} guard applied), \code{d}
 #'   (the estimate difference vector, unrestricted minus restricted), \code{D}
 #'   (the estimated asymptotic covariance of \eqn{\sqrt{n}\,d}), \code{scalar}
 #'   (data.frame of per-coordinate eqn (5.5) statistics, including an
 #'   \code{ES_avg} row), \code{parameter}, \code{e_set}, \code{n},
-#'   \code{clustered}.
+#'   \code{clustered}, plus the round-3 sanity guards:
+#'   \code{leg_unstable} (\code{TRUE} when a constituent fit is numerically
+#'   degenerate -- extreme propensity ratios, a non-credible weight channel,
+#'   cross-cohort hedges carrying the estimand, or non-finite reported SEs --
+#'   so a non-rejection is \emph{hollow}; a loud warning is also emitted),
+#'   \code{leg_reasons} (the per-leg breakage descriptions; empty when healthy),
+#'   \code{few_clusters} (\code{TRUE} when the fits carry fewer than 5 clusters,
+#'   so the cluster-robust statistic is unreliable -- a few-cluster artifact,
+#'   not PT evidence), and \code{n_clusters}.
 #'
 #' @references Chen, X., Sant'Anna, P. H. C., & Xie, H. (2025). Efficient
 #'   Difference-in-Differences and Event Study Estimators. Section 5.1,
@@ -269,6 +344,29 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   n  <- fit_restricted$n
   ci <- fit_restricted$cluster_indices
 
+  # Broken-leg sanity guard (a hollow non-rejection footgun, Nguyen/Bailey-GB/ACA gate
+  # evidence): if EITHER leg is a numerically degenerate fit -- extreme propensity ratios,
+  # a non-credible weight channel, cross-cohort hedges carrying the estimand, or non-finite
+  # SEs -- the Hausman contrast inherits the breakage and a non-rejection means nothing.
+  # Warn loudly, naming the unhealthy leg(s) and reason(s), and flag the result object
+  # ($leg_unstable / $leg_reasons) so a hollow p ~ 0.3-0.95 is not mistaken for a pass.
+  health_U <- .edid_leg_health(fit_unrestricted, "fit_unrestricted (PT-Post)")
+  health_R <- .edid_leg_health(fit_restricted,  "fit_restricted (PT-All)")
+  leg_unstable <- health_U$broken || health_R$broken
+  leg_reasons  <- character(0L)
+  if (leg_unstable) {
+    msgs <- c(if (health_R$broken) sprintf("%s: %s", health_R$label, paste(health_R$reasons, collapse = "; ")),
+              if (health_U$broken) sprintf("%s: %s", health_U$label, paste(health_U$reasons, collapse = "; ")))
+    leg_reasons <- msgs
+    warning(paste0(
+      "edid_hausman: a constituent fit is numerically degenerate, so this test is HOLLOW -- ",
+      "a non-rejection here carries no evidence (the contrast inherits the broken leg's ",
+      "instability). ", paste(msgs, collapse = " | "),
+      ". Repair the fit (e.g. moment_set = \"own\" to drop cross-cohort pairs, weight_scheme = ",
+      "\"averaged\", or a low-dimensional covariate index) before reading the p-value; the result ",
+      "is returned with $leg_unstable = TRUE."), call. = FALSE)
+  }
+
   if (parameter == "event_study") {
     e_set <- .edid_shared_e_set(fit_unrestricted, fit_restricted, e_set)
     pU <- .edid_param_ifs(fit_unrestricted, "event_study", e_set)
@@ -282,7 +380,33 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   d  <- pU$est - pR$est                  # unrestricted minus restricted
   xi <- pU$IF - pR$IF                    # per-unit IF difference (n x |E|)
 
-  joint <- .edid_if_diff_quadform(d, xi, n, ci)
+  # Absolute variance scale of the two estimators (largest per-coordinate
+  # asymptotic variance of either fit), for the degenerate-contrast guard.
+  v_scale <- max(diag(as.matrix(n * cluster_cov_edid(pU$IF, ci, n))),
+                 diag(as.matrix(n * cluster_cov_edid(pR$IF, ci, n))))
+  joint <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = v_scale)
+  if (isTRUE(joint$degenerate)) {
+    message("edid_hausman: the two estimators coincide (the IF-difference covariance is at ",
+            "numerical-noise scale relative to the estimators' own variances), so the joint ",
+            "contrast is degenerate and is reported as H = 0, df = 0, p = 1. This is expected ",
+            "when the fits carry no over-identifying content to test -- e.g. when the ",
+            "thin-cohort guard has pinned every cell to its just-identified moment.")
+  }
+
+  # Few-cluster guard: with G < EDID_FEWCLUSTER_MIN clusters the cluster-robust D is too
+  # noisy / degenerate for the chi-square reference (the ACA gate's 2-3-state cohorts give
+  # H ~ 350, p ~ 1e-73 -- a few-cluster artifact, not PT evidence). Flag the statistic as
+  # unreliable (message + field); it is still returned.
+  n_clusters <- .edid_n_clusters(fit_restricted)
+  few_clusters <- !is.null(ci) && n_clusters < EDID_FEWCLUSTER_MIN
+  if (few_clusters) {
+    warning(sprintf(paste0(
+      "edid_hausman: only %d cluster(s) at the clustering level (clustervars). The cluster-robust ",
+      "statistic is UNRELIABLE below %d clusters -- the cluster-level covariance is too noisy / ",
+      "degenerate for the chi-square reference, so the p-value is not trustworthy (flagged ",
+      "$few_clusters = TRUE). Report unit-level (unclustered) toolkit statistics, or aggregate to ",
+      "a coarser level with enough clusters."), n_clusters, EDID_FEWCLUSTER_MIN), call. = FALSE)
+  }
 
   # Scalar eqn (5.5) statistics: each ES(e) plus ES_avg (always included).
   oU <- .edid_param_ifs(fit_unrestricted, "overall")
@@ -309,17 +433,22 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   rownames(scalar) <- NULL
 
   out <- list(
-    statistic = joint$statistic,
-    df        = joint$df,
-    p_value   = joint$p_value,
-    d         = stats::setNames(d, if (parameter == "event_study") sprintf("e=%g", pU$e) else "overall"),
-    D         = joint$D,
-    scalar    = scalar,
-    parameter = parameter,
-    e_set     = e_set,
-    n         = n,
-    clustered = !is.null(ci),
-    alpha     = fit_restricted$alpha %||% 0.05
+    statistic  = joint$statistic,
+    df         = joint$df,
+    p_value    = joint$p_value,
+    degenerate = isTRUE(joint$degenerate),
+    d          = stats::setNames(d, if (parameter == "event_study") sprintf("e=%g", pU$e) else "overall"),
+    D          = joint$D,
+    scalar     = scalar,
+    parameter  = parameter,
+    e_set      = e_set,
+    n          = n,
+    clustered  = !is.null(ci),
+    leg_unstable = isTRUE(leg_unstable),   # a constituent fit is numerically degenerate -> hollow test
+    leg_reasons  = leg_reasons,            # per-leg breakage descriptions (empty when healthy)
+    few_clusters = isTRUE(few_clusters),   # G < EDID_FEWCLUSTER_MIN -> cluster-robust stat unreliable
+    n_clusters   = n_clusters,
+    alpha      = fit_restricted$alpha %||% 0.05
   )
   class(out) <- c("edid_hausman", "list")
   out
@@ -340,6 +469,19 @@ print.edid_hausman <- function(x, digits = 4, ...) {
   cat(sprintf("  H = %s on %s df (rank of D-hat), p-value = %s\n",
               format(x$statistic, digits = digits), format(x$df),
               format.pval(x$p_value, digits = digits)))
+  if (isTRUE(x$degenerate)) {
+    cat("  NOTE: degenerate contrast -- the two estimators coincide, so there is no\n")
+    cat("  over-identifying content to test (H = 0, df = 0, p = 1 by construction).\n")
+  }
+  if (isTRUE(x$leg_unstable)) {
+    cat("  WARNING: HOLLOW TEST -- a constituent fit is numerically degenerate, so a\n")
+    cat("  non-rejection carries no evidence. Reason(s):\n")
+    for (r in x$leg_reasons) cat("    - ", r, "\n", sep = "")
+  }
+  if (isTRUE(x$few_clusters)) {
+    cat(sprintf("  WARNING: only %d cluster(s) -- the cluster-robust statistic is unreliable\n", x$n_clusters))
+    cat("  below ", EDID_FEWCLUSTER_MIN, " clusters (few-cluster artifact, not PT evidence).\n", sep = "")
+  }
   cat("\nPer-parameter scalar statistics (eqn 5.5):\n")
   tab <- x$scalar
   num <- vapply(tab, is.numeric, logical(1L))

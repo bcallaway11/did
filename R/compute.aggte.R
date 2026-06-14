@@ -35,6 +35,14 @@ compute.aggte <- function(MP,
   inffunc1 <- MP$inffunc
   n <- MP$n
 
+  # aggte() needs the influence functions to aggregate and to compute standard errors.
+  # They are absent when att_gt() was run with compute_inffunc = FALSE (point estimates only).
+  if (is.null(inffunc1)) {
+    stop("This att_gt() result was produced with compute_inffunc = FALSE (point estimates ",
+         "only), so it has no influence functions and cannot be aggregated by aggte(). ",
+         "Re-run att_gt() with compute_inffunc = TRUE (the default) to use aggte().")
+  }
+
 
   gname <- dp$gname
   tname <- dp$tname
@@ -42,6 +50,36 @@ compute.aggte <- function(MP,
   panel <- dp$panel
   if (is.null(clustervars)) {
     clustervars <- dp$clustervars
+  }
+
+  # Aggregation-level clustering reuses the per-unit cluster information that att_gt() stored when
+  # clustervars was supplied to it. If clustering is requested here (inherited from the att_gt object or
+  # via an aggte-level clustervars override) but that information is unavailable -- because the cluster
+  # variable was not passed to att_gt() (so neither the cluster column nor cluster_vector were retained),
+  # or because an override names a different variable than att_gt clustered on -- it cannot be honored.
+  # Warn and fall back to non-clustered standard errors, instead of silently returning the i.i.d. SE
+  # (analytic path) or erroring in mboot() (bootstrap path). To make this a hard error instead, replace
+  # warning() with stop() below.
+  extra_cl_req <- clustervars[!(clustervars %in% c(idname, ""))]
+  if (length(extra_cl_req) > 0) {
+    cv <- dp$cluster_vector
+    can_cluster <- !is.null(cv) && length(cv) == nrow(inffunc1) &&
+      identical(extra_cl_req, dp$cluster_vector_var)
+    if (!can_cluster) {
+      warning(paste0(
+        "Clustered standard errors were requested in aggte() (clustervars = '",
+        paste(extra_cl_req, collapse = "', '"), "'), but the cluster information needed is not available ",
+        "in this att_gt object",
+        if (!is.null(dp$cluster_vector_var)) {
+          paste0(" (att_gt() clustered on '", paste(dp$cluster_vector_var, collapse = "', '"),
+                 "', and aggte() cannot switch to a different cluster variable)")
+        } else {
+          " (clustervars was not supplied to att_gt(), so aggte() cannot introduce clustering)"
+        },
+        ". Reporting standard errors that do NOT account for clustering; re-run att_gt() with ",
+        "clustervars = '", paste(extra_cl_req, collapse = "', '"), "' for clustered inference."))
+      clustervars <- NULL
+    }
   }
   if (is.null(bstrap)) {
     bstrap <- dp$bstrap
@@ -56,16 +94,23 @@ compute.aggte <- function(MP,
     cband <- dp$cband
   }
   if (isTRUE(dp$faster_mode)) {
-    dt <- dp$data
-    set(dt, i = which(dt[[gname]] == Inf), j = gname, value = 0) # going back to the old way
-    data <- as.data.frame(dt)
-    rm(dt)
     tlist <- dp$time_periods
     glist <- dp$treated_groups
   } else {
     data <- as.data.frame(dp$data)
     tlist <- dp$tlist
     glist <- dp$glist
+  }
+
+  # In faster_mode, the full long data is only needed on the two branches below that
+  # actually consume `data` (most faster-mode panel calls use time_invariant_data
+  # instead). Materialize it lazily there, recoding gname Inf -> 0 (the old
+  # convention) on the converted copy so the data.table stored inside the user's
+  # MP object is never modified by reference.
+  faster_mode_long_data <- function() {
+    data <- as.data.frame(dp$data)
+    data[data[, gname] == Inf, gname] <- 0
+    data
   }
 
   # overwrite MP objects (so we can actually compute bootstrap)
@@ -98,8 +143,14 @@ compute.aggte <- function(MP,
     if (type == "group") {
       # Get the groups that have some non-missing ATT(g,t) in post-treatmemt periods
       gnotna <- sapply(glist, function(g) {
-        # look at post-treatment periods for group g
-        whichg <- which((group == g) & (g <= t))
+        # look at post-treatment periods for group g, restricted to the SAME
+        # max_e window used by the group-specific estimate below (selective.att.g /
+        # selective.se.inner). Without the (t <= group + max_e) condition a group
+        # whose only non-NA ATT(g,t) lies PAST max_e would pass this filter but then
+        # have an all-NA (hence, under na.rm, empty) selection in the estimate,
+        # erroring in get_agg_inf_func(). (max_e defaults to Inf, so this is a no-op
+        # unless the user sets a finite max_e.)
+        whichg <- which((group == g) & (g <= t) & (t <= (group + max_e)))
         attg <- att[whichg]
         group_select <- !is.na(mean(attg))
         return(group_select)
@@ -135,12 +186,19 @@ compute.aggte <- function(MP,
       # map Inf back to 0 for gname to match the old convention
       dta[dta[, gname] == Inf, gname] <- 0
     } else {
+      if (isTRUE(dp$faster_mode)) data <- faster_mode_long_data()
       # data from first period
       dta <- data[data[, tname] == tlist[1], ]
     }
   } else {
-    # aggregate data
-    dta <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean)[, -1])
+    if (isTRUE(dp$faster_mode)) data <- faster_mode_long_data()
+    # Aggregate to one row per unit. aggregate() returns rows sorted by idname, but the influence
+    # function (inffunc1) is in the data's *first-appearance* unit order -- which differs from sorted for
+    # unbalanced panels under faster_mode. Restore that order so the estimated-weight influence term (wif)
+    # is added to the matching units in get_agg_inf_func(); otherwise wif lands on the wrong units and the
+    # aggregated standard error is wrong (the point estimate is unaffected because wif is mean-zero).
+    dta_agg <- base::suppressWarnings(stats::aggregate(data, list((data[, idname])), mean))
+    dta <- dta_agg[match(unique(data[, idname]), dta_agg[, 1L]), -1L, drop = FALSE]
   }
 
   #-----------------------------------------------------------------------------
@@ -174,11 +232,18 @@ compute.aggte <- function(MP,
   maxT <- max(t)
 
   # Set the weights
-  ifelse(isTRUE(dp$faster_mode), weights.ind <- dta$weights, weights.ind <- dta$.w)
+  if (".w" %in% names(dta)) {
+    weights.ind <- dta$.w
+  } else if (isTRUE(dp$faster_mode)) {
+    weights.ind <- dta$weights
+  } else {
+    weights.ind <- dta$.w
+  }
 
   # we can work in overall probabilities because conditioning will cancel out
   # cause it shows up in numerator and denominator
-  pg <- sapply(originalglist, function(g) mean(weights.ind * (dta[, gname] == g)))
+  gvar <- dta[[gname]]  # extract the group column once, reused below
+  pg <- sapply(originalglist, function(g) mean(weights.ind * (gvar == g)))
 
   # length of this is equal to number of groups
   pgg <- pg
@@ -190,7 +255,7 @@ compute.aggte <- function(MP,
   keepers <- which(group <= t & t <= (group + max_e)) ### added second condition to allow for limit on longest period included in att
 
   # n x 1 vector of group variable
-  G <- orig2t_vec(dta[, gname])
+  G <- orig2t_vec(gvar)
 
   #-----------------------------------------------------------------------------
   # Compute the simple ATT summary
@@ -265,11 +330,11 @@ compute.aggte <- function(MP,
     })
 
     # recover standard errors separately by group
-    selective.se.g <- unlist(BMisc::getListElement(selective.se.inner, "se"))
+    selective.se.g <- unlist(BMisc::get_list_element(selective.se.inner, "se"))
     selective.se.g[selective.se.g <= sqrt(.Machine$double.eps) * 10] <- NA
 
     # recover influence function separately by group
-    selective.inf.func.g <- simplify2array(BMisc::getListElement(selective.se.inner, "inf.func"))
+    selective.inf.func.g <- simplify2array(BMisc::get_list_element(selective.se.inner, "inf.func"))
 
     # use multiplier bootstrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -278,7 +343,7 @@ compute.aggte <- function(MP,
       if (dp$bstrap == FALSE) {
         warning("Used bootstrap procedure to compute simultaneous confidence band")
       }
-      selective.crit.val <- mboot(selective.inf.func.g, dp)$crit.val
+      selective.crit.val <- mboot(selective.inf.func.g, dp, return_V = FALSE)$crit.val
 
       if (is.na(selective.crit.val) | is.infinite(selective.crit.val)) {
         warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
@@ -403,17 +468,17 @@ compute.aggte <- function(MP,
       list(inf.func = inf.func.e, se = se.e)
     })
 
-    dynamic.se.e <- unlist(BMisc::getListElement(dynamic.se.inner, "se"))
+    dynamic.se.e <- unlist(BMisc::get_list_element(dynamic.se.inner, "se"))
     dynamic.se.e[dynamic.se.e <= sqrt(.Machine$double.eps) * 10] <- NA
 
-    dynamic.inf.func.e <- simplify2array(BMisc::getListElement(dynamic.se.inner, "inf.func"))
+    dynamic.inf.func.e <- simplify2array(BMisc::get_list_element(dynamic.se.inner, "inf.func"))
 
     dynamic.crit.val <- stats::qnorm(1 - alp / 2)
     if (dp$cband == TRUE) {
       if (dp$bstrap == FALSE) {
         warning("Used bootstrap procedure to compute simultaneous confidence band")
       }
-      dynamic.crit.val <- mboot(dynamic.inf.func.e, dp)$crit.val
+      dynamic.crit.val <- mboot(dynamic.inf.func.e, dp, return_V = FALSE)$crit.val
 
       if (is.na(dynamic.crit.val) | is.infinite(dynamic.crit.val)) {
         warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
@@ -513,10 +578,10 @@ compute.aggte <- function(MP,
     })
 
     # recover standard errors separately by time
-    calendar.se.t <- unlist(BMisc::getListElement(calendar.se.inner, "se"))
+    calendar.se.t <- unlist(BMisc::get_list_element(calendar.se.inner, "se"))
     calendar.se.t[calendar.se.t <= sqrt(.Machine$double.eps) * 10] <- NA
     # recover influence function separately by time
-    calendar.inf.func.t <- simplify2array(BMisc::getListElement(calendar.se.inner, "inf.func"))
+    calendar.inf.func.t <- simplify2array(BMisc::get_list_element(calendar.se.inner, "inf.func"))
 
     # use multiplier boostrap (across groups) to get critical value
     # for constructing uniform confidence bands
@@ -525,7 +590,7 @@ compute.aggte <- function(MP,
       if (dp$bstrap == FALSE) {
         warning("Used bootstrap procedure to compute simultaneous confidence band")
       }
-      calendar.crit.val <- mboot(calendar.inf.func.t, dp)$crit.val
+      calendar.crit.val <- mboot(calendar.inf.func.t, dp, return_V = FALSE)$crit.val
 
       if (is.na(calendar.crit.val) | is.infinite(calendar.crit.val)) {
         warning("Simultaneous critical value is NA, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
@@ -605,16 +670,19 @@ wif <- function(keepers, pg, weights.ind, G, group) {
   # note: weights are all of the form P(G=g|cond)/sum_cond(P(G=g|cond))
   # this is equal to P(G=g)/sum_cond(P(G=g)) which simplifies things here
 
-  # effect of estimating weights in the numerator
-  if1 <- sapply(keepers, function(k) {
-    (weights.ind * 1 * BMisc::TorF(G == group[k]) - pg[k]) /
-      sum(pg[keepers])
-  })
-  # effect of estimating weights in the denominator
-  if2 <- base::rowSums(sapply(keepers, function(k) {
+  # The (n x k) matrix [ weights.ind * 1{G == group[k]} - pg[k] ] appears in both
+  # the numerator and the denominator terms below; build it once and reuse it.
+  # This is identical to the previous code, which constructed it twice via two
+  # separate sapply() calls. sum(pg[keepers]) is likewise hoisted out of the loop.
+  Spg <- sum(pg[keepers])
+  centered <- sapply(keepers, function(k) {
     weights.ind * 1 * BMisc::TorF(G == group[k]) - pg[k]
-  })) %*%
-    t(pg[keepers] / (sum(pg[keepers])^2))
+  })
+
+  # effect of estimating weights in the numerator
+  if1 <- centered / Spg
+  # effect of estimating weights in the denominator
+  if2 <- base::rowSums(centered) %*% t(pg[keepers] / (Spg^2))
 
   # return the influence function for the weights
   if1 - if2
@@ -689,7 +757,7 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
   }
 
   if (bstrap) {
-    bout <- mboot(thisinffunc, DIDparams)
+    bout <- mboot(thisinffunc, DIDparams, return_V = FALSE)
     return(bout$se)
   } else {
     # Analytical cluster-robust SE (no bootstrap): cluster sums of the aggregated influence function,

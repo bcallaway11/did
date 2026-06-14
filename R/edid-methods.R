@@ -65,6 +65,75 @@
   A %*% Sig_quad %*% t(A)
 }
 
+# ---------------------------------------------------------------------------
+# Stability diagnostics (the $diagnostics field of an edid_fit)
+# ---------------------------------------------------------------------------
+
+# Net / gross cross-cohort hedge mass over the POST cells, the cheap red flag of a
+# poisoned over-identified fit (Nguyen / Bailey-GB / ACA gate evidence). For each post
+# cell the cross-cohort pairs are the finite-gp pairs with gp != group (the never-treated
+# anchor gp = Inf and the own-cohort self pairs are excluded); gross = mean over cells of
+# sum|w_cross|, net = mean over cells of |sum w_cross|. A healthy efficient fit hedges
+# (gross negative mass offsets gross positive, so net << gross); a broken fit has the
+# cross-cohort "hedges" carrying the estimand (net ~= gross, gross negative mass ~ 0).
+# Returns NA when no post cell carries a cross-cohort pair (no over-identification to
+# hedge -- e.g. PT-Post, single-cohort, or moment_set = "own").
+.edid_net_hedge_mass <- function(cells) {
+  if (is.null(cells) || length(cells) == 0L) return(list(net = NA_real_, gross = NA_real_, n_cells = 0L))
+  net <- numeric(0L); gross <- numeric(0L)
+  for (cc in cells) {
+    if (isTRUE(cc$is_pre)) next                       # post cells only
+    w  <- cc$weights; pr <- cc$pairs
+    if (is.null(w) || length(w) == 0L || is.null(pr) || nrow(pr) != length(w)) next
+    cross <- is.finite(pr$gp) & pr$gp != cc$group     # cross-cohort control-variate pairs
+    if (!any(cross)) next
+    wc <- as.numeric(w[cross])
+    net   <- c(net,   abs(sum(wc)))
+    gross <- c(gross, sum(abs(wc)))
+  }
+  if (length(net) == 0L) return(list(net = NA_real_, gross = NA_real_, n_cells = 0L))
+  list(net = mean(net), gross = mean(gross), n_cells = length(net))
+}
+
+# Assemble the $diagnostics object from the raw per-fit counts (threaded out of
+# fit_edid_cells) plus the completed cells. Pure read-out: no moment, weight, or estimate
+# is touched. The booleans are the toolkit's machine-readable red flags; `$unstable` is
+# the single summary the broken-leg Hausman guard keys on.
+.edid_build_diagnostics <- function(raw, cells, pt_assumption, weight_scheme, min_pair_units) {
+  if (is.null(raw)) raw <- list()
+  hedge <- .edid_net_hedge_mass(cells)
+  n_extreme <- as.integer(raw$n_extreme_ratio %||% 0L)
+  n_psi     <- as.integer(raw$n_psi_unstable %||% 0L)
+  n_drop    <- as.integer(raw$n_pairs_dropped %||% 0L)
+  n_full    <- as.integer(raw$n_fulltrim %||% 0L)
+  # Over-identified efficient covariate fit whose cross-cohort hedges carry the estimand:
+  # net hedge mass at/above the calibrated flag AND essentially equal to gross (no
+  # offsetting negative mass). Only meaningful where hedging is possible (n_cells > 0).
+  net_flag <- isTRUE(is.finite(hedge$net) && hedge$n_cells > 0L &&
+                     hedge$net >= EDID_NET_HEDGE_FLAG &&
+                     hedge$net >= 0.95 * (hedge$gross %||% Inf))
+  # "Unstable leg": the conditions under which a non-rejection / point estimate from this
+  # fit is not trustworthy -- extreme propensity ratios entered, the weight channel was
+  # not a credible IF, or the cross-cohort hedges carry the estimand. (Dead pairs / full
+  # trims alone redefine the estimand but are reported separately; they do not by
+  # themselves flag the fit as numerically broken.)
+  unstable <- (n_extreme > 0L) || (n_psi > 0L) || net_flag
+  list(
+    n_extreme_ratio      = n_extreme,
+    n_psi_unstable       = n_psi,
+    n_pairs_dropped      = n_drop,
+    n_fulltrim           = n_full,
+    net_hedge_mass       = hedge$net,
+    gross_hedge_mass     = hedge$gross,
+    net_hedge_flag       = net_flag,
+    min_finite_cohort    = raw$min_finite_cohort %||% NA_integer_,
+    small_cohorts        = raw$small_cohorts,         # finite cohorts in [min_pair_units, comfort); NULL if none
+    cohort_sizes         = raw$cohort_sizes,
+    use_cov_path         = isTRUE(raw$use_cov_path),
+    unstable             = isTRUE(unstable)
+  )
+}
+
 #' Print method for edid_fit objects
 #'
 #' Displays the ATT(g,t) table in the same style as \code{print.MP} / \code{summary.MP}, followed by
@@ -117,7 +186,28 @@ print.edid_fit <- function(x, ...) {
   cat("Estimation Method:  Efficient DiD (Chen, Sant'Anna & Xie 2025)\n")
   pt_text <- if (x$pt_assumption == "all") "PT-All" else "PT-Post"
   cat("PT Assumption:  "); cat(pt_text); cat("\n")
+  .edid_thin_radar_note(x)
   invisible(x)
+}
+
+# Thin-cohort radar note (fix 2): printed -- not warned -- when the over-identified
+# covariate fit has finite cohorts in the [min_pair_units, comfort) band, where the
+# efficient-weight machinery can be unreliable (the Nguyen 14/33-unit gate failure). The
+# data is in $diagnostics$small_cohorts; this only formats it for print/summary. Shown
+# only on the covariate PT-All path (moot otherwise); no-op when there are no such cohorts.
+.edid_thin_radar_note <- function(x) {
+  d <- x$diagnostics
+  if (is.null(d) || is.null(d$small_cohorts) || nrow(d$small_cohorts) == 0L) return(invisible())
+  has_cov <- !is.null(x$xformla) && inherits(x$xformla, "formula") && length(all.vars(x$xformla)) > 0L
+  if (!identical(x$pt_assumption, "all") || !has_cov) return(invisible())
+  sc <- d$small_cohorts
+  cat(sprintf(paste0("Thin-cohort radar:  cohort(s) %s (%d-%d units) are above the hard guard but ",
+                     "below a comfortable size;\n  on this covariate PT-All path the over-identified ",
+                     "efficient weights can be unreliable for cohorts this small\n  (see ",
+                     "$diagnostics; consider weight_scheme = \"averaged\" or moment_set = \"own\").\n"),
+              paste(format(sc$cohort, trim = TRUE, scientific = FALSE), collapse = ", "),
+              min(sc$n_units), max(sc$n_units)))
+  invisible()
 }
 
 #' Summary method for edid_fit objects

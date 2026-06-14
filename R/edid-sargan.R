@@ -38,9 +38,13 @@
 #                 p-values can differ from the fit's own inference convention.
 .edid_refit_moment_set <- function(fit, data, moment_set, envir = parent.frame(),
                                    inference = "match_fit") {
-  args <- as.list(fit$call)[-1L]
-  args$data <- NULL                       # never re-evaluate the original data expression
-  args <- lapply(args, function(a) eval(a, envir = envir))
+  # Estimation arguments come from the fit's stored snapshot ($args), never from
+  # re-evaluating the call in the caller's environment (see .edid_refit_args):
+  # a caller variable mutated after fitting (e.g. a reassigned xformla) must not
+  # silently change the refit, and wrapper-built calls carry `..N` promises that
+  # cannot be re-evaluated at all. `envir` is used only by the legacy fallback
+  # for fits that predate the snapshot.
+  args <- .edid_refit_args(fit, envir)
   args[["cband_method"]] <- NULL          # let the analytic default apply (bstrap is off below)
   args$data              <- data
   args$pt_assumption     <- "all"
@@ -95,7 +99,11 @@
 #'   \code{NULL} (default), in which case the data expression stored in the
 #'   fit's call is re-evaluated in the caller's environment (the
 #'   \code{update()} idiom). Supply \code{data} explicitly when the original
-#'   object is no longer reachable by that name.
+#'   object is no longer reachable by that name. All other estimation
+#'   arguments are taken from the fit's stored argument snapshot
+#'   (\code{fit_restricted$args}), never re-evaluated from the call, and the
+#'   refits verify that \code{data} reproduces the fitted sample (same
+#'   \code{n} and unit ids).
 #' @param alpha Familywise error rate for the Holm-Bonferroni step-down.
 #'   Default \code{0.05}.
 #' @param e_set Numeric vector of post-treatment event times over which the
@@ -239,10 +247,18 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
   # influence-function differences are clean.
   caller_env <- parent.frame()
   fit_base <- .edid_refit_moment_set(fit, data, base_ms, envir = caller_env, inference = inference)
+  if (!identical(fit_base$n, fit$n) || !identical(fit_base$all_units, fit$all_units)) {
+    stop("The data used for the refits does not match the fitted sample (n or unit ids ",
+         "differ from `fit_restricted`); pass the original estimation data via `data`.",
+         call. = FALSE)
+  }
   pB <- .edid_param_ifs(fit_base, "event_study", e_set)
   e_set <- pB$e
   n  <- fit_base$n
   ci <- fit_base$cluster_indices
+  # Absolute variance scale of the base estimator's coordinates, for the
+  # degenerate-contrast guard in .edid_if_diff_quadform (see edid-hausman.R).
+  vB <- diag(as.matrix(n * cluster_cov_edid(pB$IF, ci, n)))
 
   results <- data.frame(
     gp = extra$gp, tpre = extra$tpre,
@@ -268,7 +284,8 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
 
     d  <- pA$est - pB$est
     xi <- pB$IF - pA$IF
-    qf <- .edid_if_diff_quadform(d, xi, n, ci)
+    vA <- diag(as.matrix(n * cluster_cov_edid(pA$IF, ci, n)))
+    qf <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = max(vB, vA))
     results$H_statistic[l] <- qf$statistic
     results$df[l]          <- qf$df
     results$p_value[l]     <- qf$p_value

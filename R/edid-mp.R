@@ -48,9 +48,15 @@ as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL, cb
   # column name overwrites the cohort/id column of tinv whenever clustervars coincides with
   # gname/idname, silently corrupting compute.aggte()'s group shares. mboot() resolves the
   # column through DIDparams$clustervars, so the reserved name is self-consistent.
+  cluster_vector_var <- NULL
   if (!is.null(clustervars) && !is.null(fit$cluster_indices)) {
     tinv[[".edid_cluster"]] <- fit$cluster_indices
     clustervars <- ".edid_cluster"
+    # Record the cluster variable name under the same contract att_gt() uses (att_gt.R), so
+    # compute.aggte()'s clustervars-honor guard recognizes that this MP can be clustered on
+    # `.edid_cluster`. Without it the guard (added upstream) silently falls back to i.i.d. SEs
+    # for the aggregate se.egt, breaking the cell/aggregate clustered-SE alignment.
+    cluster_vector_var <- ".edid_cluster"
   }
 
   dp <- list(
@@ -60,7 +66,8 @@ as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL, cb
     nG = length(glist), nT = length(sort(fit$time_periods)), est_method = "edid",
     control_group = "nevertreated", anticipation = fit$anticipation,
     bstrap = bstrap, biters = biters, alp = fit$alpha, cband = cband,
-    clustervars = clustervars, cluster_vector = fit$cluster_indices, n = n
+    clustervars = clustervars, cluster_vector = fit$cluster_indices,
+    cluster_vector_var = cluster_vector_var, n = n
   )
 
   mp <- list(

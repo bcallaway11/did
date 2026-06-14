@@ -104,7 +104,12 @@ test_that("misspec_robust composes additively with estimation_effect (same psi a
     cn <- paste0(fd$att_gt$group, "_", fd$att_gt$time)
     ee <- as.matrix(f_e$eif); eem <- as.matrix(f_em$eif); k <- !fd$att_gt$is_pre
     expect_equal(f_em$att_gt$att, f_e$att_gt$att, tolerance = 1e-12)        # att unchanged by misspec_robust
-    expect_lt(max(abs(colMeans(eem[, which(k), drop = FALSE]))), 1e-8)      # combined (-ach + psi) EIF mean-zero
+    # combined (-ach + psi) EIF mean-zero. Tolerance 1e-7 (was 1e-8): the residual is a structural
+    # identity that holds exactly in exact arithmetic and sits at the FP floor here (efficient/averaged
+    # ~7e-9, gmm ~1.2e-8 under the default ratio_method = "exp"); exp's nuisance magnitudes accumulate
+    # marginally more rounding than the removed "coherent" engine. 1e-7 is still 7 orders below the
+    # O(1) EIF scale -- a strong mean-zero check, robust to engine-dependent FP accumulation.
+    expect_lt(max(abs(colMeans(eem[, which(k), drop = FALSE]))), 1e-7)      # combined (-ach + psi) EIF mean-zero
     for (ci in which(k)) {
       p <- pa[[cn[ci]]]; if (is.null(p)) next
       expect_equal(eem[, ci] - ee[, ci], p$data - p$corr, tolerance = 1e-9) # adds the SAME psi on top of the ACH eif

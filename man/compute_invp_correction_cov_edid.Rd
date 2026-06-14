@@ -17,7 +17,8 @@ compute_invp_correction_cov_edid(
   mbar,
   bw = NULL,
   K_mat = NULL,
-  eps_rel = 1e-06
+  eps_rel = 1e-06,
+  keep = NULL
 )
 }
 \description{

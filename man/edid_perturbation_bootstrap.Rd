@@ -36,9 +36,9 @@ a few matrix products per cell (no nuisance/weight re-solve), so large
 results are reproducible and identical for any \code{cores} value.}
 
 \item{cores}{Number of forked workers for the draw loop (fork-based; no
-effect on Windows). Numerically identical to \code{cores = 1L}; draws a
-forked worker fails to deliver are recomputed serially with the same
-per-draw seed (see \code{\link{edid_refit_bootstrap}}).}
+effect on Windows). Numerically identical to \code{cores = 1L}; the same
+macOS fork-unsafe BLAS fallback and failed-worker serial recompute behavior
+as \code{\link{edid_refit_bootstrap}} applies.}
 
 \item{agg}{Which aggregations to report alongside the cells: any subset of
 \code{c("event_study", "overall", "group", "calendar")} (default all).
@@ -82,9 +82,18 @@ variability \emph{without re-solving anything}: for each first-step nuisance
 \eqn{\widehat{V}_{\theta,k} = n^{-2} H_k^{-1}\,
 (\mathrm{score}_k'\mathrm{score}_k)\, H_k^{-1}} from the stored M-estimator
 pieces, draws \eqn{\theta_k^* \sim N(\hat\theta_k, \widehat{V}_{\theta,k})}
-\emph{independently across nuisances} (the validated "INDEP" variant; the
-joint draw is dominated by it), recomputes the doubly-robust generated
-outcomes nonlinearly at the perturbed predictions
+\emph{independently across distinct coefficient blocks} (the validated
+"INDEP" variant; the joint draw is dominated by it) -- any nuisance entries
+that share ONE underlying fitted coefficient vector (identified by a common
+\code{coef_id} on the aux) are dedup'd and share a single draw per replication,
+mapped into each entry through its own chain-rule Jacobian (independent draws
+for a shared block would break the exact cross-entry coupling). Under the
+shipped engines (\code{"exp"}, \code{"direct"}) every ratio / inverse-propensity
+fit is an independent per-target regression, so each entry has its own
+\code{coef_id} and the dedup is a no-op that reproduces the per-entry draw
+stream; the dedup is retained as correct general infrastructure for any
+shared-coefficient nuisance. -- recomputes the
+doubly-robust generated outcomes nonlinearly at the perturbed predictions
 \eqn{\hat\nu + B_k(\theta_k^* - \hat\theta_k)} with the weights \eqn{W} and
 the overlap-trim masks held FIXED at the original fit, and reads off the
 perturbed estimate per draw. By Neyman orthogonality the first-order term is

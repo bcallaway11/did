@@ -44,10 +44,17 @@
 #'  bands, `bstrap` must also be set to `TRUE`.  The default is
 #'  the value set in the MP object
 #' @param alp the significance level, default is value set in the MP object.
-#' @param clustervars A vector of variables to cluster on.  At most, there
-#'  can be two variables (otherwise will throw an error) and one of these
-#'  must be the same as idname which allows for clustering at the individual
-#'  level. Default is the variables set in the MP object
+#' @param clustervars A vector of variables to cluster on.  The default is
+#'  the cluster variables set in the MP object (i.e., the ones passed to
+#'  [att_gt()]).  Clustering at the aggregation stage reuses the per-unit
+#'  cluster information stored by [att_gt()], so `aggte` can only cluster
+#'  on `idname` and/or the variable that was passed to [att_gt()] via its
+#'  `clustervars` argument.  If a requested cluster variable cannot be
+#'  honored -- because `clustervars` was not supplied to [att_gt()], or
+#'  because it names a different variable than the one [att_gt()] clustered
+#'  on -- `aggte` issues a warning and reports standard errors that do NOT
+#'  account for clustering.  To obtain clustered standard errors for the
+#'  aggregated parameters, re-run [att_gt()] with the desired `clustervars`.
 
 #'
 #' @return An [`AGGTEobj`] object that holds the results from the

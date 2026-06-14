@@ -19,10 +19,13 @@ Icon?
 ^CITATION\.cff$
 ^R/honest_did$
 ^\.claude$
+^CLAUDE\.md$
 ^\.lintr$
+^\.vscode$
 ^revdep_manual$
 ^vignettes/.*_cache$
 ^benchmark$
+^benchmark-results$
 ^CSX2026\.pdf$
 ^Efficient_DiD\.pdf$
 ^Rplots\.pdf$
@@ -37,7 +40,6 @@ Icon?
 ^mailbox\.md$
 ^spec\.md$
 ^test-spec\.md$
-^CLAUDE\.md$
 ^data-raw$
 
 ^updates_made\.md$

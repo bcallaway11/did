@@ -10,7 +10,11 @@ edid_adaptive(
   fit_restricted,
   parameter = c("overall", "event_study"),
   e_set = NULL,
-  assume_efficient = NULL
+  assume_efficient = NULL,
+  ci = TRUE,
+  B = NULL,
+  level = 0.95,
+  st_cv = c("exact", "missadapt")
 )
 
 \method{print}{edid_adaptive}(x, digits = 4, ...)
@@ -73,6 +77,50 @@ such identity and keeps the internally consistent empirical covariance.
 An explicit \code{TRUE}/\code{FALSE} always overrides the AUTO rule. See
 Details.}
 
+\item{ci}{logical (default \code{TRUE}): attach the fixed-length confidence
+intervals (B-FLCIs) of Armstrong, Kline & Sun (2025, Section 4.2 of the
+published version; Section 4.2.2 and eqs. (7)-(8) in the arXiv-v6
+numbering used below) to the adaptive and soft-threshold estimates. See
+Details ("Inference: the AKS B-FLCIs").}
+
+\item{B}{numeric vector or \code{NULL}: additional bias bounds, in
+\eqn{\widehat\sigma_O} units (\eqn{\widetilde{B} = B/\sigma_O}, the units
+of the AKS tables), at which to report B-FLCIs. The 0-FLCI
+(\code{B = 0}) and the \eqn{\infty}-FLCI (\code{B = Inf}) are always
+reported, per the AKS recommendation to "report alongside an adaptive
+estimate the critical values for a 0-FLCI and \eqn{\infty}-FLCI, thereby
+summarizing the range of critical values needed to guarantee coverage
+under different assumptions". Values must lie on the tabulated grid
+\{0.01, 0.1, 0.2, ..., 9\} (matched within 1e-8, so \code{B = 0.3}
+works; MissAdapt's own exact floating-point match crashes there);
+\code{B = 0} maps to the \eqn{\widetilde{B} = 0.01} row (the authors'
+convention) and \code{B = Inf} to the \eqn{\widetilde{B} = 9} row (AKS:
+"we approximate an \eqn{\infty}-FLCI by setting \eqn{B = 9\sigma_O}").}
+
+\item{level}{confidence level; must be \code{0.95}. The MissAdapt
+critical-value tables are tabulated for the 95\\% level only (no other
+level is tabulated anywhere in their package), so any other value is an
+error.}
+
+\item{st_cv}{\code{"exact"} (default) or \code{"missadapt"}: source of the
+critical value for the \emph{soft-threshold} B-FLCI. \code{"exact"}
+solves AKS eq. (8) at runtime (deterministic quadrature + bisection) at
+the same soft threshold \eqn{\lambda^*(\rho)} that defines the
+soft-threshold estimate the interval is centered at. \code{"missadapt"}
+reproduces the shipped \code{flci_adaptive_st_cv.mat} critical values
+exactly, for comparability with MissAdapt output. The two differ because
+the shipped table is calibrated to a different threshold than the
+estimate: \code{calculate_B_FLCI.R} in MissAdapt interpolates the soft
+threshold for its coverage simulation against the \emph{signed}
+correlation grid while evaluating at \code{abs(corr)}, extrapolating
+beyond the grid and yielding a threshold of about 0.45-0.54 for every
+\eqn{\rho} instead of \eqn{\lambda^*(\rho)} from \code{thresholds.mat}
+(which reaches 1.12 at \eqn{|\rho| = 0.97}). At the correct
+\eqn{\lambda^*(\rho)}, the shipped critical values can undercover within
+\eqn{|b| \le B} (quadrature minimum coverage 0.74 at \eqn{\rho = -0.995},
+\eqn{\widetilde{B} = 9}, versus the nominal 0.95). The \emph{adaptive}
+(nonlinear) cv table has no such issue and is always used as shipped.}
+
 \item{x}{an \code{edid_adaptive} object}
 
 \item{digits}{number of significant digits to print}
@@ -93,6 +141,32 @@ the covariance actually used (equal to \code{VR} under
 \code{assume_efficient = TRUE}, in which case \code{GMM} equals \code{YR}
 exactly); \code{$assume_efficient} records the RESOLVED convention and
 \code{$assume_efficient_auto} whether it came from the AUTO rule.
+\code{$assume_efficient_fallback} is \code{TRUE} when the AUTO rule
+selected \code{assume_efficient = TRUE} from the \code{"efficient"} weight
+scheme label but the restricted fit was \emph{not} empirically tighter
+than the unrestricted one (\eqn{\widehat\sigma_R^2 \ge
+  \widehat\sigma_U^2}, so the imposed identity would give a non-positive
+over-identification variance), in which case it fell back to the empirical
+covariance (\code{assume_efficient = FALSE}) with a message rather than
+erroring -- the internally-consistent choice when the efficient leg is not
+tighter (an \emph{explicit} \code{assume_efficient = TRUE} still errors).
+
+When \code{ci = TRUE} (the default), the object additionally carries:
+\code{$ci}, a data.frame with one row per (variant, B) -- for
+\code{parameter = "event_study"} also per \code{e} -- with columns
+\code{variant} (\code{"adaptive"}, the headline interval, or
+\code{"soft_threshold"}), \code{B} (the requested bound, \code{0} /
+\code{Inf} / user-supplied), \code{B_tilde} (the table row actually used:
+0.01 for \code{B = 0}, 9 for \code{B = Inf}), \code{center} (that
+variant's point estimate), \code{sigma_U} (\eqn{= \sqrt{VU}}, the scale
+of every interval), \code{cv} (the 95\\% critical value
+\eqn{c_{.05}(\widetilde{B}; \hat\rho)}), \code{lower}/\code{upper}
+(\code{center} \eqn{\pm} \code{cv * sigma_U}), and \code{cv_source}
+(\code{"table"} for the shipped MissAdapt tables, \code{"exact"} for the
+runtime eq.-(8) solve -- the corrected-versus-shipped flag for the
+soft-threshold rows); plus \code{$sigma_U} (overall parameter only),
+\code{$ci_level} (\code{0.95}), \code{$st_cv} (the resolved soft-threshold
+cv source), and \code{$ci_note} (the one-line validity statement).
 }
 \description{
 Implements the adaptive event-study estimator of Proposition 5.1 in Chen,
@@ -122,8 +196,10 @@ All variances and covariances are computed from the per-unit influence
 functions of the two aggregations (cluster-robust when the fits carry
 cluster assignments). The construction requires
 \eqn{\widehat\sigma_O^2 > 0}; when the two estimators coincide (no
-over-identification direction, e.g. a just-identified design) the function
-stops with an informative error. Inputs whose \eqn{|corr|} or
+over-identification direction --- e.g. a just-identified design, or every
+cell pinned to its just-identified moment by the thin-cohort guard, see
+\code{min_pair_units} in \code{\link{edid}}) the function stops with an
+informative error. Inputs whose \eqn{|corr|} or
 \eqn{\widehat{t}_O} fall outside the tabulated grids are clamped to the grid
 boundary with a warning (no silent spline extrapolation).
 
@@ -152,17 +228,47 @@ is not bound-attaining (e.g. comparing two conservative fits, or
 constant-weight schemes with covariates), the identity is wrong and AUTO
 keeps the empirical covariance.
 
-\strong{No inference accompanies the adaptive estimate.} Proposition 5.1 is
-a point-estimation (risk) result; the paper makes no coverage claims for
-\eqn{\widehat{ES}_{avg}^{AKS}}, and no standard error is reported for it.
-Use the efficient or conservative fits (or the robustness frontier,
-\code{\link{edid_frontier}}) for inference.
+\strong{Inference: the AKS B-FLCIs.} Proposition 5.1 itself is a
+point-estimation (risk) result, and no conventional standard error attaches
+to the adaptive estimate: in the AKS normal limit experiment the local bias
+\eqn{b} of the restricted estimator cannot be consistently estimated, so
+neither can the asymptotic distribution of the adaptive estimator
+(Armstrong, Kline & Sun 2025, Section 4.2). Armstrong, Kline & Sun instead
+construct \emph{fixed-length confidence intervals} (B-FLCIs)
+\deqn{\{\hat\theta \pm c_{\alpha}(B/\sigma_O;\, \rho, \delta)\,\sigma_U\},}
+centered at the adaptive (or soft-threshold) estimate and scaled by
+\eqn{\sigma_U = \sqrt{VU}}, the \emph{unrestricted} (conservative)
+estimator's standard error. The critical value solves their eq. (8)
+(arXiv-v6 numbering): the smallest \eqn{\chi} such that
+\eqn{\sup_{|\tilde b| \le \tilde B} P(|\rho[\delta(Z_1+\tilde b)-\tilde b]
++ \sqrt{1-\rho^2} Z_2| > \chi) \le \alpha}, using the distributional
+representation of their eq. (7). The exact guarantee is: \emph{in the
+normal limit experiment with known covariance matrix, the B-FLCI covers the
+target with probability at least \eqn{1-\alpha} for every \eqn{(\theta, b)}
+with \eqn{|b| \le B}} -- i.e., uniformly over the bias \eqn{b} in
+\eqn{[-B, B]} (with \eqn{B} in absolute units; \eqn{\widetilde{B} =
+B/\sigma_O} in the tables' units), for all \eqn{\theta}, at the plugged-in
+correlation \eqn{\rho}. It is not conditional coverage and not uniform over
+\eqn{B}; the feasible version plugs in consistent estimates of
+\eqn{(\rho, \sigma_U, \sigma_O)}, justified by the local-asymptotic
+framework in which those are consistently estimable while \eqn{b} is not.
+Coverage degrades smoothly for \eqn{|b| > B}; setting \eqn{B = \infty}
+recovers the usual interval centered at the unrestricted estimator, and no
+interval centered at the adaptive estimate can be both short and uniformly
+valid over all biases (Armstrong & Kolesar 2021, Section 4). Reporting the
+\eqn{B = 0} and \eqn{B = \infty} intervals together -- the default here --
+brackets the critical values needed under any bias bound, which is the AKS
+recommendation. Coverage diagnostics in this implementation (and the
+eq.-(8) solve under \code{st_cv = "exact"}) use deterministic Gaussian
+quadrature over the representation (7) rather than MissAdapt's seeded
+Monte Carlo; the two agree to the MC noise level (~4e-3).
 
 \strong{Lookup-table provenance.} The shipped tables
 (\code{inst/extdata/aks_lookup/}) are the \code{policy.mat},
-\code{thresholds.mat}, and \code{emse_corr.mat} lookup tables of the
-MissAdapt replication package of Armstrong, Kline & Sun (Econometrica 2025),
-vendored byte-identically from
+\code{thresholds.mat}, \code{emse_corr.mat}, \code{flci_adaptive_cv.mat},
+\code{flci_adaptive_st_cv.mat}, and \code{flci_minimax_cv.mat} lookup
+tables of the MissAdapt replication package of Armstrong, Kline & Sun
+(Econometrica 2025), vendored byte-identically from
 \url{https://github.com/lsun20/MissAdapt} (commit \code{98d823a}; also
 archived as Zenodo record 16890198) and distributed under the MIT license
 (Copyright (c) 2023 Sophie Sun; see \code{inst/COPYRIGHTS}). The
@@ -171,7 +277,21 @@ reader is required at runtime) is built by \code{data-raw/aks_lookup.R},
 which documents the grid conventions and runs orientation/monotonicity/
 symmetry sanity checks, including a regression against the published
 MissAdapt vignette example; the provenance, commit, license, and grid
-conventions are embedded as attributes of the \code{.rds}.
+conventions are embedded as attributes of the \code{.rds}. The FLCI
+critical-value tables are 95\\%-only and tabulated to two decimals on the
+\eqn{\widetilde{B}} grid \{0.01, 0.1, ..., 9\} by the signed correlation
+grid \code{tanh(seq(-3, -0.05, 0.05))}; the lookup splines each
+\eqn{\widetilde{B}} row across the \eqn{|\rho|} grid and evaluates at the
+clamped \eqn{|\widehat\rho|} (exactly equivalent, by spline mirror
+symmetry, to the authors' signed-grid lookup for \eqn{\widehat\rho < 0},
+and well-defined -- not an off-grid extrapolation -- for
+\eqn{\widehat\rho > 0}, where the critical value is symmetric in
+\eqn{\rho}). The \code{flci_minimax_cv.mat} table (critical values for the
+B-minimax estimator) is vendored for completeness but not exposed:
+\code{edid_adaptive} computes no B-minimax point estimate, so there is no
+estimate for that interval to be centered at; the table is available
+internally as \code{.edid_aks_lookup()$flci_cv_minimax} for a future
+\code{B}-minimax estimator.
 }
 \section{Methods (by generic)}{
 \itemize{
@@ -201,7 +321,11 @@ Difference-in-Differences and Event Study Estimators. Section 5.2,
 Proposition 5.1. \cr
 Armstrong, T. B., Kline, P., & Sun, L. (2025). Adapting to
 Misspecification. \emph{Econometrica}, 93(6), 1981-2005. Replication
-package: MissAdapt, Zenodo 16890198.
+package: MissAdapt, Zenodo 16890198. (B-FLCIs: Section 4.2; equation
+numbers (7)-(8) cited here follow the arXiv v6 manuscript.) \cr
+Armstrong, T. B., & Kolesar, M. (2021). Sensitivity analysis using
+approximate moment condition models. \emph{Quantitative Economics},
+12(1), 77-108. (Impossibility of short CIs valid over all biases.)
 }
 \seealso{
 \code{\link{edid}}, \code{\link{edid_hausman}},

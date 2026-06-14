@@ -165,8 +165,9 @@ Default is \code{FALSE}.}
 
 \item{faster_mode}{This option enables a faster version of \code{did}, optimizing
 computation time for large datasets by improving data management within the package.
-The default is set to \code{FALSE}. While the difference is minimal for small datasets,
-it is recommended for use with large datasets.}
+The default is set to \code{TRUE}. Both modes produce identical results up to
+numerical precision; while the difference is minimal for small datasets,
+the speedup is substantial for large ones.}
 
 \item{pl}{Whether or not to use parallel processing}
 
@@ -198,8 +199,12 @@ In both cases the function should return a list that includes
 \code{att.inf.func} (an \verb{n x 1} influence function — one entry per
 observation passed into the estimator).
 The function can return other things as well, but these are
-the only two that are required. \code{est_method} is only used
-if covariates are included.}
+the only two that are required. With no covariates
+(\code{xformla = NULL}), the built-in methods ("dr", "ipw", "reg") all
+reduce to the unconditional difference-in-differences estimator, so
+the choice among them is irrelevant; a custom \code{est_method} function
+is still called (with an intercept-only \code{covariates} matrix) and
+determines the estimates.}
 
 \item{base_period}{Whether to use a "varying" base period or a
 "universal" base period.  Either choice results in the same

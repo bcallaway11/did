@@ -123,3 +123,55 @@ test_that("glance.MP and glance.AGGTEobj agree on nobs", {
     expect_equal(gl_mp$nobs, gl_agg$nobs, label = paste("nobs for", tp))
   }
 })
+
+# =============================================================================
+# Backwards compatibility: DIDparams lacking faster_mode (pre-2.2 saved objects)
+# =============================================================================
+
+test_that("glance.MP works when DIDparams lacks faster_mode", {
+  mp_old <- mp_slow
+  mp_old$DIDparams$faster_mode <- NULL
+  expect_identical(glance(mp_old), glance(mp_slow))
+})
+
+test_that("glance.AGGTEobj works when DIDparams lacks faster_mode", {
+  agg_old <- agg_slow[["dynamic"]]
+  agg_old$DIDparams$faster_mode <- NULL
+  expect_identical(glance(agg_old), glance(agg_slow[["dynamic"]]))
+})
+
+test_that("nobs.AGGTEobj works when DIDparams lacks faster_mode", {
+  agg_old <- agg_slow[["dynamic"]]
+  agg_old$DIDparams$faster_mode <- NULL
+  expect_identical(stats::nobs(agg_old), stats::nobs(agg_slow[["dynamic"]]))
+})
+
+# =============================================================================
+# Custom est_method (user-supplied function): glance reports "custom"
+# =============================================================================
+
+mp_custom <- suppressWarnings(suppressMessages(
+  att_gt(yname = "Y", xformla = ~X, data = data_gl, tname = "period",
+         idname = "id", gname = "G",
+         est_method = function(y1, y0, D, covariates, i.weights, inffunc, ...) {
+           DRDID::drdid_panel(y1 = y1, y0 = y0, D = D, covariates = covariates,
+                              i.weights = i.weights, boot = FALSE,
+                              inffunc = inffunc)
+         },
+         bstrap = FALSE, faster_mode = FALSE)
+))
+
+test_that("glance.MP works with a custom est_method function", {
+  gl <- glance(mp_custom)
+  expect_s3_class(gl, "data.frame")
+  expect_equal(nrow(gl), 1)
+  expect_equal(gl$est.method, "custom")
+})
+
+test_that("glance.AGGTEobj works with a custom est_method function", {
+  agg_custom <- suppressWarnings(aggte(mp_custom, type = "simple"))
+  gl <- glance(agg_custom)
+  expect_s3_class(gl, "data.frame")
+  expect_equal(nrow(gl), 1)
+  expect_equal(gl$est.method, "custom")
+})

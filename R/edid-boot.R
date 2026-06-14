@@ -36,21 +36,11 @@
   as.data.frame(data)
 }
 
-# Evaluate the fit's call arguments once in the caller's environment, with the
-# call normalized to NAMED arguments (match.call) so positional edid() calls
-# are handled. `data` is never re-evaluated here (the resample/override is
-# supplied separately). Same re-evaluation pattern as .edid_refit_moment_set().
-.edid_boot_call_args <- function(fit, envir) {
-  mc <- match.call(definition = edid, call = fit$call)
-  args <- as.list(mc)[-1L]
-  args$data <- NULL
-  lapply(args, function(a) eval(a, envir = envir))
-}
-
 # Cheap per-draw refit configuration: exact point estimates + the requested
 # aggregations, nothing else. The fit's weight_scheme / xformla / pt_assumption /
 # anticipation / trim_level / moment_set / clustervars are preserved through the
-# call re-evaluation; bands, the multiplier bootstrap, and ALL analytic
+# fit's stored argument snapshot (.edid_refit_args, edid-utils.R; legacy fits
+# fall back to call re-evaluation); bands, the multiplier bootstrap, and ALL analytic
 # estimation-effect corrections are switched off: the bootstrap only consumes
 # per-draw POINT estimates, and the nonparametric resample already carries the
 # weight-estimation and first-step nuisance-estimation channels (the very
@@ -58,7 +48,7 @@
 # analytically), so computing those SE corrections per draw would only slow each
 # refit without changing the draw distribution.
 .edid_boot_cheap_args <- function(fit, envir, aggregate) {
-  args <- .edid_boot_call_args(fit, envir)
+  args <- .edid_refit_args(fit, envir)
   args[["cband_method"]] <- NULL          # analytic default applies (bstrap is off below)
   args$aggregate         <- aggregate
   args$cband             <- FALSE
@@ -112,13 +102,18 @@
 
 # Dispatch draws serially or via fork-based parallel::mclapply (not on Windows,
 # matching edid()'s own `cores` semantics). Each draw re-seeds itself
-# (set.seed(seed_base + b)), so the two paths are numerically identical -- and
-# any draw whose forked worker dies without delivering a result (mclapply
-# returns NULL; the classic cause is a fork-unsafe multithreaded BLAS such as
-# macOS Accelerate) is simply recomputed serially, byte-identical to what the
-# fork would have produced. Forked-worker death is therefore a lost speed-up,
-# never a lost / silently-NA draw.
+# (set.seed(seed_base + b)), so the two paths are numerically identical. On
+# macOS Accelerate/vecLib BLAS we default back to serial before forking; otherwise
+# any forked draw that fails to deliver is recomputed serially.
 .edid_boot_lapply <- function(X, FUN, cores, label) {
+  if (cores > 1L && .edid_fork_blas_unsafe() &&
+      !isTRUE(getOption("edid_allow_fork_blas", FALSE))) {
+    message(label, ": cores > 1 requested on macOS with an Accelerate (vecLib) BLAS, ",
+            "which is not fork-safe. Falling back to serial (cores = 1). ",
+            "Link a fork-safe BLAS, or set options(edid_allow_fork_blas = TRUE) ",
+            "to force the fork path at your own risk.")
+    cores <- 1L
+  }
   if (cores > 1L && .Platform$OS.type != "windows") {
     res <- suppressWarnings(parallel::mclapply(X, FUN, mc.cores = cores))
     bad <- vapply(res, is.null, logical(1L))
@@ -264,9 +259,10 @@
 #'   \code{NULL}, a base seed is taken from the current RNG stream.
 #' @param cores Number of forked workers for the draw loop
 #'   (\code{\link[parallel]{mclapply}}); fork-based, so no effect on Windows.
-#'   Numerically identical to \code{cores = 1L}: every draw re-seeds itself, and
-#'   a draw whose forked worker dies without delivering (e.g. under a
-#'   fork-unsafe multithreaded BLAS such as macOS Accelerate) is recomputed
+#'   Numerically identical to \code{cores = 1L}: every draw re-seeds itself. On
+#'   macOS with an Accelerate/vecLib BLAS, \code{cores > 1} is automatically
+#'   downgraded to serial unless \code{options(edid_allow_fork_blas = TRUE)};
+#'   otherwise, any forked draw that dies without delivering is recomputed
 #'   serially with the same per-draw seed, with a warning.
 #' @param agg Which aggregations to bootstrap alongside the \eqn{ATT(g,t)}
 #'   cells: any subset of \code{c("event_study", "overall", "group",
@@ -536,9 +532,18 @@ print.edid_refit_bootstrap <- function(x, digits = 4, ...) {
 #' \eqn{\widehat{V}_{\theta,k} = n^{-2} H_k^{-1}\,
 #' (\mathrm{score}_k'\mathrm{score}_k)\, H_k^{-1}} from the stored M-estimator
 #' pieces, draws \eqn{\theta_k^* \sim N(\hat\theta_k, \widehat{V}_{\theta,k})}
-#' \emph{independently across nuisances} (the validated "INDEP" variant; the
-#' joint draw is dominated by it), recomputes the doubly-robust generated
-#' outcomes nonlinearly at the perturbed predictions
+#' \emph{independently across distinct coefficient blocks} (the validated
+#' "INDEP" variant; the joint draw is dominated by it) -- any nuisance entries
+#' that share ONE underlying fitted coefficient vector (identified by a common
+#' \code{coef_id} on the aux) are dedup'd and share a single draw per replication,
+#' mapped into each entry through its own chain-rule Jacobian (independent draws
+#' for a shared block would break the exact cross-entry coupling). Under the
+#' shipped engines (\code{"exp"}, \code{"direct"}) every ratio / inverse-propensity
+#' fit is an independent per-target regression, so each entry has its own
+#' \code{coef_id} and the dedup is a no-op that reproduces the per-entry draw
+#' stream; the dedup is retained as correct general infrastructure for any
+#' shared-coefficient nuisance. -- recomputes the
+#' doubly-robust generated outcomes nonlinearly at the perturbed predictions
 #' \eqn{\hat\nu + B_k(\theta_k^* - \hat\theta_k)} with the weights \eqn{W} and
 #' the overlap-trim masks held FIXED at the original fit, and reads off the
 #' perturbed estimate per draw. By Neyman orthogonality the first-order term is
@@ -561,9 +566,9 @@ print.edid_refit_bootstrap <- function(x, digits = 4, ...) {
 #'   \code{seed + b} and consumes the nuisance draws in a fixed order, so
 #'   results are reproducible and identical for any \code{cores} value.
 #' @param cores Number of forked workers for the draw loop (fork-based; no
-#'   effect on Windows). Numerically identical to \code{cores = 1L}; draws a
-#'   forked worker fails to deliver are recomputed serially with the same
-#'   per-draw seed (see \code{\link{edid_refit_bootstrap}}).
+#'   effect on Windows). Numerically identical to \code{cores = 1L}; the same
+#'   macOS fork-unsafe BLAS fallback and failed-worker serial recompute behavior
+#'   as \code{\link{edid_refit_bootstrap}} applies.
 #' @param agg Which aggregations to report alongside the cells: any subset of
 #'   \code{c("event_study", "overall", "group", "calendar")} (default all).
 #'   Aggregates are linear in the cells with weights held fixed at the original
@@ -662,10 +667,10 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
 
   caller <- parent.frame()
   data   <- .edid_boot_recover_data(fit, data, caller)
-  args   <- .edid_boot_call_args(fit, caller)
+  args   <- .edid_refit_args(fit, caller)
 
-  # Fit configuration: weight scheme and trim level live only in the call; the
-  # rest is stored on the fit object.
+  # Fit configuration from the stored argument snapshot (the %||% defaults cover
+  # legacy fits recovered through the call-re-evaluation fallback).
   ws <- args$weight_scheme %||% "efficient"
   ws <- match.arg(ws, c("efficient", "averaged", "gmm", "uniform"))
   if (!ws %in% c("efficient", "uniform")) {
@@ -688,6 +693,9 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
   # as the fit; under "ic" the per-fit selection is deterministic given the (verified-identical)
   # original data, so re-running it reproduces the fit's selected dimensions exactly.
   bs_df_fit  <- args$bs_df %||% 4L
+  # Cross-cohort ratio construction of the fit (the rebuild must match it exactly; the
+  # exactness guard below would otherwise reject). Snapshot fallback = edid()'s default.
+  ratio_method_fit <- fit$ratio_method %||% args$ratio_method %||% "exp"
   yname  <- args$yname
   if (is.null(yname)) stop("Could not recover `yname` from the fit's call.", call. = FALSE)
   alpha      <- fit$alpha %||% 0.05
@@ -731,10 +739,18 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
 
   # ---- first-step nuisances, plug-in regime (mirrors fit_edid_cells' .gbuild) -
   fold_id <- rep(1L, n)
+  # Thin-cohort guard threshold of the ORIGINAL fit (legacy fits without the field map to 2,
+  # the inert legacy threshold), so the rebuilt pair sets reproduce the fit's exactly --
+  # otherwise the exactness guard below would reject a guarded fit.
+  mpu_fit <- fit$min_pair_units %||% 2L
+  cohort_sizes_boot <- stats::setNames(
+    vapply(tg, function(gg) sum(panel$unit_cohorts == gg), numeric(1L)),
+    as.character(tg))
   gcache  <- stats::setNames(lapply(tg, function(g) {
     pairs_g <- enumerate_valid_pairs_edid(
       target_g = g, treatment_groups = tg, time_periods = tp, period_1 = p1,
       pt_assumption = pt, anticipation = panel$anticipation, moment_set = fit$moment_set)
+    pairs_g <- apply_thin_cohort_guard_edid(g, pairs_g, cohort_sizes_boot, mpu_fit, pt)$pairs
     gb <- list(pairs = pairs_g, pfn = NULL, prop_ratios = NULL, r_aux = NULL,
                inv_p = NULL, trim_keep = NULL)
     if (nrow(pairs_g) == 0L) return(gb)
@@ -746,20 +762,13 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
     gb$pfn <- pfn
     pr <- suppressWarnings(estimate_all_propensity_ratios(
       panel_obj = panel, g = g, pairs = pfn, bs_df = bs_df_fit, K_folds = 1L,
-      fold_id = fold_id, return_aux = TRUE))
+      fold_id = fold_id, return_aux = TRUE, ratio_method = ratio_method_fit))
     gb$prop_ratios <- pr$predictions
     gb$r_aux       <- pr$aux
     gb$inv_p <- suppressWarnings(estimate_all_inverse_propensities(
-      panel_obj = panel, g = g, pairs = pairs_g, bs_df = bs_df_fit, K_folds = 1L, fold_id = fold_id))
-    if (is.finite(trim_level)) {
-      ks <- union(names(gb$prop_ratios), names(gb$inv_p))
-      gb$trim_keep <- stats::setNames(lapply(ks, function(k) {
-        keep <- rep(TRUE, n)
-        rr <- gb$prop_ratios[[k]]; if (!is.null(rr)) keep <- keep & (abs(rr) < trim_level)
-        ip <- gb$inv_p[[k]];       if (!is.null(ip)) keep <- keep & (abs(ip) < trim_level)
-        keep
-      }), ks)
-    }
+      panel_obj = panel, g = g, pairs = pairs_g, bs_df = bs_df_fit, K_folds = 1L, fold_id = fold_id,
+      ratio_method = ratio_method_fit))
+    gb$trim_keep <- build_trim_keep_edid(gb$prop_ratios, gb$inv_p, trim_level, n)
     gb
   }), as.character(tg))
 
@@ -822,7 +831,8 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
       kp_cache <- new.env(parent = emptyenv())
       omega_arr <- omega_fun(panel, g, t, pairs_k, gb$prop_ratios, mcache_pred,
                              gb$inv_p, bw = kern_bw, K_mat = kern_K,
-                             return_pointwise = TRUE, kp_cache = kp_cache)
+                             return_pointwise = TRUE, kp_cache = kp_cache,
+                             keep = if (!is.null(keep_k) && ncol(keep_k) > 0L) keep_k[, 1L] else NULL)
       W  <- compute_pointwise_weights_edid(omega_arr, d = ncol(panel$covariate_matrix))
       wY <- rowSums(go * W)
     } else {
@@ -864,6 +874,20 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
   # sandwich from the stored M-estimator pieces (same objects and normalization
   # as the validation harnesses' fit_m/fit_r). Fallback fits (no coefficients)
   # are skipped, mirroring edid_nuisance_blocks().
+  #
+  # COEFFICIENT-BLOCK identity (cid). Independent per-target fits draw one
+  # Gaussian coefficient vector each (the validated "INDEP" variant) -- their cid
+  # defaults to the entry's own name, preserving the per-entry draw stream bit for
+  # bit. Any entries that SHARE one underlying fitted coefficient vector (a common
+  # aux coef_id) must instead share ONE draw per replication: independent draws per
+  # entry would break the perfect cross-entry coupling (e.g. reciprocal nuisances
+  # that move together through the shared block) and mis-state the perturbation
+  # variance of every aggregate. The draws are therefore dedup'd on cid: one
+  # N(0, V_theta) coefficient draw per DISTINCT cid, mapped into each entry through
+  # ITS OWN chain-rule Jacobian B. Under the shipped engines ("exp", "direct") every
+  # fit is independent per target, so each cid is unique and the dedup is a no-op;
+  # it is kept as correct general infrastructure (exercised by a synthetic
+  # shared-block unit test in test-edid-boot.R).
   infos <- list()
   for (g in tg) {
     gb <- gcache[[as.character(g)]]
@@ -872,7 +896,8 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
       if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
       infos[[paste0("r:", g, ":", key)]] <- list(
         type = "r", gkey = as.character(g), key = key, B = a$B_test,
-        L = .edid_boot_sqrt_cov((a$H_inv %*% crossprod(a$score_mat) %*% a$H_inv) / n^2))
+        cid = a$coef_id %||% paste0("r:", g, ":", key),
+        V = (a$H_inv %*% crossprod(a$score_mat) %*% a$H_inv) / n^2)
     }
   }
   for (key in names(mcache_aux)) {
@@ -880,7 +905,8 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
     if (is.null(a) || isTRUE(a$is_fallback) || is.null(a$B_test)) next
     infos[[paste0("m:", key)]] <- list(
       type = "m", gkey = NA_character_, key = key, B = a$B_test,
-      L = .edid_boot_sqrt_cov((a$H_inv %*% crossprod(a$score_mat) %*% a$H_inv) / n^2))
+      cid = a$coef_id %||% paste0("m:", key),
+      V = (a$H_inv %*% crossprod(a$score_mat) %*% a$H_inv) / n^2)
   }
   if (length(infos) == 0L) {
     stop(paste0(
@@ -889,6 +915,14 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
       call. = FALSE)
   }
   info_names <- names(infos)                       # fixed draw order => cores-invariant RNG
+  # One Cholesky/eigen square root per DISTINCT coefficient block (entries sharing a cid carry
+  # bitwise-identical score_mat/H_inv, hence the same V; computed once at the first encounter).
+  Lmap <- list()
+  for (nm in info_names) {
+    cid <- infos[[nm]]$cid
+    if (is.null(Lmap[[cid]])) Lmap[[cid]] <- .edid_boot_sqrt_cov(infos[[nm]]$V)
+    infos[[nm]]$V <- NULL                          # V no longer needed; keep the draw objects lean
+  }
 
   # ---- the draws ----------------------------------------------------------------
   seed_base <- .edid_boot_seed_base(seed, B)
@@ -896,14 +930,22 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
   on.exit(restore_rng(), add = TRUE)
   one_draw <- function(b) {
     set.seed(seed_base + b)
-    # one independent Gaussian coefficient draw per distinct nuisance ("INDEP");
-    # the SAME draw enters every cell that consumes that nuisance, so the
-    # cross-cell correlation needed by the aggregations is inherited coherently.
+    # one independent Gaussian coefficient draw per DISTINCT coefficient block (cid; "INDEP"
+    # across genuinely independent fits): the SAME draw enters every cell -- and every
+    # ENTRY -- that consumes that block, so both the cross-cell correlation needed by the
+    # aggregations and the cross-entry coupling of any shared-coefficient nuisances are
+    # inherited consistently. Draws happen at the first encounter of each cid in the fixed
+    # info_names order, so fits with no shared blocks reproduce the per-entry stream exactly.
     pr_pert <- lapply(gcache, function(gb) gb$prop_ratios)
     cm_pert <- mcache_pred
+    delta <- list()                                # cid -> the replication's coefficient draw
     for (nm in info_names) {
       ii <- infos[[nm]]
-      shift <- as.vector(ii$B %*% (ii$L %*% stats::rnorm(ncol(ii$L))))
+      if (is.null(delta[[ii$cid]])) {
+        Lc <- Lmap[[ii$cid]]
+        delta[[ii$cid]] <- as.vector(Lc %*% stats::rnorm(ncol(Lc)))
+      }
+      shift <- as.vector(ii$B %*% delta[[ii$cid]])
       if (ii$type == "r") {
         pr_pert[[ii$gkey]][[ii$key]] <- pr_pert[[ii$gkey]][[ii$key]] + shift
       } else {

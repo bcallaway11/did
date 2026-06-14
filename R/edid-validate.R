@@ -189,9 +189,15 @@ validate_edid_inputs <- function(
     warning("Only ", n_never, " never-treated unit(s): the comparison-group sampling variance is ",
             "degenerate and edid() standard errors are unreliable.", call. = FALSE)
   }
+  # Under pt_assumption = "all" this legacy warning is SUBSUMED by the thin-cohort guard
+  # (min_pair_units >= 2 always covers cohorts with fewer than 2 units, and the guard's
+  # warning in fit_edid_cells() is more specific: it names the cohorts, states that their
+  # cells are pinned to the just-identified moment, and recommends edid_refit_bootstrap()).
+  # Keep it for pt_assumption = "post", where the guard is inert by design (the moment set
+  # is already just-identified) but the degenerate-variance problem is still real.
   finite_cohort_sizes <- table(unit_ft[is.finite(unit_ft)])
   small_cohorts <- names(finite_cohort_sizes)[finite_cohort_sizes < 2L]
-  if (length(small_cohorts) > 0L) {
+  if (length(small_cohorts) > 0L && identical(pt_assumption, "post")) {
     warning("Treated cohort(s) ", paste(small_cohorts, collapse = ", "), " have fewer than 2 units: ",
             "their group-time sampling variance is degenerate and the reported standard errors for ",
             "those cells are understated.", call. = FALSE)

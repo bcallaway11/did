@@ -16,7 +16,8 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
                                                 bw = NULL, K_mat = NULL,
                                                 return_pointwise = FALSE,
                                                 psi_qw = NULL,
-                                                kp_cache = NULL) {
+                                                kp_cache = NULL,
+                                                keep = NULL) {
   if (!is.null(psi_qw))
     stop("compute_omega_star_kernel_fast_edid: the psi/misspec channel stays on compute_omega_star_cov_edid.")
   X_mat <- panel_obj$covariate_matrix
@@ -30,6 +31,13 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     inv_pg_vec <- inv_propensities[[as.character(g)]]; if (is.null(inv_pg_vec)) inv_pg_vec <- rep(1/pi_g, n)
     inv_pinf_vec <- inv_propensities[["Inf"]];          if (is.null(inv_pinf_vec)) inv_pinf_vec <- rep(1/pi_inf, n)
   } else { inv_pg_vec <- rep(1/pi_g, n); inv_pinf_vec <- rep(1/pi_inf, n) }
+  # Cell-common overlap-trim mask (see compute_omega_star_cov_edid's `keep`): zero every Eq.(3.12)
+  # prefactor at trimmed units so Omega* covers exactly the kept population the moments use.
+  kv <- NULL
+  if (!is.null(keep)) {
+    kv <- as.numeric(keep)
+    inv_pg_vec <- inv_pg_vec * kv; inv_pinf_vec <- inv_pinf_vec * kv
+  }
 
   # per-group kernel pieces (idx, Kg, Ks), memoized exactly as the original get_kp. A shared kp_cache (from
   # fit_edid_cells) lets the psi pass reuse these byte-identical slices instead of re-cutting K_mat[,idx].
@@ -94,8 +102,10 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
   inv_pgp_of <- function(j) {
     if (is.infinite(gp[j])) return(inv_pinf_vec)
     gpk <- as.character(gp[j])
-    if (!is.null(inv_propensities) && !is.null(inv_propensities[[gpk]])) return(inv_propensities[[gpk]])
-    pi_gp <- panel_obj$cohort_fractions[[gpk]]; if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n)
+    v <- if (!is.null(inv_propensities) && !is.null(inv_propensities[[gpk]])) inv_propensities[[gpk]]
+         else { pi_gp <- panel_obj$cohort_fractions[[gpk]]
+                if (!is.null(pi_gp) && pi_gp > 1e-15) rep(1/pi_gp, n) else rep(0, n) }
+    if (is.null(kv)) v else v * kv                              # overlap-trim mask (see keep)
   }
   # term 3/4 depend only on the single pair index: cov(w, v_j | g), precomputed per self pair
   term34_g <- vector("list", H)
@@ -161,18 +171,41 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     attr(Omega_array, "omega_bar") <- Omega_hat   # pooled (PSD after flooring): target for per-unit PD-blend
     return(Omega_array)
   }
-  eig <- eigen(Omega_hat, symmetric = TRUE)
-  d_cov <- ncol(X_mat); a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
-  mx <- max(eig$values); floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
-  lam_raw <- eig$values                                       # raw (pre-floor) eigenvalues, for the coupling IF
+  # Pooled floor: correlation-scale, exponent 1/3 (sqrt-n pooled object) -- IDENTICAL code to
+  # compute_omega_star_cov_edid's pooled tail (the build-invariance contract); see the rationale there.
+  # Legacy raw-scale d-dependent floor via options(edid_legacy_floor = TRUE).
+  if (isTRUE(getOption("edid_legacy_floor"))) {
+    eig <- eigen(Omega_hat, symmetric = TRUE)
+    d_cov <- ncol(X_mat); a_floor <- 0.7 * (5 - min(as.integer(d_cov), 4L)) / 10
+    mx <- max(eig$values); floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-a_floor) else 1e-12
+    lam_raw <- eig$values                                     # raw (pre-floor) eigenvalues, for the coupling IF
+    eig$values <- pmax(eig$values, floor_v)
+    out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+    attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    return(out)
+  }
+  # Degenerate (zero pooled variance) moments get scale 0 => zero floored-Omega rows => zero weight via
+  # the solver's pseudoinverse path (see compute_omega_star_cov_edid's pooled tail for the rationale).
+  dgo <- diag(Omega_hat)
+  if (all(is.finite(dgo)) && any(dgo > 0)) {
+    pos <- dgo > max(dgo) * 1e-12
+    dsc <- ifelse(pos, 1 / sqrt(pmax(dgo, max(dgo) * 1e-300)), 0)
+    inv_dsc <- ifelse(pos, sqrt(pmax(dgo, 0)), 0)   # pmax: ifelse evaluates both branches (avoid sqrt(<0) NaN warnings)
+  } else {
+    dsc <- rep(1, H); inv_dsc <- rep(1, H)
+  }
+  S   <- t(t(Omega_hat * dsc) * dsc)
+  S   <- 0.5 * (S + t(S))
+  eig <- eigen(S, symmetric = TRUE)
+  mx  <- max(eig$values)
+  floor_v <- if (is.finite(mx) && mx > 0) mx * panel_obj$n^(-1/3) else 1e-12
+  lam_raw <- eig$values                                       # raw (pre-floor) SCALED eigenvalues, for the coupling IF
   eig$values <- pmax(eig$values, floor_v)
-  out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
-  # Attach the raw eigendecomposition so the AVERAGED weight channel can build the eigen-floor-aware coupling
-  # (Daleckii-Krein derivative of the FLOORED inverse), exactly as the sieve builder does. The pooled kernel
-  # Omega-bar floor BINDS in high-H cells (the H moments are strongly correlated, so most eigenvalues sit at the
-  # relative floor mx * n^-a); there the smooth -sym(q w') adjoint mis-scales psi_Omega (the floored directions
-  # do not respond to dOmega-bar). Inert for the estimate itself (attributes are stripped by solve/%*%); read
-  # only by compute_obar_coupling_edid.
-  attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+  Sf  <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
+  out <- t(t(Sf * inv_dsc) * inv_dsc)
+  # Scaled eigendecomposition + scale for the AVERAGED weight channel's eigen-floor-aware coupling
+  # (Daleckii-Krein derivative of the FLOORED inverse, on the scaled system). Inert for the estimate itself
+  # (attributes are stripped by solve/%*%); read only by compute_obar_coupling_edid.
+  attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
   out
 }

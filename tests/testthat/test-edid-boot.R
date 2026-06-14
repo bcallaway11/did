@@ -182,6 +182,33 @@ test_that("refit bootstrap validates inputs and recovers data from the fit's cal
   expect_identical(r0$att_gt, r1$att_gt)
 })
 
+test_that("bootstrap tools refit from the fit's stored args (wrapper-built fits, mutated variables)", {
+  df <- make_panel_boot(9L, n = 120L)
+
+  # `...`-forwarding wrapper: the stored call holds `..N` promises, which the
+  # legacy call re-evaluation could not handle ("..3 used in an incorrect
+  # context"); the per-draw refits now consume fit$args.
+  wrap <- function(...) edid(...)
+  fit_w <- wrap(df, "y", "id", "time", "g", xformla = ~ x1, weight_scheme = "uniform",
+                aggregate = "event_study", cband = FALSE)
+  rb <- edid_refit_bootstrap(fit_w, data = df, B = 5L, seed = 3L, agg = "overall")
+  expect_s3_class(rb, "edid_refit_bootstrap")
+  pb <- edid_perturbation_bootstrap(fit_w, data = df, B = 9L, seed = 3L, agg = "overall")
+  expect_s3_class(pb, "edid_perturbation_bootstrap")
+  expect_identical(pb$weight_scheme, "uniform")
+
+  # Mutating a caller variable used in the original call must not change the
+  # refit configuration (previously it was silently re-evaluated).
+  xf  <- ~ x1
+  fit <- edid(df, "y", "id", "time", "g", xformla = xf, weight_scheme = "uniform",
+              aggregate = "event_study", cband = FALSE)
+  ref <- edid_refit_bootstrap(fit, data = df, B = 5L, seed = 13L, agg = "overall")
+  xf <- ~ I(x1^3)
+  mut <- edid_refit_bootstrap(fit, data = df, B = 5L, seed = 13L, agg = "overall")
+  expect_identical(ref$att_gt, mut$att_gt)
+  expect_identical(ref$aggregates, mut$aggregates)
+})
+
 # ===========================================================================
 # edid_perturbation_bootstrap: uniform and efficient covariate fits
 # ===========================================================================
@@ -295,4 +322,85 @@ test_that("refit bootstrap widens the long-horizon CI on a weak-overlap design",
   # (study: bootstrap-SE/plug-in-SE ~ 1.2-1.4 on this cell at n in the hundreds)
   expect_gt(mean(ratios), 1.1)
   expect_true(all(ratios > 0.4 & ratios < 3))
+})
+
+# ===========================================================================
+# Shared-coefficient-block draw dedup (coef_id). The shipped engines ("exp",
+# "direct") fit every nuisance independently per target, so each entry carries
+# its own coef_id and the perturbation bootstrap's cid dedup is a no-op. The
+# dedup is retained as correct general infrastructure for ANY shared-coefficient
+# nuisance (the now-removed "coherent" engine was its first consumer); this
+# synthetic test exercises the contract directly so it stays covered:
+#   * entries sharing ONE coef_id consume ONE Gaussian draw per replication and
+#     produce shifts that are perfectly COUPLED (the same delta mapped through
+#     each entry's own Jacobian B);
+#   * entries with DISTINCT coef_ids consume independent draws;
+#   * the draw is seed-reproducible and fixed-order (hence cores-invariant).
+# It mirrors the exact recipe of edid_perturbation_bootstrap()'s one_draw():
+# set.seed(seed_base + b); one .edid_boot_sqrt_cov() draw per distinct cid at
+# first encounter in the fixed info order; shift = B %*% delta[[cid]].
+# ===========================================================================
+test_that("perturbation-bootstrap cid dedup: shared blocks share one draw; distinct blocks draw independently", {
+  set.seed(404)
+  q <- 3L
+  Vs <- crossprod(matrix(rnorm(q * q), q, q)) + diag(q)   # one shared coefficient covariance
+  Ba <- matrix(rnorm(7 * q), 7, q)                        # entry A's chain-rule Jacobian (7 units)
+  Bb <- matrix(rnorm(7 * q), 7, q)                        # entry B's Jacobian, SAME block
+  Vd <- crossprod(matrix(rnorm(q * q), q, q)) + diag(q)   # an independent block's covariance
+  Bd <- matrix(rnorm(7 * q), 7, q)
+
+  # Fixed-order info list, exactly as one_draw consumes it: A and B share cid "S"; D is its own.
+  infos <- list(
+    A = list(cid = "S", B = Ba, V = Vs),
+    B = list(cid = "S", B = Bb, V = Vs),
+    D = list(cid = "D", B = Bd, V = Vd))
+  info_names <- names(infos)
+
+  # One sqrt per DISTINCT cid (the production Lmap), using the package helper.
+  Lmap <- list()
+  for (nm in info_names) {
+    cid <- infos[[nm]]$cid
+    if (is.null(Lmap[[cid]])) Lmap[[cid]] <- did:::.edid_boot_sqrt_cov(infos[[nm]]$V)
+  }
+  expect_length(Lmap, 2L)                                  # only TWO distinct blocks: "S" and "D"
+
+  one_draw <- function(seed_b) {
+    set.seed(seed_b)
+    delta <- list(); n_rnorm <- 0L; shift <- list()
+    for (nm in info_names) {
+      ii <- infos[[nm]]
+      if (is.null(delta[[ii$cid]])) {
+        Lc <- Lmap[[ii$cid]]
+        delta[[ii$cid]] <- as.vector(Lc %*% stats::rnorm(ncol(Lc)))
+        n_rnorm <- n_rnorm + ncol(Lc)
+      }
+      shift[[nm]] <- as.vector(ii$B %*% delta[[ii$cid]])
+    }
+    list(delta = delta, shift = shift, n_rnorm = n_rnorm)
+  }
+
+  seed_base <- did:::.edid_boot_seed_base(1234L, 8L)
+  d1 <- one_draw(seed_base + 1L)
+
+  # (1) shared cid "S" was drawn ONCE: A and B map the SAME delta.
+  expect_length(d1$delta, 2L)                              # two distinct coefficient draws total ("S","D")
+  expect_named(d1$delta, c("S", "D"))
+  expect_equal(d1$shift$A, as.vector(Ba %*% d1$delta[["S"]]), tolerance = 1e-12)
+  expect_equal(d1$shift$B, as.vector(Bb %*% d1$delta[["S"]]), tolerance = 1e-12)
+  # the coupling is through the SAME underlying coefficient draw (an independent-draw model is
+  # ruled out): A and B move as deterministic images of one delta_S, yet (distinct Jacobians)
+  # are not equal to each other.
+  expect_false(isTRUE(all.equal(d1$shift$A, d1$shift$B)))
+  # only q draws for the shared block + q for the independent one = 2q (NOT 3q)
+  expect_identical(d1$n_rnorm, 2L * q)
+
+  # (2) reproducibility + fixed order: same seed => identical draw (hence cores-invariant).
+  d1b <- one_draw(seed_base + 1L)
+  expect_identical(d1$delta, d1b$delta)
+  expect_identical(d1$shift, d1b$shift)
+
+  # (3) different replication => different draw for both blocks.
+  d2 <- one_draw(seed_base + 2L)
+  expect_false(isTRUE(all.equal(d1$delta[["S"]], d2$delta[["S"]])))
+  expect_false(isTRUE(all.equal(d1$delta[["D"]], d2$delta[["D"]])))
 })
