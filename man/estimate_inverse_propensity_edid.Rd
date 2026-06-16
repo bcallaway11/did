@@ -10,7 +10,8 @@ estimate_inverse_propensity_edid(
   X_test,
   gp,
   bs_df = 4L,
-  return_aux = FALSE
+  return_aux = FALSE,
+  weights = NULL
 )
 }
 \arguments{
@@ -25,6 +26,10 @@ estimate_inverse_propensity_edid(
 \item{bs_df}{integer B-spline degrees of freedom (default 4), or \code{"ic"}
 for the per-fit information-criterion selection (see
 \code{\link{select_bs_df_ic_edid}}; loss \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]})}
+
+\item{weights}{optional numeric vector of nonnegative observation weights aligned
+with \code{X_train}; when supplied the sieve is fit by WLS and the aux carries the
+obs-weighted score / Hessian. \code{NULL} (default) is byte-identical to OLS.}
 }
 \value{
 numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0.

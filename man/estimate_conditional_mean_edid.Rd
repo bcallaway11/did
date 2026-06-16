@@ -11,7 +11,8 @@ estimate_conditional_mean_edid(
   X_test,
   gp,
   bs_df = 4L,
-  return_aux = FALSE
+  return_aux = FALSE,
+  weights = NULL
 )
 }
 \arguments{
@@ -29,6 +30,10 @@ estimate_conditional_mean_edid(
 for the per-fit information-criterion selection (see
 \code{\link{select_bs_df_ic_edid}}; least-squares loss
 \eqn{\mathbb{E}_n[G_{g'} (Y_\Delta - m)^2]})}
+
+\item{weights}{optional numeric vector of nonnegative observation weights aligned
+with \code{X_train}; the within-cohort regression is then WLS and the aux carries
+the obs-weighted score / Hessian. \code{NULL} (default) is byte-identical to OLS.}
 }
 \value{
 numeric vector length n_test. Under \code{bs_df = "ic"} the selected
