@@ -36,7 +36,12 @@ make_omega_panel <- function(n = 300, seed = 21) {
   rows <- lapply(1:Tn, function(tt) {
     ht  <- (tt - 1) * (0.5 * x1u + 0.45 * x1u^2)
     tau <- ifelse(is.finite(gc) & tt >= gc, 1, 0)
-    data.frame(id = 1:n, t = tt, g = ifelse(is.finite(gc), gc, 0),
+    # Never-treated MUST stay Inf: these tests call prepare_edid_panel / the Omega
+    # builders DIRECTLY, which expect the internal never-treated convention (Inf).
+    # (edid() recodes a user-facing g = 0 to Inf at its boundary; a direct panel build
+    # does not, so coding never-treated as 0 here would make 0 a phantom treatment group
+    # with pi_inf = 0 -> 1/pi_inf = Inf -> Inf * 0 = NaN in the Eq.(3.12) prefactors.)
+    data.frame(id = 1:n, t = tt, g = gc,
                x1 = x1u, w = wu, y = alph + 0.3 * tt + ht + tau + rnorm(n))
   })
   do.call(rbind, rows)

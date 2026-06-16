@@ -14,7 +14,6 @@ knitr::opts_chunk$set(
 
 ```{r, echo=FALSE, results="hide", warning=FALSE, message=FALSE}
 library(did)
-library(ggpubr)
 library(BMisc)
 data(mpdta)
 ```
@@ -123,7 +122,6 @@ This provides estimates of group-time average treatment effects for all groups i
 It is often also convenient to plot the group-time average treatment effects.  This can be done using the **ggdid** command:
 
 ```{r echo=FALSE}
-library(gridExtra)
 library(ggplot2)
 ```
 
