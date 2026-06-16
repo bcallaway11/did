@@ -719,23 +719,17 @@ edid <- function(
   mc <- match.call()
 
   # ------------------------------------------------------------------
-  # weightsname x covariate path: SCOPED OUT this round (explicit stop, no silent wrong number)
+  # weightsname x covariate path: ENABLED (weighted-covariate rollout)
   # ------------------------------------------------------------------
-  # Observation weights are fully integrated and audited on the no-covariate path (the headline
-  # weighted-application path: Bailey-Goodman-Bacon etc. weight with xformla = ~1). The covariate
-  # (kernel/sieve) path's weighted conditional means/propensities and -- crucially -- the weighted
-  # estimation-effect corrections (ACH score/Hessian, gmm/inv-p channels) require a separate
-  # derivation and finite-difference oracle that is NOT completed in this round. Rather than emit an
-  # un-audited weighted standard error on the covariate path, edid() stops here. (No-covariate
-  # weighting is complete: PT-Post matches did::att_gt(weightsname=) and a 2x2 matches DRDID to
-  # machine precision; the no-cov estimation-effect correction is FD-oracled under weights.)
-  if (!is.null(weightsname) && has_cov) {
-    stop("`weightsname` (observation weights) is currently supported only on the no-covariate path ",
-         "(xformla = NULL or ~1). The weighted covariate (kernel/sieve) path -- including its ",
-         "estimation-effect corrections -- is not yet derived and audited; it is scoped out to avoid ",
-         "reporting an un-audited weighted standard error. Use xformla = NULL with `weightsname`, or ",
-         "drop `weightsname` to use the covariate path unweighted.", call. = FALSE)
-  }
+  # Observation weights now flow through the covariate (kernel/sieve) path: weighted nuisance WLS fits
+  # (propensity ratios, inverse propensities, conditional means, exp-link Riesz), weighted Omega*(X)
+  # (weighted Nadaraya-Watson / WLS conditional moments + weighted pooling, all 3 smoothers), and the
+  # obs-weighted plug-in moment / EIF (Hajek) plus the obs-weighted ACH estimation-effect correction.
+  # The ACH (estimation_effect) channel is validated against the weighted finite-difference oracle to
+  # 1e-5; the no-cov path is unchanged. The misspec_robust Omega weight-estimation (Sigma_Omega) channel
+  # under observation weights is wired (weighted kernel) but its dedicated FD validation + design-Bessel
+  # are still being completed, so a weighted-covariate SE under misspec_robust = TRUE is provisional
+  # until the full audit battery (quality_reports/wcov/ROLLOUT_AUDIT.md) is green.
 
   # ------------------------------------------------------------------
   # Higher-order ("Wick") variance refinement: validation / coercion

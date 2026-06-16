@@ -26,7 +26,16 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
   col_t <- panel_obj$period_to_col[[as.character(t)]]
   col_1 <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
   mask_g <- panel_obj$cohort_masks[[as.character(g)]]; mask_inf <- panel_obj$never_treated_mask
-  pi_g <- panel_obj$cohort_fractions[[as.character(g)]]; pi_inf <- sum(mask_inf) / n
+  # Observation weights (NULL => byte-identical unweighted path). Omega*(X) is a CONDITIONAL covariance,
+  # so weights enter LINEARLY in two independent places: (i) weighted Nadaraya-Watson conditional moments
+  # (w folded into the kernel COLUMNS + the denominator inside get_kp), and (ii) weighted pooling over the
+  # marginal X (wmean_o / the avg_block row weight). pi_g is already obs-weighted via cohort_fractions;
+  # only pi_inf computes a raw never-treated share and needs the obs-weighted version.
+  uw   <- panel_obj$unit_weights
+  .nrm <- if (is.null(uw)) n else sum(uw)
+  wmean_o <- if (is.null(uw)) function(x) mean(x) else function(x) sum(uw * x) / .nrm
+  pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
+  pi_inf <- if (is.null(uw)) sum(mask_inf) / n else sum(uw[mask_inf]) / .nrm
   if (!is.null(inv_propensities)) {
     inv_pg_vec <- inv_propensities[[as.character(g)]]; if (is.null(inv_pg_vec)) inv_pg_vec <- rep(1/pi_g, n)
     inv_pinf_vec <- inv_propensities[["Inf"]];          if (is.null(inv_pinf_vec)) inv_pinf_vec <- rep(1/pi_inf, n)
@@ -46,7 +55,9 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     if (exists(key, envir = kpiece, inherits = FALSE)) return(get(key, envir = kpiece))
     idx <- which(mask)
     kp <- if (length(idx) < 2L) list(ok = FALSE) else {
-      Kg <- K_mat[, idx, drop = FALSE]; Ks <- rowSums(Kg); Ks[Ks < 1e-15] <- NA_real_
+      Kg <- K_mat[, idx, drop = FALSE]
+      if (!is.null(uw)) Kg <- Kg * rep(uw[idx], each = n)   # weighted NW: K_{i,l} -> w_l K_{i,l} (col l = group unit l)
+      Ks <- rowSums(Kg); Ks[Ks < 1e-15] <- NA_real_
       list(ok = TRUE, idx = idx, Kg = Kg, Ks = Ks)
     }
     assign(key, kp, envir = kpiece); kp
@@ -121,7 +132,7 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
       if (is_self[j]) o <- o - inv_pg_vec * term34_g[[j]]                     # term3
       if (is_self[k]) o <- o - inv_pg_vec * term34_g[[k]]                     # term4
       if (identical(gp[j], gp[k])) o <- o + inv_pgp_of(j) * ccov(cm_v_gp[[j]], cm_v_gp[[k]])  # term5
-      ojk <- mean(o); Omega_hat[j, k] <- ojk; if (k != j) Omega_hat[k, j] <- ojk  # needed by the shrinkage step
+      ojk <- wmean_o(o); Omega_hat[j, k] <- ojk; if (k != j) Omega_hat[k, j] <- ojk  # weighted pooling over marginal X
       Omega_array[, j, k] <- o; if (k != j) Omega_array[, k, j] <- o
     }
   } else {
@@ -131,13 +142,16 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     # symmetry (crossprod returns a symmetric block) and that all pairs in a group share the same kernel weights.
     # With prefac_i = prefactor and cWp[l] = sum_i prefac_i Kg[i,l]/Ks_i:
     #   mean_i prefac_i E_K[V_jV_k|X_i] = (1/n) Vc' diag(cWp) Vc ;  mean_i prefac_i muV_j muV_k = (1/n) M' diag(prefac) M
+    # Weighted pooling: row weight w_i folds into the prefactor (pf), normalization is sum(w); the column
+    # weight w_l is already in kp$Kg (get_kp). NULL-guard keeps the unweighted path byte-identical (/n).
     avg_block <- function(prefac, Vc, M, kp) {
-      wrow <- prefac / kp$Ks; wrow[is.na(wrow)] <- 0
+      pf   <- if (is.null(uw)) prefac else uw * prefac
+      wrow <- pf / kp$Ks; wrow[is.na(wrow)] <- 0
       cWp  <- colSums(wrow * kp$Kg); Ms <- M; Ms[is.na(Ms)] <- 0
-      (crossprod(Vc, cWp * Vc) - crossprod(Ms, prefac * Ms)) / n
+      (crossprod(Vc, cWp * Vc) - crossprod(Ms, pf * Ms)) / .nrm
     }
-    Omega_hat <- matrix(mean(term1_const), H, H)                              # term1 (constant block)
-    c3 <- vapply(seq_len(H), function(j) if (is_self[j]) mean(-inv_pg_vec * term34_g[[j]]) else 0, numeric(1))
+    Omega_hat <- matrix(wmean_o(term1_const), H, H)                           # term1 (constant block)
+    c3 <- vapply(seq_len(H), function(j) if (is_self[j]) wmean_o(-inv_pg_vec * term34_g[[j]]) else 0, numeric(1))
     Omega_hat <- Omega_hat + outer(c3, rep(1, H)) + outer(rep(1, H), c3)      # term3 + term4 (rank-2)
     if (isTRUE(kp_inf$ok)) {                                                  # term2 (group Inf, all H pairs)
       Uc <- vapply(cm_u_inf, function(z) z$vc, numeric(length(kp_inf$idx)))

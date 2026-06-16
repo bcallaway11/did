@@ -724,7 +724,8 @@ fit_edid_cells <- function(
               "would use complete cases while the EIF spans all units, breaking the empirical mean-zero ",
               "identity and invalidating the SE. edid requires complete cases: drop incomplete units ",
               "before calling, or inspect cell (%s,%s)."), g, t, g, t), call. = FALSE)
-          att_gt   <- mean(wY_i, na.rm = TRUE)                               # E_n[w(X_i)' Ytilde_i]
+          att_gt   <- if (is.null(panel_obj$unit_weights)) mean(wY_i, na.rm = TRUE) else  # E_n[w(X_i)' Ytilde_i]
+                        stats::weighted.mean(wY_i, panel_obj$unit_weights, na.rm = TRUE)   # Hajek under obs weights
           eif_gt   <- compute_eif_cov_edid(panel_obj, gen_out_mat, W_pw, att_gt, g, eif_keep, eif_mkept)
           if (isTRUE(estimation_effect))                                    # ACH first-step correction (W frozen)
             eif_gt <- eif_gt - compute_ach_correction_cov_edid(
@@ -808,9 +809,17 @@ fit_edid_cells <- function(
             uniform = rep(1 / H_local, H_local),
             # pairwise.complete.obs so a single NA moment does not NA-poison the whole
             # covariance (compute_efficient_weights_edid then guards any residual non-finite).
-            gmm     = compute_efficient_weights_edid(stats::cov(gen_out_mat, use = "pairwise.complete.obs")),
+            # Under obs weights the gmm weight inverts the WEIGHTED covariance of the generated
+            # outcomes (cov.wt) so the gmm combination is optimal under the reweighted measure;
+            # NULL weights / NA columns fall back to the unweighted pairwise covariance (byte-identical).
+            gmm     = compute_efficient_weights_edid(
+                        if (is.null(panel_obj$unit_weights) || anyNA(gen_out_mat))
+                          stats::cov(gen_out_mat, use = "pairwise.complete.obs")
+                        else stats::cov.wt(gen_out_mat, wt = panel_obj$unit_weights, method = "unbiased")$cov),
             compute_efficient_weights_edid(omega))   # "averaged"
-          att_gt   <- sum(weights * colMeans(gen_out_mat, na.rm = TRUE))
+          .cm_go   <- if (is.null(panel_obj$unit_weights)) colMeans(gen_out_mat, na.rm = TRUE) else
+                        colSums(panel_obj$unit_weights * gen_out_mat, na.rm = TRUE) / sum(panel_obj$unit_weights)
+          att_gt   <- sum(weights * .cm_go)                                   # obs-weighted column means under weights
           if (isTRUE(getOption("edid_store_weights"))) {       # validation hook (OFF): constant weight vector per cell
             wacc <- getOption("edid_weights_acc", list())       # mirror of edid_store_wpw for the constant-weight schemes;
             wacc[[paste0(g, "_", t)]] <- weights                # lets the averaged/gmm jackknife freeze the full-sample W
@@ -882,7 +891,9 @@ fit_edid_cells <- function(
             if (K_use > 1L)
               stop("the misspec_robust / Sigma_Omega channel requires plug-in nuisances (K = 1).", call. = FALSE)
             if (is.null(.fw) && !anyNA(gen_out_mat)) {
-              Cmat  <- stats::cov(gen_out_mat, use = "pairwise.complete.obs")     # the SAME C the gmm weights invert
+              .uw_gmm <- panel_obj$unit_weights                                  # obs weights (NULL => unweighted)
+              Cmat  <- if (is.null(.uw_gmm)) stats::cov(gen_out_mat, use = "pairwise.complete.obs")   # the SAME C the
+                       else stats::cov.wt(gen_out_mat, wt = .uw_gmm, method = "unbiased")$cov         # gmm weights invert
               C_inv <- if (any(!is.finite(Cmat))) NULL else {
                 kappa <- tryCatch(check_condition_edid(Cmat), error = function(e) NA_real_)
                 if (!is.finite(kappa) || kappa > EDID_COND_THRESH) compute_pseudoinverse_edid(Cmat)
@@ -891,12 +902,13 @@ fit_edid_cells <- function(
                 num <- drop(C_inv %*% rep(1, ncol(gen_out_mat))); dd <- sum(num)
                 if (!is.finite(dd) || abs(dd) < EDID_DENOM_EPS) NULL else num / dd }
               if (!is.null(w_chk) && max(abs(weights - w_chk)) < 1e-8) {
-                mbar <- colMeans(gen_out_mat)
+                mbar <- if (is.null(.uw_gmm)) colMeans(gen_out_mat) else colSums(.uw_gmm * gen_out_mat) / sum(.uw_gmm)
                 B    <- C_inv - outer(weights, drop(crossprod(rep(1, length(weights)), C_inv)))  # C^-1 - w 1'C^-1
                 u    <- drop(crossprod(B, mbar))
                 dc   <- sweep(gen_out_mat, 2L, mbar, "-")
                 psi_plug  <- -(as.numeric(dc %*% u) * as.numeric(dc %*% weights)) +
                              as.numeric(crossprod(u, Cmat %*% weights))           # exp07 plug-in sample-cov IF
+                if (!is.null(.uw_gmm)) psi_plug <- .uw_gmm * psi_plug             # obs-weighted IF (folds into the uw-eif)
                 nuis_corr <- compute_gmm_weight_correction_cov_edid(panel_obj, g, t, pairs, prop_ratios,
                                cond_means, u, weights, m_aux, r_aux, pt_assumption,
                                trim_keep = trim_keep)                              # ACH correction for u'Cw

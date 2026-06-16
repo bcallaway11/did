@@ -131,10 +131,20 @@ test_that("weightsname validation rejects bad columns and the covariate path is 
   # time-varying weight rejected
   dv <- d; dv$wv <- dv$yr
   expect_error(edid(dv, "y", "id", "yr", "g", weightsname = "wv"), "time-invariant")
-  # covariate path + weights => explicit stop (no silent SE)
+  # covariate path + weights: now SUPPORTED (weighted-covariate rollout) -- runs (no guard stop), and a
+  # CONSTANT weight column reproduces the unweighted covariate fit (the FD-oracle validation of the
+  # weighted estimation-effect lives in test-edid-weighted-cov-e2e.R).
   dx <- d; set.seed(1); xmap <- stats::rnorm(length(unique(d$id))); dx$x <- xmap[match(dx$id, sort(unique(dx$id)))]
-  expect_error(edid(dx, "y", "id", "yr", "g", xformla = ~x, weightsname = "w"),
-               "only on the no-covariate path")
+  fwx <- suppressWarnings(edid(dx, "y", "id", "yr", "g", xformla = ~x, weightsname = "w",
+              weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, misspec_robust = FALSE))
+  expect_false(is.null(fwx$att_gt))
+  dxc <- dx; dxc$w <- 7                                 # constant column -> unit_weights == 1
+  fxc <- suppressWarnings(edid(dxc, "y", "id", "yr", "g", xformla = ~x, weightsname = "w",
+              weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, misspec_robust = FALSE))
+  fxu <- suppressWarnings(edid(dx,  "y", "id", "yr", "g", xformla = ~x,
+              weight_scheme = "efficient", aggregate = "none", bstrap = FALSE, misspec_robust = FALSE))
+  ok <- is.finite(fxc$att_gt$se) & is.finite(fxu$att_gt$se)
+  expect_equal(fxc$att_gt$se[ok], fxu$att_gt$se[ok], tolerance = 1e-8)
 })
 
 test_that("the weighted estimand differs from the unweighted one (sanity)", {
