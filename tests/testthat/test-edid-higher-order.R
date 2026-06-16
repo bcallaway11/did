@@ -199,9 +199,13 @@ test_that("edid(higher_order = TRUE) vcov matches reported higher-order SEs", {
 
   fS <- edid(df, "y", "id", "t", "g", xformla = ~ x1, weight_scheme = "efficient",
              aggregate = "overall", bstrap = FALSE, seed = 1L, higher_order = TRUE)
+  # `$overall` is now ALWAYS the dynamic event-study average (the average of the post-treatment
+  # event study), so vcov(which = "overall") is its higher-order covariance. `$simple` (the
+  # cohort-share aggregate) is still computed and available separately.
   expect_false(is.null(fS$simple))
+  expect_false(is.null(fS$overall))
   expect_equal(as.numeric(sqrt(vcov(fS, which = "overall")[1L, 1L])),
-               fS$simple$overall.se, tolerance = 1e-10)
+               fS$overall$overall.se, tolerance = 1e-10)
 })
 
 # ---- (d) guards ---------------------------------------------------------------------------------------

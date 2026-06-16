@@ -262,7 +262,18 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
       Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
     attr(Omega_array, "omega_bar") <- Omega_hat   # pooled (PSD after flooring): target for per-unit PD-blend
+    # GENUINE cov-path ridge (omega_cov_shrink = "ridge"): vanishing per-unit lift lambda_i I, identical
+    # construction to the kernel builders (build-invariance) but on the sieve per-unit Omega array.
+    if (.edid_cov_ridge_on())
+      attr(Omega_array, "ridge_lift") <- .edid_cov_ridge_lift_array(Omega_array, n, panel_obj$unit_weights)
     return(Omega_array)
+  }
+  # GENUINE cov-path ridge (averaged+sieve): pooled lift lambda I on Omega-bar BEFORE the floor
+  # (build-invariant with the kernel pooled tails). NO-OP when off.
+  .ridge_lam_obar <- 0
+  if (.edid_cov_ridge_on()) {
+    .rl <- .edid_cov_ridge_lift_pooled(Omega_hat, n, panel_obj$unit_weights)
+    Omega_hat <- .rl$Omega; .ridge_lam_obar <- .rl$lambda
   }
   # Pooled floor: correlation-scale, exponent 1/3 (sqrt-n pooled object) -- same construction as the kernel
   # pooled tails (see compute_omega_star_cov_edid for the rationale). Legacy raw-scale d-dependent floor via
@@ -275,6 +286,7 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
     eig$values <- pmax(eig$values, floor_v)
     out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
     attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    attr(out, "ridge_lift") <- .ridge_lam_obar
     return(out)
   }
   # Degenerate (zero pooled variance) moments get scale 0 => zero floored-Omega rows => zero weight via
@@ -300,5 +312,6 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   # (Daleckii-Krein derivative of the FLOORED inverse, on the scaled system); read only by
   # compute_obar_coupling_edid (which maps dtheta/dS back to dtheta/dOmega via the stored scale).
   attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
+  attr(out, "ridge_lift") <- .ridge_lam_obar
   out
 }

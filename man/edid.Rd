@@ -15,6 +15,7 @@ edid(
   pt_assumption = c("all", "post"),
   alp = 0.05,
   clustervars = NULL,
+  weightsname = NULL,
   bstrap = FALSE,
   biters = 1000L,
   seed = NULL,
@@ -34,7 +35,8 @@ edid(
   min_pair_units = 5L,
   bs_df = 4L,
   ratio_method = c("exp", "direct"),
-  nocov_shrink = FALSE
+  omega_cov_shrink = c("ridge", "ledoit_wolf", "none"),
+  nocov_shrink = NULL
 )
 }
 \arguments{
@@ -78,6 +80,30 @@ in \code{data}, or \code{NULL} for no clustering (default). When supplied,
 cluster-robust standard errors are computed via the sandwich EIF formula.
 Note: edid() currently supports only a single cluster variable internally.}
 
+\item{weightsname}{Character scalar naming a column of nonnegative
+observation (sampling/population) weights, or \code{NULL} (default, the
+unweighted estimator). The column must be numeric, finite, nonnegative, not
+all zero, and \emph{time-invariant within unit} (one weight per unit, like
+the cohort and covariates), distinct from \code{yname}/\code{idname}/
+\code{tname}/\code{gname}/\code{clustervars}. When supplied, edid targets the
+\strong{weighted (Hajek) ATT(g,t)} and its event-study / overall / group /
+calendar aggregations: every group mean becomes an observation-weighted mean,
+the moment covariance \eqn{\Omega^*} and the efficient weights are computed
+under the reweighted empirical measure, the influence functions and the
+no-covariate weight-estimation correction carry the per-unit weight, and the
+cohort-share aggregation uses weighted shares. This reproduces the weighted
+estimand of designs that weight (e.g. a population-weighted headline,
+\code{[aw=popwt]}); it matches the standard weighted DR/CS estimator
+(\code{did::att_gt(weightsname=)} on the just-identified PT-Post anchor and
+\code{DRDID} on a \eqn{2\times 2}) to machine precision. \code{weightsname =
+NULL} is exactly the previous unweighted behavior (byte-identical on every
+path), and a constant weight column reproduces the unweighted fit.
+\strong{Scope:} observation weights are currently supported only on the
+\emph{no-covariate} path (\code{xformla = NULL} or \code{~1}); supplying
+\code{weightsname} with a covariate formula errors, because the weighted
+covariate (kernel/sieve) estimation-effect corrections are not yet derived
+and audited (rather than report an un-audited weighted standard error).}
+
 \item{bstrap}{Logical: whether to use multiplier bootstrap inference.
 Default \code{FALSE} (analytical standard errors). When \code{TRUE},
 \code{biters} bootstrap draws are used.}
@@ -98,8 +124,12 @@ Default \code{0L}. The effective treatment start for cohort \eqn{g} is
 reports the cohort-share-weighted event-study parameters \eqn{ES(e)};
 \code{"group"} averages \eqn{ATT(g,t)} within each cohort; \code{"calendar"}
 averages \eqn{ATT(g,t)} across the cohorts treated by each calendar period;
-\code{"overall"} returns the simple cohort-share aggregate over all
-post-treatment cells. \code{"all"} computes every aggregation.}
+\code{"overall"} returns the headline \code{$overall} = the dynamic event-study
+average (equal-weighted over post-treatment relative time \eqn{e \ge 0}), i.e. the
+average of the post-treatment event study, and additionally the cohort-share
+\code{$simple} aggregate. \code{"all"} computes every aggregation. The headline
+\code{$overall} is the SAME dynamic event-study average for \code{"all"},
+\code{"event_study"}, and \code{"overall"}.}
 
 \item{balance_e}{Integer or \code{NULL}: if not \code{NULL}, balances the cohort
 composition of the event-study aggregation (as in \code{did::aggte}): cohorts
@@ -142,7 +172,7 @@ value is robustness when a nuisance is genuinely misspecified.
 \strong{No-covariate path: the weight-estimation variance correction.} With \code{xformla = NULL}
 there are no first-step nuisances, but the efficient weights are still \emph{estimated}: each
 overidentified PT-All cell inverts the estimated \eqn{H \times H} moment covariance
-\eqn{\widehat\Omega^*} (optionally through the \code{nocov_shrink} map). There,
+\eqn{\widehat\Omega^*} (optionally through the \code{omega_cov_shrink} regularization). There,
 \code{estimation_effect = TRUE} engages a closed-form second-order variance correction for that
 weight-estimation channel: the corrected cell variance is
 \eqn{\widehat{V}_{plug} + \Delta_{DF} + 2\widehat{Q}}, where \eqn{\Delta_{DF}} is the exact
@@ -398,28 +428,51 @@ inv-p weight-channel first-step corrections cover all estimated channels -- cond
 means, never-treated, AND cross-cohort. The no-covariate path is bitwise invariant to
 \code{ratio_method}.}
 
-\item{nocov_shrink}{Logical scalar (default \code{FALSE}): optional Ledoit-Wolf shrinkage of the
-no-covariate moment covariance toward its i.i.d.-pole structure. On the no-covariate
-PT-All path each overidentified cell's weights invert the estimated \eqn{H \times H}
-moment covariance \eqn{\widehat\Omega^*}. The default \code{FALSE} reports the pure
-plug-in efficient estimator that matches the semiparametric efficiency estimand in the
-paper. With \code{nocov_shrink = TRUE} the weights instead
-invert \eqn{(1-\hat\lambda)\,\widehat\Omega^* + \hat\lambda\,
-\widehat\sigma^2 S}, where \eqn{S} is the cell's closed-form i.i.d.-pole covariance
-structure at the sample shares (the covariance implied by i.i.d. shocks; the imputation
-estimator's implicit weighting), \eqn{\widehat\sigma^2} is the Frobenius least-squares
-scale, and \eqn{\hat\lambda \in [0, 1]} is the standard Ledoit-Wolf intensity
-(variance-of-entries over distance-to-target). This finite-sample regularization can
-stabilize very small or thin-cohort designs, but it changes the reported weights and can
-give up plug-in efficiency gains in applications.
-Only the \emph{weights} are stabilized: the standard error remains the empirical
-(cluster-robust) variance of the realized weighted influence function at the weights
-actually used -- the shrunk matrix never replaces the data's influence functions in the
-variance. The per-cell intensity is recorded as
-\code{$cells[[k]]$nocov_shrink_lambda} (\code{NA} where no weights are estimated:
-covariate path, \code{weight_scheme = "uniform"}, PT-Post, or just-identified
-\eqn{H = 1} cells, including thin-cohort-guard-pinned ones). \code{nocov_shrink =
-FALSE} reproduces the unshrunk weights bit-for-bit. No effect on the covariate path.}
+\item{omega_cov_shrink}{One of \code{"ridge"} (default), \code{"ledoit_wolf"}, or
+\code{"none"}: finite-sample regularization of the estimated moment covariance
+\eqn{\widehat\Omega^*} before inverting it for the efficient weights. On the no-covariate
+PT-All path each overidentified cell inverts the \eqn{H \times H} \eqn{\widehat\Omega^*};
+in small samples (\eqn{H} not small relative to \eqn{n}) that inverse is noisy and inflates
+the estimator's variance and over-rejects. The regularizers stabilize the \emph{weights}:
+\itemize{
+\item \code{"ridge"} (default): weights invert \eqn{\widehat\Omega^* +
+    (H/n)\,\overline{\mathrm{diag}}(\widehat\Omega^*)\,I}. The intensity \eqn{H/n} vanishes as
+\eqn{n} grows, so it leaves the large-\eqn{n} estimator essentially untouched while
+stabilizing small samples; it does not assume any covariance shape (preferred default).
+\item \code{"ledoit_wolf"}: weights invert \eqn{(1-\hat\lambda)\,\widehat\Omega^*
+    + \hat\lambda\,\widehat\sigma^2 S}, with \eqn{S} the closed-form i.i.d.-pole covariance
+structure, \eqn{\widehat\sigma^2} the Frobenius scale, \eqn{\hat\lambda\in[0,1]} the
+data-driven Ledoit-Wolf intensity. Shrinks toward a structured (i.i.d.-pole) target, which
+helps most under highly persistent errors; can over-shrink when \eqn{T} is small.
+\item \code{"none"}: the unshrunk plug-in efficient weights (reproduces the pre-regularization
+estimator bit-for-bit).
+}
+Both regularizers are asymptotically negligible (intensity \eqn{\to 0} as \eqn{n} grows), so
+the semiparametric-efficiency limit is unchanged; they only help finite samples and leave the
+large-\eqn{n} estimator essentially unchanged. Only the weights are regularized: the standard
+error remains the empirical (cluster-robust) variance of the realized weighted influence
+function at the weights used; the stabilized weights make that plug-in SE well-calibrated in
+small samples. The per-cell Ledoit-Wolf intensity is recorded as
+\code{$cells[[k]]$nocov_shrink_lambda} (\code{NA} for \code{"ridge"}/\code{"none"}, the
+covariate path, \code{weight_scheme = "uniform"}, PT-Post, or \eqn{H = 1} cells).
+On the COVARIATE path each regularizer acts on the cell's conditional moment covariance
+\eqn{\widehat\Omega^*(X)} (per unit for \code{weight_scheme = "efficient"}; the pooled
+\eqn{\bar\Omega} for \code{"averaged"}) before it is inverted for the weights:
+\code{"ledoit_wolf"} uses the existing data-driven pointwise-\eqn{\widehat\Omega^*(X)}-toward-pooled
+shrinkage (which moves the weights toward the pooled/i.i.d. pole); \code{"none"} disables it
+(\code{edid_shrink_lambda = 0}); \code{"ridge"} (the default) adds the same vanishing diagonal lift
+\eqn{\widehat\Omega^*(X) + (H/n)\,\overline{\mathrm{diag}}(\widehat\Omega^*(X))\,I} as the
+no-covariate ridge (per cell, with \eqn{\bar{\mathrm{diag}}} taken per unit / pooled to match the
+scheme). Unlike Ledoit-Wolf, the covariate ridge does NOT move the estimand toward the pooled pole;
+it only guarantees a positive-definite inverse and gently stabilizes the weights in small samples,
+and (being \eqn{O(H/n)}) is asymptotically negligible like the eigenvalue floor (which it keeps
+intact). The estimation-effect correction covers the ridge lift on both the \code{kernel} and
+\code{sieve} smoothers (its first-order weight-estimation contribution is derived and
+finite-difference-oracled, not omitted).}
+
+\item{nocov_shrink}{\strong{Deprecated} logical alias for \code{omega_cov_shrink}:
+\code{TRUE} \eqn{\to} \code{"ledoit_wolf"}, \code{FALSE} \eqn{\to} \code{"none"}. Supplying it
+emits a deprecation warning; use \code{omega_cov_shrink} instead.}
 }
 \value{
 An object of class \code{edid_fit} (a list) with elements:
@@ -435,8 +488,9 @@ work for programmatically constructed calls.}
 \item{\code{att_gt}}{data.frame of cell-level estimates (group, time,
 att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
 \item{\code{overall}}{A \code{did::AGGTEobj}: the HEADLINE aggregation -- the dynamic event-study
-average over relative times \eqn{e \ge 0} (the paper's main object) when an event study is
-requested, otherwise the cohort-share "simple" aggregate.}
+average over relative times \eqn{e \ge 0} (the paper's main object). This is the SAME estimand
+for \code{aggregate = "all"}, \code{"event_study"}, and \code{"overall"}; it is \code{NULL} for
+\code{"group"}-/\code{"calendar"}-only requests. (The cohort-share aggregate is \code{$simple}.)}
 \item{\code{simple}}{A \code{did::AGGTEobj} for the cohort-share-weighted average over all
 post-treatment cells (\code{= aggte_edid(type = "simple")}); present when \code{overall}/\code{all}
 is requested.}

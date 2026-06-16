@@ -36,6 +36,29 @@
 #'   in \code{data}, or \code{NULL} for no clustering (default). When supplied,
 #'   cluster-robust standard errors are computed via the sandwich EIF formula.
 #'   Note: edid() currently supports only a single cluster variable internally.
+#' @param weightsname Character scalar naming a column of nonnegative
+#'   observation (sampling/population) weights, or \code{NULL} (default, the
+#'   unweighted estimator). The column must be numeric, finite, nonnegative, not
+#'   all zero, and \emph{time-invariant within unit} (one weight per unit, like
+#'   the cohort and covariates), distinct from \code{yname}/\code{idname}/
+#'   \code{tname}/\code{gname}/\code{clustervars}. When supplied, edid targets the
+#'   \strong{weighted (Hajek) ATT(g,t)} and its event-study / overall / group /
+#'   calendar aggregations: every group mean becomes an observation-weighted mean,
+#'   the moment covariance \eqn{\Omega^*} and the efficient weights are computed
+#'   under the reweighted empirical measure, the influence functions and the
+#'   no-covariate weight-estimation correction carry the per-unit weight, and the
+#'   cohort-share aggregation uses weighted shares. This reproduces the weighted
+#'   estimand of designs that weight (e.g. a population-weighted headline,
+#'   \code{[aw=popwt]}); it matches the standard weighted DR/CS estimator
+#'   (\code{did::att_gt(weightsname=)} on the just-identified PT-Post anchor and
+#'   \code{DRDID} on a \eqn{2\times 2}) to machine precision. \code{weightsname =
+#'   NULL} is exactly the previous unweighted behavior (byte-identical on every
+#'   path), and a constant weight column reproduces the unweighted fit.
+#'   \strong{Scope:} observation weights are currently supported only on the
+#'   \emph{no-covariate} path (\code{xformla = NULL} or \code{~1}); supplying
+#'   \code{weightsname} with a covariate formula errors, because the weighted
+#'   covariate (kernel/sieve) estimation-effect corrections are not yet derived
+#'   and audited (rather than report an un-audited weighted standard error).
 #' @param bstrap Logical: whether to use multiplier bootstrap inference.
 #'   Default \code{FALSE} (analytical standard errors). When \code{TRUE},
 #'   \code{biters} bootstrap draws are used.
@@ -160,8 +183,12 @@
 #'   reports the cohort-share-weighted event-study parameters \eqn{ES(e)};
 #'   \code{"group"} averages \eqn{ATT(g,t)} within each cohort; \code{"calendar"}
 #'   averages \eqn{ATT(g,t)} across the cohorts treated by each calendar period;
-#'   \code{"overall"} returns the simple cohort-share aggregate over all
-#'   post-treatment cells. \code{"all"} computes every aggregation.
+#'   \code{"overall"} returns the headline \code{$overall} = the dynamic event-study
+#'   average (equal-weighted over post-treatment relative time \eqn{e \ge 0}), i.e. the
+#'   average of the post-treatment event study, and additionally the cohort-share
+#'   \code{$simple} aggregate. \code{"all"} computes every aggregation. The headline
+#'   \code{$overall} is the SAME dynamic event-study average for \code{"all"},
+#'   \code{"event_study"}, and \code{"overall"}.
 #' @param balance_e Integer or \code{NULL}: if not \code{NULL}, balances the cohort
 #'   composition of the event-study aggregation (as in \code{did::aggte}): cohorts
 #'   observed for fewer than \code{balance_e} post-treatment periods are dropped, and
@@ -200,7 +227,7 @@
 #'   \strong{No-covariate path: the weight-estimation variance correction.} With \code{xformla = NULL}
 #'   there are no first-step nuisances, but the efficient weights are still \emph{estimated}: each
 #'   overidentified PT-All cell inverts the estimated \eqn{H \times H} moment covariance
-#'   \eqn{\widehat\Omega^*} (optionally through the \code{nocov_shrink} map). There,
+#'   \eqn{\widehat\Omega^*} (optionally through the \code{omega_cov_shrink} regularization). There,
 #'   \code{estimation_effect = TRUE} engages a closed-form second-order variance correction for that
 #'   weight-estimation channel: the corrected cell variance is
 #'   \eqn{\widehat{V}_{plug} + \Delta_{DF} + 2\widehat{Q}}, where \eqn{\Delta_{DF}} is the exact
@@ -338,28 +365,50 @@
 #'   inv-p weight-channel first-step corrections cover all estimated channels -- conditional
 #'   means, never-treated, AND cross-cohort. The no-covariate path is bitwise invariant to
 #'   \code{ratio_method}.
-#' @param nocov_shrink Logical scalar (default \code{FALSE}): optional Ledoit-Wolf shrinkage of the
-#'   no-covariate moment covariance toward its i.i.d.-pole structure. On the no-covariate
-#'   PT-All path each overidentified cell's weights invert the estimated \eqn{H \times H}
-#'   moment covariance \eqn{\widehat\Omega^*}. The default \code{FALSE} reports the pure
-#'   plug-in efficient estimator that matches the semiparametric efficiency estimand in the
-#'   paper. With \code{nocov_shrink = TRUE} the weights instead
-#'   invert \eqn{(1-\hat\lambda)\,\widehat\Omega^* + \hat\lambda\,
-#'   \widehat\sigma^2 S}, where \eqn{S} is the cell's closed-form i.i.d.-pole covariance
-#'   structure at the sample shares (the covariance implied by i.i.d. shocks; the imputation
-#'   estimator's implicit weighting), \eqn{\widehat\sigma^2} is the Frobenius least-squares
-#'   scale, and \eqn{\hat\lambda \in [0, 1]} is the standard Ledoit-Wolf intensity
-#'   (variance-of-entries over distance-to-target). This finite-sample regularization can
-#'   stabilize very small or thin-cohort designs, but it changes the reported weights and can
-#'   give up plug-in efficiency gains in applications.
-#'   Only the \emph{weights} are stabilized: the standard error remains the empirical
-#'   (cluster-robust) variance of the realized weighted influence function at the weights
-#'   actually used -- the shrunk matrix never replaces the data's influence functions in the
-#'   variance. The per-cell intensity is recorded as
-#'   \code{$cells[[k]]$nocov_shrink_lambda} (\code{NA} where no weights are estimated:
-#'   covariate path, \code{weight_scheme = "uniform"}, PT-Post, or just-identified
-#'   \eqn{H = 1} cells, including thin-cohort-guard-pinned ones). \code{nocov_shrink =
-#'   FALSE} reproduces the unshrunk weights bit-for-bit. No effect on the covariate path.
+#' @param omega_cov_shrink One of \code{"ridge"} (default), \code{"ledoit_wolf"}, or
+#'   \code{"none"}: finite-sample regularization of the estimated moment covariance
+#'   \eqn{\widehat\Omega^*} before inverting it for the efficient weights. On the no-covariate
+#'   PT-All path each overidentified cell inverts the \eqn{H \times H} \eqn{\widehat\Omega^*};
+#'   in small samples (\eqn{H} not small relative to \eqn{n}) that inverse is noisy and inflates
+#'   the estimator's variance and over-rejects. The regularizers stabilize the \emph{weights}:
+#'   \itemize{
+#'     \item \code{"ridge"} (default): weights invert \eqn{\widehat\Omega^* +
+#'       (H/n)\,\overline{\mathrm{diag}}(\widehat\Omega^*)\,I}. The intensity \eqn{H/n} vanishes as
+#'       \eqn{n} grows, so it leaves the large-\eqn{n} estimator essentially untouched while
+#'       stabilizing small samples; it does not assume any covariance shape (preferred default).
+#'     \item \code{"ledoit_wolf"}: weights invert \eqn{(1-\hat\lambda)\,\widehat\Omega^*
+#'       + \hat\lambda\,\widehat\sigma^2 S}, with \eqn{S} the closed-form i.i.d.-pole covariance
+#'       structure, \eqn{\widehat\sigma^2} the Frobenius scale, \eqn{\hat\lambda\in[0,1]} the
+#'       data-driven Ledoit-Wolf intensity. Shrinks toward a structured (i.i.d.-pole) target, which
+#'       helps most under highly persistent errors; can over-shrink when \eqn{T} is small.
+#'     \item \code{"none"}: the unshrunk plug-in efficient weights (reproduces the pre-regularization
+#'       estimator bit-for-bit).
+#'   }
+#'   Both regularizers are asymptotically negligible (intensity \eqn{\to 0} as \eqn{n} grows), so
+#'   the semiparametric-efficiency limit is unchanged; they only help finite samples and leave the
+#'   large-\eqn{n} estimator essentially unchanged. Only the weights are regularized: the standard
+#'   error remains the empirical (cluster-robust) variance of the realized weighted influence
+#'   function at the weights used; the stabilized weights make that plug-in SE well-calibrated in
+#'   small samples. The per-cell Ledoit-Wolf intensity is recorded as
+#'   \code{$cells[[k]]$nocov_shrink_lambda} (\code{NA} for \code{"ridge"}/\code{"none"}, the
+#'   covariate path, \code{weight_scheme = "uniform"}, PT-Post, or \eqn{H = 1} cells).
+#'   On the COVARIATE path each regularizer acts on the cell's conditional moment covariance
+#'   \eqn{\widehat\Omega^*(X)} (per unit for \code{weight_scheme = "efficient"}; the pooled
+#'   \eqn{\bar\Omega} for \code{"averaged"}) before it is inverted for the weights:
+#'   \code{"ledoit_wolf"} uses the existing data-driven pointwise-\eqn{\widehat\Omega^*(X)}-toward-pooled
+#'   shrinkage (which moves the weights toward the pooled/i.i.d. pole); \code{"none"} disables it
+#'   (\code{edid_shrink_lambda = 0}); \code{"ridge"} (the default) adds the same vanishing diagonal lift
+#'   \eqn{\widehat\Omega^*(X) + (H/n)\,\overline{\mathrm{diag}}(\widehat\Omega^*(X))\,I} as the
+#'   no-covariate ridge (per cell, with \eqn{\bar{\mathrm{diag}}} taken per unit / pooled to match the
+#'   scheme). Unlike Ledoit-Wolf, the covariate ridge does NOT move the estimand toward the pooled pole;
+#'   it only guarantees a positive-definite inverse and gently stabilizes the weights in small samples,
+#'   and (being \eqn{O(H/n)}) is asymptotically negligible like the eigenvalue floor (which it keeps
+#'   intact). The estimation-effect correction covers the ridge lift on both the \code{kernel} and
+#'   \code{sieve} smoothers (its first-order weight-estimation contribution is derived and
+#'   finite-difference-oracled, not omitted).
+#' @param nocov_shrink \strong{Deprecated} logical alias for \code{omega_cov_shrink}:
+#'   \code{TRUE} \eqn{\to} \code{"ledoit_wolf"}, \code{FALSE} \eqn{\to} \code{"none"}. Supplying it
+#'   emits a deprecation warning; use \code{omega_cov_shrink} instead.
 #'
 #' @section Advanced options (set via \code{options()}):
 #' These global options expose escape hatches and tuning knobs for the covariate path. All have safe
@@ -431,8 +480,9 @@
 #'     \item{\code{att_gt}}{data.frame of cell-level estimates (group, time,
 #'       att, se, ci_lower, ci_upper, t_stat, p_value, is_pre).}
 #'     \item{\code{overall}}{A \code{did::AGGTEobj}: the HEADLINE aggregation -- the dynamic event-study
-#'       average over relative times \eqn{e \ge 0} (the paper's main object) when an event study is
-#'       requested, otherwise the cohort-share "simple" aggregate.}
+#'       average over relative times \eqn{e \ge 0} (the paper's main object). This is the SAME estimand
+#'       for \code{aggregate = "all"}, \code{"event_study"}, and \code{"overall"}; it is \code{NULL} for
+#'       \code{"group"}-/\code{"calendar"}-only requests. (The cohort-share aggregate is \code{$simple}.)}
 #'     \item{\code{simple}}{A \code{did::AGGTEobj} for the cohort-share-weighted average over all
 #'       post-treatment cells (\code{= aggte_edid(type = "simple")}); present when \code{overall}/\code{all}
 #'       is requested.}
@@ -535,6 +585,7 @@ edid <- function(
   pt_assumption     = c("all", "post"),
   alp               = 0.05,
   clustervars       = NULL,
+  weightsname       = NULL,
   bstrap            = FALSE,
   biters            = 1000L,
   seed              = NULL,
@@ -554,9 +605,26 @@ edid <- function(
   min_pair_units    = 5L,
   bs_df             = 4L,
   ratio_method      = c("exp", "direct"),
-  nocov_shrink      = FALSE
+  omega_cov_shrink  = c("ridge", "ledoit_wolf", "none"),
+  nocov_shrink      = NULL
 ) {
+  # The removed `weights` argument is now a unique prefix of `weightsname`, so R partial-matching
+  # would silently route a stray `weights = ...` to `weightsname`, surfacing a confusing
+  # "not a column" error. Trap the literal typed name (sys.call preserves it; match.call expands
+  # the partial match) and restore the documented contract: `weights` is gone -- use
+  # `weight_scheme` for the weighting scheme, or `weightsname` for observation weights.
+  .sysnames <- names(sys.call())
+  if (!is.null(.sysnames) && "weights" %in% .sysnames) {
+    stop("`weights` is not an argument of edid(). Use `weight_scheme` for the moment-weighting ",
+         "scheme (efficient/averaged/gmm/uniform), or `weightsname` for a column of observation ",
+         "weights.", call. = FALSE)
+  }
   ratio_method <- match.arg(ratio_method)
+  # omega_cov_shrink: 3-way regularization of the moment covariance. `nocov_shrink` (logical) is a
+  # DEPRECATED alias kept for back-compat: TRUE -> "ledoit_wolf", FALSE -> "none". If supplied it
+  # overrides omega_cov_shrink (with a one-time deprecation note).
+  omega_cov_shrink_explicit <- !missing(omega_cov_shrink)
+  omega_cov_shrink <- match.arg(omega_cov_shrink)   # alias from `nocov_shrink` resolved below (needs .check_logical_scalar)
   cband_method_explicit <- !missing(cband_method)   # was cband_method passed, or left at its default?
   ee_explicit   <- !missing(estimation_effect)      # did the user set the fine-grained flags explicitly?
   ho_explicit   <- !missing(higher_order)
@@ -567,6 +635,15 @@ edid <- function(
       stop(sprintf("`%s` must be a logical scalar (TRUE or FALSE).", name), call. = FALSE)
     }
     value
+  }
+  # Resolve the DEPRECATED `nocov_shrink` logical alias for `omega_cov_shrink`:
+  # TRUE -> "ledoit_wolf", FALSE -> "none". (Defined here so .check_logical_scalar exists.)
+  if (!is.null(nocov_shrink)) {
+    nocov_shrink <- .check_logical_scalar(nocov_shrink, "nocov_shrink")
+    if (omega_cov_shrink_explicit && (isTRUE(nocov_shrink) != (omega_cov_shrink == "ledoit_wolf")))
+      stop("Supply either `omega_cov_shrink` or the deprecated `nocov_shrink`, not both with conflicting values.", call. = FALSE)
+    omega_cov_shrink <- if (isTRUE(nocov_shrink)) "ledoit_wolf" else "none"
+    warning("`nocov_shrink` is deprecated; use `omega_cov_shrink = \"", omega_cov_shrink, "\"` instead.", call. = FALSE)
   }
   .check_positive_bootstrap_iters <- function(value) {
     if (!is.numeric(value) || length(value) != 1L || is.na(value) ||
@@ -632,7 +709,6 @@ edid <- function(
   balance_e <- .check_nonnegative_integer_or_null(balance_e, "balance_e")
   trim_level <- .check_positive_trim_level(trim_level)
   min_pair_units <- .check_min_pair_units(min_pair_units)
-  nocov_shrink <- .check_logical_scalar(nocov_shrink, "nocov_shrink")
 
   weight_method <- match.arg(weight_scheme)
   cband_method  <- match.arg(cband_method)
@@ -641,6 +717,25 @@ edid <- function(
   misspec_robust <- isTRUE(misspec_robust)
   has_cov       <- !is.null(xformla) && inherits(xformla, "formula") && length(all.vars(xformla)) > 0L
   mc <- match.call()
+
+  # ------------------------------------------------------------------
+  # weightsname x covariate path: SCOPED OUT this round (explicit stop, no silent wrong number)
+  # ------------------------------------------------------------------
+  # Observation weights are fully integrated and audited on the no-covariate path (the headline
+  # weighted-application path: Bailey-Goodman-Bacon etc. weight with xformla = ~1). The covariate
+  # (kernel/sieve) path's weighted conditional means/propensities and -- crucially -- the weighted
+  # estimation-effect corrections (ACH score/Hessian, gmm/inv-p channels) require a separate
+  # derivation and finite-difference oracle that is NOT completed in this round. Rather than emit an
+  # un-audited weighted standard error on the covariate path, edid() stops here. (No-covariate
+  # weighting is complete: PT-Post matches did::att_gt(weightsname=) and a 2x2 matches DRDID to
+  # machine precision; the no-cov estimation-effect correction is FD-oracled under weights.)
+  if (!is.null(weightsname) && has_cov) {
+    stop("`weightsname` (observation weights) is currently supported only on the no-covariate path ",
+         "(xformla = NULL or ~1). The weighted covariate (kernel/sieve) path -- including its ",
+         "estimation-effect corrections -- is not yet derived and audited; it is scoped out to avoid ",
+         "reporting an un-audited weighted standard error. Use xformla = NULL with `weightsname`, or ",
+         "drop `weightsname` to use the covariate path unweighted.", call. = FALSE)
+  }
 
   # ------------------------------------------------------------------
   # Higher-order ("Wick") variance refinement: validation / coercion
@@ -803,7 +898,8 @@ edid <- function(
     clustervars   = clustervars,
     biters        = n_bootstrap_internal,
     anticipation  = anticipation,
-    survey_design = survey_design
+    survey_design = survey_design,
+    weightsname   = weightsname
   )
 
   # ------------------------------------------------------------------
@@ -818,7 +914,8 @@ edid <- function(
     xformla       = xformla,
     covariates    = covariates,
     clustervars   = clustervars,
-    anticipation  = anticipation
+    anticipation  = anticipation,
+    weightsname   = weightsname
   )
 
   # ------------------------------------------------------------------
@@ -829,6 +926,29 @@ edid <- function(
   need_eif_for_boot <- (n_bootstrap_internal > 0L)
   # need_eif: TRUE whenever we need aggregated inference OR bootstrap
   need_eif_internal <- do_any_agg || need_eif_for_boot
+
+  # Covariate path: the no-covariate omega_cov_shrink dispatch (in fit_edid_cells) does not run.
+  # Each of the three modes maps onto a regularization of the conditional moment covariance
+  # Omega*(X) BEFORE it is inverted for the efficient weights (the cov-path analog of the no-cov
+  # dispatch in fit_edid_cells), via two internal builder options the three Omega builders honor:
+  #   "ledoit_wolf" (default) -> the EXISTING data-driven pointwise-Omega*(X)-toward-pooled
+  #       Ledoit-Wolf shrinkage (edid_shrink_lambda = NA, the data-driven intensity); UNCHANGED.
+  #   "none" -> disable the toward-pooled shrinkage (edid_shrink_lambda = 0) and the ridge lift.
+  #   "ridge" -> GENUINE cov-path ridge: a vanishing diagonal lift lambda*I (lambda =
+  #       (H/n) * mean(diag Omega*(X)) per cell) added to each cell's Omega*(X) before inversion,
+  #       the exact analog of the no-cov ridge. It does NOT move the estimand toward the pooled
+  #       i.i.d. pole (unlike Ledoit-Wolf); it only guarantees a PD inverse and gentle small-sample
+  #       stabilization. So ridge DISABLES the toward-pooled LW blend (edid_shrink_lambda = 0) and
+  #       enables the lift (edid_cov_ridge = TRUE); the eigen-floor (a separate numerical-stability
+  #       guard) is kept intact. The lift vanishes as O(H/n), so the efficiency limit is unchanged.
+  if (has_cov && omega_cov_shrink != "ledoit_wolf") {
+    old_edid_shrink_lambda <- getOption("edid_shrink_lambda", NA_real_)
+    old_edid_cov_ridge     <- getOption("edid_cov_ridge", NULL)
+    options(edid_shrink_lambda = 0,                       # OFF the toward-pooled LW blend
+            edid_cov_ridge = (omega_cov_shrink == "ridge"))  # genuine ridge lift on iff "ridge"
+    on.exit(options(edid_shrink_lambda = old_edid_shrink_lambda,
+                    edid_cov_ridge = old_edid_cov_ridge), add = TRUE)
+  }
 
   fit_result <- fit_edid_cells(
     panel_obj     = panel_obj,
@@ -851,7 +971,7 @@ edid <- function(
     min_pair_units = min_pair_units,
     bs_df         = bs_df,
     ratio_method  = ratio_method,
-    nocov_shrink  = nocov_shrink
+    omega_cov_shrink = omega_cov_shrink
   )
 
   cells      <- fit_result$cells
@@ -896,7 +1016,7 @@ edid <- function(
   # so classic fits are byte-identical.
   # ------------------------------------------------------------------
   sigma_nocov_ee_full <- nocov_ee_sigma_full_edid(eif_matrix, fit_result$nocov_ee_s,
-                                                  panel_obj$unit_cohorts)
+                                                  panel_obj$unit_cohorts, panel_obj$unit_weights)
 
   # ------------------------------------------------------------------
   # Aggregation
@@ -1037,6 +1157,7 @@ edid <- function(
     pt_assumption     = pt_assumption,
     alp               = alp,
     clustervars       = clustervars,
+    weightsname       = weightsname,
     bstrap            = bstrap,
     biters            = as.integer(biters),
     seed              = seed,
@@ -1055,7 +1176,7 @@ edid <- function(
     min_pair_units    = min_pair_units,
     bs_df             = bs_df,
     ratio_method      = ratio_method,
-    nocov_shrink      = nocov_shrink
+    omega_cov_shrink  = omega_cov_shrink
   )
 
   # ------------------------------------------------------------------
@@ -1071,6 +1192,8 @@ edid <- function(
     treatment_groups = panel_obj$treatment_groups,
     cohort_fractions = panel_obj$cohort_fractions,
     unit_cohorts     = panel_obj$unit_cohorts,
+    unit_weights     = panel_obj$unit_weights,     # NULL when unweighted; mean-1 per-unit obs weights (as_MP_edid .w)
+    weightsname      = weightsname,                # observation-weight column name (NULL = unweighted)
     all_units        = panel_obj$all_units,        # metadata for did-compatible MP construction (as_MP_edid)
     idname           = idname,
     tname            = tname,
@@ -1094,7 +1217,7 @@ edid <- function(
     cells            = cells,
     moment_set       = moment_set,                 # advanced pair restriction (NULL = full enumeration); see edid_sargan()
     min_pair_units   = min_pair_units,             # thin-cohort guard threshold (5 = default; 2 = legacy behavior)
-    nocov_shrink     = nocov_shrink,               # Ledoit-Wolf pole-target weight shrinkage on the no-covariate path
+    omega_cov_shrink = omega_cov_shrink,           # moment-covariance regularization (ledoit_wolf / ridge / none)
     thin_cohorts     = fit_result$thin_cohorts,    # data.frame of thin cohorts the guard acted on, or NULL
     diagnostics      = .edid_build_diagnostics(fit_result$diagnostics_raw, cells,
                                                pt_assumption = pt_assumption,
@@ -1150,7 +1273,17 @@ edid <- function(
   if (do_group)       edid_fit$group       <- .agg("group")
   if (do_calendar)    edid_fit$calendar    <- .agg("calendar")
   if (do_overall)     edid_fit$simple      <- .agg("simple")
-  edid_fit$overall <- if (!is.null(edid_fit$event_study)) edid_fit$event_study else edid_fit$simple
+  # Headline `$overall` is ALWAYS the dynamic event-study average -- the average of the
+  # post-treatment event study, equal-weighted over relative time e >= 0 -- so it is the
+  # SAME estimand whether the user asks for aggregate = "all", "event_study", or "overall".
+  # (Previously `aggregate = "overall"` alone fell back to the cohort-share-/cell-weighted
+  # "simple" aggregate, a different number; that inconsistency is the bug being fixed.)
+  # `$simple` remains separately available for the cohort-share aggregate. calendar-/group-
+  # only requests still leave `$overall` NULL (shape-stable empty return).
+  edid_fit$overall <-
+    if (!is.null(edid_fit$event_study)) edid_fit$event_study
+    else if (do_overall)                .agg("dynamic")
+    else                                NULL
 
   edid_fit
 }

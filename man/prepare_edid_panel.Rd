@@ -13,7 +13,8 @@ prepare_edid_panel(
   xformla = NULL,
   covariates = NULL,
   clustervars = NULL,
-  anticipation = 0L
+  anticipation = 0L,
+  weightsname = NULL
 )
 }
 \arguments{

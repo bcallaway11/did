@@ -169,7 +169,18 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
       Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
     attr(Omega_array, "omega_bar") <- Omega_hat   # pooled (PSD after flooring): target for per-unit PD-blend
+    # GENUINE cov-path ridge (omega_cov_shrink = "ridge"): vanishing per-unit lift lambda_i I (see
+    # .edid_cov_ridge_lift_array). Build-invariance: same lift, same recorded EE lambda as the kernel_orig path.
+    if (.edid_cov_ridge_on())
+      attr(Omega_array, "ridge_lift") <- .edid_cov_ridge_lift_array(Omega_array, panel_obj$n, panel_obj$unit_weights)
     return(Omega_array)
+  }
+  # GENUINE cov-path ridge (averaged): pooled lift lambda I on Omega-bar BEFORE the floor (build-invariant
+  # with compute_omega_star_cov_edid's pooled tail). NO-OP when off.
+  .ridge_lam_obar <- 0
+  if (.edid_cov_ridge_on()) {
+    .rl <- .edid_cov_ridge_lift_pooled(Omega_hat, panel_obj$n, panel_obj$unit_weights)
+    Omega_hat <- .rl$Omega; .ridge_lam_obar <- .rl$lambda
   }
   # Pooled floor: correlation-scale, exponent 1/3 (sqrt-n pooled object) -- IDENTICAL code to
   # compute_omega_star_cov_edid's pooled tail (the build-invariance contract); see the rationale there.
@@ -182,6 +193,7 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
     eig$values <- pmax(eig$values, floor_v)
     out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
     attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    attr(out, "ridge_lift") <- .ridge_lam_obar
     return(out)
   }
   # Degenerate (zero pooled variance) moments get scale 0 => zero floored-Omega rows => zero weight via
@@ -207,5 +219,6 @@ compute_omega_star_kernel_fast_edid <- function(panel_obj, g, t, pairs,
   # (Daleckii-Krein derivative of the FLOORED inverse, on the scaled system). Inert for the estimate itself
   # (attributes are stripped by solve/%*%); read only by compute_obar_coupling_edid.
   attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
+  attr(out, "ridge_lift") <- .ridge_lam_obar
   out
 }

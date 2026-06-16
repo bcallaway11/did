@@ -256,6 +256,7 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
   e_set <- pB$e
   n  <- fit_base$n
   ci <- fit_base$cluster_indices
+  n_eff <- .edid_overid_n_eff(fit_base)   # Kish ESS for the weight-dispersion noise floor (== n unweighted)
   # Absolute variance scale of the base estimator's coordinates, for the
   # degenerate-contrast guard in .edid_if_diff_quadform (see edid-hausman.R).
   vB <- diag(as.matrix(n * cluster_cov_edid(pB$IF, ci, n)))
@@ -285,7 +286,7 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
     d  <- pA$est - pB$est
     xi <- pB$IF - pA$IF
     vA <- diag(as.matrix(n * cluster_cov_edid(pA$IF, ci, n)))
-    qf <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = max(vB, vA))
+    qf <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = max(vB, vA), n_eff = n_eff)
     results$H_statistic[l] <- qf$statistic
     results$df[l]          <- qf$df
     results$p_value[l]     <- qf$p_value

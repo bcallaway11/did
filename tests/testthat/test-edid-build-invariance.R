@@ -36,22 +36,23 @@ test_that("fast BLAS kernel build is invariant to the exact original per-pair bu
 
 test_that("edid() reproduces the pinned golden att/se on mpdta + ~lpop (guards kp_cache / m_eff)", {
   fk <- fit_mpdta_bi("kernel")
-  # att + se RE-PINNED for the exp-default + coherent-removal round (2026-06-12). The covariate-path
-  # default flipped from ratio_method = "coherent" (now removed; see ratio_method_thinshares_mc.md --
-  # coherent hard-failed ~6.7% of thin-share draws and undercovered) to ratio_method = "exp": every
-  # cross-cohort ratio r_{g,g'} AND the never-treated ratio r_{g,Inf} are now per-target exp-link Riesz
-  # fits (mpdta has cross pairs in every cohort-2006/2007 cell, and r_{g,Inf} enters every cell, so
-  # both att and se move). The exp engine carries FULL estimation-effect aux (FD-oracled in
-  # test-edid-exp-ratio.R), so the default misspec_robust bundle's ACH / higher-order / inv-p channels
-  # cover the cross-cohort channels. Earlier structural re-pin notes remain in force: pooled/pointwise
-  # eigen floors on the pooled-diagonal scale; structurally degenerate self-pair moments excluded
-  # (pinv-style, weight 0); cell-common overlap-trim estimand; eigen-floor-aware Daleckii-Krein psi.
-  golden_att <- c(-0.0228661807787743, -0.084640492698104, -0.147602286243642, -0.113826874446173,
-                  -0.0124328665332939, -0.011218170244851, -0.00644463130881531, -0.0407414526270808,
-                   0.00822268853901105, 0.0160788895431695, -0.0270681259670889, -0.0461158513996921)
-  golden_se  <- c(0.0224055257979494, 0.0283967569471087, 0.0345608877673499, 0.0325131158273884,
-                  0.0214105300899993, 0.0262026852334394, 0.0232546409208079, 0.0208387910133422,
-                  0.00994222279586637, 0.0104250894785987, 0.0175349826093005, 0.0135277283813801)
+  # att + se RE-PINNED for the GENUINE cov-path ridge round (2026-06-15). The covariate-path DEFAULT
+  # omega_cov_shrink = "ridge" previously FELL BACK to "ledoit_wolf" on the covariate path; it now does a
+  # genuine ridge (a vanishing diagonal lift lambda*I, lambda = (H/n) mean(diag Omega*(X)) per cell, added
+  # to each cell's conditional moment covariance before inversion -- the exact analog of the no-cov ridge).
+  # Ridge does NOT move the estimand toward the pooled/i.i.d. pole (unlike Ledoit-Wolf), so the with-X
+  # default att/se move from the LW-fallback numbers to the (gentler) ridge numbers; the estimation-effect
+  # channel carries the FD-oracled ridge EE (C:dOmega + (tr C/n) tr dOmega). The earlier exp-default re-pin
+  # note still holds (exp-link Riesz ratios with full estimation-effect aux). Structural notes remain in
+  # force: pooled/pointwise eigen floors on the pooled-diagonal scale; degenerate self-pair moments excluded
+  # (pinv-style, weight 0); cell-common overlap-trim estimand; eigen-floor-aware Daleckii-Krein psi. (Prior
+  # LW-fallback golden att[1]/se[6] were -0.0228661807787743 / 0.0262026852334394.)
+  golden_att <- c(-0.0243245745421897, -0.0847227022585466, -0.147109182022892, -0.112359638295074,
+                  -0.0125883974483623, -0.0116946248568905, -0.00648970279305543, -0.0485840675412391,
+                   0.00805951068627602, 0.0159797568874081, -0.0269735268359635, -0.0460664656465983)
+  golden_se  <- c(0.0222542941868945, 0.0285030682244642, 0.0346143085890438, 0.0325485794739207,
+                  0.021198086086665, 0.0240138541201071, 0.023112371360369, 0.0192390338814384,
+                  0.00995375824804451, 0.0104266223437504, 0.0175624581131783, 0.0135426516524408)
   expect_equal(fk$att_gt$att, golden_att, tolerance = 1e-7)
   expect_equal(fk$att_gt$se,  golden_se,  tolerance = 1e-7)
 })

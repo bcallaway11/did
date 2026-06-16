@@ -25,7 +25,7 @@
 validate_edid_inputs <- function(
   data, yname, idname, tname, gname, xformla = NULL, covariates,
   pt_assumption, alp, clustervars,
-  biters, anticipation, survey_design
+  biters, anticipation, survey_design, weightsname = NULL
 ) {
 
   # ------------------------------------------------------------------
@@ -386,6 +386,65 @@ validate_edid_inputs <- function(
       warning(sprintf(
         "Cluster variable `%s` has only %d distinct cluster(s): cluster-robust standard errors are undefined and will be returned as NA. Provide at least 2 clusters, or drop clustervars.",
         clustervars, n_clusters), call. = FALSE)
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # 17. weightsname: observation/sampling-weight column checks
+  # ------------------------------------------------------------------
+  # A column of nonnegative observation weights. When supplied, edid targets the
+  # Hajek-weighted ATT(g,t)/ES (population/observation-weighted). The weight must be:
+  # a character scalar naming a numeric, non-NA, finite, nonnegative, not-all-zero,
+  # time-invariant-within-unit column distinct from yname/idname/tname/gname/clustervars.
+  if (!is.null(weightsname)) {
+    if (!is.character(weightsname) || length(weightsname) != 1L) {
+      stop("`weightsname` must be a character scalar naming a column in `data`, or NULL.")
+    }
+    if (!weightsname %in% names(data)) {
+      stop(sprintf("`weightsname` = \"%s\" is not a column in `data`.", weightsname))
+    }
+    # Disallow design columns: weighting the outcome/id/time/cohort column is never meaningful,
+    # and aliasing the cluster column conflates two distinct roles.
+    if (weightsname %in% col_names) {
+      stop(sprintf("`weightsname` = \"%s\" coincides with yname/idname/tname/gname; the weight must be a separate column.",
+                   weightsname))
+    }
+    if (!is.null(clustervars) && identical(weightsname, clustervars)) {
+      stop(sprintf("`weightsname` = \"%s\" coincides with `clustervars`; the weight must be a separate column.",
+                   weightsname))
+    }
+    w_col <- data[[weightsname]]
+    if (!is.numeric(w_col)) {
+      stop(sprintf("Column `%s` (weightsname) must be numeric.", weightsname))
+    }
+    if (anyNA(w_col)) {
+      stop(sprintf("Column `%s` (weightsname) contains NA values.", weightsname))
+    }
+    if (!all(is.finite(w_col))) {
+      stop(sprintf("Column `%s` (weightsname) contains non-finite values (Inf/-Inf/NaN).", weightsname))
+    }
+    if (any(w_col < 0)) {
+      stop(sprintf("Column `%s` (weightsname) contains negative values; observation weights must be nonnegative.", weightsname))
+    }
+    # Time-invariant within unit: edid forms ONE weight per unit (cohorts and covariates are
+    # already required time-invariant). A time-varying weight column is ambiguous and rejected.
+    w_by_unit <- tapply(w_col, data[[idname]], function(x) length(unique(x)))
+    if (any(w_by_unit > 1L)) {
+      bad <- names(w_by_unit)[w_by_unit > 1L]
+      stop(sprintf(
+        "Weight variable `%s` is not time-invariant for %d unit(s) (e.g., %s). ",
+        weightsname, length(bad), bad[1]),
+        "Observation weights must be constant within unit.")
+    }
+    # Not all zero: a degenerate weight vector identifies nothing.
+    unit_w <- tapply(w_col, data[[idname]], `[`, 1L)
+    if (all(unit_w == 0)) {
+      stop(sprintf("Column `%s` (weightsname) is all zero; at least one unit must have positive weight.", weightsname))
+    }
+    if (sum(unit_w > 0) < 2L) {
+      warning(sprintf(
+        "Weight variable `%s` gives positive weight to only %d unit(s): the weighted estimator is degenerate and its standard errors are unreliable.",
+        weightsname, sum(unit_w > 0)), call. = FALSE)
     }
   }
 

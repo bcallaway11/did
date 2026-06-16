@@ -28,12 +28,18 @@
 #'   \code{estimate_all_propensity_ratios}); \code{"exp"} fits per-target exponential-link
 #'   Riesz regressions with full estimation-effect integration, \code{"direct"} reproduces
 #'   the paper's legacy per-pair LS sieve bit-for-bit (retained for forensics)
-#' @param nocov_shrink logical (default \code{FALSE}): on the no-covariate PT-All
-#'   path, optionally shrink each cell's estimated moment covariance toward its
-#'   i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
-#'   the weights (see \code{\link{edid}}); the default \code{FALSE} uses the
-#'   unshrunk plug-in efficient weights
+#' @param omega_cov_shrink one of \code{"ridge"} (default), \code{"ledoit_wolf"},
+#'   \code{"none"}: regularize each cell's estimated moment covariance \eqn{\hat\Omega^*}
+#'   before inverting for the weights. \code{"ridge"} adds \eqn{(H/n)\,\overline{\mathrm{diag}}\,I}
+#'   (the vanishing default); \code{"ledoit_wolf"} shrinks toward the i.i.d.-pole structure
+#'   (data-driven intensity); \code{"none"} uses the unshrunk plug-in efficient weights. On the
+#'   no-covariate PT-All path this dispatch is applied here; on the covariate path \code{edid()} maps
+#'   it onto \eqn{\widehat\Omega^*(X)} via \code{edid_shrink_lambda} (LW / none) and the
+#'   \code{edid_cov_ridge} lift (ridge), honored by the kernel and sieve Omega builders. Both
+#'   regularizers are asymptotically negligible (intensity \eqn{\to 0}), so the efficiency limit is
+#'   unchanged (see \code{\link{edid}}).
 #'
+
 #' @return list with elements:
 #'   \describe{
 #'     \item{\code{cells}}{list of \code{edid_cell_result} objects}
@@ -56,10 +62,12 @@ fit_edid_cells <- function(
   estimation_effect = FALSE, higher_order = FALSE, misspec_robust = FALSE,
   estimation_effect_explicit = TRUE, higher_order_explicit = TRUE, misspec_robust_explicit = TRUE,
   trim_level = Inf, mc_cores = getOption("edid_mc_cores", 1L), moment_set = NULL,
-  min_pair_units = 5L, bs_df = 4L, ratio_method = c("exp", "direct"), nocov_shrink = FALSE
+  min_pair_units = 5L, bs_df = 4L, ratio_method = c("exp", "direct"),
+  omega_cov_shrink = c("ridge", "ledoit_wolf", "none")
 ) {
   weight_method <- match.arg(weight_method)
   ratio_method  <- match.arg(ratio_method)
+  omega_cov_shrink <- match.arg(omega_cov_shrink)
   # bs_df: a single integer >= 3 (cubic B-spline df; splines::bs needs df >= degree)
   # or "ic" for the paper's per-fit information-criterion selection over 3:8.
   if (!(identical(bs_df, "ic") ||
@@ -751,9 +759,11 @@ fit_edid_cells <- function(
             # sanity check of the adjoint construction -- the DK coupling's Term-1 piece is handled in the builder).
             stopifnot(max(abs(rowSums(Q_pw))) < 1e-6 * (1 + max(abs(Q_pw))))
             lam_cell <- attr(omega_arr, "shrink_lambda")                      # shrinkage intensity: the psi applies its (1-lam) factor
+            ridge_on <- !is.null(attr(omega_arr, "ridge_lift"))               # genuine cov-path ridge (omega_cov_shrink = "ridge")
             po    <- .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
                        inv_propensities, bw = kern_bw, K_mat = kern_K, return_pointwise = TRUE,
-                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw, lambda = lam_cell, C = C_pw),
+                       psi_qw = list(pointwise = TRUE, Q = Q_pw, W = W_pw, lambda = lam_cell, C = C_pw,
+                                     ridge = ridge_on),
                        kp_cache = kp_cache, keep = omega_keep)
             corr_an <- compute_invp_correction_analytic_cov_edid(panel_obj$n, attr(inv_propensities, "aux"),
                                                                  po$coupled_C)
@@ -836,9 +846,11 @@ fit_edid_cells <- function(
               # smooth coupling when nothing floors. Every pooled builder attaches the eigendecomposition the
               # coupling needs; the smooth q below is only the fallback for an omega without it.
               .obarC <- compute_obar_coupling_edid(omega, mbar, att_gt)
+              ridge_on <- !is.null(attr(omega, "ridge_lift"))              # genuine cov-path ridge (averaged scheme)
               po    <- if (!is.null(.obarC)) {
                 .psi_omega_fun(panel_obj, g, t, pairs, prop_ratios, cond_means,
-                  inv_propensities, bw = kern_bw, K_mat = kern_K, psi_qw = list(C = .obarC, w = weights),
+                  inv_propensities, bw = kern_bw, K_mat = kern_K,
+                  psi_qw = list(C = .obarC, w = weights, ridge = ridge_on),
                   kp_cache = kp_cache, keep = omega_keep)
               } else {
                 q_vec <- drop(C_inv %*% (mbar - att_gt))                      # same inverse as the weights => q'1 = 0
@@ -918,23 +930,41 @@ fit_edid_cells <- function(
         omega_raw <- omega   # unshrunk moment covariance (= crossprod(psi)/n^2 exactly); the
                              # weight-estimation correction needs BOTH the raw psi second moment
                              # and the matrix the weights actually invert (shrunk or not)
-        # Optional nocov_shrink: Ledoit-Wolf shrinkage of Omega* toward its
-        # i.i.d.-pole structure BEFORE inverting for the weights. The package
-        # default is the pure plug-in efficient estimator (unshrunk); this opt-in
-        # finite-sample guard stabilizes the WEIGHTS only. The SE machinery below
-        # is untouched: it is the empirical (cluster-)variance of the realized weighted IF
-        # (compute_eif_nocov_edid -> safe_inference_edid) evaluated at the weights
-        # actually used; the shrunk matrix never enters the variance directly.
-        # Skipped where no weights are estimated: uniform (fixed 1/H), PT-Post and
-        # guard-pinned/just-identified cells (H = 1, weight = 1).
-        if (isTRUE(nocov_shrink) && weight_method != "uniform" &&
+        # omega_cov_shrink: regularize Omega* BEFORE inverting for the weights (no-covariate path).
+        #   "none"        -> pure plug-in efficient estimator (unshrunk).
+        #   "ledoit_wolf" -> Ledoit-Wolf shrinkage toward the i.i.d.-pole structure (data-driven lambda).
+        #   "ridge"       -> vanishing ridge Omega + (H/n)*mean(diag)*I.
+        # Both regularizers are asymptotically negligible (intensity -> 0 as n grows), so the
+        # semiparametric-efficiency limit is unchanged; they stabilize the WEIGHTS in finite samples.
+        # The SE machinery below is the empirical (cluster-)variance of the realized weighted IF
+        # evaluated at the weights actually used; stabilized weights make that plug-in SE well-
+        # calibrated even without estimation_effect (the shrunk/ridged matrix never enters it directly).
+        # Skipped where no weights are estimated: uniform (fixed 1/H), PT-Post and H = 1 cells.
+        if (omega_cov_shrink != "none" && weight_method != "uniform" &&
             pt_assumption == "all" && nrow(pairs) > 1L) {
-          sh <- shrink_omega_nocov_edid(omega, g, t, pairs, panel_obj)
-          omega         <- sh$omega
-          shrink_lambda <- sh$lambda
+          if (omega_cov_shrink == "ledoit_wolf") {
+            sh <- shrink_omega_nocov_edid(omega, g, t, pairs, panel_obj)
+            omega         <- sh$omega
+            shrink_lambda <- sh$lambda            # -> use_chain ee branch (LW pole-target map)
+          } else if (omega_cov_shrink == "ridge") {
+            # Vanishing intensity p/n_eff (p = H). n_eff is the Kish ESS of the units active in
+            # THIS cell's weighted Omega* (== panel_obj$n bit-for-bit unweighted, so the ridge fit
+            # is byte-identical at w-equal); under dispersed weights the raw n under-regularizes the
+            # scale-invariant weighted Omega* by n/n_eff, which n_eff_edid() corrects. n_eff is a
+            # function of the FIXED weights only (CONSTANT in Omega-hat), so the ridge term stays
+            # d/dOmega = I and the ee "plain map" branch is unchanged (FD-oracled).
+            Hh    <- nrow(omega)
+            n_eff <- n_eff_edid(panel_obj$unit_weights,
+                                active_mask_nocov_edid(g, pairs, panel_obj), panel_obj$n)
+            lam_r <- Hh / n_eff
+            omega <- omega + (lam_r * mean(diag(omega))) * diag(Hh)
+            # shrink_lambda stays NA: the ridge term is CONSTANT in Omega-hat (d/dOmega = I), so the
+            # ee "plain map" branch (use_chain = FALSE), evaluated at omega_used = ridged Omega, is the
+            # exact weight-estimation correction for w(Omega-hat + cI). No new derivation needed.
+          }
         }
-        # condition number of the matrix the weights actually invert (the shrunk one
-        # when nocov_shrink applied; bit-identical to the raw Omega* otherwise)
+        # condition number of the matrix the weights actually invert (the regularized one when
+        # omega_cov_shrink != "none"; bit-identical to the raw Omega* otherwise)
         cond_num <- tryCatch(check_condition_edid(omega), error = function(e) NA_real_)
         # Honor weight_method: with no covariates there is no X-variation, so efficient,
         # averaged, and gmm all invert the same unconditional Omega* and coincide; only
@@ -1026,7 +1056,7 @@ fit_edid_cells <- function(
         is_pre          = is_pre,
         inference_valid = inf_res$inference_valid,
         thin_cohort_degraded = thin_deg,   # TRUE when the thin-cohort guard pinned this cohort to the just-identified moment
-        nocov_shrink_lambda = shrink_lambda,   # Ledoit-Wolf intensity (NA: covariate path / uniform / H = 1 / nocov_shrink = FALSE)
+        nocov_shrink_lambda = shrink_lambda,   # LW intensity (NA: covariate path / uniform / H=1 / omega_cov_shrink != "ledoit_wolf")
         nocov_ee        = ee_cell,  # no-cov weight-estimation correction record (NULL unless engaged on this cell)
         ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )

@@ -35,15 +35,26 @@ pole covariance at the sample shares,
 Ledoit-Wolf ratio (variance-of-entries over distance-to-target, clamped to
 \eqn{[0, 1]}):
 \deqn{\hat\lambda = \min\!\Big(1, \frac{\bar b^2}{d^2}\Big), \qquad
-  \bar b^2 = \frac{1}{n^2}\sum_i \|B_i - \hat\Omega\|_F^2, \quad
+  \bar b^2 = \frac{\hat\pi}{n_{\mathrm{eff}}}, \quad
+  \hat\pi = \frac{1}{n}\sum_i \|B_i - \hat\Omega\|_F^2, \quad
   d^2 = \|\hat\Omega - T\|_F^2,}
 where \eqn{B_i = \psi_i\psi_i'/n} is unit \eqn{i}'s contribution
-(\eqn{\hat\Omega = n^{-1}\sum_i B_i} exactly). Off the pole
-\eqn{d^2 \to \|\Omega - T\|^2_F > 0} while \eqn{\bar b^2 = O_p(1/n)} times
-the entry scale, so \eqn{\hat\lambda \to 0} and the asymptotic weights (and
-gains) are unchanged; at the pole the target is consistent for the truth, so
-a large \eqn{\hat\lambda} costs nothing asymptotically and removes the
-finite-sample weight-estimation noise.
+(\eqn{\hat\Omega = n^{-1}\sum_i B_i} exactly) and \eqn{n_{\mathrm{eff}}} is the
+Kish effective sample size of the units active in this cell's weighted
+\eqn{\hat\Omega} (\code{\link{n_eff_edid}}). Unweighted
+\eqn{n_{\mathrm{eff}} = n} exactly, so
+\eqn{\bar b^2 = (q_4/n^2 - n\|\hat\Omega\|_F^2)/n^2} bit-for-bit (the legacy
+form); under dispersed observation weights the heavily-weighted units dominate
+\eqn{\hat\Omega}, so the raw \eqn{n} would under-shrink by
+\eqn{n/n_{\mathrm{eff}}} -- only the OUTER averaging factor \eqn{1/n_{\mathrm{eff}}}
+(the variance-of-the-average) changes; the internal \eqn{1/n} of \eqn{B_i}
+carries the fixed \eqn{1/\pi_g} scale of \eqn{\hat\Omega} and stays \eqn{n}.
+Off the pole \eqn{d^2 \to \|\Omega - T\|^2_F > 0} while
+\eqn{\bar b^2 = O_p(1/n_{\mathrm{eff}})} times the entry scale, so
+\eqn{\hat\lambda \to 0} and the asymptotic weights (and gains) are unchanged;
+at the pole the target is consistent for the truth, so a large
+\eqn{\hat\lambda} costs nothing asymptotically and removes the finite-sample
+weight-estimation noise.
 }
 \details{
 Returns the input unchanged (with \code{lambda = NA}) for degenerate inputs

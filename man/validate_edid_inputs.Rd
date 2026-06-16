@@ -17,7 +17,8 @@ validate_edid_inputs(
   clustervars,
   biters,
   anticipation,
-  survey_design
+  survey_design,
+  weightsname = NULL
 )
 }
 \arguments{

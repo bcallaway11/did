@@ -128,11 +128,13 @@ and the fourth-moment statistic \eqn{q_4} fixed), the chain rule gives
 \deqn{d\Omega_{sh}[dE] = (1-\lambda)\,dE
   + \lambda\,\frac{\langle dE, S\rangle_F}{\langle S, S\rangle_F}\,S
   + d\lambda[dE]\,(\sigma^2 S - \Omega),}
-\deqn{d\lambda[dE] = \frac{-\tfrac{2}{n}\langle\Omega, dE\rangle_F
+\deqn{d\lambda[dE] = \frac{-\tfrac{2}{n_{\mathrm{eff}}}\langle\Omega, dE\rangle_F
   - 2\lambda\,\langle\Omega - \sigma^2 S, dE\rangle_F}{d^2}
   \quad (\text{interior } \lambda; \; d\lambda = 0 \text{ at the clamps } 0, 1),}
-using \eqn{d(b^2)[dE] = -(2/n)\langle\Omega,dE\rangle_F} (from
-\eqn{b^2 = (q_4/n^2 - n\|\Omega\|_F^2)/n^2} with \eqn{q_4} fixed) and
+using \eqn{d(b^2)[dE] = -(2/n_{\mathrm{eff}})\langle\Omega,dE\rangle_F} (from
+\eqn{b^2 = q_4/(n^3 n_{\mathrm{eff}}) - \|\Omega\|_F^2/n_{\mathrm{eff}}} with
+\eqn{q_4} fixed; \eqn{n_{\mathrm{eff}}} the cell's Kish ESS, \eqn{= n}
+unweighted) and
 \eqn{d(d^2)[dE] = 2\langle\Omega - \sigma^2 S, dE\rangle_F} (the \eqn{\sigma^2}
 channel of \eqn{d^2} vanishes by the projection orthogonality
 \eqn{\langle\Omega - \sigma^2 S, S\rangle_F = 0}). The data-dependence of

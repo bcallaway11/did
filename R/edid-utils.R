@@ -139,6 +139,151 @@ cov_nn_edid <- function(x, y) {
   mean((x - mean(x)) * (y - mean(y)))
 }
 
+# ---------------------------------------------------------------------------
+# Weighted (Hajek) versions of the group-mean / group-covariance primitives.
+# These power the observation-weights (`weightsname`) path. When `w` is NULL --
+# the unweighted default -- each dispatches to the EXACT unweighted expression
+# above, so the no-weights path is BYTE-IDENTICAL (same floating-point ops).
+# Weights need NOT sum to anything in particular here: the Hajek mean and the
+# group-share-normalized covariance are scale-invariant in `w`.
+# ---------------------------------------------------------------------------
+
+#' Weighted (Hajek) mean
+#'
+#' \code{wmean_edid(x, NULL)} is \code{mean(x)} bit-for-bit; otherwise
+#' \eqn{\sum_i w_i x_i / \sum_i w_i}.
+#' @param x numeric vector
+#' @param w numeric vector of nonnegative weights (same length), or NULL
+#' @return scalar
+#' @keywords internal
+wmean_edid <- function(x, w = NULL) {
+  if (is.null(w)) return(mean(x))
+  sw <- sum(w)
+  if (sw == 0) return(NA_real_)
+  sum(w * x) / sw
+}
+
+#' Weighted biased covariance, group-share normalized
+#'
+#' \code{wcov_nn_edid(x, y, NULL)} is \code{cov_nn_edid(x, y)} bit-for-bit.
+#' With weights it returns the Hajek-weighted second moment of the demeaned
+#' vectors, \eqn{\sum_i w_i (x_i-\bar x_w)(y_i-\bar y_w)/\sum_i w_i}. This is
+#' the weighted analog of the biased (divide-by-n) covariance: it is the
+#' covariance under the reweighted empirical measure with masses
+#' \eqn{w_i/\sum w}.
+#' @param x,y numeric vectors of equal length
+#' @param w numeric vector of nonnegative weights (same length), or NULL
+#' @return scalar
+#' @keywords internal
+wcov_nn_edid <- function(x, y, w = NULL) {
+  if (is.null(w)) return(mean((x - mean(x)) * (y - mean(y))))
+  sw <- sum(w)
+  if (sw == 0) return(NA_real_)
+  mx <- sum(w * x) / sw
+  my <- sum(w * y) / sw
+  sum(w * (x - mx) * (y - my)) / sw
+}
+
+#' Sampling-variance term of a group mean (\eqn{\mathrm{Cov}(\bar x_g, \bar y_g)})
+#'
+#' Returns the (cross-)sampling-variance contribution of two group means built
+#' on the SAME group of units, which the no-covariate \eqn{\Omega^*} builder adds
+#' as \code{cov_nn_edid(x, y) / n_g} in the unweighted case. The weighted (Hajek)
+#' generalization is the design-based variance of the ratio (Hajek) mean,
+#' \deqn{\sum_{i\in g} w_i^2 (x_i - \bar x_w)(y_i - \bar y_w) / W_g^2,\quad
+#'   W_g = \sum_{i\in g} w_i,}
+#' which the EIF identity \eqn{\Omega^* = \Psi'\Psi/n^2} requires (the per-unit
+#' moment influence carries an explicit \eqn{w_i} factor and a \eqn{1/\pi_g}, with
+#' \eqn{\pi_g = W_g/n}). With \code{w = NULL} (or all-equal weights after the
+#' mean-1 normalization) it is \code{cov_nn_edid(x, y) / n_g} bit-for-bit:
+#' \eqn{n_g \,\mathrm{cov}_{nn}/n_g^2 = \mathrm{cov}_{nn}/n_g}.
+#'
+#' @param x,y numeric vectors of equal length (the group's difference vectors)
+#' @param w numeric vector of the group's nonnegative weights, or NULL
+#' @return scalar
+#' @keywords internal
+wvar_term_edid <- function(x, y, w = NULL) {
+  if (is.null(w)) return(mean((x - mean(x)) * (y - mean(y))) / length(x))
+  sw <- sum(w)
+  if (sw == 0) return(NA_real_)
+  mx <- sum(w * x) / sw
+  my <- sum(w * y) / sw
+  sum(w * w * (x - mx) * (y - my)) / (sw * sw)
+}
+
+#' Effective sample size (Kish ESS) for the ridge / Ledoit-Wolf intensity
+#'
+#' The vanishing ridge / Ledoit-Wolf intensities that stabilize the WEIGHTS in
+#' \code{\link{edid}} scale as the reciprocal of the number of independent
+#' contributions backing the estimated moment covariance \eqn{\widehat\Omega^*}.
+#' Unweighted that count is the active-unit count; under dispersed observation
+#' weights (\code{weightsname}) the heavily-weighted units dominate
+#' \eqn{\widehat\Omega^*}, so the right count is the Kish effective sample size
+#' \deqn{n_{\mathrm{eff}} = \frac{(\sum_i w_i)^2}{\sum_i w_i^2} \le m,}
+#' the design-based ESS of the units active in that cell's weighted
+#' \eqn{\widehat\Omega^*}. Using the raw count \eqn{n} instead under-regularizes
+#' the scale-invariant weighted \eqn{\widehat\Omega^*} by the factor
+#' \eqn{n / n_{\mathrm{eff}} \ge 1}.
+#'
+#' \strong{Byte-identity (non-negotiable).} With \code{w = NULL} (the unweighted
+#' default) this returns \code{n_full} (\code{panel_obj$n}) UNCHANGED -- exactly
+#' the count every legacy ridge/LW intensity used -- so all unweighted intensities
+#' are bit-for-bit identical regardless of which units are active in the cell.
+#' Only the WEIGHTED branch uses the active-unit Kish ESS, matching the mandate
+#' \code{n_eff = if (no weights) panel_obj$n else (sum w)^2/sum(w^2)} over the
+#' cell's active units. After the mean-1 normalization in
+#' \code{prepare_edid_panel()} a CONSTANT weight column is all-ones on its active
+#' units, so \eqn{n_{\mathrm{eff}} = (\sum 1)^2/\sum 1 = n_{\mathrm{act}}}; the
+#' headline weighted-application designs activate all units
+#' (\eqn{n_{\mathrm{act}} = n}), so a constant column is a no-op there too.
+#'
+#' \strong{Asymptotics.} For a fixed weight distribution \eqn{n_{\mathrm{eff}}}
+#' grows proportionally to the active count, so any intensity of the form
+#' \eqn{c / n_{\mathrm{eff}}} still vanishes as the sample grows -- the
+#' semiparametric-efficiency limit is preserved.
+#'
+#' @param w numeric vector of nonnegative unit weights (\code{panel_obj$unit_weights}),
+#'   or \code{NULL} on the unweighted path
+#' @param active_mask logical vector over ALL units (length \code{panel_obj$n})
+#'   selecting the units that enter this cell's weighted \eqn{\widehat\Omega^*}
+#'   (the nonzero rows of \eqn{\Psi}). Used only on the weighted branch.
+#' @param n_full scalar full-sample size (\code{panel_obj$n}); the value returned
+#'   verbatim on the unweighted path (\code{w = NULL}). Defaults to
+#'   \code{length(active_mask)}.
+#' @return scalar effective sample size (\code{>= 1}); \code{n_full} exactly when
+#'   \code{w} is \code{NULL}
+#' @keywords internal
+n_eff_edid <- function(w, active_mask, n_full = length(active_mask)) {
+  if (is.null(w)) return(n_full)                            # unweighted: legacy full n, byte-identical
+  ww <- w[active_mask]
+  sw <- sum(ww)
+  if (!is.finite(sw) || sw <= 0) return(n_full)            # degenerate: fall back to full count
+  ne <- (sw * sw) / sum(ww * ww)
+  if (!is.finite(ne) || ne < 1) 1 else ne
+}
+
+#' Active-unit mask for a no-covariate (g, t) cell's weighted Omega*
+#'
+#' The nonzero rows of \eqn{\Psi} (\code{compute_psi_moments_nocov_edid()}) -- the
+#' units that actually enter the cell's \eqn{\widehat\Omega^*} -- are the treated
+#' cohort \eqn{g}, the never-treated group, and every comparison cohort
+#' \eqn{g'_j} appearing in \code{pairs$gp}. Returns their union as a logical mask
+#' over all units, for \code{\link{n_eff_edid}}.
+#'
+#' @param target_g scalar cohort value
+#' @param pairs data.frame with column \code{gp} (the comparison cohorts), H rows
+#' @param panel_obj panel object from \code{prepare_edid_panel()}
+#' @return logical vector length \code{panel_obj$n}
+#' @keywords internal
+active_mask_nocov_edid <- function(target_g, pairs, panel_obj) {
+  m <- panel_obj$cohort_masks[[as.character(target_g)]] | panel_obj$never_treated_mask
+  for (gp in unique(pairs$gp)) {
+    cm <- panel_obj$cohort_masks[[as.character(gp)]]
+    if (!is.null(cm)) m <- m | cm
+  }
+  m
+}
+
 #' Safe mean: returns NA on empty vector instead of NaN
 #'
 #' @param x numeric vector

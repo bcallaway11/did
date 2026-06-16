@@ -582,6 +582,33 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     .lam_shr <- suppressWarnings(as.numeric(psi_qw$lambda))
     if (length(.lam_shr) != 1L || !is.finite(.lam_shr)) .lam_shr <- 0
     .shr <- min(1, max(0, 1 - .lam_shr))
+    # GENUINE cov-path ridge (omega_cov_shrink = "ridge") estimation-effect term. The weights invert the
+    # RIDGED Omega^ridge = Omega + lambda(Omega) I with lambda(Omega) = (H/n_eff) mean(diag Omega) =
+    # tr(Omega)/n_eff (n_eff the effective sample size of .edid_cov_ridge_lift_*; == panel_obj$n
+    # unweighted, and the weighted COVARIATE path is currently scoped out, so n_eff == n here today --
+    # this stays a BYTE-IDENTICAL no-op, wired to n_eff so it matches the lift's denominator exactly if
+    # the weighted-cov path is ever enabled). The data-direction Jacobian is dOmega^ridge = dOmega +
+    # (tr(dOmega)/n_eff) I. The coupling C (Q/W or the DK gradient) is ALREADY the derivative
+    # dtheta/dOmega^ridge evaluated at the ridged inverse (the array / Omega-bar handed to the weight
+    # builder carries the lift), so:
+    #   dtheta = C : dOmega^ridge = C : dOmega  +  (tr(C)/n_eff) * tr(dOmega).
+    # The first term is the standard channel below (with .shr = 1, since ridge disables the LW blend). The
+    # second term -- the ridge-specific contribution from the data-dependence of lambda itself -- is added by
+    # AUGMENTING each DIAGONAL entry's coupling by -(tr(C)/n_eff). It is O(H/n_eff) -> 0 (asymptotically
+    # negligible) but is the CORRECT first-order term, not omitted (FD-oracled). .ridge_tr is a length-n
+    # per-unit vector tr(C_i)/n_eff for the efficient channel, or a scalar tr(C)/n_eff for the averaged
+    # channel; 0 when ridge is off.
+    .ridge_on  <- isTRUE(psi_qw$ridge)
+    .ridge_tr  <- 0
+    if (.ridge_on && !is.null(C_arr)) {
+      .ridge_neff <- n_eff_edid(panel_obj$unit_weights, rep(TRUE, n), n)   # == n unweighted (byte-identical)
+      .ridge_tr <- if (C_pooled) {
+        sum(diag(C_arr)) / .ridge_neff                         # scalar tr(C)/n_eff (averaged)
+      } else {
+        di <- vapply(seq_len(H), function(jj) C_arr[, jj, jj], numeric(n))  # n x H per-unit diagonals
+        rowSums(di) / .ridge_neff                              # length-n tr(C_i)/n_eff (efficient)
+      }
+    }
   }
   # Per-(vector, group) conditional-mean cache: each centered difference vector's E_K[.|X] is recomputed for
   # EVERY (j,k) it appears in (e.g. Y_t-Y_1 in group g recurs in every self pair). Memoize the centered vector and
@@ -654,6 +681,9 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   # summed coupling; the relative gate makes it an exact no-op when nothing floors (1'C1 = 0 then, up to FP).
   if (do_psi && !is.null(C_arr)) {
     tot_coup <- if (C_pooled) -sum(C_arr) * .shr else -rowSums(C_arr, dims = 1L) * .shr
+    # Ridge EE on the cell-constant Term 1: term1 sits in EVERY (j,k) entry, including all H diagonals, so the
+    # diagonal ridge augment -(tr(C)/n) enters Term 1's coupling H times: tot_coup gains -H*(tr(C)/n) = -H*.ridge_tr.
+    if (.ridge_on && (length(.ridge_tr) > 1L || .ridge_tr != 0)) tot_coup <- tot_coup - H * .ridge_tr
     mxC <- suppressWarnings(max(abs(C_arr)))
     if (is.finite(mxC) && mxC > 0 && max(abs(tot_coup)) > 1e-10 * mxC)
       term_psi(Y_t_minus_Y1, Y_t_minus_Y1, kp_g, inv_pg_vec, tot_coup,
@@ -695,6 +725,11 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
         if (j == k) q_vec[j] * w_vec[j] else q_vec[j] * w_vec[k] + q_vec[k] * w_vec[j]
       }
       if (do_psi) coup <- coup * .shr
+      # Ridge EE: augment the DIAGONAL coupling by -(tr(C)/n) so the term contributes +(tr(C)/n) IF(Omega_jj);
+      # summed over the diagonal this is (tr(C)/n) tr(dOmega), the lift's data-dependence channel (see above).
+      # Off-diagonal entries are untouched (the lift is diagonal). .ridge_tr is 0 (no-op) when ridge is off.
+      if (do_psi && .ridge_on && j == k && (length(.ridge_tr) > 1L || .ridge_tr != 0))
+        coup <- coup - .ridge_tr
 
       # Eq. (3.12) term by term, using conditional 1/p_g(X):
       # Term 1: cell-constant Cov(Y_t-Y_1, Y_t-Y_1 | G=g, X), hoisted above the loops.
@@ -810,7 +845,21 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
         Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
     attr(Omega_array, "omega_bar") <- Omega_hat   # pooled: target for the per-unit PD-blend (parity with the fast build)
+    # GENUINE cov-path ridge (omega_cov_shrink = "ridge"): vanishing per-unit diagonal lift lambda_i I.
+    # Applied AFTER the (LW-disabled here, edid_shrink_lambda = 0) blend, BEFORE the downstream eigen-floor
+    # inversion in compute_pointwise_weights_edid. Records the per-unit lambda for the EE channel.
+    if (.edid_cov_ridge_on())
+      attr(Omega_array, "ridge_lift") <- .edid_cov_ridge_lift_array(Omega_array, panel_obj$n, panel_obj$unit_weights)
     return(Omega_array)   # (do_psi already returned above; the efficient psi rides the FIRST array call's lambda)
+  }
+
+  # GENUINE cov-path ridge (averaged scheme): pooled diagonal lift lambda I on Omega-bar, lambda =
+  # (H/n) mean(diag(Omega-bar)), applied BEFORE the eigen-floor below (the floor is a separate guard the
+  # ridge keeps intact). Vanishing (O(H/n)); the EE channel reads the recorded lambda. NO-OP when off.
+  .ridge_lam_obar <- 0
+  if (.edid_cov_ridge_on()) {
+    .rl <- .edid_cov_ridge_lift_pooled(Omega_hat, panel_obj$n, panel_obj$unit_weights)
+    Omega_hat <- .rl$Omega; .ridge_lam_obar <- .rl$lambda
   }
 
   # Ensure positive semi-definiteness AND cap the condition number via a RELATIVE eigenvalue floor on the
@@ -834,6 +883,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
     eig$values <- pmax(eig$values, floor_v)
     Omega_hat <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
     attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    attr(Omega_hat, "ridge_lift") <- .ridge_lam_obar
     return(Omega_hat)
   }
   # DEGENERATE moments (zero pooled variance -- e.g. the structurally-zero self pair with tpre == t that
@@ -863,6 +913,7 @@ compute_omega_star_cov_edid <- function(panel_obj, g, t, pairs,
   # and fast-kernel pooled builders. Inert for the estimate (attributes are stripped by solve/%*%); read only
   # by compute_obar_coupling_edid (which maps dtheta/dS back to dtheta/dOmega via the stored scale).
   attr(Omega_hat, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
+  attr(Omega_hat, "ridge_lift") <- .ridge_lam_obar
 
   Omega_hat   # (do_psi returns its list above)
 }
@@ -1347,6 +1398,71 @@ compute_cell_hessian_edid <- function(panel_obj, g, t, pairs, prop_ratios,
     Hm[j, i] <- Hm[i, j]
   }
   list(H = Hm, blocks = blocks)
+}
+
+# ---------------------------------------------------------------------------
+# Covariate-path ridge regularization of Omega*(X)  (omega_cov_shrink = "ridge")
+# ---------------------------------------------------------------------------
+
+#' GENUINE cov-path ridge lift of Omega*(X): a vanishing diagonal lift lambda*I.
+#'
+#' The cov-path analog of the no-covariate ridge (R/edid-fit.R: omega <- omega +
+#' (H/n) mean(diag(omega)) I). It adds a vanishing diagonal lift lambda*I to each cell's
+#' conditional moment covariance BEFORE it is inverted for the efficient weights, with
+#' \eqn{\lambda = (H/n)\,\overline{\mathrm{diag}}\,\Omega^*} per cell. Unlike Ledoit-Wolf
+#' (which blends toward the pooled/i.i.d. pole, moving the estimand), the ridge does NOT
+#' move the estimand toward any pole; it only guarantees a PD inverse and gently stabilizes
+#' the weights in small samples. Because \eqn{\lambda = O(H/n) \to 0}, the lift is
+#' asymptotically negligible (the efficient limit is unchanged), like the eigenvalue floor.
+#'
+#' Engaged iff \code{getOption("edid_cov_ridge")} is TRUE (set by \code{edid()} when
+#' \code{has_cov && omega_cov_shrink == "ridge"}; that same dispatch forces
+#' \code{edid_shrink_lambda = 0} so the toward-pooled LW blend is OFF). Applied AFTER any
+#' (now-disabled) LW blend and BEFORE the eigen-floor / inversion, in all three Omega
+#' builders (kernel-fast, kernel_orig, sieve) and in BOTH the per-unit (efficient) and
+#' pooled (averaged) paths, so the byte-identical "build-invariance" contract holds.
+#'
+#' @param Omega_array per-unit array n x H x H (efficient path), modified in place by lift.
+#' @param Omega_hat pooled H x H (used for the per-unit lambda's diag source is per-unit; here
+#'   only for the averaged path).
+#' @return for the per-unit path: the lifted array carrying \code{attr(., "ridge_lift")} = the
+#'   n-vector of per-unit lambda_i (the EE channel reads it). For the pooled path: the lifted
+#'   matrix carrying \code{attr(., "ridge_lift")} = the scalar lambda.
+#' @keywords internal
+#' @noRd
+.edid_cov_ridge_on <- function() isTRUE(getOption("edid_cov_ridge"))
+
+# Per-unit lift: Omega_array[i,,] <- Omega_array[i,,] + lambda_i I, lambda_i=(H/n_eff) mean(diag_i).
+# Returns lambda (n-vector). The denominator is the effective sample size n_eff (Kish ESS of the units
+# backing the cov-path Omega*; == panel_obj$n bit-for-bit unweighted), matching the no-cov ridge (H/n_eff).
+# NOTE: the weighted COVARIATE path is currently scoped out in edid() (it errors), so unit_weights is
+# always NULL here today and n_eff == n_full -- this is a structural BYTE-IDENTICAL no-op for now, wired
+# to n_eff so the denominator is already correct if/when the weighted-cov path is derived and enabled.
+# H = 1 safe: indexes the diagonal slices directly (Omega_array[i, j, j] would mis-fire via diag() on a
+# scalar slice). For H = 1 the cell is just-identified -- the single weight is trivially 1 -- but the lift
+# still applies harmlessly (it cancels in the 1x1 normalization w = (Omega+lam)^{-1}/sum = 1).
+.edid_cov_ridge_lift_array <- function(Omega_array, n_full, unit_weights = NULL) {
+  H  <- dim(Omega_array)[2]
+  n_eff <- n_eff_edid(unit_weights, rep(TRUE, n_full), n_full)   # == n_full unweighted (byte-identical)
+  diag_sum <- 0                                            # sum over j of Omega_array[, j, j], per unit
+  for (jj in seq_len(H)) diag_sum <- diag_sum + Omega_array[, jj, jj]
+  lam <- (H / n_eff) * (diag_sum / H)                      # (H/n_eff) * mean(diag Omega*(X_i))
+  lam[!is.finite(lam) | lam < 0] <- 0
+  if (any(lam > 0)) {
+    idx <- which(lam > 0)
+    for (jj in seq_len(H)) Omega_array[idx, jj, jj] <- Omega_array[idx, jj, jj] + lam[idx]
+  }
+  lam
+}
+
+# Pooled lift: Omega_hat <- Omega_hat + lambda I, lambda = (H/n_eff) mean(diag(Omega_hat)). Returns lambda.
+# Same n_eff denominator and same structural-no-op note as .edid_cov_ridge_lift_array.
+.edid_cov_ridge_lift_pooled <- function(Omega_hat, n_full, unit_weights = NULL) {
+  H     <- nrow(Omega_hat)
+  n_eff <- n_eff_edid(unit_weights, rep(TRUE, n_full), n_full)   # == n_full unweighted (byte-identical)
+  lam   <- (H / n_eff) * mean(diag(Omega_hat))
+  if (!is.finite(lam) || lam < 0) lam <- 0
+  list(Omega = if (lam > 0) Omega_hat + lam * diag(H) else Omega_hat, lambda = lam)
 }
 
 #' Pointwise efficient weights w(X_i) = Omega*(X_i)^(-1) 1 / (1' Omega*(X_i)^(-1) 1)

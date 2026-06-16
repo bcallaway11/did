@@ -20,7 +20,7 @@
 prepare_edid_panel <- function(
   data, yname, idname, tname, gname,
   xformla = NULL, covariates = NULL, clustervars = NULL,
-  anticipation = 0L
+  anticipation = 0L, weightsname = NULL
 ) {
 
   # -----------------------------------------------------------------------
@@ -98,10 +98,30 @@ prepare_edid_panel <- function(
   never_treated_mask <- is.infinite(unit_cohorts)
 
   # -----------------------------------------------------------------------
-  # 11. cohort_fractions: pi_g = n_g / n
+  # 11b. Observation weights (weightsname): one mean-1-normalized weight per unit
   # -----------------------------------------------------------------------
+  # unit_weights is NULL on the unweighted default (so every downstream consumer takes
+  # its byte-identical unweighted branch). When weightsname is supplied, we extract one
+  # weight per unit (time-invariant, enforced by validation) and normalize to mean 1
+  # (sum = n). The mean-1 normalization is the byte-identity lever: a CONSTANT weight
+  # column normalizes to all-ones, so the weighted cohort_fractions below reduce to the
+  # exact n_g/n and every weighted primitive matches its unweighted counterpart.
+  unit_weights <- NULL
+  if (!is.null(weightsname)) {
+    w_vals       <- dt[[weightsname]]
+    w_unit_map   <- tapply(w_vals, unit_id_vals, function(x) x[1L])
+    raw_w        <- as.numeric(w_unit_map[match(all_units, names(w_unit_map))])
+    sw           <- sum(raw_w)
+    unit_weights <- if (sw > 0) raw_w * (n / sw) else raw_w   # mean-1: sum = n
+  }
+
+  # -----------------------------------------------------------------------
+  # 11. cohort_fractions: pi_g = W_g / n  (W_g = sum of unit weights in cohort g;
+  #     reduces to n_g / n when unweighted because unit_weights are all 1 and sum = n)
+  # -----------------------------------------------------------------------
+  .Wsum <- function(mask) if (is.null(unit_weights)) sum(mask) else sum(unit_weights[mask])
   cohort_fractions <- stats::setNames(
-    vapply(treatment_groups, function(g_val) sum(unit_cohorts == g_val) / n,
+    vapply(treatment_groups, function(g_val) .Wsum(unit_cohorts == g_val) / n,
            numeric(1L)),
     as.character(treatment_groups)
   )
@@ -162,6 +182,8 @@ prepare_edid_panel <- function(
     cohort_masks       = cohort_masks,
     never_treated_mask = never_treated_mask,
     cohort_fractions   = cohort_fractions,
+    unit_weights       = unit_weights,   # NULL when unweighted (byte-identity); else mean-1 per-unit weights
+    weightsname        = weightsname,
     cluster_indices    = cluster_indices,
     n_clusters         = n_clusters,
     covariate_matrix   = covariate_matrix,

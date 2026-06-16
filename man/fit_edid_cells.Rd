@@ -25,7 +25,7 @@ fit_edid_cells(
   min_pair_units = 5L,
   bs_df = 4L,
   ratio_method = c("exp", "direct"),
-  nocov_shrink = FALSE
+  omega_cov_shrink = c("ridge", "ledoit_wolf", "none")
 )
 }
 \arguments{
@@ -60,11 +60,16 @@ propensity nuisances on the covariate path (see \code{\link{edid}} and
 Riesz regressions with full estimation-effect integration, \code{"direct"} reproduces
 the paper's legacy per-pair LS sieve bit-for-bit (retained for forensics)}
 
-\item{nocov_shrink}{logical (default \code{FALSE}): on the no-covariate PT-All
-path, optionally shrink each cell's estimated moment covariance toward its
-i.i.d.-pole structure with a Ledoit-Wolf intensity before inverting for
-the weights (see \code{\link{edid}}); the default \code{FALSE} uses the
-unshrunk plug-in efficient weights}
+\item{omega_cov_shrink}{one of \code{"ridge"} (default), \code{"ledoit_wolf"},
+\code{"none"}: regularize each cell's estimated moment covariance \eqn{\hat\Omega^*}
+before inverting for the weights. \code{"ridge"} adds \eqn{(H/n)\,\overline{\mathrm{diag}}\,I}
+(the vanishing default); \code{"ledoit_wolf"} shrinks toward the i.i.d.-pole structure
+(data-driven intensity); \code{"none"} uses the unshrunk plug-in efficient weights. On the
+no-covariate PT-All path this dispatch is applied here; on the covariate path \code{edid()} maps
+it onto \eqn{\widehat\Omega^*(X)} via \code{edid_shrink_lambda} (LW / none) and the
+\code{edid_cov_ridge} lift (ridge), honored by the kernel and sieve Omega builders. Both
+regularizers are asymptotically negligible (intensity \eqn{\to 0}), so the efficiency limit is
+unchanged (see \code{\link{edid}}).}
 }
 \value{
 list with elements:
