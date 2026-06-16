@@ -11,7 +11,8 @@ estimate_propensity_ratio_exp_edid(
   g,
   gp,
   bs_df = 4L,
-  return_aux = FALSE
+  return_aux = FALSE,
+  weights = NULL
 )
 }
 \arguments{
@@ -28,6 +29,11 @@ estimate_propensity_ratio_exp_edid(
 \item{bs_df}{integer B-spline degrees of freedom (default 4), or \code{"ic"}
 for the per-fit information-criterion selection of
 \code{\link{select_bs_df_ic_edid}} (the paper's BIC-flavored rule)}
+
+\item{weights}{optional numeric vector of nonnegative observation weights aligned
+with \code{X_train} (and, in the plug-in regime, \code{X_test}); when supplied
+the sieve is fit by WLS and the M-estimator aux carries the obs-weighted score /
+Hessian. \code{NULL} (default) is byte-identical to the unweighted (OLS) fit.}
 }
 \value{
 as \code{estimate_propensity_ratio_edid} (vector, or aux list under
