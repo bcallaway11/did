@@ -66,6 +66,17 @@
   if (is.null(ci)) (fit$n %||% length(unique(fit$all_units))) else length(unique(ci))
 }
 
+# Effective (Kish ESS) sample size of the units feeding a fit's aggregation IFs,
+# for the weight-dispersion noise floor of .edid_if_diff_quadform(). Equals the
+# full unit count `n` exactly when the fit is unweighted (unit_weights NULL),
+# making the noise floor a no-op there (byte-identical legacy behaviour). Reuses
+# the same n_eff_edid() machinery the cov-ridge fix added; every unit feeds the
+# event-study / overall aggregation IF, so the active mask is all-TRUE.
+.edid_overid_n_eff <- function(fit) {
+  n <- fit$n %||% length(fit$all_units)
+  n_eff_edid(fit$unit_weights, rep(TRUE, n), n_full = n)
+}
+
 # Is a fit a numerically degenerate leg? A non-rejection (or a point estimate) built on
 # such a leg is HOLLOW -- the restricted/efficient fit carried extreme propensity ratios,
 # a non-credible weight channel, or cross-cohort hedges that carry the estimand, or its
@@ -181,7 +192,40 @@
 # returning an arbitrary large H with a tiny p-value. A D that is negligible
 # on the ABSOLUTE scale of the estimators' own variances carries no testable
 # contrast: report H = 0, df = 0, p = 1 with degenerate = TRUE instead.
-.edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1) {
+#
+# `n_eff` is the effective (Kish ESS) sample size of the units feeding xi
+# (`n_eff_edid(unit_weights, ...)`); it equals `n` exactly on the unweighted
+# path. UNDER DISPERSED WEIGHTS + THIN COHORTS the cluster-robust D-hat has
+# downward-biased small eigenvalues (it is an average over n_eff << n
+# independent pieces, but each direction's sampling floor is set by n_eff, not
+# n). The bare pseudoinverse `/ ev$values[pos]` then OVER-AMPLIFIES those
+# statistically-unreliable directions and inflates H spuriously (the weighted
+# Bailey-Goodman-Bacon over-id: H = 290.6, p < 2e-16, even though the faithful
+# weighted pre-trend is clean, p ~ 0.43). We therefore RIDGE the spectrum at a
+# weight-dispersion-aware sampling-noise floor before inverting: each eigenvalue
+# is lifted to `max(lambda_k, floor)` with
+#   floor = mx * max(sqrt(eps), c * sqrt(disp / n_eff)),  disp = max(0, n/n_eff - 1),
+# i.e. the over-amplified directions are damped rather than discarded (the rank,
+# hence the chi^2 df, is preserved -- a smooth Tikhonov lift, not a lumpy hard
+# rank cut on a smoothly-decaying spectrum). The scale `sqrt(disp / n_eff)` is
+# the relative sampling SD of an estimated-covariance eigenvalue built from
+# n_eff effective pieces, inflated by the excess weight dispersion `disp` (the
+# part of the small-eigenvalue bias that the raw 1/n averaging does not see); the
+# constant c = 1 is the bare random-matrix noise-edge coefficient (NOT a size-tuned
+# knob): validated to control over-id size (~0.01, slightly conservative, -> nominal as
+# n_eff grows) at power equal to any larger c on a clean-PT, thin-cohort, dispersed-weight
+# DGP (see quality_reports/drafts/gate_runs/overid/{overid_fix,val_power-size-c,
+# c1_lock_and_Klarge_scope}.md). INVARIANTS, all by
+# construction: (i) UNWEIGHTED / uniform weights => n_eff = n => disp = 0 =>
+# floor = mx*sqrt(eps), so NO eigenvalue is lifted and the code takes the
+# ORIGINAL solve()/pseudoinverse branch byte-for-byte (the regularizer is a
+# no-op); (ii) for any fixed weight distribution disp -> const and n_eff -> inf,
+# so floor -> mx*sqrt(eps): the lift VANISHES asymptotically and the chi^2(rank)
+# limit on well-identified designs is untouched (the project-wide invariant that
+# every Omega/D regularizer is asymptotically negligible); (iii) the degenerate-
+# contrast guard (H = 0, df = 0, p = 1) still fires first, before any lift.
+EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coefficient (uniform, not size-tuned)
+.edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1, n_eff = n) {
   xi <- as.matrix(xi)
   D  <- n * cluster_cov_edid(xi, cluster_indices, n)     # = E_n[xi xi'] when iid
   if (any(!is.finite(D))) {
@@ -200,12 +244,29 @@
   if (rk == 0L) {                                        # degenerate D: no power, report p = 1
     return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
   }
-  if (rk == length(d)) {
-    H <- as.numeric(n * crossprod(d, solve(D, d)))       # full rank: exact inverse
-  } else {
-    V <- ev$vectors[, pos, drop = FALSE]
-    H <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / ev$values[pos])))
+  # Weight-dispersion noise-floor lift (eigen-ridge). disp == 0 (unweighted /
+  # uniform) makes floor_rel == sqrt(eps), lift == FALSE, and the branch below is
+  # the ORIGINAL code -- byte-identical. Only dispersed weights engage the lift.
+  if (!is.finite(n_eff) || n_eff <= 0) n_eff <- n
+  disp      <- max(0, n / n_eff - 1)
+  floor_rel <- max(sqrt(.Machine$double.eps), EDID_OVERID_DISP_C * sqrt(disp / n_eff))
+  lift      <- floor_rel > sqrt(.Machine$double.eps) && any(ev$values[pos] < floor_rel * mx)
+  if (!lift) {
+    if (rk == length(d)) {
+      H <- as.numeric(n * crossprod(d, solve(D, d)))     # full rank: exact inverse (unchanged)
+    } else {
+      V <- ev$vectors[, pos, drop = FALSE]
+      H <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / ev$values[pos])))
+    }
+    return(list(statistic = H, df = rk,
+                p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D,
+                degenerate = FALSE))
   }
+  # Dispersed-weight path: ridge the retained eigenvalues at the noise floor,
+  # keep the rank (df) unchanged, invert on the lifted spectrum.
+  V    <- ev$vectors[, pos, drop = FALSE]
+  lam  <- pmax(ev$values[pos], floor_rel * mx)
+  H    <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / lam)))
   list(statistic = H, df = rk,
        p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D,
        degenerate = FALSE)
@@ -215,7 +276,18 @@
 # Theorem 5.2 (D > 0 is required; xi ~ 0 makes the statistic 0/0, so report
 # H = 0 / p = 1 instead of NaN). The guard is relative to the parameter's
 # asymptotic variance scale.
-.edid_scalar_hausman <- function(d, xi_vec, n, cluster_indices, v_scale = 1) {
+#
+# The scalar statistic divides by a single, directly-estimated variance D (a
+# weighted mean of squares), NOT by an inverted small eigenvalue, so it does NOT
+# suffer the joint test's pseudoinverse over-amplification: the weighted
+# Bailey-Goodman-Bacon scalar statistics are already sane (ES_avg H = 3.7,
+# p = 0.05) at the exact same dispersed weights that send the joint statistic to
+# H = 290.6. The weight-dispersion noise floor is therefore an over-id-JOINT
+# device, not needed in 1-D; we accept `n_eff` for signature parity with
+# .edid_if_diff_quadform (and so callers pass it uniformly) but the scalar H is
+# left BYTE-IDENTICAL -- adding a 1-D floor would only ever shrink an already-
+# sane statistic and could mask genuine per-coordinate evidence.
+.edid_scalar_hausman <- function(d, xi_vec, n, cluster_indices, v_scale = 1, n_eff = n) {
   D <- as.numeric(n * cluster_cov_edid(matrix(xi_vec, ncol = 1L), cluster_indices, n))
   eps_D <- .Machine$double.eps^0.5
   if (!is.finite(D) || D <= eps_D * max(v_scale, 1)) {
@@ -343,6 +415,7 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
 
   n  <- fit_restricted$n
   ci <- fit_restricted$cluster_indices
+  n_eff <- .edid_overid_n_eff(fit_restricted)   # Kish ESS for the over-id noise floor (== n unweighted)
 
   # Broken-leg sanity guard (a hollow non-rejection footgun, Nguyen/Bailey-GB/ACA gate
   # evidence): if EITHER leg is a numerically degenerate fit -- extreme propensity ratios,
@@ -384,7 +457,7 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   # asymptotic variance of either fit), for the degenerate-contrast guard.
   v_scale <- max(diag(as.matrix(n * cluster_cov_edid(pU$IF, ci, n))),
                  diag(as.matrix(n * cluster_cov_edid(pR$IF, ci, n))))
-  joint <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = v_scale)
+  joint <- .edid_if_diff_quadform(d, xi, n, ci, v_scale = v_scale, n_eff = n_eff)
   if (isTRUE(joint$degenerate)) {
     message("edid_hausman: the two estimators coincide (the IF-difference covariance is at ",
             "numerical-noise scale relative to the estimators' own variances), so the joint ",
@@ -415,7 +488,7 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   rows  <- vector("list", length(lab_e) + 1L)
   for (j in seq_along(lab_e)) {
     vR <- as.numeric(n * cluster_cov_edid(pR$IF[, j, drop = FALSE], ci, n))
-    sc <- .edid_scalar_hausman(d[j], xi[, j], n, ci, v_scale = vR)
+    sc <- .edid_scalar_hausman(d[j], xi[, j], n, ci, v_scale = vR, n_eff = n_eff)
     rows[[j]] <- data.frame(
       parameter = sprintf("ES(%g)", lab_e[j]), e = lab_e[j],
       theta_U = pU$est[j], theta_R = pR$est[j], difference = d[j],
@@ -424,7 +497,7 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
   d_ov  <- oU$est - oR$est
   xi_ov <- oU$IF[, 1L] - oR$IF[, 1L]
   vR_ov <- as.numeric(n * cluster_cov_edid(oR$IF, ci, n))
-  sc_ov <- .edid_scalar_hausman(d_ov, xi_ov, n, ci, v_scale = vR_ov)
+  sc_ov <- .edid_scalar_hausman(d_ov, xi_ov, n, ci, v_scale = vR_ov, n_eff = n_eff)
   rows[[length(rows)]] <- data.frame(
     parameter = "ES_avg", e = NA_real_,
     theta_U = oU$est, theta_R = oR$est, difference = d_ov,

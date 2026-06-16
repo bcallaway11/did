@@ -13,15 +13,17 @@
 #' Per-group sieve basis pieces (fit on the group, predicted for ALL units), memoized per group.
 #' @keywords internal
 #' @noRd
-.sieve_group_pieces <- function(X_mat, grp_mask, bs_df) {
+.sieve_group_pieces <- function(X_mat, grp_mask, bs_df, weights = NULL) {
   idx <- which(grp_mask)
   if (length(idx) < 2L) return(list(ok = FALSE))
   Bobj   <- build_basis_matrix_edid(X_mat[idx, , drop = FALSE], bs_df)
   B_grp  <- unclass(Bobj); attr(B_grp, "bs_objects") <- NULL
   B_all  <- predict_basis_edid(attr(Bobj, "bs_objects"), X_mat)   # n x p (extrapolates outside group range)
-  BtB    <- crossprod(B_grp)                                      # p x p
+  # WLS group Gram under obs weights: B_grp' W B_grp (NULL-guard => crossprod(B_grp), byte-identical).
+  w_grp  <- if (is.null(weights)) NULL else weights[idx]
+  BtB    <- if (is.null(w_grp)) crossprod(B_grp) else crossprod(B_grp, w_grp * B_grp)   # p x p
   BtB_inv <- tryCatch(chol2inv(chol(BtB)), error = function(e) compute_pseudoinverse_edid(BtB))
-  list(ok = TRUE, idx = idx, B_grp = B_grp, B_all = B_all, BtB_inv = BtB_inv)
+  list(ok = TRUE, idx = idx, B_grp = B_grp, B_all = B_all, BtB_inv = BtB_inv, w_grp = w_grp)
 }
 
 #' Series estimator of Omega*(X). Drop-in signature-compatible with compute_omega_star_cov_edid().
@@ -42,7 +44,15 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   col_t <- panel_obj$period_to_col[[as.character(t)]]
   col_1 <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
   mask_g <- panel_obj$cohort_masks[[as.character(g)]]; mask_inf <- panel_obj$never_treated_mask
-  pi_g <- panel_obj$cohort_fractions[[as.character(g)]]; pi_inf <- sum(mask_inf) / n
+  # Observation weights (NULL => byte-identical). Omega*(X) is a CONDITIONAL covariance: weights enter
+  # LINEARLY via (i) the WLS sieve projection B_all (B'WB)^{-1} B'W (weighted conditional moment, threaded
+  # through .sieve_group_pieces + cmean/ccov), and (ii) weighted pooling over the marginal X (wmean_o /
+  # avg_block row weight). pi_g already obs-weighted via cohort_fractions; pi_inf needs the weighted share.
+  uw   <- panel_obj$unit_weights
+  .nrm <- if (is.null(uw)) n else sum(uw)
+  wmean_o <- if (is.null(uw)) function(x) mean(x) else function(x) sum(uw * x) / .nrm
+  pi_g <- panel_obj$cohort_fractions[[as.character(g)]]
+  pi_inf <- if (is.null(uw)) sum(mask_inf) / n else sum(uw[mask_inf]) / .nrm
   if (!is.null(inv_propensities)) {
     inv_pg_vec <- inv_propensities[[as.character(g)]]; if (is.null(inv_pg_vec)) inv_pg_vec <- rep(1/pi_g, n)
     inv_pinf_vec <- inv_propensities[["Inf"]];          if (is.null(inv_pinf_vec)) inv_pinf_vec <- rep(1/pi_inf, n)
@@ -58,7 +68,7 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   gp_cache <- new.env(parent = emptyenv())
   get_pieces <- function(mask, key) {
     if (exists(key, envir = gp_cache, inherits = FALSE)) return(get(key, envir = gp_cache))
-    p <- .sieve_group_pieces(X_mat, mask, bs_df); assign(key, p, envir = gp_cache); p
+    p <- .sieve_group_pieces(X_mat, mask, bs_df, uw); assign(key, p, envir = gp_cache); p
   }
   # cached conditional mean of a difference vector over a group (one OLS fit, predicted for all n)
   mu_cache <- new.env(parent = emptyenv())
@@ -67,13 +77,15 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
     key <- paste0(vkey, "@", gkey)
     if (exists(key, envir = mu_cache, inherits = FALSE)) return(get(key, envir = mu_cache))
     vc <- v - mean(v[pc$idx])                                            # group-centered (shift-invariant)
-    mu <- drop(pc$B_all %*% (pc$BtB_inv %*% crossprod(pc$B_grp, vc[pc$idx])))
+    tgt <- if (is.null(pc$w_grp)) vc[pc$idx] else pc$w_grp * vc[pc$idx]   # WLS projection target B'W v
+    mu <- drop(pc$B_all %*% (pc$BtB_inv %*% crossprod(pc$B_grp, tgt)))
     out <- list(ok = TRUE, mu = mu, vc = vc, pc = pc); assign(key, out, envir = mu_cache); out
   }
   ccov <- function(a, b) {
     if (!isTRUE(a$ok) || !isTRUE(b$ok)) return(rep(0, n))
     prod_idx <- (a$vc * b$vc)[a$pc$idx]
-    muAB <- drop(a$pc$B_all %*% (a$pc$BtB_inv %*% crossprod(a$pc$B_grp, prod_idx)))
+    tgt  <- if (is.null(a$pc$w_grp)) prod_idx else a$pc$w_grp * prod_idx  # WLS projection target B'W (AB)
+    muAB <- drop(a$pc$B_all %*% (a$pc$BtB_inv %*% crossprod(a$pc$B_grp, tgt)))
     cv <- muAB - a$mu * b$mu; cv[!is.finite(cv)] <- 0; cv
   }
 
@@ -124,7 +136,10 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
     rawfit <- function(v, vkey, gkey, pc) {
       key <- if (is.null(vkey)) NULL else paste0(vkey, "@@", gkey)
       if (!is.null(key) && exists(key, envir = rf, inherits = FALSE)) return(get(key, envir = rf))
-      beta <- pc$BtB_inv %*% crossprod(pc$B_grp, v[pc$idx])
+      # WLS projection target B_grp' W v (matches the value-path cmean's weighted conditional mean; the Gram
+      # pc$BtB_inv is already (B'WB)^{-1} from .sieve_group_pieces). NULL w_grp => unweighted, byte-identical.
+      tgt  <- if (is.null(pc$w_grp)) v[pc$idx] else pc$w_grp * v[pc$idx]
+      beta <- pc$BtB_inv %*% crossprod(pc$B_grp, tgt)
       mu   <- drop(pc$B_all %*% beta)
       out  <- list(mu = mu, e = v[pc$idx] - mu[pc$idx])        # mu length n; residual e length n_grp (on idx)
       if (!is.null(key)) assign(key, out, envir = rf)
@@ -135,16 +150,23 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
       fa <- rawfit(A, akey, gkey, pc); fb <- rawfit(B, bkey, gkey, pc); fab <- rawfit(A * B, NULL, gkey, pc)
       cov_vals <- fab$mu - fa$mu * fb$mu                        # conditional Cov(A,B|X), length n
       s   <- pref_vec * coup                                    # per-unit att-sensitivity (coup pointwise len-n or scalar)
-      aAB <- drop(pc$BtB_inv %*% crossprod(pc$B_all, s))        # BtB_inv (sum_i s_i B_i); NO factor n (cancels)
-      aA  <- drop(pc$BtB_inv %*% crossprod(pc$B_all, s * fb$mu))# weight = mu_B (product rule)
-      aB  <- drop(pc$BtB_inv %*% crossprod(pc$B_all, s * fa$mu))# weight = mu_A
+      # Outer Hajek weight on the marginal sum over EVAL units i (the BtB_inv (sum_i ...) accumulator), matching
+      # the kernel term_psi and the value-pooling wmean_o. NULL/constant uw => byte-identical.
+      sw  <- if (is.null(uw)) s else uw * s
+      aAB <- drop(pc$BtB_inv %*% crossprod(pc$B_all, sw))       # BtB_inv (sum_i uw_i s_i B_i); NO factor n (cancels)
+      aA  <- drop(pc$BtB_inv %*% crossprod(pc$B_all, sw * fb$mu))# weight = mu_B (product rule)
+      aB  <- drop(pc$BtB_inv %*% crossprod(pc$B_all, sw * fa$mu))# weight = mu_A
       idx <- pc$idx
-      psi_om[idx] <<- psi_om[idx] +
+      # The WLS coefficient IF carries the PERTURBING unit's weight w_l: IF_beta(l) = n (B'WB)^{-1} w_l B_l e_l.
+      ew  <- if (is.null(pc$w_grp)) 1 else pc$w_grp
+      psi_om[idx] <<- psi_om[idx] + ew *
         (-drop(pc$B_grp %*% aAB) * fab$e + drop(pc$B_grp %*% aA) * fa$e + drop(pc$B_grp %*% aB) * fb$e)
       cur <- if (exists(gkey, envir = cpl, inherits = FALSE)) get(gkey, envir = cpl) else numeric(n)
       # Under overlap trimming the prefactor is keep_i * s_c,i => dOmega_i/ds_c,i carries keep_i:
       # fold kv into the cov side ONCE here (pref_vec already carries it for the data channel).
-      assign(gkey, cur + (grp_sign * coup) * (if (is.null(kv)) cov_vals else kv * cov_vals), envir = cpl)
+      .cv <- if (is.null(kv)) cov_vals else kv * cov_vals
+      if (!is.null(uw)) .cv <- uw * .cv                         # outer Hajek marginal weight for the inv-p Gamma
+      assign(gkey, cur + (grp_sign * coup) * .cv, envir = cpl)
       invisible(NULL)
     }
     inv_pgp_psi <- function(j) {
@@ -220,20 +242,24 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
       if (is_self[j]) o <- o - inv_pg_vec * term34_g[[j]]
       if (is_self[k]) o <- o - inv_pg_vec * term34_g[[k]]
       if (identical(gp[j], gp[k])) o <- o + inv_pgp_of(j) * ccov(cm_v_gp[[j]], cm_v_gp[[k]])
-      ojk <- mean(o); Omega_hat[j, k] <- ojk; if (k != j) Omega_hat[k, j] <- ojk  # needed by the shrinkage step
+      ojk <- wmean_o(o); Omega_hat[j, k] <- ojk; if (k != j) Omega_hat[k, j] <- ojk  # weighted pooling over marginal X
       Omega_array[, j, k] <- o; if (k != j) Omega_array[, k, j] <- o
     }
   } else {
     # Averaged Omega-bar via symmetric crossprods (series analogue of the kernel batch). For the sieve smoother
     # E[V|X] = B_all (B_grp'B_grp)^{-1} B_grp' V, mean_i prefac_i E[V_jV_k|X_i] = (1/n) Vc' diag(h) Vc with
     # h = B_grp (B_grp'B_grp)^{-1} (B_all' prefac); one crossprod per term/group instead of H(H+1)/2 regressions.
+    # Weighted pooling: row weight w_i folds into pf (and the M term), normalization sum(w); the WLS
+    # column weight w_l enters via BtB_inv = (B'WB)^{-1} and the h column weight. NULL-guard => /n, byte-identical.
     avg_block <- function(prefac, Vc, M, pc) {
-      cB <- colSums(prefac * pc$B_all)
-      h  <- drop(pc$B_grp %*% (pc$BtB_inv %*% cB))
-      (crossprod(Vc, h * Vc) - crossprod(M, prefac * M)) / n
+      pf   <- if (is.null(uw)) prefac else uw * prefac
+      cB   <- colSums(pf * pc$B_all)
+      hraw <- drop(pc$B_grp %*% (pc$BtB_inv %*% cB))
+      h    <- if (is.null(pc$w_grp)) hraw else pc$w_grp * hraw
+      (crossprod(Vc, h * Vc) - crossprod(M, pf * M)) / .nrm
     }
-    Omega_hat <- matrix(mean(term1_const), H, H)
-    c3 <- vapply(seq_len(H), function(j) if (is_self[j]) mean(-inv_pg_vec * term34_g[[j]]) else 0, numeric(1))
+    Omega_hat <- matrix(wmean_o(term1_const), H, H)
+    c3 <- vapply(seq_len(H), function(j) if (is_self[j]) wmean_o(-inv_pg_vec * term34_g[[j]]) else 0, numeric(1))
     Omega_hat <- Omega_hat + outer(c3, rep(1, H)) + outer(rep(1, H), c3)
     if (isTRUE(pc_inf$ok)) {
       Uc <- vapply(cm_u_inf, function(z) z$vc[pc_inf$idx], numeric(length(pc_inf$idx)))
@@ -262,7 +288,18 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
       Omega_array[, jj, kk] <- (1 - lam) * Omega_array[, jj, kk] + lam * Omega_hat[jj, kk]
     attr(Omega_array, "shrink_lambda") <- lam
     attr(Omega_array, "omega_bar") <- Omega_hat   # pooled (PSD after flooring): target for per-unit PD-blend
+    # GENUINE cov-path ridge (omega_cov_shrink = "ridge"): vanishing per-unit lift lambda_i I, identical
+    # construction to the kernel builders (build-invariance) but on the sieve per-unit Omega array.
+    if (.edid_cov_ridge_on())
+      attr(Omega_array, "ridge_lift") <- .edid_cov_ridge_lift_array(Omega_array, n, panel_obj$unit_weights)
     return(Omega_array)
+  }
+  # GENUINE cov-path ridge (averaged+sieve): pooled lift lambda I on Omega-bar BEFORE the floor
+  # (build-invariant with the kernel pooled tails). NO-OP when off.
+  .ridge_lam_obar <- 0
+  if (.edid_cov_ridge_on()) {
+    .rl <- .edid_cov_ridge_lift_pooled(Omega_hat, n, panel_obj$unit_weights)
+    Omega_hat <- .rl$Omega; .ridge_lam_obar <- .rl$lambda
   }
   # Pooled floor: correlation-scale, exponent 1/3 (sqrt-n pooled object) -- same construction as the kernel
   # pooled tails (see compute_omega_star_cov_edid for the rationale). Legacy raw-scale d-dependent floor via
@@ -275,6 +312,7 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
     eig$values <- pmax(eig$values, floor_v)
     out <- eig$vectors %*% diag(eig$values, nrow = H) %*% t(eig$vectors)
     attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v)
+    attr(out, "ridge_lift") <- .ridge_lam_obar
     return(out)
   }
   # Degenerate (zero pooled variance) moments get scale 0 => zero floored-Omega rows => zero weight via
@@ -300,5 +338,6 @@ compute_omega_star_sieve_edid <- function(panel_obj, g, t, pairs,
   # (Daleckii-Krein derivative of the FLOORED inverse, on the scaled system); read only by
   # compute_obar_coupling_edid (which maps dtheta/dS back to dtheta/dOmega via the stored scale).
   attr(out, "eig_floor") <- list(values = lam_raw, vectors = eig$vectors, floor = floor_v, scale = dsc)
+  attr(out, "ridge_lift") <- .ridge_lam_obar
   out
 }

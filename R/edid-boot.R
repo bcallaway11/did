@@ -723,6 +723,18 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
   tp <- panel$time_periods
   p1 <- panel$period_1
 
+  # ---- cov-path omega_cov_shrink: re-establish the fit's regularization from the $args snapshot -----
+  # The cell rebuild below (and the bootstrap refits) MUST run under the SAME moment-covariance
+  # regularization the fit used, or the rebuilt cells differ from the fit and the exactness guard fires.
+  # Mirror edid()'s dispatch: "ledoit_wolf" -> data-driven LW (default options); "none" -> LW off;
+  # "ridge" -> LW off + the genuine cov-path ridge lift (edid_cov_ridge = TRUE). has_cov is TRUE here.
+  ocs <- args$omega_cov_shrink %||% "ledoit_wolf"
+  if (ocs != "ledoit_wolf") {
+    .old_sl <- getOption("edid_shrink_lambda", NA_real_); .old_cr <- getOption("edid_cov_ridge", NULL)
+    options(edid_shrink_lambda = 0, edid_cov_ridge = (ocs == "ridge"))
+    on.exit(options(edid_shrink_lambda = .old_sl, edid_cov_ridge = .old_cr), add = TRUE)
+  }
+
   # ---- smoother + kernel hoist (mirrors fit_edid_cells) -----------------------
   omega_method <- getOption("edid_omega_method", "kernel")
   omega_fun <- switch(omega_method,

@@ -206,6 +206,10 @@ select_bs_df_ic_edid <- function(fit_loss, n, grid = 3:8) {
 #' @param bs_df integer B-spline degrees of freedom (default 4), or \code{"ic"}
 #'   for the per-fit information-criterion selection of
 #'   \code{\link{select_bs_df_ic_edid}} (the paper's BIC-flavored rule)
+#' @param weights optional numeric vector of nonnegative observation weights aligned
+#'   with \code{X_train} (and, in the plug-in regime, \code{X_test}); when supplied
+#'   the sieve is fit by WLS and the M-estimator aux carries the obs-weighted score /
+#'   Hessian. \code{NULL} (default) is byte-identical to the unweighted (OLS) fit.
 #'
 #' @return numeric vector length n_test: estimated r(X) values. Under
 #'   \code{bs_df = "ic"} the selected df is attached as attribute
@@ -213,7 +217,8 @@ select_bs_df_ic_edid <- function(fit_loss, n, grid = 3:8) {
 #'   \code{return_aux = TRUE}).
 #' @keywords internal
 estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
-                                           bs_df = 4L, return_aux = FALSE) {
+                                           bs_df = 4L, return_aux = FALSE,
+                                           weights = NULL) {
   n_test <- nrow(X_test)
 
   # Masks for g and g' units in training data
@@ -248,10 +253,17 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
       Bo  <- build_basis_matrix_edid(X_train, df_k)
       B   <- unclass(Bo); attr(B, "bs_objects") <- NULL
       bg  <- B[mask_gp, , drop = FALSE]
-      bet <- as.vector(compute_pseudoinverse_edid(t(bg) %*% bg) %*%
-                         colSums(B[mask_g, , drop = FALSE]))
-      r_in <- drop(B %*% bet)                              # in-sample (train = test under plug-in)
-      c(loss = mean(mask_gp * r_in^2 - 2 * mask_g * r_in), K = ncol(B))
+      if (is.null(weights)) {                              # NULL-guard: byte-identical unweighted IC loss
+        bet  <- as.vector(compute_pseudoinverse_edid(t(bg) %*% bg) %*%
+                            colSums(B[mask_g, , drop = FALSE]))
+        r_in <- drop(B %*% bet)                            # in-sample (train = test under plug-in)
+        c(loss = mean(mask_gp * r_in^2 - 2 * mask_g * r_in), K = ncol(B))
+      } else {                                             # WLS Gram + obs-weighted (Hajek) IC loss
+        bet  <- as.vector(compute_pseudoinverse_edid(t(bg) %*% (weights[mask_gp] * bg)) %*%
+                            colSums(weights[mask_g] * B[mask_g, , drop = FALSE]))
+        r_in <- drop(B %*% bet)
+        c(loss = sum(weights * (mask_gp * r_in^2 - 2 * mask_g * r_in)) / sum(weights), K = ncol(B))
+      }
     }, n = nrow(X_train))
     ic_pick <- bs_df
   }
@@ -262,10 +274,18 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   attr(B_train, "bs_objects") <- NULL
 
   B_gp         <- B_train[mask_gp, , drop = FALSE]
-  col_sums_g   <- colSums(B_train[mask_g, , drop = FALSE])
 
-  # beta_hat = [B_gp' B_gp]^{-1} * col_sums_g
-  BtB_gp   <- t(B_gp) %*% B_gp
+  # beta_hat = [B_gp' W_gp B_gp]^{-1} * sum_{i in g} w_i B_i.  The WLS Gram and the
+  # weighted col-sums (NULL-guard: verbatim unweighted expressions when weights = NULL,
+  # so the no-weights covariate path stays byte-identical).
+  if (is.null(weights)) {
+    col_sums_g <- colSums(B_train[mask_g, , drop = FALSE])
+    BtB_gp     <- t(B_gp) %*% B_gp
+  } else {
+    w_gp       <- weights[mask_gp]
+    col_sums_g <- colSums(weights[mask_g] * B_train[mask_g, , drop = FALSE])
+    BtB_gp     <- t(B_gp) %*% (w_gp * B_gp)
+  }
   beta_hat <- as.vector(compute_pseudoinverse_edid(BtB_gp) %*% col_sums_g)
 
   # Evaluate the fitted sieve basis on the evaluation sample.
@@ -292,6 +312,11 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
   mask_gp_t <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
   mask_g_t  <- (G_train == g)
   score_mat <- B_test * (mask_gp_t * r_hat - mask_g_t)   # n x p (row i scaled by G_gp,i r_i - G_g,i)
+  # Under obs weights the weighted moment sum_i w_i B_i (G_gp,i r_i - G_g,i) = 0 has per-unit
+  # M-estimator score w_i * (the above); the WLS Hessian H = (B_gp' W_gp B_gp)/n is already
+  # carried by the weighted BtB_gp, so H_inv = n * pinv(BtB_gp) needs no further change. The
+  # n stays the raw count (the weighted average is over n, matching the no-cov weighted aux).
+  if (!is.null(weights)) score_mat <- weights * score_mat
   H_inv     <- n_test * compute_pseudoinverse_edid(BtB_gp)
   out <- list(pred = r_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
   if (!is.null(ic_pick)) out$bs_df <- ic_pick
@@ -316,12 +341,16 @@ estimate_propensity_ratio_edid <- function(X_train, G_train, X_test, g, gp,
 #'   for the per-fit information-criterion selection (see
 #'   \code{\link{select_bs_df_ic_edid}}; loss \eqn{\mathbb{E}_n[s^2 G_{g'} - 2 s]})
 #'
+#' @param weights optional numeric vector of nonnegative observation weights aligned
+#'   with \code{X_train}; when supplied the sieve is fit by WLS and the aux carries the
+#'   obs-weighted score / Hessian. \code{NULL} (default) is byte-identical to OLS.
 #' @return numeric vector length n_test: estimated inverse propensities 1/p_g'(X), >= 0.
 #'   Under \code{bs_df = "ic"} the selected df is attached as attribute
 #'   \code{"edid_bs_df"} (or list element \code{bs_df} when \code{return_aux = TRUE}).
 #' @keywords internal
 estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
-                                             bs_df = 4L, return_aux = FALSE) {
+                                             bs_df = 4L, return_aux = FALSE,
+                                             weights = NULL) {
   n_test <- nrow(X_test)
 
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
@@ -350,9 +379,16 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
       Bo  <- build_basis_matrix_edid(X_train, df_k)
       B   <- unclass(Bo); attr(B, "bs_objects") <- NULL
       bg  <- B[mask_gp, , drop = FALSE]
-      bet <- as.vector(compute_pseudoinverse_edid(t(bg) %*% bg) %*% colSums(B))
-      s_in <- drop(B %*% bet)
-      c(loss = mean(mask_gp * s_in^2 - 2 * s_in), K = ncol(B))
+      if (is.null(weights)) {                              # NULL-guard: byte-identical unweighted IC loss
+        bet  <- as.vector(compute_pseudoinverse_edid(t(bg) %*% bg) %*% colSums(B))
+        s_in <- drop(B %*% bet)
+        c(loss = mean(mask_gp * s_in^2 - 2 * s_in), K = ncol(B))
+      } else {                                             # WLS Gram + obs-weighted (Hajek) IC loss
+        bet  <- as.vector(compute_pseudoinverse_edid(t(bg) %*% (weights[mask_gp] * bg)) %*%
+                            colSums(weights * B))
+        s_in <- drop(B %*% bet)
+        c(loss = sum(weights * (mask_gp * s_in^2 - 2 * s_in)) / sum(weights), K = ncol(B))
+      }
     }, n = nrow(X_train))
     ic_pick <- bs_df
   }
@@ -362,9 +398,16 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
   attr(B_train, "bs_objects") <- NULL
 
   B_gp       <- B_train[mask_gp, , drop = FALSE]
-  col_sums_all <- colSums(B_train)
 
-  BtB_pinv <- compute_pseudoinverse_edid(t(B_gp) %*% B_gp)
+  # beta_hat = [B_gp' W_gp B_gp]^{-1} * sum_i w_i B_i.  NULL-guard keeps the unweighted
+  # path byte-identical; under weights the Gram is WLS and the col-sums are obs-weighted.
+  if (is.null(weights)) {
+    col_sums_all <- colSums(B_train)
+    BtB_pinv     <- compute_pseudoinverse_edid(t(B_gp) %*% B_gp)
+  } else {
+    col_sums_all <- colSums(weights * B_train)
+    BtB_pinv     <- compute_pseudoinverse_edid(t(B_gp) %*% (weights[mask_gp] * B_gp))
+  }
   beta_hat <- as.vector(BtB_pinv %*% col_sums_all)
 
   B_test <- predict_basis_edid(attr(B_train_obj, "bs_objects"), X_test)
@@ -377,6 +420,9 @@ estimate_inverse_propensity_edid <- function(X_train, G_train, X_test, gp,
     # (s_raw = B beta, before the >=0 clamp). Hessian H = E[B B' 1{gp}] = (B_gp'B_gp)/n, so H^{-1} = n * pinv(B_gp'B_gp)
     # (the n factor matches the ratio aux). IF of beta at unit l = -H_inv score_l.
     score_mat <- (as.numeric(mask_gp) * s_raw - 1) * B_test
+    # Obs-weighted moment sum_i w_i B_i (1{gp} s_raw - 1) = 0: per-unit score carries w_i; the
+    # WLS Hessian is already in BtB_pinv, so H_inv = n_test * BtB_pinv is unchanged.
+    if (!is.null(weights)) score_mat <- weights * score_mat
     out <- list(s_hat = s_hat, B_test = B_test, score_mat = score_mat, H_inv = n_test * BtB_pinv,
                 s_pos = s_raw > 0, is_fallback = FALSE)
     if (!is.null(ic_pick)) out$bs_df <- ic_pick
@@ -491,14 +537,21 @@ build_trim_keep_edid <- function(prop_ratios, inv_propensities, trim_level, n) {
 #' @param beta_init optional warm start (length p)
 #' @param maxit,tol Newton controls (tol is relative on the gradient sup-norm)
 #' @param ridge_grid increasing ridge scales tried after the unpenalized fit fails
+#' @param obsw optional length-n observation weights; folds into the balancing moment as a
+#'   weighted comparison indicator (\code{cw = obsw * comp}), giving the obs-weighted FOC
+#'   \eqn{E_n[obsw\,\psi\,comp\,e^{\psi'\beta}] = tcol}. \code{NULL} (default) is byte-identical.
 #' @return list(beta, pen, converged, lambda, n_iter, live)
 #' @keywords internal
 #' @noRd
 fit_exp_riesz_edid <- function(B, comp, tcol, beta_init = NULL, maxit = 200L, tol = 1e-8,
-                               ridge_grid = c(0, 1, 100, 1e4)) {
+                               ridge_grid = c(0, 1, 100, 1e4), obsw = NULL) {
   n <- nrow(B); p <- ncol(B)
   comp <- as.numeric(comp)
-  live <- colSums(abs(B) * comp) > 1e-12          # balanceable directions (comparison-side support)
+  # Obs-weighted moment: the FOC is E_n[obsw * psi * comp * e^{psi'beta}] = tcol (with tcol
+  # obs-weighted at the caller). Fold obsw into a weighted comparison indicator cw so every
+  # comp * e^{eta} below becomes cw * e^{eta}; cw === comp when obsw is NULL (byte-identical).
+  cw   <- if (is.null(obsw)) comp else as.numeric(obsw) * comp
+  live <- colSums(abs(B) * comp) > 1e-12          # balanceable directions (comparison-side support; weight-invariant)
   scale_t <- 1 + max(abs(tcol))
   best <- NULL
   for (lam in ridge_grid) {
@@ -509,7 +562,7 @@ fit_exp_riesz_edid <- function(B, comp, tcol, beta_init = NULL, maxit = 200L, to
     loss_fn <- function(b) {
       eta <- drop(B %*% b)
       if (max(eta) > 350) return(Inf)             # exp overflow guard (squares of exp(350) stay finite)
-      mean(comp * exp(eta)) - sum(tcol * b) + 0.5 * sum(pen * b * b)
+      mean(cw * exp(eta)) - sum(tcol * b) + 0.5 * sum(pen * b * b)
     }
     l0 <- loss_fn(beta)
     if (!is.finite(l0)) { beta <- numeric(p); l0 <- loss_fn(beta) }
@@ -517,7 +570,7 @@ fit_exp_riesz_edid <- function(B, comp, tcol, beta_init = NULL, maxit = 200L, to
     for (it in seq_len(maxit)) {
       it_used <- it
       eta  <- drop(B %*% beta)
-      w    <- comp * exp(pmin(eta, 350))
+      w    <- cw * exp(pmin(eta, 350))
       grad <- drop(crossprod(B, w)) / n - tcol + pen * beta
       if (max(abs(grad[live])) < tol * scale_t) { converged <- TRUE; break }
       Hm   <- crossprod(B, w * B) / n
@@ -539,7 +592,7 @@ fit_exp_riesz_edid <- function(B, comp, tcol, beta_init = NULL, maxit = 200L, to
       l0 <- lnew
       if (moved < 1e-12 * (1 + max(abs(beta)))) { # negligible step: accept if the gradient is small-ish
         eta  <- drop(B %*% beta)
-        w    <- comp * exp(pmin(eta, 350))
+        w    <- cw * exp(pmin(eta, 350))
         grad <- drop(crossprod(B, w)) / n - tcol + pen * beta
         converged <- max(abs(grad[live])) < sqrt(tol) * scale_t
         break
@@ -565,10 +618,13 @@ fit_exp_riesz_edid <- function(B, comp, tcol, beta_init = NULL, maxit = 200L, to
 #' floored at a small positive value) projected back onto the basis. Either may be the zero
 #' vector when degenerate; the zero start is always a valid fallback (the loss is globally
 #' convex, so the warm start affects speed and overflow risk, not the optimum).
+#' @param obsw optional observation weights (folded into the seed loss / LS candidate as
+#'   \code{cw = obsw * comp}); \code{NULL} (default) reproduces the unweighted warm start.
 #' @keywords internal
 #' @noRd
-exp_riesz_warmstart_edid <- function(B, comp, tcol, const_level) {
+exp_riesz_warmstart_edid <- function(B, comp, tcol, const_level, obsw = NULL) {
   n <- nrow(B); p <- ncol(B)
+  cw <- if (is.null(obsw)) comp else as.numeric(obsw) * comp   # weighted comparison indicator (=== comp when NULL)
   BtB_pinv <- compute_pseudoinverse_edid(crossprod(B))
   cands <- list(numeric(p))
   # (a) constant log level through the basis (B-spline first block is a partition of unity)
@@ -576,9 +632,9 @@ exp_riesz_warmstart_edid <- function(B, comp, tcol, const_level) {
     q <- drop(BtB_pinv %*% colSums(B))
     if (max(abs(drop(B %*% q) - 1)) < 0.01) cands[[length(cands) + 1L]] <- log(const_level) * q
   }
-  # (b) log of the clipped linear (paper LS) fit
+  # (b) log of the clipped linear (paper LS) fit -- the WLS sieve under obs weights (cw)
   beta_ls <- tryCatch(
-    drop(compute_pseudoinverse_edid(crossprod(B, comp * B)) %*% (n * tcol)),
+    drop(compute_pseudoinverse_edid(crossprod(B, cw * B)) %*% (n * tcol)),
     error = function(e) NULL)
   if (!is.null(beta_ls) && all(is.finite(beta_ls))) {
     r_ls <- drop(B %*% beta_ls)
@@ -589,7 +645,7 @@ exp_riesz_warmstart_edid <- function(B, comp, tcol, const_level) {
   loss0 <- function(b) {
     eta <- drop(B %*% b)
     if (max(eta) > 350) return(Inf)
-    mean(comp * exp(eta)) - sum(tcol * b)
+    mean(cw * exp(eta)) - sum(tcol * b)
   }
   ls <- vapply(cands, loss0, numeric(1))
   cands[[which.min(replace(ls, !is.finite(ls), Inf))]]
@@ -697,7 +753,8 @@ exp_riesz_paper_refine_edid <- function(B, comp, tgt, beta0, maxit = 50L) {
 #'   \code{return_aux = TRUE}); predictions are strictly positive
 #' @keywords internal
 estimate_propensity_ratio_exp_edid <- function(X_train, G_train, X_test, g, gp,
-                                               bs_df = 4L, return_aux = FALSE) {
+                                               bs_df = 4L, return_aux = FALSE,
+                                               weights = NULL) {
   n_test <- nrow(X_test)
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
   mask_g  <- (G_train == g)
@@ -718,12 +775,22 @@ estimate_propensity_ratio_exp_edid <- function(X_train, G_train, X_test, g, gp,
   }
 
   comp <- as.numeric(mask_gp)
+  # Obs-weighted tailored loss: tcol = E_n[obsw * B * G_g] (= the obs-weighted balancing target),
+  # const_level = (sum w in g)/(sum w in g') warm start; obsw flows into the solver + warm start.
+  # NULL-guard => verbatim unweighted expressions (byte-identical when weights = NULL).
   fit_at_df <- function(df_k) {
     Bo <- build_basis_matrix_edid(X_train, df_k)
     B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
-    tcol <- colSums(B * mask_g) / n_train
-    w0 <- exp_riesz_warmstart_edid(B, comp, tcol, const_level = n_g / n_gp)
-    list(Bo = Bo, B = B, tcol = tcol, ft = fit_exp_riesz_edid(B, comp, tcol, beta_init = w0))
+    if (is.null(weights)) {
+      tcol  <- colSums(B * mask_g) / n_train
+      clev  <- n_g / n_gp
+    } else {
+      tcol  <- colSums(weights * B * mask_g) / n_train
+      clev  <- sum(weights[mask_g]) / sum(weights[mask_gp])
+    }
+    w0 <- exp_riesz_warmstart_edid(B, comp, tcol, const_level = clev, obsw = weights)
+    list(Bo = Bo, B = B, tcol = tcol,
+         ft = fit_exp_riesz_edid(B, comp, tcol, beta_init = w0, obsw = weights))
   }
 
   # Opt-in IC sieve-dimension selection (edid(bs_df = "ic")): the estimator's OWN convex loss
@@ -734,7 +801,8 @@ estimate_propensity_ratio_exp_edid <- function(X_train, G_train, X_test, g, gp,
       fk <- fit_at_df(df_k)
       if (!fk$ft$converged || !all(is.finite(fk$ft$beta))) return(NULL)
       eta <- drop(fk$B %*% fk$ft$beta)
-      c(loss = mean(comp * exp(pmin(eta, 350)) - mask_g * eta), K = ncol(fk$B))
+      lvec <- comp * exp(pmin(eta, 350)) - mask_g * eta
+      c(loss = if (is.null(weights)) mean(lvec) else mean(weights * lvec), K = ncol(fk$B))
     }, n = n_train)
     ic_pick <- bs_df
   }
@@ -776,12 +844,15 @@ estimate_propensity_ratio_exp_edid <- function(X_train, G_train, X_test, g, gp,
   # M-estimator pieces (plug-in regime: train = test = full sample, as the LS aux).
   mask_gp_t <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
   mask_g_t  <- (G_train == g)
+  # Obs-weighted M-estimator pieces: the moment carries obsw (=== 1 scalar => byte-identical),
+  # the ridge-rescue pen terms do NOT (they come from the penalty, not the data moment).
+  ow_s <- if (is.null(weights)) 1 else weights
   if (identical(loss_used, "paper")) {
-    score_mat <- B_test * (r_hat * (mask_gp_t * r_hat - mask_g_t))
-    Hmat      <- crossprod(B_test, (2 * mask_gp_t * r_hat^2 - mask_g_t * r_hat) * B_test)
+    score_mat <- ow_s * B_test * (r_hat * (mask_gp_t * r_hat - mask_g_t))
+    Hmat      <- crossprod(B_test, (ow_s * (2 * mask_gp_t * r_hat^2 - mask_g_t * r_hat)) * B_test)
   } else {
-    score_mat <- B_test * (mask_gp_t * r_hat - mask_g_t)
-    Hmat      <- crossprod(B_test, (mask_gp_t * r_hat) * B_test)
+    score_mat <- ow_s * B_test * (mask_gp_t * r_hat - mask_g_t)
+    Hmat      <- crossprod(B_test, (ow_s * (mask_gp_t * r_hat)) * B_test)
     if (any(pen > 0)) {                            # ridge rescue: keep the aux mean-zero at beta-hat
       score_mat <- score_mat + matrix(pen * beta, n_test, ncol(B_test), byrow = TRUE)
       Hmat      <- Hmat + n_test * diag(pen, ncol(B_test))
@@ -812,7 +883,8 @@ estimate_propensity_ratio_exp_edid <- function(X_train, G_train, X_test, g, gp,
 #' @return as \code{estimate_inverse_propensity_edid}; predictions strictly positive
 #' @keywords internal
 estimate_inverse_propensity_exp_edid <- function(X_train, G_train, X_test, gp,
-                                                 bs_df = 4L, return_aux = FALSE) {
+                                                 bs_df = 4L, return_aux = FALSE,
+                                                 weights = NULL) {
   n_test <- nrow(X_test)
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
   n_gp <- sum(mask_gp)
@@ -831,12 +903,22 @@ estimate_inverse_propensity_exp_edid <- function(X_train, G_train, X_test, gp,
   }
 
   comp <- as.numeric(mask_gp)
+  # Obs-weighted tailored loss: tcol = E_n[obsw * B] (population target log(1/p_g')),
+  # const_level = (sum w)/(sum w in g') warm start; obsw flows into solver + warm start.
+  # NULL-guard => verbatim unweighted expressions (byte-identical when weights = NULL).
   fit_at_df <- function(df_k) {
     Bo <- build_basis_matrix_edid(X_train, df_k)
     B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
-    tcol <- colMeans(B)
-    w0 <- exp_riesz_warmstart_edid(B, comp, tcol, const_level = n_train / n_gp)
-    list(Bo = Bo, B = B, tcol = tcol, ft = fit_exp_riesz_edid(B, comp, tcol, beta_init = w0))
+    if (is.null(weights)) {
+      tcol <- colMeans(B)
+      clev <- n_train / n_gp
+    } else {
+      tcol <- colSums(weights * B) / n_train
+      clev <- sum(weights) / sum(weights[mask_gp])
+    }
+    w0 <- exp_riesz_warmstart_edid(B, comp, tcol, const_level = clev, obsw = weights)
+    list(Bo = Bo, B = B, tcol = tcol,
+         ft = fit_exp_riesz_edid(B, comp, tcol, beta_init = w0, obsw = weights))
   }
 
   ic_pick <- NULL
@@ -845,7 +927,8 @@ estimate_inverse_propensity_exp_edid <- function(X_train, G_train, X_test, gp,
       fk <- fit_at_df(df_k)
       if (!fk$ft$converged || !all(is.finite(fk$ft$beta))) return(NULL)
       eta <- drop(fk$B %*% fk$ft$beta)
-      c(loss = mean(comp * exp(pmin(eta, 350)) - eta), K = ncol(fk$B))
+      lvec <- comp * exp(pmin(eta, 350)) - eta
+      c(loss = if (is.null(weights)) mean(lvec) else mean(weights * lvec), K = ncol(fk$B))
     }, n = n_train)
     ic_pick <- bs_df
   }
@@ -877,12 +960,14 @@ estimate_inverse_propensity_exp_edid <- function(X_train, G_train, X_test, gp,
 
   if (return_aux) {
     mask_gp_t <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
+    # Obs-weighted M-estimator pieces (=== 1 scalar => byte-identical); pen terms stay unweighted.
+    ow_s <- if (is.null(weights)) 1 else weights
     if (identical(loss_used, "paper")) {
-      score_mat <- B_test * (s_hat * (mask_gp_t * s_hat - 1))
-      Hmat      <- crossprod(B_test, (2 * mask_gp_t * s_hat^2 - s_hat) * B_test)
+      score_mat <- ow_s * B_test * (s_hat * (mask_gp_t * s_hat - 1))
+      Hmat      <- crossprod(B_test, (ow_s * (2 * mask_gp_t * s_hat^2 - s_hat)) * B_test)
     } else {
-      score_mat <- B_test * (as.numeric(mask_gp_t) * s_hat - 1)
-      Hmat      <- crossprod(B_test, (mask_gp_t * s_hat) * B_test)
+      score_mat <- ow_s * B_test * (as.numeric(mask_gp_t) * s_hat - 1)
+      Hmat      <- crossprod(B_test, (ow_s * (mask_gp_t * s_hat)) * B_test)
       if (any(pen > 0)) {
         score_mat <- score_mat + matrix(pen * beta, n_test, ncol(B_test), byrow = TRUE)
         Hmat      <- Hmat + n_test * diag(pen, ncol(B_test))
@@ -916,12 +1001,16 @@ estimate_inverse_propensity_exp_edid <- function(X_train, G_train, X_test, gp,
 #'   \code{\link{select_bs_df_ic_edid}}; least-squares loss
 #'   \eqn{\mathbb{E}_n[G_{g'} (Y_\Delta - m)^2]})
 #'
+#' @param weights optional numeric vector of nonnegative observation weights aligned
+#'   with \code{X_train}; the within-cohort regression is then WLS and the aux carries
+#'   the obs-weighted score / Hessian. \code{NULL} (default) is byte-identical to OLS.
 #' @return numeric vector length n_test. Under \code{bs_df = "ic"} the selected
 #'   df is attached as attribute \code{"edid_bs_df"} (or list element
 #'   \code{bs_df} when \code{return_aux = TRUE}).
 #' @keywords internal
 estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
-                                           X_test, gp, bs_df = 4L, return_aux = FALSE) {
+                                           X_test, gp, bs_df = 4L, return_aux = FALSE,
+                                           weights = NULL) {
   n_test  <- nrow(X_test)
 
   mask_gp <- if (is.infinite(gp)) is.infinite(G_train) else (G_train == gp)
@@ -938,6 +1027,7 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
 
   X_gp    <- X_train[mask_gp, , drop = FALSE]
   y_gp    <- Y_delta_train[mask_gp]
+  w_gp    <- if (is.null(weights)) NULL else weights[mask_gp]   # obs weights for the within-cohort WLS
 
   # Opt-in IC sieve-dimension selection (edid(bs_df = "ic")): least-squares loss
   # E_n[G_gp (Y_delta - m)^2] over the FULL training sample (off-cohort terms are
@@ -950,8 +1040,9 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
       Bo <- build_basis_matrix_edid(X_gp, df_k)
       B  <- unclass(Bo); attr(B, "bs_objects") <- NULL
       if (n_gp <= ncol(B)) return(NULL)
-      ft <- solve_ols_edid(B, y_gp)
-      c(loss = sum(ft$residuals^2) / n_train, K = ncol(B))
+      ft <- solve_ols_edid(B, y_gp, weights = w_gp)        # WLS when weights present (byte-identical when NULL)
+      rss <- if (is.null(w_gp)) sum(ft$residuals^2) else sum(w_gp * ft$residuals^2)
+      c(loss = rss / n_train, K = ncol(B))
     }, n = n_train)
     ic_pick <- bs_df
   }
@@ -964,12 +1055,13 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
   p_basis <- ncol(B_gp_train)
   if (n_gp <= p_basis) {
     # Fewer obs than basis columns: use simpler 1-column basis (intercept only)
-    fit <- list(coef = mean(y_gp))
-    m_hat <- rep(mean(y_gp), n_test)
+    mu_y  <- if (is.null(w_gp)) mean(y_gp) else stats::weighted.mean(y_gp, w_gp)
+    fit <- list(coef = mu_y)
+    m_hat <- rep(mu_y, n_test)
     return(if (return_aux) list(pred = m_hat, is_fallback = TRUE) else m_hat)
   }
 
-  fit   <- solve_ols_edid(B_gp_train, y_gp)
+  fit   <- solve_ols_edid(B_gp_train, y_gp, weights = w_gp)
   B_test <- predict_basis_edid(attr(B_gp_train_obj, "bs_objects"), X_test)
   m_hat <- drop(B_test %*% fit$coef)
 
@@ -992,7 +1084,14 @@ estimate_conditional_mean_edid <- function(X_train, Y_delta_train, G_train,
   resid_full           <- numeric(n_test)
   resid_full[mask_gp]  <- fit$residuals
   score_mat <- -B_test * resid_full                      # n x p (leading minus: see SIGN note above)
-  H_inv     <- n_test * compute_pseudoinverse_edid(crossprod(B_gp_train))
+  # Obs-weighted WLS moment sum_{i in gp} w_i B_i (Y_delta - B_i'beta) = 0: per-unit score carries
+  # w_i and the Hessian Gram becomes B_gp' W_gp B_gp (NULL-guard => byte-identical when unweighted).
+  if (is.null(weights)) {
+    H_inv   <- n_test * compute_pseudoinverse_edid(crossprod(B_gp_train))
+  } else {
+    score_mat <- weights * score_mat
+    H_inv     <- n_test * compute_pseudoinverse_edid(crossprod(B_gp_train, w_gp * B_gp_train))
+  }
   out <- list(pred = m_hat, B_test = B_test, score_mat = score_mat, H_inv = H_inv, is_fallback = FALSE)
   if (!is.null(ic_pick)) out$bs_df <- ic_pick
   out
@@ -1050,6 +1149,7 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
   n       <- panel_obj$n
   X_mat   <- panel_obj$covariate_matrix
   G_vec   <- panel_obj$unit_cohorts
+  w_vec   <- panel_obj$unit_weights   # NULL unless weightsname; threaded to the WLS nuisance fits
   result  <- list()
   aux     <- list()
   ic_mode <- identical(bs_df, "ic")   # per-fit IC selection: record the selected dfs
@@ -1085,7 +1185,8 @@ estimate_all_propensity_ratios <- function(panel_obj, g, pairs, bs_df,
         g       = g,
         gp      = gp,
         bs_df   = bs_df,
-        return_aux = return_aux
+        return_aux = return_aux,
+        weights = if (is.null(w_vec)) NULL else w_vec[train_idx]
       )
       if (return_aux) {
         r_full[test_idx] <- out_gp$pred              # aux only requested with K=1 (single fold)
@@ -1155,6 +1256,7 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
   n       <- panel_obj$n
   X_mat   <- panel_obj$covariate_matrix
   G_vec   <- panel_obj$unit_cohorts
+  w_vec   <- panel_obj$unit_weights   # NULL unless weightsname; threaded to the WLS nuisance fits
   result  <- list()
   aux     <- if (return_aux) list() else NULL       # per-group M-estimator pieces for the inv_p Sigma_Omega channel
   ic_mode <- identical(bs_df, "ic")                 # per-fit IC selection: record the selected dfs
@@ -1187,7 +1289,8 @@ estimate_all_inverse_propensities <- function(panel_obj, g, pairs, bs_df,
         X_test  = X_mat[test_idx,  , drop = FALSE],
         gp      = gp,
         bs_df   = bs_df,
-        return_aux = want_aux_gp
+        return_aux = want_aux_gp,
+        weights = if (is.null(w_vec)) NULL else w_vec[train_idx]
       )
       if (want_aux_gp) { s_full[test_idx] <- res_ell$s_hat; aux[[as.character(gp)]] <- res_ell }
       else             s_full[test_idx] <- res_ell
@@ -1230,6 +1333,7 @@ estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
   n           <- panel_obj$n
   X_mat       <- panel_obj$covariate_matrix
   G_vec       <- panel_obj$unit_cohorts
+  w_vec       <- panel_obj$unit_weights   # NULL unless weightsname; threaded to the within-cohort WLS
   ow          <- panel_obj$outcome_wide
   t1_col      <- panel_obj$period_to_col[[as.character(panel_obj$period_1)]]
   result      <- list()
@@ -1283,7 +1387,8 @@ estimate_all_conditional_means <- function(panel_obj, pairs, t_val, bs_df,
         X_test        = X_mat[test_idx, , drop = FALSE],
         gp            = gp,
         bs_df         = bs_df,
-        return_aux    = return_aux
+        return_aux    = return_aux,
+        weights       = if (is.null(w_vec)) NULL else w_vec[train_idx]
       )
       if (return_aux) {
         m_full[test_idx] <- out_m$pred               # aux only requested with K=1 (single fold)

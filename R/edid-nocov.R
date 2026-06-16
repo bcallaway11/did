@@ -41,11 +41,16 @@ compute_omega_star_nocov_edid <- function(
   n_g      <- sum(mask_g)
   n_inf    <- sum(mask_inf)
 
+  # Observation weights (NULL => unweighted; wvar_term_edid then reduces to cov_nn/n_g exactly).
+  uw     <- panel_obj$unit_weights
+  w_g    <- if (is.null(uw)) NULL else uw[mask_g]
+  w_inf  <- if (is.null(uw)) NULL else uw[mask_inf]
+
   col_t  <- .col(panel_obj, target_t)
   col_1  <- .col(panel_obj, panel_obj$period_1)
 
   if (pt_assumption == "post") {
-    # PT-Post: 1x1 matrix = var of standard DiD moment
+    # PT-Post: 1x1 matrix = var of standard (weighted) DiD moment
     tpre_val <- pairs$tpre[1L]
     col_base <- .col(panel_obj, tpre_val)
 
@@ -53,8 +58,8 @@ compute_omega_star_nocov_edid <- function(
     delta_inf <- ow[mask_inf, col_t] - ow[mask_inf, col_base]
 
     omega <- matrix(
-      cov_nn_edid(delta_g, delta_g) / n_g +
-        cov_nn_edid(delta_inf, delta_inf) / n_inf,
+      wvar_term_edid(delta_g, delta_g, w_g) +
+        wvar_term_edid(delta_inf, delta_inf, w_inf),
       nrow = 1L, ncol = 1L
     )
     return(omega)
@@ -63,8 +68,20 @@ compute_omega_star_nocov_edid <- function(
   # ---------------------------------------------------------------------------
   # PT-All: H x H matrix, entry-by-entry
   # ---------------------------------------------------------------------------
+  # Each term is a within-group (cross-)covariance of difference vectors divided by the
+  # group size; wvar_term_edid(.) carries that division (n_g unweighted; W_g^2 / sum(w^2)
+  # weighted) so the whole builder is weight-aware via the per-group weight vectors below.
   # Pre-compute treated-group change (same for all j, k)
   delta_g_t_1 <- ow[mask_g, col_t] - ow[mask_g, col_1]
+
+  # Per-group weight vectors aligned to each cached difference vector (NULL when unweighted).
+  w_gp_cache <- list()
+  w_for <- function(gp_val) {
+    if (is.null(uw)) return(NULL)
+    key <- as.character(gp_val)
+    if (is.null(w_gp_cache[[key]])) w_gp_cache[[key]] <<- uw[panel_obj$cohort_masks[[key]]]
+    w_gp_cache[[key]]
+  }
 
   # Pre-compute never-treated changes for each unique tpre
   unique_tpre <- unique(pairs$tpre)
@@ -94,7 +111,6 @@ compute_omega_star_nocov_edid <- function(
     gp_j   <- pairs$gp[j]
     tpre_j <- pairs$tpre[j]
     key_j  <- paste0(gp_j, "_", tpre_j)
-    n_gp_j <- sum(panel_obj$cohort_masks[[as.character(gp_j)]])
     delta_inf_j <- delta_inf_cache[[as.character(tpre_j)]]
     delta_gp_j  <- delta_gp_cache[[key_j]]
 
@@ -106,32 +122,31 @@ compute_omega_star_nocov_edid <- function(
       gp_k   <- pairs$gp[k]
       tpre_k <- pairs$tpre[k]
       key_k  <- paste0(gp_k, "_", tpre_k)
-      n_gp_k <- sum(panel_obj$cohort_masks[[as.character(gp_k)]])
       delta_inf_k <- delta_inf_cache[[as.character(tpre_k)]]
       delta_gp_k  <- delta_gp_cache[[key_k]]
 
       # Term A: treated group variance (always present; same for all j, k)
-      term_a <- cov_nn_edid(delta_g_t_1, delta_g_t_1) / n_g
+      term_a <- wvar_term_edid(delta_g_t_1, delta_g_t_1, w_g)
 
       # Term B: never-treated cross-covariance
-      term_b <- cov_nn_edid(delta_inf_j, delta_inf_k) / n_inf
+      term_b <- wvar_term_edid(delta_inf_j, delta_inf_k, w_inf)
 
       # Term C_j: non-zero only if gp_j == target_g
       term_cj <- 0
       if (is.finite(gp_j) && gp_j == target_g) {
-        term_cj <- cov_nn_edid(delta_g_t_1, delta_gp_j) / n_g
+        term_cj <- wvar_term_edid(delta_g_t_1, delta_gp_j, w_g)
       }
 
       # Term C_k: non-zero only if gp_k == target_g
       term_ck <- 0
       if (is.finite(gp_k) && gp_k == target_g) {
-        term_ck <- cov_nn_edid(delta_g_t_1, delta_gp_k) / n_g
+        term_ck <- wvar_term_edid(delta_g_t_1, delta_gp_k, w_g)
       }
 
       # Term D: non-zero only if gp_j == gp_k
       term_d <- 0
       if (gp_j == gp_k) {  # works for both finite and Inf
-        term_d <- cov_nn_edid(delta_gp_j, delta_gp_k) / n_gp_j
+        term_d <- wvar_term_edid(delta_gp_j, delta_gp_k, w_for(gp_j))
       }
 
       omega[j, k] <- term_a + term_b - term_cj - term_ck + term_d
@@ -174,10 +189,19 @@ compute_omega_star_nocov_edid <- function(
 compute_pole_structure_nocov_edid <- function(target_g, target_t, pairs, panel_obj) {
   H  <- nrow(pairs)
   t1 <- panel_obj$period_1
-  n_g   <- sum(panel_obj$cohort_masks[[as.character(target_g)]])
-  n_inf <- sum(panel_obj$never_treated_mask)
-  n_gp  <- vapply(pairs$gp, function(gp)
-    sum(panel_obj$cohort_masks[[as.character(gp)]]), numeric(1L))
+  # Group "effective inverse size": 1/m unweighted; the weighted Hajek design factor
+  # sum(w^2)/(sum w)^2 weighted (the same wvar_term normalization the empirical Omega uses).
+  # The pole structure then has the SAME 1/size prefactors as the empirical builder, so the
+  # i.i.d.-pole target is the structured covariance at the actual (weighted) shares.
+  uw <- panel_obj$unit_weights
+  .inv_size <- function(mask) {
+    if (is.null(uw)) return(1 / sum(mask))
+    ww <- uw[mask]; sw <- sum(ww); sum(ww * ww) / (sw * sw)
+  }
+  inv_g   <- .inv_size(panel_obj$cohort_masks[[as.character(target_g)]])
+  inv_inf <- .inv_size(panel_obj$never_treated_mask)
+  inv_gp  <- vapply(pairs$gp, function(gp)
+    .inv_size(panel_obj$cohort_masks[[as.character(gp)]]), numeric(1L))
 
   # Cov(eps_a - eps_b, eps_c - eps_d) / sigma2 under i.i.d. shocks
   kern <- function(a, b, cc, d) {
@@ -190,19 +214,19 @@ compute_pole_structure_nocov_edid <- function(target_g, target_t, pairs, panel_o
     for (k in j:H) {
       gp_k <- pairs$gp[k]; tp_k <- pairs$tpre[k]
       # Term A: treated-group difference (target_t, period_1) x itself
-      val <- kern(target_t, t1, target_t, t1) / n_g
+      val <- kern(target_t, t1, target_t, t1) * inv_g
       # Term B: never-treated cross-covariance (t, tpre_j) x (t, tpre_k)
-      val <- val + kern(target_t, tp_j, target_t, tp_k) / n_inf
+      val <- val + kern(target_t, tp_j, target_t, tp_k) * inv_inf
       # Terms C: treated x own-cohort comparison (only when gp == target_g)
       if (is.finite(gp_j) && gp_j == target_g) {
-        val <- val - kern(target_t, t1, tp_j, t1) / n_g
+        val <- val - kern(target_t, t1, tp_j, t1) * inv_g
       }
       if (is.finite(gp_k) && gp_k == target_g) {
-        val <- val - kern(target_t, t1, tp_k, t1) / n_g
+        val <- val - kern(target_t, t1, tp_k, t1) * inv_g
       }
       # Term D: shared comparison cohort (tpre_j, 1) x (tpre_k, 1)
       if (gp_j == gp_k) {
-        val <- val + kern(tp_j, t1, tp_k, t1) / n_gp[j]
+        val <- val + kern(tp_j, t1, tp_k, t1) * inv_gp[j]
       }
       S[j, k] <- val
       S[k, j] <- val
@@ -235,13 +259,22 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
   mask_g   <- panel_obj$cohort_masks[[as.character(target_g)]]
   mask_inf <- panel_obj$never_treated_mask
   pi_g     <- panel_obj$cohort_fractions[[as.character(target_g)]]
-  pi_inf   <- sum(mask_inf) / n
+
+  # Observation weights. With weights the per-unit moment influence carries an explicit
+  # w_i factor and a weighted (Hajek) centering, so crossprod(psi)/n^2 == the weighted
+  # Omega* (= wvar_term_edid sums). With NULL weights, w_g/w_inf/w_gp are all-ones via the
+  # `* 1` and the centering is the plain mean, so psi is byte-identical to the legacy form.
+  uw     <- panel_obj$unit_weights
+  w_g    <- if (is.null(uw)) rep(1, sum(mask_g))   else uw[mask_g]
+  w_inf  <- if (is.null(uw)) rep(1, sum(mask_inf)) else uw[mask_inf]
+  pi_inf <- if (is.null(uw)) sum(mask_inf) / n else sum(w_inf) / n
 
   col_t <- .col(panel_obj, target_t)
   col_1 <- .col(panel_obj, panel_obj$period_1)
 
   delta_g <- ow[mask_g, col_t] - ow[mask_g, col_1]
-  ctr_g   <- (delta_g - mean(delta_g)) / pi_g
+  # ctr_g = w_i * (delta_i - wmean) / pi_g  (NULL weights: w_i = 1, wmean = mean => legacy)
+  ctr_g   <- w_g * (delta_g - wmean_edid(delta_g, if (is.null(uw)) NULL else w_g)) / pi_g
 
   psi <- matrix(0, nrow = n, ncol = H)
   for (j in seq_len(H)) {
@@ -252,13 +285,14 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
 
     delta_inf <- ow[mask_inf, col_t] - ow[mask_inf, col_pre]
     psi[mask_inf, j] <- psi[mask_inf, j] -
-      (delta_inf - mean(delta_inf)) / pi_inf
+      w_inf * (delta_inf - wmean_edid(delta_inf, if (is.null(uw)) NULL else w_inf)) / pi_inf
 
     mask_gp  <- panel_obj$cohort_masks[[as.character(gp_j)]]
     pi_gp    <- panel_obj$cohort_fractions[[as.character(gp_j)]]
+    w_gp     <- if (is.null(uw)) rep(1, sum(mask_gp)) else uw[mask_gp]
     delta_gp <- ow[mask_gp, col_pre] - ow[mask_gp, col_1]
     psi[mask_gp, j] <- psi[mask_gp, j] -
-      (delta_gp - mean(delta_gp)) / pi_gp
+      w_gp * (delta_gp - wmean_edid(delta_gp, if (is.null(uw)) NULL else w_gp)) / pi_gp
   }
   psi
 }
@@ -276,15 +310,26 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
 #' Ledoit-Wolf ratio (variance-of-entries over distance-to-target, clamped to
 #' \eqn{[0, 1]}):
 #' \deqn{\hat\lambda = \min\!\Big(1, \frac{\bar b^2}{d^2}\Big), \qquad
-#'   \bar b^2 = \frac{1}{n^2}\sum_i \|B_i - \hat\Omega\|_F^2, \quad
+#'   \bar b^2 = \frac{\hat\pi}{n_{\mathrm{eff}}}, \quad
+#'   \hat\pi = \frac{1}{n}\sum_i \|B_i - \hat\Omega\|_F^2, \quad
 #'   d^2 = \|\hat\Omega - T\|_F^2,}
 #' where \eqn{B_i = \psi_i\psi_i'/n} is unit \eqn{i}'s contribution
-#' (\eqn{\hat\Omega = n^{-1}\sum_i B_i} exactly). Off the pole
-#' \eqn{d^2 \to \|\Omega - T\|^2_F > 0} while \eqn{\bar b^2 = O_p(1/n)} times
-#' the entry scale, so \eqn{\hat\lambda \to 0} and the asymptotic weights (and
-#' gains) are unchanged; at the pole the target is consistent for the truth, so
-#' a large \eqn{\hat\lambda} costs nothing asymptotically and removes the
-#' finite-sample weight-estimation noise.
+#' (\eqn{\hat\Omega = n^{-1}\sum_i B_i} exactly) and \eqn{n_{\mathrm{eff}}} is the
+#' Kish effective sample size of the units active in this cell's weighted
+#' \eqn{\hat\Omega} (\code{\link{n_eff_edid}}). Unweighted
+#' \eqn{n_{\mathrm{eff}} = n} exactly, so
+#' \eqn{\bar b^2 = (q_4/n^2 - n\|\hat\Omega\|_F^2)/n^2} bit-for-bit (the legacy
+#' form); under dispersed observation weights the heavily-weighted units dominate
+#' \eqn{\hat\Omega}, so the raw \eqn{n} would under-shrink by
+#' \eqn{n/n_{\mathrm{eff}}} -- only the OUTER averaging factor \eqn{1/n_{\mathrm{eff}}}
+#' (the variance-of-the-average) changes; the internal \eqn{1/n} of \eqn{B_i}
+#' carries the fixed \eqn{1/\pi_g} scale of \eqn{\hat\Omega} and stays \eqn{n}.
+#' Off the pole \eqn{d^2 \to \|\Omega - T\|^2_F > 0} while
+#' \eqn{\bar b^2 = O_p(1/n_{\mathrm{eff}})} times the entry scale, so
+#' \eqn{\hat\lambda \to 0} and the asymptotic weights (and gains) are unchanged;
+#' at the pole the target is consistent for the truth, so a large
+#' \eqn{\hat\lambda} costs nothing asymptotically and removes the finite-sample
+#' weight-estimation noise.
 #'
 #' Returns the input unchanged (with \code{lambda = NA}) for degenerate inputs
 #' (H < 2, non-finite or all-zero \code{omega}, non-positive projection scale,
@@ -316,11 +361,24 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 
   n   <- panel_obj$n
   psi <- compute_psi_moments_nocov_edid(target_g, target_t, pairs, panel_obj)
-  # b_bar^2 = (1/n^2) sum_i ||psi_i psi_i'/n - Omega||_F^2
-  #         = (1/n^2) [ sum_i ||psi_i||_2^4 / n^2 - n ||Omega||_F^2 ]
-  # (cross term collapses because Omega = (1/n) sum_i psi_i psi_i' / n exactly).
-  q4 <- sum(rowSums(psi * psi)^2)
-  b2 <- (q4 / n^2 - n * sum(omega * omega)) / n^2
+  # Ledoit-Wolf intensity b_bar^2 / d^2. The standard LW estimator is b_bar^2 = pi_hat / n_eff, where
+  # pi_hat = (1/n) sum_{all i} ||psi_i psi_i'/n - Omega||_F^2 is the empirical mean squared entry-
+  # deviation and the OUTER 1/n_eff is the variance-of-the-average factor (it shrinks like one over
+  # the number of independent contributions). The legacy form b2 = (q4/n^2 - n ||Omega||^2)/n^2 IS
+  # pi_hat/n with n_eff = the FULL n (the averaging is over all n units; inactive units contribute
+  # ||Omega||_F^2 each, the source of the -n||Omega||^2 term). The internal psi_i psi_i'/n carries the
+  # FIXED 1/pi_g = n/W_g scale of Omega-hat (NOT a count to replace), so only the OUTER averaging
+  # factor reflects the effective sample size. Under dispersed observation weights the heavily-
+  # weighted units dominate Omega-hat, so the raw n under-shrinks by n/n_eff; n_eff is the Kish ESS of
+  # this cell's active units (the SAME denominator as the no-cov ridge). BYTE-IDENTITY: keep the
+  # legacy expression verbatim, apply the correction factor n / n_eff, which is EXACTLY 1.0 unweighted
+  # (n_eff_edid returns the same full n there, identical doubles), so b2 is bit-for-bit the legacy
+  # value.
+  q4        <- sum(rowSums(psi * psi)^2)
+  b2_legacy <- (q4 / n^2 - n * sum(omega * omega)) / n^2          # = pi_hat_full / n (verbatim legacy)
+  n_eff     <- n_eff_edid(panel_obj$unit_weights,
+                          active_mask_nocov_edid(target_g, pairs, panel_obj), n)
+  b2        <- b2_legacy * (n / n_eff)                            # n/n_eff == 1.0 exactly unweighted
   if (!is.finite(b2)) return(no_op)
   lambda <- min(1, max(0, b2) / d2)
 
@@ -413,11 +471,13 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #' \deqn{d\Omega_{sh}[dE] = (1-\lambda)\,dE
 #'   + \lambda\,\frac{\langle dE, S\rangle_F}{\langle S, S\rangle_F}\,S
 #'   + d\lambda[dE]\,(\sigma^2 S - \Omega),}
-#' \deqn{d\lambda[dE] = \frac{-\tfrac{2}{n}\langle\Omega, dE\rangle_F
+#' \deqn{d\lambda[dE] = \frac{-\tfrac{2}{n_{\mathrm{eff}}}\langle\Omega, dE\rangle_F
 #'   - 2\lambda\,\langle\Omega - \sigma^2 S, dE\rangle_F}{d^2}
 #'   \quad (\text{interior } \lambda; \; d\lambda = 0 \text{ at the clamps } 0, 1),}
-#' using \eqn{d(b^2)[dE] = -(2/n)\langle\Omega,dE\rangle_F} (from
-#' \eqn{b^2 = (q_4/n^2 - n\|\Omega\|_F^2)/n^2} with \eqn{q_4} fixed) and
+#' using \eqn{d(b^2)[dE] = -(2/n_{\mathrm{eff}})\langle\Omega,dE\rangle_F} (from
+#' \eqn{b^2 = q_4/(n^3 n_{\mathrm{eff}}) - \|\Omega\|_F^2/n_{\mathrm{eff}}} with
+#' \eqn{q_4} fixed; \eqn{n_{\mathrm{eff}}} the cell's Kish ESS, \eqn{= n}
+#' unweighted) and
 #' \eqn{d(d^2)[dE] = 2\langle\Omega - \sigma^2 S, dE\rangle_F} (the \eqn{\sigma^2}
 #' channel of \eqn{d^2} vanishes by the projection orthogonality
 #' \eqn{\langle\Omega - \sigma^2 S, S\rangle_F = 0}). The data-dependence of
@@ -517,7 +577,14 @@ compute_nocov_ee_correction_edid <- function(
       if (!is.finite(d2) || d2 <= 0) return(skip("degenerate shrinkage distance"))
       beta_i  <- rowSums((psi %*% omega_raw) * psi) / n - sum(omega_raw * omega_raw)  # <v_i, Omega>_F
       gamma_i <- beta_i - sigma2 * alpha_i                                            # <v_i, Omega - sigma2 S>_F
-      kappa_i <- -(2 / (n * d2)) * beta_i - (2 * lam / d2) * gamma_i                  # dlambda[v_i]
+      # d(b^2)[dE] = -(2/n_eff)<Omega, dE>_F now (b^2 = q4/(n^3 n_eff) - ||Omega||^2/n_eff with q4
+      # fixed). n_eff is the SAME Kish ESS the LW intensity uses (full n unweighted, so the n_full
+      # argument makes this EXACTLY 2/(n*d2) at w-equal), keeping the chain rule consistent with the
+      # lambda actually applied. The d-lambda-through-Omega channel (the 2*lam/d2 term) is unchanged
+      # (it differentiates d^2, not b^2).
+      n_eff   <- n_eff_edid(panel_obj$unit_weights,
+                            active_mask_nocov_edid(target_g, pairs, panel_obj), n)
+      kappa_i <- -(2 / (n_eff * d2)) * beta_i - (2 * lam / d2) * gamma_i              # dlambda[v_i]
       Btw     <- drop(B %*% ((sigma2 * S - omega_raw) %*% weights))                   # B (sigma2 S - Omega) w
       D <- D - outer(kappa_i, Btw)
     }
@@ -532,14 +599,30 @@ compute_nocov_ee_correction_edid <- function(
   var_second <- (sum((D %*% omega_raw) * D) + sum(G * t(G))) / n^2   # J-linear Var(T2) (diagnostic)
 
   # Bessel piece: each unit's psi_i loads on exactly ONE cohort, so Omega-hat decomposes by
-  # cohort and the unbiased-covariance gap is the unit-level closed form below. Cohort size
-  # from the panel's unit_cohorts (Inf = never treated); m = 1 cohorts contribute through the
-  # guard max(m - 1, 1) (their variance is not estimable; the thin-cohort guard upstream
-  # normally prevents this).
-  coh   <- panel_obj$unit_cohorts
-  sizes <- table(coh)                                      # named by as.character (Inf included)
-  m_i   <- as.numeric(sizes[as.character(coh)])
-  delta_df <- sum(a^2 / pmax(m_i - 1, 1)) / n^2
+  # cohort and the unbiased-covariance gap is the unit-level closed form below. The biased
+  # group covariance E[Omega-hat_g] = (1 - sum_i p_i^2) Omega_g (p_i = w_i / W_g the within-
+  # cohort weight share), so the gap fraction the plug-in misses is f_g = s2_g / (1 - s2_g),
+  # s2_g = sum_{i in g} w_i^2 / W_g^2 (the weighted Bessel factor). Unweighted (w_i = 1):
+  # s2_g = m_g / m_g^2 = 1/m_g and f_g = 1/(m_g - 1), reproducing the legacy closed form
+  # sum_i a_i^2/(m_{gamma(i)} - 1) bit-for-bit. The fraction is constant within a cohort, so it
+  # rides per unit exactly as 1/(m-1) did. m = 1 cohorts (s2 = 1) are guarded to f = 1 (their
+  # variance is not estimable; the thin-cohort guard upstream normally prevents this).
+  coh <- panel_obj$unit_cohorts
+  uw  <- panel_obj$unit_weights
+  if (is.null(uw)) {
+    sizes <- table(coh)                                    # named by as.character (Inf included)
+    m_i   <- as.numeric(sizes[as.character(coh)])
+    f_i   <- 1 / pmax(m_i - 1, 1)
+  } else {
+    # per-cohort weighted Bessel fraction f_g = s2_g / (1 - s2_g), s2_g = sum w^2 / (sum w)^2
+    W_g   <- tapply(uw, coh, sum)
+    W2_g  <- tapply(uw * uw, coh, sum)
+    s2_g  <- as.numeric(W2_g / (W_g * W_g))
+    names(s2_g) <- names(W_g)
+    f_g   <- ifelse(s2_g >= 1, 1, s2_g / (1 - s2_g))       # s2 = 1 => single-unit cohort guard
+    f_i   <- as.numeric(f_g[as.character(coh)])
+  }
+  delta_df <- sum(a^2 * f_i) / n^2
 
   var_add <- delta_df + 2 * q_opt
   if (!is.finite(var_add)) return(skip("non-finite correction", warn = TRUE))
@@ -584,18 +667,28 @@ compute_nocov_ee_correction_edid <- function(
 #' @param unit_cohorts length-n vector of unit cohort labels (Inf = never treated)
 #' @return K x K matrix, or NULL when no cell carries an applied correction
 #' @keywords internal
-nocov_ee_sigma_full_edid <- function(eif_matrix, s_matrix, unit_cohorts) {
+nocov_ee_sigma_full_edid <- function(eif_matrix, s_matrix, unit_cohorts, unit_weights = NULL) {
   if (is.null(eif_matrix) || is.null(s_matrix)) return(NULL)
   K <- ncol(s_matrix)
   ok <- which(vapply(seq_len(K), function(k) all(is.finite(s_matrix[, k])), logical(1L)))
   if (length(ok) == 0L) return(NULL)
   n <- nrow(s_matrix)
-  sizes <- table(unit_cohorts)
-  m_i   <- as.numeric(sizes[as.character(unit_cohorts)])
+  # Per-unit Bessel factor f_i (constant within cohort): 1/(m-1) unweighted, s2/(1-s2) weighted
+  # (s2_g = sum w^2 / (sum w)^2) -- the same weighted Bessel fraction as the per-cell delta_df.
+  if (is.null(unit_weights)) {
+    sizes <- table(unit_cohorts)
+    f_i   <- 1 / pmax(as.numeric(sizes[as.character(unit_cohorts)]) - 1, 1)
+  } else {
+    W_g  <- tapply(unit_weights, unit_cohorts, sum)
+    W2_g <- tapply(unit_weights * unit_weights, unit_cohorts, sum)
+    s2_g <- as.numeric(W2_g / (W_g * W_g)); names(s2_g) <- names(W_g)
+    f_g  <- ifelse(s2_g >= 1, 1, s2_g / (1 - s2_g))
+    f_i  <- as.numeric(f_g[as.character(unit_cohorts)])
+  }
   A  <- eif_matrix[, ok, drop = FALSE]
   Sv <- s_matrix[, ok, drop = FALSE]
   out <- matrix(0, K, K)
-  df_blk  <- crossprod(A / pmax(m_i - 1, 1), A) / n^2          # Delta_DF block (A' diag(1/(m-1)) A)
+  df_blk  <- crossprod(A * f_i, A) / n^2                       # Delta_DF block (A' diag(f) A)
   sa      <- crossprod(Sv, A) / n^3                            # (1/n^3) sum_i s^c a^{c'}
   out[ok, ok] <- df_blk - (sa + t(sa))
   out
@@ -688,20 +781,25 @@ compute_generated_outcomes_nocov_edid <- function(
   mask_g   <- panel_obj$cohort_masks[[as.character(target_g)]]
   mask_inf <- panel_obj$never_treated_mask
 
+  # Observation weights (NULL => wmean_edid reduces to mean() bit-for-bit).
+  uw     <- panel_obj$unit_weights
+  w_g    <- if (is.null(uw)) NULL else uw[mask_g]
+  w_inf  <- if (is.null(uw)) NULL else uw[mask_inf]
+
   col_t  <- .col(panel_obj, target_t)
 
   if (pt_assumption == "post") {
-    # PT-Post: one pair (Inf, base)
+    # PT-Post: one pair (Inf, base); weighted (Hajek) group means
     tpre_val <- pairs$tpre[1L]
     col_base <- .col(panel_obj, tpre_val)
-    y_hat <- mean(ow[mask_g, col_t] - ow[mask_g, col_base]) -
-             mean(ow[mask_inf, col_t] - ow[mask_inf, col_base])
+    y_hat <- wmean_edid(ow[mask_g, col_t] - ow[mask_g, col_base], w_g) -
+             wmean_edid(ow[mask_inf, col_t] - ow[mask_inf, col_base], w_inf)
     return(y_hat)  # scalar; will be treated as length-1 vector
   }
 
   # PT-All
   col_1 <- .col(panel_obj, panel_obj$period_1)
-  term_g <- mean(ow[mask_g, col_t] - ow[mask_g, col_1])
+  term_g <- wmean_edid(ow[mask_g, col_t] - ow[mask_g, col_1], w_g)
 
   y_hat <- numeric(H)
   for (j in seq_len(H)) {
@@ -709,10 +807,11 @@ compute_generated_outcomes_nocov_edid <- function(
     tpre_j  <- pairs$tpre[j]
     col_pre <- .col(panel_obj, tpre_j)
 
-    term_inf <- mean(ow[mask_inf, col_t] - ow[mask_inf, col_pre])
+    term_inf <- wmean_edid(ow[mask_inf, col_t] - ow[mask_inf, col_pre], w_inf)
 
     mask_gp  <- panel_obj$cohort_masks[[as.character(gp_j)]]
-    term_gp  <- mean(ow[mask_gp, col_pre] - ow[mask_gp, col_1])
+    w_gp     <- if (is.null(uw)) NULL else uw[mask_gp]
+    term_gp  <- wmean_edid(ow[mask_gp, col_pre] - ow[mask_gp, col_1], w_gp)
 
     y_hat[j] <- term_g - term_inf - term_gp
   }
@@ -745,7 +844,15 @@ compute_eif_nocov_edid <- function(
   mask_g   <- panel_obj$cohort_masks[[as.character(target_g)]]
   mask_inf <- panel_obj$never_treated_mask
   pi_g     <- panel_obj$cohort_fractions[[as.character(target_g)]]
-  pi_inf   <- sum(mask_inf) / n
+
+  # Observation weights. Each demeaned group contribution carries a w_i factor and a weighted
+  # (Hajek) centering; pi = W/n. With NULL weights the multiplicand w is all-ones and the
+  # centering is the plain mean, so the EIF is byte-identical to the legacy form. By construction
+  # this EIF equals compute_psi_moments_nocov_edid() %*% weights (mirrored term by term).
+  uw       <- panel_obj$unit_weights
+  w_g_obs  <- if (is.null(uw)) rep(1, sum(mask_g))   else uw[mask_g]
+  w_inf_obs<- if (is.null(uw)) rep(1, sum(mask_inf)) else uw[mask_inf]
+  pi_inf   <- if (is.null(uw)) sum(mask_inf) / n else sum(w_inf_obs) / n
 
   col_t <- .col(panel_obj, target_t)
 
@@ -758,12 +865,12 @@ compute_eif_nocov_edid <- function(
     w_1      <- weights[1L]
 
     delta_g   <- ow[mask_g,   col_t] - ow[mask_g,   col_base]
-    mean_g    <- mean(delta_g)
-    eif[mask_g] <- eif[mask_g] + w_1 * (delta_g - mean_g) / pi_g
+    mean_g    <- wmean_edid(delta_g, if (is.null(uw)) NULL else w_g_obs)
+    eif[mask_g] <- eif[mask_g] + w_1 * w_g_obs * (delta_g - mean_g) / pi_g
 
     delta_inf  <- ow[mask_inf, col_t] - ow[mask_inf, col_base]
-    mean_inf   <- mean(delta_inf)
-    eif[mask_inf] <- eif[mask_inf] - w_1 * (delta_inf - mean_inf) / pi_inf
+    mean_inf   <- wmean_edid(delta_inf, if (is.null(uw)) NULL else w_inf_obs)
+    eif[mask_inf] <- eif[mask_inf] - w_1 * w_inf_obs * (delta_inf - mean_inf) / pi_inf
 
     # gp_j == Inf: no comparison cohort term
   } else {
@@ -772,7 +879,7 @@ compute_eif_nocov_edid <- function(
     col_base <- col_1   # base for treated group
 
     delta_g_t_base <- ow[mask_g, col_t] - ow[mask_g, col_base]
-    mean_g_t_base  <- mean(delta_g_t_base)
+    mean_g_t_base  <- wmean_edid(delta_g_t_base, if (is.null(uw)) NULL else w_g_obs)
 
     for (j in seq_len(H)) {
       w_j     <- weights[j]
@@ -781,28 +888,25 @@ compute_eif_nocov_edid <- function(
       col_pre <- .col(panel_obj, tpre_j)
 
       # Treated group contribution (always present)
-      # Y_hat_j enters via centering: phi_{ij} = I(G=g)/pi_g * (delta - Y_hat_j)
-      # But the EIF is: score - att_gt, and score = sum w_j phi_{ij}
-      # phi_{ij} for treated group = I(G=g)/pi_g * (delta_{g,t,base} - Y_hat_j)
-      # We compute: sum_j w_j * I(G=g)/pi_g * (delta - Y_hat_j)
-      # = I(G=g)/pi_g * [ (delta - mean_g) + (mean_g - sum_j w_j Y_hat_j) ]
-      # But it's simpler to accumulate directly:
+      # Y_hat_j enters via centering: phi_{ij} = I(G=g) w_i/pi_g * (delta - Y_hat_j)
+      # We accumulate sum_j w_j * I(G=g) w_i/pi_g * (delta - wmean) directly.
       eif[mask_g] <- eif[mask_g] +
-        w_j * (delta_g_t_base - mean_g_t_base) / pi_g
+        w_j * w_g_obs * (delta_g_t_base - mean_g_t_base) / pi_g
 
       # Never-treated contribution (subtract)
       delta_inf_t_pre <- ow[mask_inf, col_t] - ow[mask_inf, col_pre]
-      mean_inf_t_pre  <- mean(delta_inf_t_pre)
+      mean_inf_t_pre  <- wmean_edid(delta_inf_t_pre, if (is.null(uw)) NULL else w_inf_obs)
       eif[mask_inf] <- eif[mask_inf] -
-        w_j * (delta_inf_t_pre - mean_inf_t_pre) / pi_inf
+        w_j * w_inf_obs * (delta_inf_t_pre - mean_inf_t_pre) / pi_inf
 
       # Comparison cohort contribution (subtract)
       mask_gp          <- panel_obj$cohort_masks[[as.character(gp_j)]]
       pi_gp            <- panel_obj$cohort_fractions[[as.character(gp_j)]]
+      w_gp_obs         <- if (is.null(uw)) rep(1, sum(mask_gp)) else uw[mask_gp]
       delta_gp_pre_base <- ow[mask_gp, col_pre] - ow[mask_gp, col_base]
-      mean_gp_pre_base  <- mean(delta_gp_pre_base)
+      mean_gp_pre_base  <- wmean_edid(delta_gp_pre_base, if (is.null(uw)) NULL else w_gp_obs)
       eif[mask_gp] <- eif[mask_gp] -
-        w_j * (delta_gp_pre_base - mean_gp_pre_base) / pi_gp
+        w_j * w_gp_obs * (delta_gp_pre_base - mean_gp_pre_base) / pi_gp
     }
   }
 

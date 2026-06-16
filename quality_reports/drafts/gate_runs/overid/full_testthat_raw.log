@@ -1,0 +1,822 @@
+sim_data_2_groups: .......
+aggte-clustervars-override: ...................
+aggte-comprehensive: ....................................................
+aggte-edge-coverage: ..............
+att_gt: ................................................................................................................................................................................................................................
+cluster-analytic: ......S.........S.......
+compute-inffunc: ......................................................................................
+conditional-did-pretest: Step 1 of 2: Computing test statistic....
+Step 2 of 2: Simulating limiting distribution of test statistic....
+..SS
+edge-cases: ..........................
+edid-ach-correction: WW...WW....W.WW....1WWW..
+edid-adaptive-fixture: 23
+edid-adaptive-inference: ................................................................................................................................................................................................................SSSS.................................SS
+edid-api-cleanup: ................................456789abc.......d.......................
+edid-audit-regressions: .........................................e...............f
+edid-boot: ........................................W.W...........................W.............S...........
+edid-build-invariance: WW..WW..W..
+edid-cov-basic: ....ghWW........WW....WW.....W..
+edid-cov-eif: .W.ijk.l
+edid-cov-formula: ....mnopWW...qr
+edid-cov-ridge: ..............................
+edid-cov-validation: ...............
+edid-cov-variance: SSS.
+edid-exp-ratio: stuv...............wxS
+edid-higher-order: yz.......W........................WW...
+edid-identities: SASS...SSB
+edid-inference: CDEFGHIJ
+edid-integration: ......................................................
+edid-misspec-robust: ..........................................................................
+edid-mp: ........
+edid-nocov-estimation-effect: SKL....................SSS.M
+edid-nocov-shrink: NOPQ......R.S..............TU....
+edid-nocov: VWXYZEEEEEEEEEE
+edid-overall-consistency: ..........
+edid-pairs-validation: EEEEEEEEEEEEEEEEE
+edid-pairs: EEEEEEEEE
+edid-paper-faithfulness: EE.....W..W...W..W..W.....WW.......
+edid-parallel: SS
+edid-ptpost-cov: ...
+edid-ratio-method: EES............EE.
+edid-round3-guards: ..............EE........E.....E
+edid-sieve: SSS............S
+edid-supt-bands: EEEEEEWW....WW.....W.W..WW..W...WW..WW....W..WW.WWWW..
+edid-thin-cohort: EEE.............................................SSS
+edid-toolkit: S....................................E.........................................EEFFF...............................................E..............E............S..WWWWWW.WW.W....E....
+edid-trimming: .............
+edid-validate: EEFF.F.FFFFFF..F
+edid-weightsname: .........................................................E....E........
+error-handling: ...........................................................................................................................................
+faster-mode-consistency: ....................................................................................................................................................................................................................................................................................
+ggdid: ..............
+glance: ............................................................
+inference: SSSSSSS
+jel_replication: SSSSSS
+mboot-cluster: SS.
+mboot-postprocess: .........
+modelmatrix-hoist: ........................................................................................................................................
+output-methods-coverage: ...............S..FF
+overlap-guard-cache: ......................
+pretest-vectorization: ................................S
+robustness-guards: ..........................................
+slowpath-precompute: ..........................................................................................................................................................
+tidy: ........................
+unbalanced-faster-cluster-se: .....................................
+user_bug_fixes: ....S...............
+
+══ Skipped ═════════════════════════════════════════════════════════════════════
+1. analytical cluster SE agrees with the bootstrap cluster SE (multiple DGPs) ('test-cluster-analytic.R:45:3') - Reason: On CRAN
+
+2. clustered bootstrap and analytical SE agree for repeated cross-sections (idname omitted) ('test-cluster-analytic.R:117:3') - Reason: On CRAN
+
+3. pretest setup-bundle/y-override path is bit-identical to the legacy data-copy loop ('test-conditional-did-pretest.R:33:3') - Reason: On CRAN
+
+4. conditional pre-test CvM is on the bootstrap scale (R>=4.0 orientation regression) ('test-conditional-did-pretest.R:64:3') - Reason: On CRAN
+
+5. quadrature coverage matches the fixture quad_* fields and the authors' MC ('test-edid-adaptive-inference.R:132:3') - Reason: On CRAN
+
+6. quadrature reproduces the authors' MC for the naive-YR and pre-test foils ('test-edid-adaptive-inference.R:206:3') - Reason: On CRAN
+
+7. corrected ST cvs restore the eq.-(8) guarantee where the shipped table fails ('test-edid-adaptive-inference.R:244:3') - Reason: On CRAN
+
+8. exact ST solver: bisection invariants and symmetry in the sign of rho ('test-edid-adaptive-inference.R:294:3') - Reason: On CRAN
+
+9. edid_adaptive attaches B-FLCIs on simulated fits (AUTO TRUE and FALSE paths) ('test-edid-adaptive-inference.R:390:3') - Reason: On CRAN
+
+10. level != 0.95 errors loudly (the tables are 95%-only) ('test-edid-adaptive-inference.R:481:3') - Reason: On CRAN
+
+11. refit bootstrap widens the long-horizon CI on a weak-overlap design ('test-edid-boot.R:308:3') - Reason: On CRAN
+
+12. covariate SE / empirical SD ratio is in (0.4, 2.5) at n=200, R=50 ('test-edid-cov-variance.R:51:3') - Reason: On CRAN
+
+13. EIF plug-in SE matches empirical SD in expected range at n=200 ('test-edid-cov-variance.R:85:3') - Reason: On CRAN
+
+14. ATT(3,3) CI coverage is roughly nominal at n=200, R=50 ('test-edid-cov-variance.R:123:3') - Reason: On CRAN
+
+15. higher_order and the perturbation bootstrap run with full exp aux (no fallback skipping) ('test-edid-exp-ratio.R:333:3') - Reason: On CRAN
+
+16. pooled Omega-bar coupling matches the numerical directional derivative (tiny design) ('test-edid-identities.R:34:3') - Reason: On CRAN
+
+17. dead pairs are dropped (not zero-padded): post ATT recovers ~1.0 with a warning ('test-edid-identities.R:210:3') - Reason: On CRAN
+
+18. binding trim with heterogeneous tau(X): all weight schemes target the ONE common-overlap ATT ('test-edid-identities.R:241:3') - Reason: On CRAN
+
+19. covariate-path moment_set emptying ONE cohort: that cohort NA, the other byte-identical ('test-edid-identities.R:338:3') - Reason: On CRAN
+
+20. edid_sargan: match_fit copies the fit's IF convention; plugin_fast stays cheap; Holm identical ('test-edid-identities.R:362:3') - Reason: On CRAN
+
+21. FD oracle: analytic Jacobian directions and var_add match finite differences (plain + shrink chain) ('test-edid-nocov-estimation-effect.R:64:3') - Reason: On CRAN
+
+22. the correction propagates to the event-study and overall aggregate SEs ('test-edid-nocov-estimation-effect.R:181:3') - Reason: On CRAN
+
+23. multiplier-bootstrap path warns that it cannot carry the correction ('test-edid-nocov-estimation-effect.R:196:3') - Reason: On CRAN
+
+24. asymptotic no-op: the correction is negligible at large n ('test-edid-nocov-estimation-effect.R:207:3') - Reason: On CRAN
+
+25. cores > 1 is bit-identical to the serial path (att / se / EIF) ('test-edid-parallel.R:13:3') - Reason: On CRAN
+
+26. the edid_mc_cores option still works as a session-wide default for cores ('test-edid-parallel.R:38:3') - Reason: On CRAN
+
+27. with-X PT-All on the thin-cohort design: the default has sane SEs, direct inflates ('test-edid-ratio-method.R:89:3') - Reason: On CRAN
+
+28. the sieve smoother runs and yields a mean-zero EIF with finite, positive SEs ('test-edid-sieve.R:10:3') - Reason: On CRAN
+
+29. sieve EFFICIENT + misspec_robust runs the weight channel (no warning, mean-zero EIF, finite SEs) ('test-edid-sieve.R:20:3') - Reason: On CRAN
+
+30. sieve AVERAGED + misspec_robust runs the pooled weight channel (no warning, mean-zero EIF, finite SEs) ('test-edid-sieve.R:39:3') - Reason: On CRAN
+
+31. misspec_robust weight channel cannot blow up the SE in poor-overlap / placebo cells (guarded fallback) ('test-edid-sieve.R:126:3') - Reason: On CRAN
+
+32. 3-unit cohort: degraded cells' analytic SEs within 25% of the refit-bootstrap SE ('test-edid-thin-cohort.R:244:3') - Reason: On CRAN
+
+33. 3-unit cohort MC (n = 1500): spillover gone, just-identified calibration restored ('test-edid-thin-cohort.R:277:3') - Reason: On CRAN
+
+34. perturbation bootstrap reproduces a guarded covariate fit (exactness check) ('test-edid-thin-cohort.R:321:3') - Reason: On CRAN
+
+35. Hausman test has approximately correct size under PT-All and power under violation ('test-edid-toolkit.R:44:3') - Reason: On CRAN
+
+36. edid_sargan detects the violated moment under a PT-All violation ('test-edid-toolkit.R:614:3') - Reason: On CRAN
+
+37. inference with balanced panel data and aggregations ('test-inference.R:62:3') - Reason: On CRAN
+
+38. inference with clustering ('test-inference.R:197:3') - Reason: On CRAN
+
+39. same inference with unbalanced panel and panel data ('test-inference.R:327:3') - Reason: On CRAN
+
+40. inference with repeated cross sections ('test-inference.R:359:3') - Reason: On CRAN
+
+41. inference with repeated cross sections and clustering ('test-inference.R:490:3') - Reason: On CRAN
+
+42. inference with unbalanced panel ('test-inference.R:621:3') - Reason: On CRAN
+
+43. inference with unbalanced panel and clustering ('test-inference.R:756:3') - Reason: On CRAN
+
+44. JEL Table 7: 2x2 CS-DiD point estimates match ('test-jel_replication.R:84:3') - Reason: On CRAN
+
+45. JEL 2xT: event study ATT(g,t) point estimates match ('test-jel_replication.R:136:3') - Reason: On CRAN
+
+46. JEL 2xT: event study with covariates matches across methods ('test-jel_replication.R:186:3') - Reason: On CRAN
+
+47. JEL GxT: staggered event study without covariates matches ('test-jel_replication.R:226:3') - Reason: On CRAN
+
+48. JEL GxT: staggered event study with DR covariates matches ('test-jel_replication.R:282:3') - Reason: On CRAN
+
+49. JEL: faster_mode matches regular mode ('test-jel_replication.R:339:3') - Reason: On CRAN
+
+50. clustered mboot SE matches the cluster-sum (Remark 10) for UNBALANCED clusters ('test-mboot-cluster.R:29:3') - Reason: On CRAN
+
+51. clustered mboot SE is unchanged for BALANCED clusters (cluster-sum == cluster-mean) ('test-mboot-cluster.R:45:3') - Reason: On CRAN
+
+52. summary.MP.TEST prints the conditional pre-test results ('test-output-methods-coverage.R:42:3') - Reason: On CRAN
+
+53. test.mboot multi-chunk tiling accumulates across chunks correctly ('test-pretest-vectorization.R:67:3') - Reason: On CRAN
+
+54. repeated cross sections small groups with covariates ('test-user_bug_fixes.R:74:3') - Reason: known bug, code crashes in this case, fix is probably in DRDID package
+
+══ Warnings ════════════════════════════════════════════════════════════════════
+1. under misspec_robust = FALSE, estimation_effect defaults to FALSE (byte-identical EIF) ('test-edid-ach-correction.R:37:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+2. under misspec_robust = FALSE, estimation_effect defaults to FALSE (byte-identical EIF) ('test-edid-ach-correction.R:39:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+3. correction changes the EIF/SE but NOT the point estimates ('test-edid-ach-correction.R:47:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+4. correction changes the EIF/SE but NOT the point estimates ('test-edid-ach-correction.R:48:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+5. corrected EIF stays mean-zero to machine precision ('test-edid-ach-correction.R:61:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+6. correction propagates to the event-study aggregation (points equal, SE may differ) ('test-edid-ach-correction.R:68:3') - Extreme propensity ratios (max > 100) in 3 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+7. correction propagates to the event-study aggregation (points equal, SE may differ) ('test-edid-ach-correction.R:70:3') - Extreme propensity ratios (max > 100) in 3 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+8. analytic ACH reproduces the finite-difference oracle where the correction is non-negligible ('test-edid-ach-correction.R:155:5') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+9. analytic ACH reproduces the finite-difference oracle where the correction is non-negligible ('test-edid-ach-correction.R:155:5') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+10. analytic ACH reproduces the finite-difference oracle where the correction is non-negligible ('test-edid-ach-correction.R:155:5') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+11. refit bootstrap validates inputs and recovers data from the fit's call ('test-edid-boot.R:176:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+12. refit bootstrap validates inputs and recovers data from the fit's call ('test-edid-boot.R:177:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+13. perturbation bootstrap supports the efficient scheme and is reproducible ('test-edid-boot.R:257:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+14. fast BLAS kernel build is invariant to the exact original per-pair build (att + se) ('test-edid-build-invariance.R:26:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+15. fast BLAS kernel build is invariant to the exact original per-pair build (att + se) ('test-edid-build-invariance.R:27:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+16. fast BLAS kernel build is invariant to the exact original per-pair build (att + se) ('test-edid-build-invariance.R:31:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+17. fast BLAS kernel build is invariant to the exact original per-pair build (att + se) ('test-edid-build-invariance.R:32:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+18. edid() reproduces the pinned golden att/se on mpdta + ~lpop (guards kp_cache / m_eff) ('test-edid-build-invariance.R:38:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+19. covariate path returns edid_fit with all required slots ('test-edid-cov-basic.R:54:3') - Extreme propensity ratios (max > 100) in 3 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+20. covariate path returns edid_fit with all required slots ('test-edid-cov-basic.R:54:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+21. covariate path: all post-treatment ATTs are finite ('test-edid-cov-basic.R:73:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+22. covariate path: all post-treatment ATTs are finite ('test-edid-cov-basic.R:73:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+23. covariate path runs without error on 2D covariate formula ('test-edid-cov-basic.R:89:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+24. covariate path runs without error on 2D covariate formula ('test-edid-cov-basic.R:89:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+25. factor covariate is accepted and produces finite results ('test-edid-cov-basic.R:136:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+26. reported SE matches manual EIF plug-in formula for valid-inference cells ('test-edid-cov-eif.R:51:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+27. two calls with same seed produce identical results on covariate path ('test-edid-cov-formula.R:135:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+28. two calls with same seed produce identical results on covariate path ('test-edid-cov-formula.R:136:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+29. edid(higher_order = TRUE) vcov matches reported higher-order SEs ('test-edid-higher-order.R:182:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+30. under misspec_robust = FALSE, higher_order defaults to FALSE (byte-identical) ('test-edid-higher-order.R:243:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+31. under misspec_robust = FALSE, higher_order defaults to FALSE (byte-identical) ('test-edid-higher-order.R:245:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+32. $overall is the dynamic headline and the type overalls match aggte_edid ('test-edid-paper-faithfulness.R:95:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+33. $overall is the dynamic headline and the type overalls match aggte_edid ('test-edid-paper-faithfulness.R:98:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+34. aggte_edid supports simple, dynamic, group, and calendar ('test-edid-paper-faithfulness.R:107:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+35. aggte_edid supports simple, dynamic, group, and calendar ('test-edid-paper-faithfulness.R:109:5') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+36. calendar ATT(t) equals the cohort-share-weighted average of ATT(g,t) for g <= t ('test-edid-paper-faithfulness.R:117:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+37. edid is deterministic with bstrap = FALSE ('test-edid-paper-faithfulness.R:155:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+38. edid is deterministic with bstrap = FALSE ('test-edid-paper-faithfulness.R:156:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+39. edid default produces analytic SIMULTANEOUS bands (crit > z); SE unchanged vs pointwise ('test-edid-supt-bands.R:77:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+40. edid default produces analytic SIMULTANEOUS bands (crit > z); SE unchanged vs pointwise ('test-edid-supt-bands.R:77:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+41. edid default produces analytic SIMULTANEOUS bands (crit > z); SE unchanged vs pointwise ('test-edid-supt-bands.R:86:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+42. edid default produces analytic SIMULTANEOUS bands (crit > z); SE unchanged vs pointwise ('test-edid-supt-bands.R:86:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+43. cband_method = 'multiplier' preserves the bootstrap path and honors cband ('test-edid-supt-bands.R:106:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+44. cband_method = 'multiplier' preserves the bootstrap path and honors cband ('test-edid-supt-bands.R:114:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+45. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:126:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+46. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:126:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+47. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:129:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+48. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:133:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+49. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:133:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+50. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:136:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+51. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:136:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+52. bstrap = TRUE selects the multiplier bootstrap under the default cband_method, and inference_type is honest ('test-edid-supt-bands.R:141:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+53. default analytic cband (seed = NULL) does not perturb the caller's RNG stream ('test-edid-supt-bands.R:150:18') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+54. default analytic cband (seed = NULL) does not perturb the caller's RNG stream ('test-edid-supt-bands.R:150:18') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+55. analytic bands are cluster-robust and the aggregations carry the analytic sup-t crit ('test-edid-supt-bands.R:159:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+56. analytic bands are cluster-robust and the aggregations carry the analytic sup-t crit ('test-edid-supt-bands.R:159:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+57. analytic bands are cluster-robust and the aggregations carry the analytic sup-t crit ('test-edid-supt-bands.R:161:3') - Extreme propensity ratios (max > 100) in 2 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+58. analytic bands are cluster-robust and the aggregations carry the analytic sup-t crit ('test-edid-supt-bands.R:161:3') - higher_order: could not recover the overall-aggregate weights from the per-element influence columns (the recovery residual is non-negligible: the overall IF is not in the column span); the higher-order increment to the OVERALL SE of this aggregation is skipped (the per-element SEs and the uniform band keep their increment). This is expected for the 'group' aggregation, whose overall influence function carries the estimated cohort-share weights and is genuinely outside the column span.
+
+59. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:659:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+60. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:661:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+61. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:663:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+62. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:663:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+63. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:668:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+64. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:668:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+65. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:673:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+66. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:673:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+67. edid_sargan refits use the fit's stored arguments, not the caller's mutated variables ('test-edid-toolkit.R:676:3') - Extreme propensity ratios (max > 100) in 1 estimation step(s): some units have near-zero estimated probability of one comparison cohort relative to another (thin PAIRWISE overlap, possible even when every cohort overlaps the never-treated pool). With trim_level = 200 those observations are trimmed from the affected pairs and each cell estimates its common-overlap ATT(g,t); see the dead-pair/full-trim warnings (if any) for pairs or cells that lost all treated mass.
+
+══ Failed ══════════════════════════════════════════════════════════════════════
+── 1. Error ('test-edid-ach-correction.R:100:3'): conditional-mean ACH correctio
+Error in `prepare_edid_panel(df, "y", "id", "t", "g", xformla = ~x1, anticipation = 0L)`: could not find function "prepare_edid_panel"
+
+── 2. Error ('test-edid-adaptive-fixture.R:33:3'): adaptive core reproduces the 
+Error in `.edid_aks_core(YR = YR, VR = VR, YU = YU, VU = VU, VUR = VUR)`: could not find function ".edid_aks_core"
+
+── 3. Error ('test-edid-adaptive-fixture.R:66:3'): adaptive core reproduces the 
+Error in `.edid_aks_core(YR = YR, VR = VR, YU = YU, VU = VU, VUR = VR)`: could not find function ".edid_aks_core"
+
+── 4. Failure ('test-edid-api-cleanup.R:120:5'): validate_edid_inputs() rejects 
+`run_validate(alp = bad)` threw an error with unexpected message.
+Expected match: "`alp` must be a numeric scalar strictly between 0 and 1"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(alp = bad), "`alp` must be a numeric scalar strictly between 0 and 1") at test-edid-api-cleanup.R:120:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(alp = bad)
+
+── 5. Failure ('test-edid-api-cleanup.R:121:5'): validate_edid_inputs() rejects 
+`run_validate(biters = bad)` threw an error with unexpected message.
+Expected match: "`biters` must be a non-negative integer"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(biters = bad), "`biters` must be a non-negative integer") at test-edid-api-cleanup.R:121:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(biters = bad)
+
+── 6. Failure ('test-edid-api-cleanup.R:122:5'): validate_edid_inputs() rejects 
+`run_validate(anticipation = bad)` threw an error with unexpected message.
+Expected match: "`anticipation` must be a non-negative integer"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(anticipation = bad), "`anticipation` must be a non-negative integer") at test-edid-api-cleanup.R:122:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(anticipation = bad)
+
+── 7. Failure ('test-edid-api-cleanup.R:120:5'): validate_edid_inputs() rejects 
+`run_validate(alp = bad)` threw an error with unexpected message.
+Expected match: "`alp` must be a numeric scalar strictly between 0 and 1"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(alp = bad), "`alp` must be a numeric scalar strictly between 0 and 1") at test-edid-api-cleanup.R:120:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(alp = bad)
+
+── 8. Failure ('test-edid-api-cleanup.R:121:5'): validate_edid_inputs() rejects 
+`run_validate(biters = bad)` threw an error with unexpected message.
+Expected match: "`biters` must be a non-negative integer"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(biters = bad), "`biters` must be a non-negative integer") at test-edid-api-cleanup.R:121:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(biters = bad)
+
+── 9. Failure ('test-edid-api-cleanup.R:122:5'): validate_edid_inputs() rejects 
+`run_validate(anticipation = bad)` threw an error with unexpected message.
+Expected match: "`anticipation` must be a non-negative integer"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(anticipation = bad), "`anticipation` must be a non-negative integer") at test-edid-api-cleanup.R:122:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(anticipation = bad)
+
+── 10. Failure ('test-edid-api-cleanup.R:120:5'): validate_edid_inputs() rejects
+`run_validate(alp = bad)` threw an error with unexpected message.
+Expected match: "`alp` must be a numeric scalar strictly between 0 and 1"
+Actual message: "could not find function \"validate_edid_inputs\""
+Backtrace:
+    ▆
+ 1. ├─testthat::expect_error(run_validate(alp = bad), "`alp` must be a numeric scalar strictly between 0 and 1") at test-edid-api-cleanup.R:120:5
+ 2. │ └─testthat:::quasi_capture(...)
+ 3. │   ├─testthat (local) .capture(...)
+ 4. │   │ └─base::withCallingHandlers(...)
+ 5. │   └─rlang::eval_bare(quo_get_expr(.quo), quo_get_env(.quo))
+ 6. └─run_validate(alp = bad)
+  ... and 131 more
+
+
+Maximum number of 10 failures reached, some test results may be missing.
+
+══ DONE ════════════════════════════════════════════════════════════════════════
+
+=====FULL-TESTTHAT-SUMMARY=====
+files : 64 
+PASS  : 2630 
+FAIL  : 24 
+WARN  : 67 
+SKIP  : 54 
+ERROR : 117 
+elapsed_min: 2.12 
+
+=====FAILING/ERRORING CONTEXTS=====
+                                file                      context
+          test-edid-ach-correction.R          edid-ach-correction
+        test-edid-adaptive-fixture.R        edid-adaptive-fixture
+        test-edid-adaptive-fixture.R        edid-adaptive-fixture
+             test-edid-api-cleanup.R             edid-api-cleanup
+             test-edid-api-cleanup.R             edid-api-cleanup
+       test-edid-audit-regressions.R       edid-audit-regressions
+       test-edid-audit-regressions.R       edid-audit-regressions
+               test-edid-cov-basic.R               edid-cov-basic
+               test-edid-cov-basic.R               edid-cov-basic
+                 test-edid-cov-eif.R                 edid-cov-eif
+                 test-edid-cov-eif.R                 edid-cov-eif
+                 test-edid-cov-eif.R                 edid-cov-eif
+                 test-edid-cov-eif.R                 edid-cov-eif
+             test-edid-cov-formula.R             edid-cov-formula
+             test-edid-cov-formula.R             edid-cov-formula
+             test-edid-cov-formula.R             edid-cov-formula
+             test-edid-cov-formula.R             edid-cov-formula
+             test-edid-cov-formula.R             edid-cov-formula
+             test-edid-cov-formula.R             edid-cov-formula
+               test-edid-exp-ratio.R               edid-exp-ratio
+               test-edid-exp-ratio.R               edid-exp-ratio
+               test-edid-exp-ratio.R               edid-exp-ratio
+               test-edid-exp-ratio.R               edid-exp-ratio
+               test-edid-exp-ratio.R               edid-exp-ratio
+               test-edid-exp-ratio.R               edid-exp-ratio
+            test-edid-higher-order.R            edid-higher-order
+            test-edid-higher-order.R            edid-higher-order
+              test-edid-identities.R              edid-identities
+              test-edid-identities.R              edid-identities
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+               test-edid-inference.R               edid-inference
+ test-edid-nocov-estimation-effect.R edid-nocov-estimation-effect
+ test-edid-nocov-estimation-effect.R edid-nocov-estimation-effect
+ test-edid-nocov-estimation-effect.R edid-nocov-estimation-effect
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+            test-edid-nocov-shrink.R            edid-nocov-shrink
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+                   test-edid-nocov.R                   edid-nocov
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+        test-edid-pairs-validation.R        edid-pairs-validation
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+                   test-edid-pairs.R                   edid-pairs
+      test-edid-paper-faithfulness.R      edid-paper-faithfulness
+      test-edid-paper-faithfulness.R      edid-paper-faithfulness
+            test-edid-ratio-method.R            edid-ratio-method
+            test-edid-ratio-method.R            edid-ratio-method
+            test-edid-ratio-method.R            edid-ratio-method
+            test-edid-ratio-method.R            edid-ratio-method
+           test-edid-round3-guards.R           edid-round3-guards
+           test-edid-round3-guards.R           edid-round3-guards
+           test-edid-round3-guards.R           edid-round3-guards
+           test-edid-round3-guards.R           edid-round3-guards
+              test-edid-supt-bands.R              edid-supt-bands
+              test-edid-supt-bands.R              edid-supt-bands
+              test-edid-supt-bands.R              edid-supt-bands
+              test-edid-supt-bands.R              edid-supt-bands
+              test-edid-supt-bands.R              edid-supt-bands
+              test-edid-supt-bands.R              edid-supt-bands
+             test-edid-thin-cohort.R             edid-thin-cohort
+             test-edid-thin-cohort.R             edid-thin-cohort
+             test-edid-thin-cohort.R             edid-thin-cohort
+                 test-edid-toolkit.R                 edid-toolkit
+                 test-edid-toolkit.R                 edid-toolkit
+                 test-edid-toolkit.R                 edid-toolkit
+                 test-edid-toolkit.R                 edid-toolkit
+                 test-edid-toolkit.R                 edid-toolkit
+                 test-edid-toolkit.R                 edid-toolkit
+                 test-edid-toolkit.R                 edid-toolkit
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+                test-edid-validate.R                edid-validate
+             test-edid-weightsname.R             edid-weightsname
+             test-edid-weightsname.R             edid-weightsname
+      test-output-methods-coverage.R      output-methods-coverage
+                                                                                                   test
+               conditional-mean ACH correction has the CORRECT SIGN (matches the numerical two-step IF)
+                             adaptive core reproduces the MissAdapt README vignette (dCdH 2020 Table 3)
+                        adaptive core reproduces the vignette's efficient-restricted variant (VUR = VR)
+                                      validate_edid_inputs() rejects non-finite numeric scalars clearly
+                          control_group is removed from edid() and the family always uses never-treated
+                                         PT-Post picks tpre = 1.5 on the grid {1, 1.5, 2, 3} with g = 2
+                 edid_weights returns labeled tidy weights; uniform weights are equal; plot is a ggplot
+                                      xformla=~1 routes to no-covariate path (covariate_matrix is NULL)
+                                    xformla=NULL routes to no-covariate path (covariate_matrix is NULL)
+                                 compute_eif_cov_edid formula: weighted_phi minus att_gt, then centered
+                                                        wrong-sign EIF produces materially different SE
+                               generated outcome for self-comparison pair: zero for non-g/non-inf units
+                cov-path Omega* self-pair term5 conditions on G=g (matches no-cov; no negative weights)
+                                         covariate_matrix uses model.matrix() and handles I() correctly
+                                             interaction in xformla produces expected number of columns
+                                    factor covariate is accepted and covariate_matrix has dummy columns
+                           xformla=~x1+x2+x1:x2 and xformla=~x1*x2 produce identical covariate matrices
+                                 different seeds produce different fold assignments (probabilistically)
+                                                        same seed always produces same fold assignments
+                 exp fits are positive and finite on the thin-denominator reproducer; full aux attached
+                       the tailored-loss FOC is exact basis-mean balancing at the (unpenalized) optimum
+                        FD oracle (1e-6): the exp aux Hessian is the Jacobian of the mean score in beta
+     FD oracle (1e-6): the analytic ACH Gamma equals the beta-space derivative under the exp chain rule
+                      ratio-targeted trimming and the keep-mask threading apply identically to exp fits
+                        tailored and literal paper losses agree under correct specification (logit DGP)
+           compute_cell_hessian_edid: H %*% u matches a fresh central difference of att (relerr < 1e-4)
+                        diag(sigma_quad_edid) reproduces the analytical_se_edid var_quad recipe (~1e-6)
+                         Daleckii-Krein coupling is the exact derivative of the FIXED-floor inverse map
+                  overall weight recovery: exact on full rank; warns and skips on collinear egt columns
+                                                     compute_eif_se_edid() returns sqrt(sum(eif^2)/n^2)
+                                                       compute_eif_se_edid() returns non-negative value
+                                            cluster_aggregate_edid() sums EIF within clusters correctly
+                                        cluster_aggregate_edid() SE with clustering differs from iid SE
+                                          safe_inference_edid() returns named list with expected fields
+                              safe_inference_edid() returns inference_valid=FALSE when EIF is all zeros
+                                      safe_inference_edid() CI width is positive for non-degenerate EIF
+                                                             safe_inference_edid() p_value is in [0, 1]
+         structural identities: psi/Omega, sum d_i = 0, q_opt = -cov_lead, eif = psi w, B-orthogonality
+                           lambda = 1 clamp: the Jacobian vanishes and var_add is the pure Bessel piece
+              the K x K increment: diagonal == per-cell var_add; cross entries match a direct recompute
+                        compute_psi_moments_nocov_edid() reproduces Omega* exactly (crossprod(psi)/n^2)
+                   compute_pole_structure_nocov_edid() matches the empirical Omega* on a large iid draw
+                      shrink_omega_nocov_edid() returns lambda in [0,1] and a symmetric PSD-safe matrix
+                                    at lambda = 1 the shrunk weights equal the closed-form pole weights
+       omega_cov_shrink = 'none' reproduces the legacy weights/ATT/SE bit-for-bit (default now shrinks)
+                          omega_cov_shrink = 'ledoit_wolf' inverts the shrunk matrix and records lambda
+                               omega_cov_shrink = 'ridge' regularizes the weights (vanishing p/n ridge)
+                   with shrinkage on, the cell SE is the empirical variance of the realized weighted IF
+                                 compute_omega_star_nocov_edid() returns H x H symmetric numeric matrix
+                           compute_omega_star_nocov_edid() is positive semi-definite (eigenvalues >= 0)
+                                       compute_omega_star_nocov_edid() returns 1x1 matrix under PT-Post
+                                                      compute_efficient_weights_edid() weights sum to 1
+                                   compute_efficient_weights_edid() returns w=1 for a single pair (H=1)
+                      compute_efficient_weights_edid() returns uniform weights when Omega* is all zeros
+                       compute_efficient_weights_edid() uses pseudoinverse fallback for singular Omega*
+                              compute_efficient_weights_edid() returns numeric vector with no NA or NaN
+                                 compute_generated_outcomes_nocov_edid() returns length-H finite vector
+                                compute_generated_outcomes_nocov_edid() PT-Post returns length-1 vector
+      compute_generated_outcomes_nocov_edid() ATT=2 panel: generated outcome close to 2 for post period
+                                                compute_eif_nocov_edid() returns length-n finite vector
+                                     compute_eif_nocov_edid() has zero mean (up to numerical precision)
+                                                    compute_eif_nocov_edid() PT-Post: EIF has zero mean
+                               compute_eif_nocov_edid() sum of squared EIF is positive (non-degenerate)
+                                                          U1: target_g=3, cohorts={3,5,7}, periods=1:10
+                                                          U2: target_g=5, cohorts={3,5,7}, periods=1:10
+                                                          U3: target_g=7, cohorts={3,5,7}, periods=1:10
+                                                            U4: target_g=4, cohorts={4,7}, periods=1:10
+                                                            U5: target_g=7, cohorts={4,7}, periods=1:10
+                                              U6: target_g=5, cohorts={5}, periods=1:10 (single cohort)
+                                                          U7: target_g=4, cohorts={4,7}, anticipation=1
+                                      U8: target_g=7, cohorts={2,7} — gp=2 has no valid cross-pair tpre
+                                                    U9: PT-Post target_g=4, cohorts={4,7}, periods=1:10
+                                                        U10: PT-Post tpre=period_1 returns 1 valid pair
+                           U11: PT-Post irregular spacing uses the last observed pre-period as baseline
+                                             E1: target_g=2, single cohort, only period_1 as pre-period
+                           E2: target_g=7, cohorts={3,7}, anticipation=1 — gp=3 has no valid cross-pair
+                                                                R: PT-Post always produces gp=Inf pairs
+                                                                 Property: no gp=Inf in any PT-All call
+                                          Property: self-pair includes period_1 (when valid tpre exist)
+                                                                 Property: cross-pair excludes period_1
+                    enumerate_valid_pairs_edid() returns 1 pair under PT-Post for post-treatment period
+                          enumerate_valid_pairs_edid() returns 1 pair under PT-Post with anticipation=1
+                                enumerate_valid_pairs_edid() PT-Post baseline = period_1 returns 1 pair
+                     enumerate_valid_pairs_edid() PT-All includes same-cohort comparisons but no gp=Inf
+                            enumerate_valid_pairs_edid() PT-All includes period_1 as tpre for self-pair
+                    enumerate_valid_pairs_edid() PT-All with anticipation=1 adjusts effective treatment
+                                  enumerate_valid_pairs_edid() PT-All has only treated-cohort gp values
+  enumerate_valid_pairs_edid() returns 1 pair when target_g is first-ever cohort with period_1 baseline
+                      enumerate_valid_pairs_edid() always returns a data.frame with gp and tpre columns
+ efficient weights solve the GLS problem: sum to 1, equal Omega^{-1}1/(1'Omega^{-1}1), minimal variance
+                  covariate-path Omega* equals the no-covariate Omega* on constant covariates (Eq 3.12)
+           direct per-pair LS ratio sieve degenerates on a thin comparison cohort; the default does not
+       direct LS inverse propensities explode on a thin cohort; the default ones sit at the right scale
+            finite-cohort trim masks key on the pair's ratio only; the never-treated mask keeps r AND s
+                the cell-common keep mask reaches the Omega builders (trimmed units' prefactors zeroed)
+                  fork-BLAS guard serializes cores>1 on Darwin+Accelerate and respects override (fix 3)
+    edid_adaptive AUTO falls back to empirical covariance when the efficient leg is not tighter (fix 4)
+                          net-hedge-mass diagnostic is computed and does not flag a healthy fit (fix 6)
+         .edid_ratio_unstable_pairs excises extreme post-trim ratios, spares self/NT pairs (fix 8 unit)
+                             supt_crit_edid matches the analytic Sidak crit for independent coordinates
+           build_kernel_weights_edid handles huge finite covariates without non-finite kernel distances
+           compute_pointwise_weights_edid falls back to uniform when local Omega has non-finite entries
+                supt_crit_edid and analytic_bands_edid skip coordinates with non-finite covariance rows
+         supt_crit_edid is between the pointwise z and the Bonferroni bound, and rises with correlation
+                                    cluster_cov_edid: iid form and sqrt(diag) == safe_inference_edid SE
+                       apply_thin_cohort_guard_edid pins a thin target to the just-identified self pair
+                     apply_thin_cohort_guard_edid excises thin comparison cohorts from a healthy target
+                        apply_thin_cohort_guard_edid is inert under pt = 'post' and above the threshold
+                       .edid_if_diff_quadform guards degenerate contrasts (no rank found in float dust)
+                                   adaptive core reproduces the Application implementation on a fixture
+                                   adaptive core edge behavior: sigma_O ~ 0, clamps, and VO <= 0 assert
+                      edid_adaptive's VO <= 0 error is diagnostic (coinciding fits / thin-cohort guard)
+                                      shipped rds lookup tables match the vendored MissAdapt .mat files
+                                .edid_holm implements the Holm-Bonferroni step-down (hand-check, L = 3)
+             .edid_refit_args returns the stored snapshot and falls back to call replay for legacy fits
+                                                validate_edid_inputs() passes on valid one-cohort panel
+                                                      validate_edid_inputs() passes on two-cohort panel
+                                                  validate_edid_inputs() errors on missing yname column
+                                                  validate_edid_inputs() errors on missing tname column
+                                                           validate_edid_inputs() errors on Inf outcome
+                                                      validate_edid_inputs() errors on unbalanced panel
+                                        validate_edid_inputs() errors on duplicate (idname, tname) rows
+                                               validate_edid_inputs() errors on non-absorbing treatment
+                                  validate_edid_inputs() errors when no never-treated units are present
+                                          validate_edid_inputs() errors when covariates supplied (stub)
+                                       validate_edid_inputs() errors when survey_design supplied (stub)
+                                         validate_edid_inputs() errors on time-varying cluster variable
+                              the weighted Omega* == crossprod(weighted psi)/n^2 identity holds exactly
+                 weighted no-cov estimation-effect correction: structural identities + Bessel reduction
+                                    get_wide_data() guards reject non-data.table and non-2-period input
+ failed error warning
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      9 FALSE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      3 FALSE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      0  TRUE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      1 FALSE       0
+      0  TRUE       0
+      0  TRUE       0
+      2 FALSE       0
+EXIT_CODE=0

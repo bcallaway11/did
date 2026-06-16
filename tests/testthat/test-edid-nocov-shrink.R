@@ -110,7 +110,7 @@ test_that("lambda-hat is ~1 at the iid pole and decays with n off the pole", {
       edid(.shrink_test_panel(n, rho = rho, seed = seed), yname = "y", idname = "id",
            tname = "time", gname = "gvar", pt_assumption = "all",
            weight_scheme = "efficient", aggregate = "none", cband = FALSE,
-           nocov_shrink = TRUE))
+           omega_cov_shrink = "ledoit_wolf"))
     mean(.shrink_cell_lambdas(fit), na.rm = TRUE)
   }
   expect_gt(lam_mean(60L, rho = 0,   seed = 11L), 0.8)    # pole: stay shrunk
@@ -121,24 +121,23 @@ test_that("lambda-hat is ~1 at the iid pole and decays with n off the pole", {
 })
 
 # ---------------------------------------------------------------------------
-# 4. Off-switch: nocov_shrink = FALSE reproduces the unshrunk pipeline bit-for-bit
+# 4. Off-switch: omega_cov_shrink = "none" reproduces the unshrunk pipeline bit-for-bit
 # ---------------------------------------------------------------------------
 
-test_that("nocov_shrink = FALSE/default reproduces the legacy weights/ATT/SE bit-for-bit", {
+test_that("omega_cov_shrink = 'none' reproduces the legacy weights/ATT/SE bit-for-bit (default now shrinks)", {
   df  <- .shrink_test_panel(150L, rho = 0.5, seed = 4L)
-  fit <- suppressWarnings(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE, nocov_shrink = FALSE))
-  fit_def <- suppressWarnings(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE))
-  expect_identical(fit_def$att_gt$att, fit$att_gt$att)
-  expect_identical(fit_def$att_gt$se, fit$att_gt$se)
-  expect_false(fit_def$nocov_shrink)
+  fit <- edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
+              pt_assumption = "all", weight_scheme = "efficient",
+              aggregate = "none", cband = FALSE, omega_cov_shrink = "none")
+  fit_def <- edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
+                  pt_assumption = "all", weight_scheme = "efficient",
+                  aggregate = "none", cband = FALSE)
+  # the DEFAULT is now ridge regularization, so it must DIFFER from the unshrunk "none" fit
+  expect_identical(fit_def$omega_cov_shrink, "ridge")
+  expect_identical(fit$omega_cov_shrink, "none")
+  expect_false(isTRUE(all.equal(fit_def$att_gt$att, fit$att_gt$att)))
   # oracle: rebuild each post cell's weights from the RAW Omega* (the pre-shrinkage
-  # pipeline) and confirm exact equality, including the stored condition number
+  # pipeline) and confirm "none" reproduces it exactly, including the condition number
   df_inf <- df; df_inf$gvar <- ifelse(df_inf$gvar == 0L, Inf, df_inf$gvar)
   panel  <- prepare_edid_panel(df_inf, "y", "id", "time", "gvar")
   for (cc in fit$cells) {
@@ -149,16 +148,14 @@ test_that("nocov_shrink = FALSE/default reproduces the legacy weights/ATT/SE bit
     expect_identical(cc$condition_num, check_condition_edid(om))
     expect_identical(cc$nocov_shrink_lambda, NA_real_)
   }
-  expect_false(fit$nocov_shrink)
 })
 
-test_that("nocov_shrink = TRUE inverts the shrunk matrix and records lambda", {
+test_that("omega_cov_shrink = 'ledoit_wolf' inverts the shrunk matrix and records lambda", {
   df  <- .shrink_test_panel(80L, rho = 0.5, seed = 21L)
-  fit <- suppressWarnings(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE, nocov_shrink = TRUE))
-  expect_true(fit$nocov_shrink)
+  fit <- edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
+              pt_assumption = "all", weight_scheme = "efficient",
+              aggregate = "none", cband = FALSE, omega_cov_shrink = "ledoit_wolf")
+  expect_identical(fit$omega_cov_shrink, "ledoit_wolf")
   df_inf <- df; df_inf$gvar <- ifelse(df_inf$gvar == 0L, Inf, df_inf$gvar)
   panel  <- prepare_edid_panel(df_inf, "y", "id", "time", "gvar")
   n_checked <- 0L
@@ -193,24 +190,49 @@ test_that("nocov_shrink is inert for uniform weights, PT-Post, and the covariate
   expect_true(all(is.na(.shrink_cell_lambdas(fit_post))))
 
   # uniform fits are bit-identical under both switch values (no weights estimated)
-  fit_unif_off <- suppressWarnings(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
+  fit_unif_off <- edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
          pt_assumption = "all", weight_scheme = "uniform",
-         aggregate = "none", cband = FALSE, nocov_shrink = FALSE))
+         aggregate = "none", cband = FALSE, omega_cov_shrink = "none")
   expect_identical(fit_unif$att_gt$att, fit_unif_off$att_gt$att)
   expect_identical(fit_unif$att_gt$se,  fit_unif_off$att_gt$se)
 })
 
-test_that("nocov_shrink validation rejects non-logical input", {
+test_that("deprecated nocov_shrink alias still validates and maps to omega_cov_shrink", {
   df <- .shrink_test_panel(60L, seed = 5L)
-  expect_error(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         nocov_shrink = "yes"),
-    "logical scalar")
-  expect_error(
-    edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
-         nocov_shrink = NA),
-    "logical scalar")
+  # validation preserved through the alias
+  expect_error(edid(df, "y", "id", "time", "gvar", nocov_shrink = "yes"), "logical scalar")
+  expect_error(edid(df, "y", "id", "time", "gvar", nocov_shrink = NA),    "logical scalar")
+  # alias warns and maps TRUE -> ledoit_wolf, FALSE -> none
+  expect_warning(fa_t <- edid(df, "y", "id", "time", "gvar", aggregate = "none", cband = FALSE, nocov_shrink = TRUE),  "deprecated")
+  expect_warning(fa_f <- edid(df, "y", "id", "time", "gvar", aggregate = "none", cband = FALSE, nocov_shrink = FALSE), "deprecated")
+  expect_identical(fa_t$omega_cov_shrink, "ledoit_wolf")
+  expect_identical(fa_f$omega_cov_shrink, "none")
+  # conflicting both-supplied errors
+  expect_error(edid(df, "y", "id", "time", "gvar", omega_cov_shrink = "none", nocov_shrink = TRUE), "not both")
+})
+
+test_that("omega_cov_shrink = 'ridge' regularizes the weights (vanishing p/n ridge)", {
+  df  <- .shrink_test_panel(80L, rho = 0.5, seed = 21L)
+  f_none  <- edid(df, "y", "id", "time", "gvar", pt_assumption = "all", weight_scheme = "efficient",
+                  aggregate = "none", cband = FALSE, omega_cov_shrink = "none")
+  f_ridge <- edid(df, "y", "id", "time", "gvar", pt_assumption = "all", weight_scheme = "efficient",
+                  aggregate = "none", cband = FALSE, omega_cov_shrink = "ridge")
+  expect_identical(f_ridge$omega_cov_shrink, "ridge")
+  # ridge changes the weights (differs from unshrunk) but is finite & well-posed
+  expect_false(isTRUE(all.equal(f_none$att_gt$att, f_ridge$att_gt$att)))
+  expect_true(all(is.finite(f_ridge$att_gt$att)) && all(is.finite(f_ridge$att_gt$se)))
+  # oracle: rebuild post cells' weights from Omega* + (H/n) mean(diag) I and confirm exact equality
+  df_inf <- df; df_inf$gvar <- ifelse(df_inf$gvar == 0L, Inf, df_inf$gvar)
+  panel  <- prepare_edid_panel(df_inf, "y", "id", "time", "gvar"); n_chk <- 0L
+  for (cc in f_ridge$cells) {
+    if (!isTRUE(is.finite(cc$att)) || nrow(cc$pairs) < 2L) next
+    om <- compute_omega_star_nocov_edid(cc$group, cc$time, cc$pairs, panel, "all")
+    Hh <- nrow(om); omr <- om + (Hh / panel$n) * mean(diag(om)) * diag(Hh)
+    expect_equal(unname(cc$weights), unname(compute_efficient_weights_edid(omr)), tolerance = 1e-12)
+    expect_identical(cc$nocov_shrink_lambda, NA_real_)   # ridge records NA (LW intensity only)
+    n_chk <- n_chk + 1L
+  }
+  expect_gt(n_chk, 0L)
 })
 
 # ---------------------------------------------------------------------------
@@ -223,7 +245,7 @@ test_that("with shrinkage on, the cell SE is the empirical variance of the reali
   fit <- suppressWarnings(
     edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
          pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE, nocov_shrink = TRUE))
+         aggregate = "none", cband = FALSE, omega_cov_shrink = "ledoit_wolf"))
   df_inf <- df; df_inf$gvar <- ifelse(df_inf$gvar == 0L, Inf, df_inf$gvar)
   panel  <- prepare_edid_panel(df_inf, "y", "id", "time", "gvar")
   n_checked <- 0L
@@ -252,7 +274,7 @@ test_that("thin-cohort-guard-pinned cells skip shrinkage (H = 1), healthy cells 
   fit  <- suppressWarnings(
     edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
          pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE, nocov_shrink = TRUE))
+         aggregate = "none", cband = FALSE, omega_cov_shrink = "ledoit_wolf"))
   lam  <- .shrink_cell_lambdas(fit)
   pinned  <- vapply(fit$cells, function(cc) isTRUE(cc$thin_cohort_degraded), logical(1L))
   expect_true(any(pinned))

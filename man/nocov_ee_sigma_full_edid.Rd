@@ -4,7 +4,12 @@
 \alias{nocov_ee_sigma_full_edid}
 \title{Full K x K no-covariate weight-estimation covariance increment (cross-cell)}
 \usage{
-nocov_ee_sigma_full_edid(eif_matrix, s_matrix, unit_cohorts)
+nocov_ee_sigma_full_edid(
+  eif_matrix,
+  s_matrix,
+  unit_cohorts,
+  unit_weights = NULL
+)
 }
 \arguments{
 \item{eif_matrix}{n x K matrix of cell EIFs (\code{fit_edid_cells()} output)}

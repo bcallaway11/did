@@ -234,10 +234,15 @@ test_that("the K x K increment: diagonal == per-cell var_add; cross entries matc
     Om  <- compute_omega_star_nocov_edid(cc$group, cc$time, prs, pn, "all")
     Om_w <- Om
     lambda <- cc$nocov_shrink_lambda
-    if (is.finite(lambda) && lambda > 0) {
+    # reconstruct the USED moment covariance for the active regularization (fit default = ridge):
+    # ridge adds (H/n) mean(diag) I (lambda NA -> plain-map ee); ledoit_wolf uses the pole-target
+    # shrink (chain-rule ee); none leaves Omega raw.
+    if (identical(f_ee$omega_cov_shrink, "ledoit_wolf") && is.finite(lambda) && lambda > 0) {
       sh <- shrink_omega_nocov_edid(Om, cc$group, cc$time, prs, pn)
       Om_w <- sh$omega
       lambda <- sh$lambda
+    } else if (identical(f_ee$omega_cov_shrink, "ridge")) {
+      Hh <- nrow(Om); Om_w <- Om + (Hh / pn$n) * mean(diag(Om)) * diag(Hh); lambda <- NA_real_
     }
     w   <- compute_efficient_weights_edid(Om_w)
     ee  <- compute_nocov_ee_correction_edid(cc$group, cc$time, prs, pn, Om, Om_w, w, lambda)

@@ -28,12 +28,16 @@ as_MP_edid <- function(fit, bstrap = NULL, biters = NULL, clustervars = NULL, cb
   }
 
   # Time-invariant per-unit data sufficient for compute.aggte()'s group-probability weights:
-  # one row per unit at the first period, with never-treated coded 0 (att_gt convention) and unit
-  # sampling weight .w = 1 (edid does not use sampling weights).
+  # one row per unit at the first period, with never-treated coded 0 (att_gt convention) and the
+  # unit sampling weight .w. Unweighted fits set .w = 1 (edid's default; byte-identical aggregation);
+  # weighted fits (weightsname) carry the mean-1-normalized per-unit observation weight, so
+  # compute.aggte()'s group-probability weights (and hence the ES / overall / group / calendar
+  # cohort shares) become population/observation-weighted -- the weighted estimand.
   g_unit <- fit$unit_cohorts
   g_unit[!is.finite(g_unit)] <- 0
   period_1 <- min(fit$time_periods)
-  tinv <- data.frame(fit$all_units, period_1, g_unit, 1)
+  w_unit <- if (is.null(fit$unit_weights)) 1 else fit$unit_weights
+  tinv <- data.frame(fit$all_units, period_1, g_unit, w_unit)
   names(tinv) <- c(fit$idname, fit$tname, fit$gname, ".w")
 
   glist <- sort(fit$treatment_groups[is.finite(fit$treatment_groups) & fit$treatment_groups != 0])

@@ -93,6 +93,7 @@ edid_frontier <- function(fit_unrestricted, fit_restricted,
 
   n     <- fit_restricted$n
   ci    <- fit_restricted$cluster_indices
+  n_eff <- .edid_overid_n_eff(fit_restricted)  # passed to the scalar Hausman for signature parity (no-op in 1-D)
   alpha <- fit_restricted$alpha %||% 0.05
   z     <- stats::qnorm(1 - alpha / 2)
 
@@ -124,7 +125,7 @@ edid_frontier <- function(fit_unrestricted, fit_restricted,
     V_R  <- as.numeric(n * cluster_cov_edid(matrix(co$psi_R, ncol = 1L), ci, n))
     se_R <- sqrt(V_R / n)
     d    <- co$theta_U - co$theta_R
-    sc   <- .edid_scalar_hausman(d, co$psi_U - co$psi_R, n, ci, v_scale = V_R)
+    sc   <- .edid_scalar_hausman(d, co$psi_U - co$psi_R, n, ci, v_scale = V_R, n_eff = n_eff)
     for (tt in tau) {
       radius <- tt * sqrt(sc$H) * se_R
       r <- r + 1L

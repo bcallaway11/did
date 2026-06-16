@@ -149,9 +149,11 @@ test_that("weight_scheme is the weighting argument; the old `weights` arg is gon
   fit <- edid(df, "outcome", "unit", "time", "first_treat", weight_scheme = "averaged",
               aggregate = "none")
   expect_s3_class(fit, "edid_fit")
+  # `weights` is gone. It is now a unique prefix of the new `weightsname` arg, so R partial-matching
+  # would silently route it there; edid() traps the literal name and redirects to weight_scheme.
   expect_error(
     edid(df, "outcome", "unit", "time", "first_treat", weights = "efficient"),
-    "unused argument"
+    "`weights` is not an argument"
   )
 })
 
