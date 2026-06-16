@@ -15,10 +15,6 @@
 #
 #-----------------------------------------------------------------------------
 
-library(DRDID)
-library(BMisc)
-# library(ggplot2)
-# library(ggpubr)
 
 same_matrix_elem <- function(A, B) {
   stopifnot(identical(dim(A), dim(B)))

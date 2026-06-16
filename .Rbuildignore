@@ -7,7 +7,7 @@
 ^cran-comments\.md$
 ^revdep$
 ^CRAN-RELEASE$
-^tests$
+^CITATION\.cff$
 ^pkgdown$
 ^doc$
 ^Meta$
@@ -21,11 +21,11 @@ Icon?
 ^\.claude$
 ^CLAUDE\.md$
 ^\.lintr$
-^\.vscode$
 ^revdep_manual$
 ^vignettes/.*_cache$
-^benchmark$
 ^benchmark-results$
+^dev$
+^\.revdeplite$
 ^CSX2026\.pdf$
 ^Efficient_DiD\.pdf$
 ^Rplots\.pdf$
@@ -41,5 +41,5 @@ Icon?
 ^spec\.md$
 ^test-spec\.md$
 ^data-raw$
-
 ^updates_made\.md$
+^quality_reports$

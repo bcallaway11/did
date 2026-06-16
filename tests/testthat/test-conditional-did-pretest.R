@@ -5,16 +5,11 @@
 #
 #-----------------------------------------------------------------------------
 
-library(DRDID)
-library(BMisc)
-#library(ggplot2)
-#library(ggpubr)
-
 
 test_that("conditional did pre-test", {
-  # this code is time-consuming, and we are just going to test that the code runs.
-  sp <- reset.sim(time.periods=3, n=1000)
-  data <- build_sim_dataset(sp)
+  skip_on_cran()  # bootstrap-based CvM test is time-consuming
+  sp <- did::reset.sim(time.periods=3, n=1000)
+  data <- did::build_sim_dataset(sp)
 
   cdp <- conditional_did_pretest(yname="Y",
                                  tname="period",

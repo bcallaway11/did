@@ -1,0 +1,70 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/master/examples
+# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+on:
+  workflow_dispatch:
+
+name: test-coverage
+
+jobs:
+  test-coverage:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr
+          needs: coverage
+
+      - name: Test coverage
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          fail_root <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
+
+          print_failures <- function() {
+            fail_files <- if (dir.exists(fail_root)) {
+              list.files(fail_root, pattern = "\\.Rout\\.fail$", recursive = TRUE, full.names = TRUE)
+            } else {
+              character()
+            }
+            for (fail_file in fail_files) {
+              cat("\n===== ", fail_file, " =====\n", sep = "")
+              cat(readLines(fail_file, warn = FALSE), sep = "\n")
+              cat("\n===== end ", fail_file, " =====\n", sep = "")
+            }
+          }
+
+          coverage <- tryCatch(
+            covr::package_coverage(
+              quiet = FALSE,
+              clean = FALSE,
+              install_path = fail_root
+            ),
+            error = function(e) {
+              print_failures()
+              stop(e)
+            }
+          )
+
+          print(coverage)
+
+          codecov_token <- Sys.getenv("CODECOV_TOKEN", "")
+          if (nzchar(codecov_token)) {
+            tryCatch(
+              covr::codecov(coverage = coverage, quiet = FALSE, token = codecov_token),
+              error = function(e) {
+                warning("Codecov upload failed: ", conditionMessage(e), call. = FALSE)
+              }
+            )
+          } else {
+            message("CODECOV_TOKEN is not set; skipping Codecov upload.")
+          }
+        shell: Rscript {0}

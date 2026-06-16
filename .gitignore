@@ -13,16 +13,20 @@ desktop.ini
 /Meta/
 did.Rproj
 ..Rcheck/
-*.Rcheck/
-*.tar.gz
 .claude/
 CLAUDE.md
 .vscode/
 .revdep_manual/
 vignettes/*_cache/
 benchmark-results/
+dev/
+.revdeplite/*.rds
+.revdeplite/*.tar.gz
+.revdeplite/*.md
+.revdeplite/github/
+.revdeplite/results/
 
-# Personal working files (not part of the package)
+# --- edid working-file ignores ---
 CSX2026.pdf
 Efficient_DiD.pdf
 Rplots.pdf

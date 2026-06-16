@@ -15,8 +15,6 @@
 #
 # In both cases faster_mode = TRUE must reproduce faster_mode = FALSE (the correct reference) to
 # numerical precision, for balanced and unbalanced panels alike.
-library(testthat)
-
 # Units nested in unbalanced clusters that share a common shock each period (so the cluster, not the unit,
 # is the independent sampling unit). Optionally drop rows to create an unbalanced panel and shuffle the
 # row order, so that the internal first-appearance unit order differs from the sorted-by-id order -- the

@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with the did Package">
 </head>
@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">did</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
                         <h4 data-toc-skip class="author">Brantly
 Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 data-toc-skip class="date">2025-12-12</h4>
+            <h4 data-toc-skip class="date">2026-06-13</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/did-basics.Rmd" class="external-link"><code>vignettes/did-basics.Rmd</code></a></small>
       <div class="d-none name"><code>did-basics.Rmd</code></div>
@@ -279,7 +279,7 @@ off the <code>ggplot2</code> package.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># plot the results</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">example_attgt</span><span class="op">)</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-4-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>The resulting figure is one that contains separate plots for each
 group. Notice in the figure above, the first plot is labeled “Group 2”,
 the second “Group 3”, etc. Then, the figure contains estimates of
@@ -390,7 +390,7 @@ following code:</p>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.es</span><span class="op">)</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-6-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>In this figure, the x-axis is the length of exposure to the
 treatment. Length of exposure equal to 0 provides the average effect of
 participating in the treatment across groups in the time period when
@@ -438,9 +438,8 @@ following code:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
-<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.gs</span><span class="op">)</span></span>
-<span><span class="co">#&gt; `height` was translated to `width`.</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-7-1.png" width="90%" style="display: block; margin: auto;"></p>
+<span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.gs</span><span class="op">)</span></span></code></pre></div>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>In this figure, the y-axis is categorized by group. The x-axis
 provides estimates of the average effect of participating in the
 treatment for units in each group averaged across all time periods after
@@ -488,7 +487,7 @@ different time periods. To do this</p>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">agg.ct</span><span class="op">)</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-8-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-8-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>In this figure, the x-axis is the time period and the estimates along
 the y-axis are the average effect of participating in the treatment in a
 particular time period for all groups that participated in the treatment
@@ -499,10 +498,20 @@ in that time period.</p>
 <h4 id="small-group-sizes">Small Group Sizes<a class="anchor" aria-label="anchor" href="#small-group-sizes"></a>
 </h4>
 <p>Small group sizes can sometimes cause estimation problems in the
-<code>did</code> package. To give an example, if there are any groups
-that have fewer observations than the number of covariates in the model,
-the code will error. The <code>did</code> package reports a warning if
-there are any groups that have fewer than 5 observations.</p>
+<code>did</code> package. If a group-time average treatment effect
+cannot be estimated (e.g., because a group has too few observations
+relative to the number of covariates in the model, the covariate matrix
+for some comparison is singular, or there are overlap violations),
+<code>att_gt</code> issues a warning for the affected
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(g,t)</annotation></semantics></math>
+cell and reports <code>NA</code> for that
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">ATT(g,t)</annotation></semantics></math>
+rather than erroring. (The exception is when the never-treated
+comparison group itself is too small, in which case <code>att_gt</code>
+stops and suggests setting
+<code>control_group = "notyettreated"</code>.) The <code>did</code>
+package also reports a warning if any group has fewer observations than
+the number of covariates in the model plus five.</p>
 <p>In addition, statistical inference, particularly on group-time
 average treatment may become more tenuous with small groups. For
 example, the effective sample size for estimating the change in outcomes
@@ -555,8 +564,17 @@ To use the “not yet treated” as the control, set the option
 <p>The <code>did</code> package can also work with repeated cross
 section rather than panel data. If the data is repeated cross sections,
 simply set the option <code>panel = FALSE</code>. In this case,
-<code>idname</code> is also ignored. From a usage standpoint, everything
-else is identical to the case with panel data.</p>
+<code>idname</code> may be omitted. If <code>idname</code> is supplied,
+it is still validated – it must be numeric, the treatment timing
+variable (<code>gname</code>) must not vary within unit, and each unit
+can appear at most once per time period – so for genuine repeated cross
+sections (where, for example, the same household or region code may
+appear multiple times in the same period) it is best to omit
+<code>idname</code>. Aside from this, usage is nearly identical to the
+case with panel data, although a few panel-only options (e.g.,
+<code>fix_weights = "base_period"</code> or
+<code>fix_weights = "first_period"</code>) are not available when
+<code>panel = FALSE</code>.</p>
 </div>
 <div class="section level4">
 <h4 id="unbalanced-panel-data">Unbalanced Panel Data<a class="anchor" aria-label="anchor" href="#unbalanced-panel-data"></a>
@@ -587,7 +605,7 @@ for inverse probability weighting and “reg” for regression.</p>
 <span>                            idname <span class="op">=</span> <span class="st">"id"</span>,</span>
 <span>                            gname <span class="op">=</span> <span class="st">"G"</span>,</span>
 <span>                            xformla <span class="op">=</span> <span class="op">~</span><span class="va">X</span>,</span>
-<span>                            data <span class="op">=</span> <span class="va">data</span>,</span>
+<span>                            data <span class="op">=</span> <span class="va">dta</span>,</span>
 <span>                            est_method <span class="op">=</span> <span class="st">"reg"</span></span>
 <span>                            <span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">example_attgt_reg</span><span class="op">)</span></span></code></pre></div>
@@ -649,19 +667,24 @@ setting, for example, <code>gname = "first.treat"</code></p></li>
 <li><p>The <code>did</code> package allows for incorporating covariates
 so that the parallel trends assumption holds only after conditioning on
 these covariates. In <code>mpdta</code>, <code>lpop</code> is the log of
-county population. The <code>did</code> package requires that covariates
-be time-invariant. For time varying covariates, the <code>did</code>
-package sets the value of the covariate to be equal to the value of the
-covariate in the “base period” where, in post-treatment periods the base
-period is the period immediately before observations in a particular
-group become treated (when there is anticipation, it is before
-anticipation effects start too), and in pre-treatment periods the base
-period is the period right before the current period. Covariates are
-passed as a formula to the <code>did</code> package by setting, for
-example, <code>xformla = ~lpop</code>. For estimators under
-unconditional parallel trends, the <code>xformla</code> argument can be
-left blank or can be set as <code>xformla = ~1</code> to only include a
-constant.</p></li>
+county population. Covariates may be time-invariant or time-varying.
+With balanced panel data, the <code>did</code> package sets the value of
+a time-varying covariate to be equal to the value of the covariate in
+the “base period” where, in post-treatment periods the base period is
+the period immediately before observations in a particular group become
+treated (when there is anticipation, it is before anticipation effects
+start too), and in pre-treatment periods the base period is the period
+right before the current period. With repeated cross sections data or
+unbalanced panel data, the covariates are instead taken from each time
+period (see the discussion of <code>xformla</code> in the
+<code>att_gt</code> documentation for details). Covariates are passed as
+a formula to the <code>did</code> package by setting, for example,
+<code>xformla = ~lpop</code>; the formula may also include
+transformations of covariates (e.g., <code>~ I(lpop^2)</code>,
+<code>~ log(lpop)</code>, interactions) as well as factor variables. For
+estimators under unconditional parallel trends, the <code>xformla</code>
+argument can be left blank or can be set as <code>xformla = ~1</code> to
+only include a constant.</p></li>
 </ul>
 <div class="section level4">
 <h4 id="the-effect-of-the-minimum-wage-on-youth-employment">The Effect of the Minimum Wage on Youth Employment<a class="anchor" aria-label="anchor" href="#the-effect-of-the-minimum-wage-on-youth-employment"></a>
@@ -720,7 +743,7 @@ on more covariates).</p>
 <span><span class="co"># plot the results</span></span>
 <span><span class="co"># set ylim so that all plots have the same scale along y-axis</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.attgt</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>, <span class="fl">.3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-13-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-13-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>There are a few things to notice in this case</p>
 <ul>
 <li><p>There does not appear to be much evidence against the parallel
@@ -764,7 +787,7 @@ effects.</p></li>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>, <span class="fl">.3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-14-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-14-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>These continue to be simultaneous confidence bands for dynamic
 effects. The results are broadly similar to the ones from the group-time
 average treatment effects: one fails to reject parallel trends in
@@ -832,7 +855,7 @@ wage.</p>
 <span><span class="co">#&gt; Control Group:  Never Treated,  Anticipation Periods:  0</span></span>
 <span><span class="co">#&gt; Estimation Method:  Doubly Robust</span></span>
 <span><span class="fu"><a href="../reference/ggdid.html">ggdid</a></span><span class="op">(</span><span class="va">mw.dyn.balance</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">.3</span>, <span class="fl">.3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="did-basics_files/figure-html/unnamed-chunk-15-1.png" width="90%" style="display: block; margin: auto;"></p>
+<p><img src="did-basics_files/figure-html/unnamed-chunk-15-1.png" class="r-plt" alt="" width="90%" style="display: block; margin: auto;"></p>
 <p>Finally, we can run all the same results including a covariate. In
 this application the results turn out to be nearly identical, and here
 we provide just the code for estimating the group-time average treatment
@@ -877,7 +900,7 @@ difficulties they have using our code.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.2.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

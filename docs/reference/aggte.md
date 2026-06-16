@@ -1,0 +1,242 @@
+# Aggregate Group-Time Average Treatment Effects
+
+A function to take group-time average treatment effects and aggregate
+them into a smaller number of parameters. There are several possible
+aggregations including "simple", "dynamic", "group", and "calendar."
+
+## Usage
+
+``` r
+aggte(
+  MP,
+  type = "group",
+  balance_e = NULL,
+  min_e = -Inf,
+  max_e = Inf,
+  na.rm = FALSE,
+  bstrap = NULL,
+  biters = NULL,
+  cband = NULL,
+  alp = NULL,
+  clustervars = NULL
+)
+```
+
+## Arguments
+
+- MP:
+
+  an MP object (i.e., the results of the
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  method)
+
+- type:
+
+  Which type of aggregated treatment effect parameter to compute. One
+  option is "simple" (this just computes a weighted average of all
+  group-time average treatment effects with weights proportional to
+  group size). Other options are "dynamic" (this computes average
+  effects across different lengths of exposure to the treatment and is
+  similar to an "event study"; here the overall effect averages the
+  effect of the treatment across all positive lengths of exposure);
+  "group" (this is the default option and computes average treatment
+  effects across different groups; here the overall effect averages the
+  effect across different groups); and "calendar" (this computes average
+  treatment effects across different time periods; here the overall
+  effect averages the effect across each time period).
+
+- balance_e:
+
+  If set (and if one computes dynamic effects), it balances the sample
+  with respect to event time. For example, if `balance.e=2`, `aggte`
+  will drop groups that are not exposed to treatment for at least three
+  periods. (the initial period when `e=0` as well as the next two
+  periods when `e=1` and the `e=2`). This ensures that the composition
+  of groups does not change when event time changes.
+
+- min_e:
+
+  For event studies, this is the smallest event time to compute dynamic
+  effects for. By default, `min_e = -Inf` so that effects at all lengths
+  of exposure are computed.
+
+- max_e:
+
+  For event studies, this is the largest event time to compute dynamic
+  effects for. By default, `max_e = Inf` so that effects at all lengths
+  of exposure are computed.
+
+- na.rm:
+
+  Logical value if we are to remove missing Values from analyses.
+  Defaults is FALSE.
+
+- bstrap:
+
+  Boolean for whether or not to compute standard errors using the
+  multiplier bootstrap. Default is value set in the MP object. If
+  `bstrap=FALSE`, then analytical standard errors are reported; these
+  are cluster-robust when a cluster variable was supplied to `att_gt`.
+
+- biters:
+
+  The number of bootstrap iterations to use. The default is the value
+  set in the MP object, and this is only applicable if `bstrap=TRUE`.
+
+- cband:
+
+  Boolean for whether or not to compute a uniform confidence band that
+  covers all of the group-time average treatment effects with fixed
+  probability `1-alp`. In order to compute uniform confidence bands,
+  `bstrap` must also be set to `TRUE`. The default is the value set in
+  the MP object
+
+- alp:
+
+  the significance level, default is value set in the MP object.
+
+- clustervars:
+
+  A vector of variables to cluster on. The default is the cluster
+  variables set in the MP object (i.e., the ones passed to
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)).
+  Clustering at the aggregation stage reuses the per-unit cluster
+  information stored by
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md),
+  so `aggte` can only cluster on `idname` and/or the variable that was
+  passed to
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  via its `clustervars` argument. If a requested cluster variable cannot
+  be honored – because `clustervars` was not supplied to
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md),
+  or because it names a different variable than the one
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  clustered on – `aggte` issues a warning and reports standard errors
+  that do NOT account for clustering. To obtain clustered standard
+  errors for the aggregated parameters, re-run
+  [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  with the desired `clustervars`.
+
+## Value
+
+An [`AGGTEobj`](https://bcallaway11.github.io/did/reference/AGGTEobj.md)
+object that holds the results from the aggregation
+
+## Examples
+
+Initial ATT(g,t) estimates from
+[`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+
+    data(mpdta)
+    set.seed(09152024)
+    out <- att_gt(yname="lemp",
+                   tname="year",
+                   idname="countyreal",
+                   gname="first.treat",
+                   xformla=NULL,
+                   data=mpdta)
+
+You can aggregate the ATT(g,t) in many ways.
+
+**Overall ATT:**
+
+    aggte(out, type = "simple")
+    #>
+    #> Call:
+    #> aggte(MP = out, type = "simple")
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #>
+    #>    ATT    Std. Error     [ 95%  Conf. Int.]
+    #>  -0.04        0.0119    -0.0633     -0.0166 *
+    #>
+    #>
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> Control Group:  Never Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust
+
+**Dynamic ATT (Event-Study):**
+
+    aggte(out, type = "dynamic")
+    #>
+    #> Call:
+    #> aggte(MP = out, type = "dynamic")
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #>
+    #> Overall summary of ATT's based on event-study/dynamic aggregation:
+    #>      ATT    Std. Error     [ 95%  Conf. Int.]
+    #>  -0.0772        0.0208     -0.118     -0.0365 *
+    #>
+    #>
+    #> Dynamic Effects:
+    #>  Event time Estimate Std. Error [95% Simult.  Conf. Band]
+    #>          -3   0.0305     0.0154       -0.0101      0.0711
+    #>          -2  -0.0006     0.0129       -0.0346      0.0334
+    #>          -1  -0.0245     0.0145       -0.0628      0.0139
+    #>           0  -0.0199     0.0119       -0.0513      0.0114
+    #>           1  -0.0510     0.0160       -0.0934     -0.0085 *
+    #>           2  -0.1373     0.0393       -0.2412     -0.0333 *
+    #>           3  -0.1008     0.0356       -0.1949     -0.0067 *
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> Control Group:  Never Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust
+
+**ATT for each group:**
+
+    aggte(out, type = "group")
+    #>
+    #> Call:
+    #> aggte(MP = out, type = "group")
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #>
+    #> Overall summary of ATT's based on group/cohort aggregation:
+    #>     ATT    Std. Error     [ 95%  Conf. Int.]
+    #>  -0.031        0.0126    -0.0558     -0.0063 *
+    #>
+    #>
+    #> Group Effects:
+    #>  Group Estimate Std. Error [95% Simult.  Conf. Band]
+    #>   2004  -0.0797     0.0300       -0.1445     -0.0150 *
+    #>   2006  -0.0229     0.0163       -0.0582      0.0123
+    #>   2007  -0.0261     0.0167       -0.0622      0.0101
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> Control Group:  Never Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust
+
+**ATT for each calendar year:**
+
+    aggte(out, type = "calendar")
+    #>
+    #> Call:
+    #> aggte(MP = out, type = "calendar")
+    #>
+    #> Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015>
+    #>
+    #>
+    #> Overall summary of ATT's based on calendar time aggregation:
+    #>      ATT    Std. Error     [ 95%  Conf. Int.]
+    #>  -0.0417        0.0175    -0.0759     -0.0075 *
+    #>
+    #>
+    #> Time Effects:
+    #>  Time Estimate Std. Error [95% Simult.  Conf. Band]
+    #>  2004  -0.0105     0.0242       -0.0685      0.0475
+    #>  2005  -0.0704     0.0319       -0.1467      0.0059
+    #>  2006  -0.0488     0.0206       -0.0980      0.0004
+    #>  2007  -0.0371     0.0133       -0.0689     -0.0052 *
+    #> ---
+    #> Signif. codes: `*' confidence band does not cover 0
+    #>
+    #> Control Group:  Never Treated,  Anticipation Periods:  0
+    #> Estimation Method:  Doubly Robust

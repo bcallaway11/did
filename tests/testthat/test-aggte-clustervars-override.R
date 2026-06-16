@@ -4,8 +4,6 @@
 # unavailable, so aggte() must NOT silently return the i.i.d. SE (analytic path) or error in mboot()
 # (bootstrap path) -- it warns and falls back to non-clustered standard errors. Inheriting clustering from
 # the att_gt object, or overriding to the same variable att_gt used, work normally and emit no warning.
-library(testthat)
-
 .mk_two_cluster <- function(seed) {
   set.seed(seed)
   G <- 30L; sz <- rep(c(2L, 4L, 6L), length.out = G); N <- sum(sz); cl <- rep(seq_len(G), sz)
