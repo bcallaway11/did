@@ -554,7 +554,11 @@ fit_edid_cells <- function(
   # copy-on-write across forks. The shared warning accumulators become per-cell return values, reduced below.
   .fit_one_cell <- function(.sp) {
     g <- .sp$g; t <- .sp$t; cell_id <- .sp$cell_id
-    is_pre  <- (t < g)
+    # Pre-treatment iff strictly before the EFFECTIVE onset (anticipation-aware);
+    # a cell at g - anticipation is a genuine post-treatment effect. Used only by
+    # the post-cell diagnostics (the 'all post cells NA' check and the net-hedge-mass
+    # summary); reported att/se and the aggregations are unaffected.
+    is_pre  <- (t < g - panel_obj$anticipation)
     n_extreme <- 0L; n_psi_unstable <- 0L; n_pairs_dropped <- 0L
 
       # Step 1: pairs from the per-cohort cache (g-only; computed once above)

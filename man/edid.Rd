@@ -53,7 +53,16 @@ with no missing or non-finite values).}
 \item{gname}{Character scalar: name of the column recording each unit's
 first treatment period. Never-treated units should have \code{Inf} or
 \code{0} (the \code{att_gt()} convention). \code{0} is automatically
-converted to \code{Inf} internally.}
+converted to \code{Inf} internally. If there is \strong{no} never-treated
+group (every unit is eventually treated), \code{edid()} follows the
+\code{att_gt()} \code{control_group = "nevertreated"} convention: it drops
+all observations from periods at or after the last cohort's effective onset
+(\eqn{g_{\max} - \text{anticipation}}) and recasts that last cohort as
+never-treated, so it serves as the comparison group over the retained
+pre-onset window (with a \code{warning}). This requires at least two
+distinct treated cohorts and at least two retained periods. (Unlike
+\code{att_gt()}, which silently drops cohorts treated at or before the first
+usable period, \code{edid()} errors in that case and asks you to remove them.)}
 
 \item{xformla}{A one-sided formula specifying covariates to condition on,
 e.g., \code{~ X1 + X2}. Default \code{NULL} (equivalent to \code{~1},

@@ -1,3 +1,46 @@
+# Coerce the last-treated cohort into the never-treated comparison group when the
+# data has NO never-treated group (mirrors att_gt's control_group = "nevertreated"
+# pre-processing in pre_process_did2.R). Assumes the user-facing 0 -> Inf recoding
+# has already been applied. Drops every period at/after the last cohort's effective
+# onset (g_max - anticipation) and recasts that cohort as never-treated, so it
+# anchors the comparison over the retained pre-onset window. Returns `data`
+# unchanged when a never-treated group already exists, or when gname is non-numeric
+# or contains NA (those are left for validate_edid_inputs() to report -- mirroring
+# att_gt, which enforces complete cases before this step). Shared by edid() and
+# edid_perturbation_bootstrap() so both rebuild an IDENTICAL panel. `warn = FALSE`
+# suppresses the user-facing notice (the bootstrap already showed it at fit time).
+#' @keywords internal
+#' @noRd
+.edid_coerce_no_never_treated <- function(data, gname, tname, anticipation, warn = TRUE) {
+  g <- data[[gname]]
+  if (!is.numeric(g) || anyNA(g) || any(is.infinite(g))) return(data)
+  finite_g <- g[is.finite(g)]
+  if (length(unique(finite_g)) < 2L) {
+    stop("No never-treated group and only one treated cohort: there is nothing to ",
+         "serve as a comparison group. edid() needs either a never-treated group ",
+         "(gname == Inf or 0) or at least two distinct treated cohorts.", call. = FALSE)
+  }
+  g_max    <- max(finite_g)
+  cutoff_t <- g_max - anticipation
+  t_all    <- sort(unique(data[[tname]]))
+  kept_t   <- t_all[t_all < cutoff_t]
+  if (length(kept_t) < 2L) {
+    stop("No never-treated group: after dropping periods at/after the last cohort's ",
+         "effective onset (g_max - anticipation = ", cutoff_t, "), only ", length(kept_t),
+         " period(s) remain; at least 2 are required to estimate any ATT(g,t). Check ",
+         "`anticipation` or the cohort/period structure.", call. = FALSE)
+  }
+  if (warn) {
+    warning("No never-treated group is available. The last treated cohort (g = ", g_max,
+            ") is being coerced as the never-treated comparison group, and all ",
+            "observations from periods >= ", cutoff_t, " (g_max - anticipation) are ",
+            "dropped (those periods have no available comparison units).", call. = FALSE)
+  }
+  data <- data[data[[tname]] < cutoff_t, , drop = FALSE]
+  data[[gname]][data[[gname]] == g_max] <- Inf
+  data
+}
+
 #' Efficient Difference-in-Differences Estimator
 #'
 #' Estimates group-time average treatment effects \eqn{ATT(g, t)} for staggered
@@ -15,7 +58,16 @@
 #' @param gname Character scalar: name of the column recording each unit's
 #'   first treatment period. Never-treated units should have \code{Inf} or
 #'   \code{0} (the \code{att_gt()} convention). \code{0} is automatically
-#'   converted to \code{Inf} internally.
+#'   converted to \code{Inf} internally. If there is \strong{no} never-treated
+#'   group (every unit is eventually treated), \code{edid()} follows the
+#'   \code{att_gt()} \code{control_group = "nevertreated"} convention: it drops
+#'   all observations from periods at or after the last cohort's effective onset
+#'   (\eqn{g_{\max} - \text{anticipation}}) and recasts that last cohort as
+#'   never-treated, so it serves as the comparison group over the retained
+#'   pre-onset window (with a \code{warning}). This requires at least two
+#'   distinct treated cohorts and at least two retained periods. (Unlike
+#'   \code{att_gt()}, which silently drops cohorts treated at or before the first
+#'   usable period, \code{edid()} errors in that case and asks you to remove them.)
 #' @param xformla A one-sided formula specifying covariates to condition on,
 #'   e.g., \code{~ X1 + X2}. Default \code{NULL} (equivalent to \code{~1},
 #'   no covariates). When \code{NULL} or \code{~1}, the efficient no-covariate
@@ -875,6 +927,15 @@ edid <- function(
       data[[gname]] <- ifelse(zero_nt, Inf, data[[gname]])
     }
   }
+
+  # ------------------------------------------------------------------
+  # No never-treated group: coerce the last-treated cohort into the comparison
+  # group (see .edid_coerce_no_never_treated). Runs BEFORE validation/panel build
+  # so the rest of the pipeline sees a normal panel WITH a never-treated group.
+  # edid_perturbation_bootstrap() calls the SAME helper to rebuild an identical
+  # panel (its inline rebuild does not re-run edid()).
+  # ------------------------------------------------------------------
+  data <- .edid_coerce_no_never_treated(data, gname, tname, anticipation, warn = TRUE)
 
   # ------------------------------------------------------------------
   # Validation

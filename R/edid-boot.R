@@ -707,6 +707,11 @@ edid_perturbation_bootstrap <- function(fit, data = NULL, B = 499L, seed = NULL,
     zero_nt <- is.finite(data[[fit$gname]]) & data[[fit$gname]] == 0
     if (any(zero_nt)) data[[fit$gname]] <- ifelse(zero_nt, Inf, data[[fit$gname]])
   }
+  # Replicate edid()'s no-never-treated coercion (drop t >= g_max - anticipation,
+  # recast g_max as never-treated) so the rebuilt panel matches the one the fit was
+  # estimated on; otherwise the exactness guard below fires. warn = FALSE: the user
+  # already saw the notice when the fit was produced.
+  data <- .edid_coerce_no_never_treated(data, fit$gname, fit$tname, fit$anticipation, warn = FALSE)
   panel <- prepare_edid_panel(
     data = data, yname = yname, idname = fit$idname, tname = fit$tname, gname = fit$gname,
     xformla = xformla, clustervars = fit$clustervars, anticipation = fit$anticipation)

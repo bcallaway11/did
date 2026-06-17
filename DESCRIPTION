@@ -36,6 +36,7 @@ Suggests:
     knitr,
     covr,
     backports,
+    badger,
     broom,
     testthat (>= 3.0.0),
     withr,
