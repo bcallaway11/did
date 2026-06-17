@@ -50,6 +50,32 @@ reference:
     contents:
       - att_gt
       - aggte
+      - edid
+      - aggte_edid
+      - as_MP_edid
+  - title: "Efficient DiD: Plotting, Summarizing, and Methods"
+    desc: >
+      Tools for plotting, summarizing, and working with the results of
+      the **edid** method
+    contents:
+      - print.edid_fit
+      - summary.edid_fit
+      - coef.edid_fit
+      - vcov.edid_fit
+      - as.data.frame.edid_fit
+      - edid_weights
+      - edid_weight_plot
+  - title: "Efficient DiD: Specification Testing and Robustness"
+    desc: >
+      Tools for testing the parallel trends assumption and assessing
+      the robustness of **edid** estimates
+    contents:
+      - edid_hausman
+      - edid_sargan
+      - edid_adaptive
+      - edid_frontier
+      - edid_perturbation_bootstrap
+      - edid_refit_bootstrap
   - title: "Pre-Testing"
     desc: >
       Tools to compute "pre-test" the DiD assumption in the case where
