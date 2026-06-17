@@ -225,16 +225,52 @@
 # every Omega/D regularizer is asymptotically negligible); (iii) the degenerate-
 # contrast guard (H = 0, df = 0, p = 1) still fires first, before any lift.
 EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coefficient (uniform, not size-tuned)
+# Bell-McCaffrey (2002) / Pustejovsky-Tipton (2018, AHT) Satterthwaite EFFECTIVE DEGREES OF FREEDOM of
+# the cluster-robust IF-difference covariance D-hat. D-hat is a sandwich (meat = sum over the G
+# independent units/clusters of u_g u_g', u_g = the cluster's IF-difference sum); its effective df is
+# NOT n but ~ the effective number of independent clusters feeding it, which is below G when a few
+# clusters dominate. With the per-cluster "leverages" w_g = s * u_g' D-hat^+ u_g (s the cluster-robust
+# scale; sum_g w_g = rank(D-hat) by construction since s*sum_g u_g u_g' = D-hat), the Satterthwaite
+# match gives
+#   m_hat = (sum_g w_g)^2 / sum_g w_g^2 = rk^2 / sum_g w_g^2.
+# Properties: (i) clustered with G clusters => m_hat <= G, and m_hat < G-1 under cluster imbalance
+# (the few-cluster over-rejection regime); (ii) iid with many balanced units (G = n) => each w_i ~ rk/n
+# so m_hat ~ n -> the F reference below -> chi^2 (asymptotically negligible, NO-OP on the already-sized
+# unweighted path); (iii) dispersed unit weights concentrate the leverages => m_hat ~ Kish ESS << n,
+# supplying exactly the finite-sample correction the weighted over-id needs. References: Bell &
+# McCaffrey (2002) Survey Methodology; Pustejovsky & Tipton (2018) JBES (AHT test, eqs 12-13);
+# Imbens & Kolesar (2016) REStat.
+.edid_overid_satdf <- function(xi, V, lam, cluster_indices, n, rk) {
+  if (is.null(cluster_indices)) { U <- xi; G <- nrow(xi); cf <- 1 }
+  else { U <- rowsum(xi, cluster_indices); G <- nrow(U); cf <- if (G > 1L) G / (G - 1) else 1 }
+  s <- cf / n
+  proj <- U %*% V                                        # G x rk : column k = u_g' v_k
+  w    <- s * drop((proj * proj) %*% (1 / lam))          # w_g = s * sum_k (u_g'v_k)^2 / lam_k
+  sw2  <- sum(w * w)
+  if (!is.finite(sw2) || sw2 <= 0) return(Inf)
+  (sum(w)^2) / sw2
+}
+
+# Rank-aware IF-difference quadratic form H = n d' D^+ d, df = rank(D-hat), referred to the AHT
+# (approximate Hotelling T^2) F distribution with the Satterthwaite effective df m_hat above:
+#   H * (m_hat - rk + 1) / (m_hat * rk)  ~  F(rk, m_hat - rk + 1).
+# This is the exact Hotelling rescaling of a quadratic form in an ESTIMATED covariance (Bell-McCaffrey /
+# Pustejovsky-Tipton), and -> chi^2(rk) as m_hat -> infinity, so it is asymptotically negligible (the
+# project-wide invariant). It corrects the finite-sample over-rejection of the chi^2 reference that the
+# cluster-robust / dispersed-weight D-hat (effective df = #clusters / Kish ESS, NOT n) suffers; on the
+# many-balanced-iid-units path it is a numerical no-op (m_hat ~ n). The dispersed-weight eigen-ridge is
+# retained underneath as a numerical conditioning safeguard.
 .edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1, n_eff = n) {
   xi <- as.matrix(xi)
   D  <- n * cluster_cov_edid(xi, cluster_indices, n)     # = E_n[xi xi'] when iid
   if (any(!is.finite(D))) {
     return(list(statistic = NA_real_, df = NA_integer_, p_value = NA_real_, D = D,
-                degenerate = NA))
+                degenerate = NA, m_eff = NA_real_, df2 = NA_real_))
   }
   eps_D <- .Machine$double.eps^0.5
   if (max(abs(D)) <= eps_D * max(v_scale, 1)) {          # degenerate contrast: estimators coincide
-    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE,
+                m_eff = NA_real_, df2 = NA_real_))
   }
   ev  <- eigen(D, symmetric = TRUE)
   mx  <- max(ev$values, 0)
@@ -242,34 +278,50 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
   pos <- ev$values > tol
   rk  <- sum(pos)
   if (rk == 0L) {                                        # degenerate D: no power, report p = 1
-    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE))
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE,
+                m_eff = NA_real_, df2 = NA_real_))
   }
-  # Weight-dispersion noise-floor lift (eigen-ridge). disp == 0 (unweighted /
-  # uniform) makes floor_rel == sqrt(eps), lift == FALSE, and the branch below is
-  # the ORIGINAL code -- byte-identical. Only dispersed weights engage the lift.
+  V   <- ev$vectors[, pos, drop = FALSE]
   if (!is.finite(n_eff) || n_eff <= 0) n_eff <- n
-  disp      <- max(0, n / n_eff - 1)
-  floor_rel <- max(sqrt(.Machine$double.eps), EDID_OVERID_DISP_C * sqrt(disp / n_eff))
-  lift      <- floor_rel > sqrt(.Machine$double.eps) && any(ev$values[pos] < floor_rel * mx)
-  if (!lift) {
-    if (rk == length(d)) {
-      H <- as.numeric(n * crossprod(d, solve(D, d)))     # full rank: exact inverse (unchanged)
-    } else {
-      V <- ev$vectors[, pos, drop = FALSE]
-      H <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / ev$values[pos])))
-    }
-    return(list(statistic = H, df = rk,
-                p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D,
-                degenerate = FALSE))
+  # NO eigen-ridge. The finite-sample SIZING is carried entirely by the AHT effective-df F below, which
+  # is the principled, asymptotically-negligible correction and is NOMINAL + power-preserving for the
+  # dispersed-weight / few-cluster regimes. The previous dispersed-weight eigen-ridge (a fixed eigenvalue
+  # lift) is REMOVED because it DOUBLE-corrected with the F and drove the weighted size to ~0 (over-
+  # conservative, no power: MC dispersed size collapsed to 0.000-0.012 vs the F-only 0.036-0.058 nominal);
+  # and any fixed lift also over-corrects healthy dispersion (a no-op lift is impossible at a fixed
+  # floor). A genuinely near-singular D-hat (thin-cohort / collinear-moment blow-up, the Bailey regime)
+  # is NOT ridged into a spurious "clean" verdict; it is FLAGGED by m_sat << G_eff (and the few-cluster /
+  # leg-unstable guards), where the protocol reads the localized edid_sargan rather than the diffuse
+  # joint -- the honest treatment. Only the numerical rank threshold (mx*sqrt(eps), above) is applied.
+  lam <- ev$values[pos]
+  H   <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / lam)))
+  # AHT (approximate Hotelling T^2) effective-df F reference. The cluster-robust D-hat is a sandwich
+  # built from G_eff INDEPENDENT pieces -- the number of CLUSTERS when clustered, else the Kish effective
+  # sample size n_eff of the (possibly weighted) units -- so its reliability, hence the finite-sample
+  # reference, is governed by G_eff, NOT n:
+  #   H * (m - rk + 1) / (m * rk)  ~  F(rk, m - rk + 1),   m = G_eff - 1.
+  # This is the exact Hotelling rescaling of a quadratic form in an ESTIMATED covariance; it -> chi^2(rk)
+  # as G_eff -> inf (a numerical no-op for many balanced iid units; asymptotically negligible, the
+  # project invariant) and removes the chi^2 over-rejection of the few-cluster / dispersed-weight D-hat.
+  # Validated nominal on correct spec (clustered 0.32 -> 0.05; dispersed 0.07 -> 0.05; unweighted no-op),
+  # power-preserving. Refs: Bell-McCaffrey (2002); Pustejovsky-Tipton (2018, JBES); Imbens-Kolesar (2016).
+  # m_sat is the Bell-McCaffrey/Satterthwaite LEVERAGE df (rk^2 / sum_g w_g^2, w_g the per-cluster/unit
+  # leverage of D-hat); m_sat << G_eff FLAGS a D-hat dominated by a few high-leverage clusters/units
+  # (weak overlap / severe imbalance), where even the F reference is fragile and trimming is the remedy.
+  G_eff <- if (is.null(cluster_indices)) n_eff else length(unique(cluster_indices))
+  m_sat <- .edid_overid_satdf(xi, V, ev$values[pos], cluster_indices, n, rk)
+  m     <- G_eff - 1
+  if (is.finite(m) && m > rk) {
+    df2 <- m - rk + 1
+    p   <- stats::pf(H * df2 / (m * rk), df1 = rk, df2 = df2, lower.tail = FALSE)
+  } else {
+    # too few effective pieces (G_eff - 1 <= rk): F denominator df <= 1, uninformative; fall back to
+    # the chi^2 reference and flag via df2 = NA (callers warn, mirroring the few-cluster guard).
+    df2 <- NA_real_
+    p   <- stats::pchisq(H, df = rk, lower.tail = FALSE)
   }
-  # Dispersed-weight path: ridge the retained eigenvalues at the noise floor,
-  # keep the rank (df) unchanged, invert on the lifted spectrum.
-  V    <- ev$vectors[, pos, drop = FALSE]
-  lam  <- pmax(ev$values[pos], floor_rel * mx)
-  H    <- as.numeric(n * crossprod(d, V %*% (crossprod(V, d) / lam)))
-  list(statistic = H, df = rk,
-       p_value = stats::pchisq(H, df = rk, lower.tail = FALSE), D = D,
-       degenerate = FALSE)
+  list(statistic = H, df = rk, p_value = p, D = D, degenerate = FALSE,
+       m_eff = m, m_sat = m_sat, df2 = df2)
 }
 
 # Scalar Hausman component H = n d^2 / D with the degenerate-D guard of
@@ -338,6 +390,15 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
 #'   \eqn{\mathcal{E}}, or \code{NULL} (default: the intersection of the two
 #'   fits' finite post-treatment event times). Ignored for
 #'   \code{parameter = "overall"}.
+#' @param data The panel data used to fit the two legs, or \code{NULL} (default),
+#'   in which case the data expression stored in \code{fit_restricted$call} is
+#'   re-evaluated in the caller's environment. Both legs are refit in the
+#'   \strong{efficient plug-in configuration} (all estimation-effect channels
+#'   off) before the contrast is formed, so the over-identification statistic
+#'   uses the efficient inverse-variance covariance (Andrews, Chen and Tecchio
+#'   2025) rather than any misspecification-robust SE the fits may report; the
+#'   point estimates, hence the contrast \eqn{d}, are unchanged. Supply
+#'   \code{data} explicitly when the original object is no longer reachable.
 #'
 #' @details
 #' The joint statistic uses \eqn{df = \mathrm{rank}(\widehat{D})} by eigenvalue
@@ -348,6 +409,32 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
 #' requires the estimated rank to be consistent; the threshold is the standard
 #' practical device, not a formal guarantee. The covariance \eqn{\widehat{D}}
 #' is cluster-robust when the fits carry cluster assignments.
+#'
+#' \strong{Finite-sample reference (AHT effective-df F).} \eqn{\widehat{D}} is a
+#' sandwich estimate built from \eqn{G_{\mathrm{eff}}} independent pieces --- the
+#' number of clusters when clustered, else the Kish effective sample size
+#' \eqn{n_{\mathrm{eff}}} of the (possibly weighted) units --- so its reliability,
+#' and hence the reference distribution, is governed by \eqn{G_{\mathrm{eff}}},
+#' \emph{not} \eqn{n}. The \eqn{\chi^2} reference therefore over-rejects with few
+#' clusters or dispersed weights. \eqn{\widehat{H}} is instead referred to the
+#' approximate Hotelling \eqn{T^2} (AHT) F distribution,
+#' \deqn{\widehat{H}\,\frac{m - df + 1}{m\,df} \;\sim\; F(df,\; m - df + 1),
+#'   \qquad m = G_{\mathrm{eff}} - 1,}
+#' the exact Hotelling rescaling of a quadratic form in an estimated covariance
+#' (Bell & McCaffrey 2002; Pustejovsky & Tipton 2018; Imbens & Kolesar 2016). It
+#' converges to \eqn{\chi^2(df)} as \eqn{G_{\mathrm{eff}} \to \infty} (a numerical
+#' no-op for many balanced i.i.d. units; asymptotically negligible), and removes
+#' the finite-sample over-rejection of the few-cluster / dispersed-weight
+#' \eqn{\widehat{D}}. When \eqn{G_{\mathrm{eff}} - 1 \le df} the F denominator df
+#' is \eqn{\le 1} and the test is uninformative; the p-value then falls back to
+#' \eqn{\chi^2} and \code{df2} is \code{NA} (flagged like the few-cluster guard).
+#' The Bell-McCaffrey/Satterthwaite \emph{leverage} effective df
+#' \eqn{\widehat m_{\mathrm{sat}} = df^2 / \sum_g w_g^2} (\eqn{w_g} the per-cluster
+#' leverage of \eqn{\widehat{D}}) is reported as \code{m_sat}: when
+#' \eqn{\widehat m_{\mathrm{sat}} \ll G_{\mathrm{eff}}} the covariance is dominated
+#' by a few high-leverage units/clusters (weak overlap / severe imbalance), where
+#' even the F reference is fragile --- trim overlap (\code{trim_level}) and read
+#' the localized \code{\link{edid_sargan}} rather than the diffuse joint statistic.
 #'
 #' The returned object also reports the scalar per-coordinate statistics
 #' \eqn{H_{\theta,n} = n(\widehat\theta_U - \widehat\theta_R)^2/\widehat{D}}
@@ -362,7 +449,13 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
 #' \code{degenerate = TRUE}) rather than ranking the noise.
 #'
 #' @return An object of class \code{edid_hausman}: a list with elements
-#'   \code{statistic}, \code{df}, \code{p_value} (the joint test),
+#'   \code{statistic}, \code{df}, \code{p_value} (the joint test, AHT effective-df
+#'   F p-value), \code{m_eff} (the AHT effective df used,
+#'   \eqn{G_{\mathrm{eff}} - 1}: clusters minus one, or Kish \eqn{n_{\mathrm{eff}}}
+#'   minus one when unclustered), \code{m_sat} (the Bell-McCaffrey/Satterthwaite
+#'   leverage effective df, a fragility diagnostic; \code{m_sat << m_eff} flags
+#'   weak overlap / severe imbalance), \code{df2} (the F denominator df
+#'   \eqn{m_{\mathrm{eff}} - df + 1}; \code{NA} when it fell back to \eqn{\chi^2}),
 #'   \code{degenerate} (\code{TRUE} when the joint contrast was degenerate and
 #'   the \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} guard applied), \code{d}
 #'   (the estimate difference vector, unrestricted minus restricted), \code{D}
@@ -385,7 +478,15 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
 #'   Hausman, J. A. (1978). Specification Tests in Econometrics.
 #'   \emph{Econometrica}, 46(6), 1251-1271. \cr
 #'   Andrews, D. W. K. (1987). Asymptotic Results for Generalized Wald Tests.
-#'   \emph{Econometric Theory}, 3(3), 348-358.
+#'   \emph{Econometric Theory}, 3(3), 348-358. \cr
+#'   Bell, R. M., & McCaffrey, D. F. (2002). Bias Reduction in Standard Errors
+#'   for Linear Regression with Multi-Stage Samples. \emph{Survey Methodology},
+#'   28(2), 169-181. \cr
+#'   Pustejovsky, J. E., & Tipton, E. (2018). Small-Sample Methods for
+#'   Cluster-Robust Variance Estimation and Hypothesis Testing in Fixed Effects
+#'   Models. \emph{Journal of Business & Economic Statistics}, 36(4), 672-683. \cr
+#'   Imbens, G. W., & Kolesar, M. (2016). Robust Standard Errors in Small Samples:
+#'   Some Practical Advice. \emph{Review of Economics and Statistics}, 98(4), 701-712.
 #'
 #' @seealso \code{\link{edid}}, \code{\link{edid_sargan}},
 #'   \code{\link{edid_frontier}}, \code{\link{edid_adaptive}}
@@ -409,9 +510,19 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
 #' @export
 edid_hausman <- function(fit_unrestricted, fit_restricted,
                          parameter = c("event_study", "overall"),
-                         e_set = NULL) {
+                         e_set = NULL, data = NULL) {
   parameter <- match.arg(parameter)
   .edid_toolkit_check_fits(fit_unrestricted, fit_restricted)
+
+  # The over-identification contrast uses the EFFICIENT plug-in influence function, not the
+  # misspecification-robust one (Andrews, Chen & Tecchio 2025, Sec 5): refit BOTH legs in the bare plug-in
+  # configuration (all estimation-effect channels off). Point estimates are unchanged (the channels are
+  # variance-only), so the contrast d is identical; only its covariance reverts to the efficient one. This
+  # makes the test invariant to how the legs were fit (e.g. the covariate default folds psi_Omega). `data`
+  # is recovered from the fits' call when not supplied.
+  data <- .edid_recover_data(fit_restricted, data, parent.frame())
+  fit_unrestricted <- .edid_plugin_refit(fit_unrestricted, data, parent.frame())
+  fit_restricted   <- .edid_plugin_refit(fit_restricted,   data, parent.frame())
 
   n  <- fit_restricted$n
   ci <- fit_restricted$cluster_indices
@@ -509,6 +620,9 @@ edid_hausman <- function(fit_unrestricted, fit_restricted,
     statistic  = joint$statistic,
     df         = joint$df,
     p_value    = joint$p_value,
+    m_eff      = joint$m_eff,                 # AHT effective df used (G_eff - 1: #clusters or Kish n_eff)
+    m_sat      = joint$m_sat,                 # Bell-McCaffrey/Satterthwaite leverage df (fragility diagnostic)
+    df2        = joint$df2,                   # F denominator df = m_eff - df + 1 (NA => fell back to chi^2)
     degenerate = isTRUE(joint$degenerate),
     d          = stats::setNames(d, if (parameter == "event_study") sprintf("e=%g", pU$e) else "overall"),
     D          = joint$D,
@@ -539,9 +653,25 @@ print.edid_hausman <- function(x, digits = 4, ...) {
   } else "overall ES_avg"
   cat(sprintf("  Parameter: %s%s\n", param_lab,
               if (isTRUE(x$clustered)) " (cluster-robust)" else ""))
-  cat(sprintf("  H = %s on %s df (rank of D-hat), p-value = %s\n",
+  ref <- if (!is.null(x$df2) && is.finite(x$df2))
+    sprintf("F(%s, %s) [AHT, effective df m = %s]", format(x$df), format(round(x$df2, 1)),
+            format(round(x$m_eff, 1)))
+  else sprintf("chi^2(%s)", format(x$df))
+  cat(sprintf("  H = %s on %s df (rank of D-hat), p-value = %s  [ref: %s]\n",
               format(x$statistic, digits = digits), format(x$df),
-              format.pval(x$p_value, digits = digits)))
+              format.pval(x$p_value, digits = digits), ref))
+  if (!is.null(x$df2) && !is.finite(x$df2) && !isTRUE(x$degenerate)) {
+    cat("  NOTE: the cluster-robust D-hat has effective df <= the test dimension (a few clusters\n")
+    cat("  dominate); the AHT F reference is uninformative, so the p-value falls back to chi^2 and\n")
+    cat("  is NOT trustworthy (treat like the few-cluster guard).\n")
+  } else if (!is.null(x$m_sat) && is.finite(x$m_sat) && !is.null(x$m_eff) && is.finite(x$m_eff) &&
+             x$m_sat < 0.5 * max(x$m_eff, x$df + 1)) {
+    cat(sprintf("  NOTE: the covariance D-hat is dominated by a few high-leverage units/clusters\n"))
+    cat(sprintf("  (Bell-McCaffrey leverage df m_sat = %.1f << effective df %.1f): weak overlap / severe\n",
+                x$m_sat, x$m_eff))
+    cat("  imbalance, so even the F reference is fragile. Consider overlap trimming (trim_level) and\n")
+    cat("  read the localized Sargan rather than the diffuse joint statistic.\n")
+  }
   if (isTRUE(x$degenerate)) {
     cat("  NOTE: degenerate contrast -- the two estimators coincide, so there is no\n")
     cat("  over-identifying content to test (H = 0, df = 0, p = 1 by construction).\n")

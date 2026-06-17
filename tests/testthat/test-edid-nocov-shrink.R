@@ -242,10 +242,16 @@ test_that("omega_cov_shrink = 'ridge' regularizes the weights (vanishing p/n rid
 
 test_that("with shrinkage on, the cell SE is the empirical variance of the realized weighted IF", {
   df  <- .shrink_test_panel(90L, rho = 0.5, seed = 8L)
+  # estimation_effect = FALSE isolates the invariant under test: shrinkage stabilizes the WEIGHTS only
+  # and never replaces the data's IF variance, so the reported cell SE equals the empirical variance of
+  # the realized weighted IF. (The harmonized default adds the second-order weight-estimation increment
+  # sigma_nocov_ee on top of that IF variance; turning it off recovers the pure plug-in SE the oracle
+  # below recomputes.)
   fit <- suppressWarnings(
     edid(df, yname = "y", idname = "id", tname = "time", gname = "gvar",
          pt_assumption = "all", weight_scheme = "efficient",
-         aggregate = "none", cband = FALSE, omega_cov_shrink = "ledoit_wolf"))
+         aggregate = "none", cband = FALSE, omega_cov_shrink = "ledoit_wolf",
+         estimation_effect = FALSE, misspec_robust = FALSE))
   df_inf <- df; df_inf$gvar <- ifelse(df_inf$gvar == 0L, Inf, df_inf$gvar)
   panel  <- prepare_edid_panel(df_inf, "y", "id", "time", "gvar")
   n_checked <- 0L

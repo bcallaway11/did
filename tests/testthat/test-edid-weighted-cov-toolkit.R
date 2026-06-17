@@ -53,11 +53,13 @@ Uu_post <- mk(df,   NULL, "post"); Uu_all <- mk(df,   NULL, "all")
 Cc_post <- mk(df_c, "w",  "post"); Cc_all <- mk(df_c, "w",  "all")
 
 tk_pairs <- list(
-  weights  = list(u = quote(edid_weights(Uu_all)),                  c = quote(edid_weights(Cc_all))),
-  sargan   = list(u = quote(edid_sargan(Uu_all, data = df)),        c = quote(edid_sargan(Cc_all, data = df_c))),
-  hausman  = list(u = quote(edid_hausman(Uu_post, Uu_all)),         c = quote(edid_hausman(Cc_post, Cc_all))),
-  frontier = list(u = quote(edid_frontier(Uu_post, Uu_all)),        c = quote(edid_frontier(Cc_post, Cc_all))),
-  adaptive = list(u = quote(edid_adaptive(Uu_post, Uu_all)),        c = quote(edid_adaptive(Cc_post, Cc_all)))
+  weights  = list(u = quote(edid_weights(Uu_all)),                       c = quote(edid_weights(Cc_all))),
+  sargan   = list(u = quote(edid_sargan(Uu_all, data = df)),             c = quote(edid_sargan(Cc_all, data = df_c))),
+  # The toolkit refits the legs in plug-in mode; pass `data` explicitly (the fits were built inside mk(),
+  # whose call captures the symbol `df`, so automatic recovery would pick the wrong panel for df_c).
+  hausman  = list(u = quote(edid_hausman(Uu_post, Uu_all, data = df)),   c = quote(edid_hausman(Cc_post, Cc_all, data = df_c))),
+  frontier = list(u = quote(edid_frontier(Uu_post, Uu_all, data = df)),  c = quote(edid_frontier(Cc_post, Cc_all, data = df_c))),
+  adaptive = list(u = quote(edid_adaptive(Uu_post, Uu_all, data = df)),  c = quote(edid_adaptive(Cc_post, Cc_all, data = df_c)))
 )
 
 test_that("toolkit on a constant-weight covariate fit == toolkit on the unweighted covariate fit", {

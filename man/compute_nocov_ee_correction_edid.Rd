@@ -13,7 +13,8 @@ compute_nocov_ee_correction_edid(
   omega_used,
   weights,
   shrink_lambda = NA_real_,
-  return_D = FALSE
+  return_D = FALSE,
+  mbar = NULL
 )
 }
 \arguments{
@@ -39,6 +40,13 @@ shrinkage did not bind; the chain rule through the shrinkage is applied for
 
 \item{return_D}{logical: include the n x H matrix of per-unit directions
 \eqn{d_i} in the result (tests / diagnostics only)}
+
+\item{mbar}{numeric vector length H, or \code{NULL}: the cell's moment vector
+(the long-difference contrasts \eqn{\bar m}, \code{== compute_generated_outcomes_nocov_edid()}).
+When supplied, the result also carries \code{psi_omega}, the FIRST-ORDER
+misspecification weight-estimation influence function
+\eqn{\psi_{\Omega,i} = (D\,\bar m)_i} (the no-covariate sibling of the
+covariate \code{psi_Omega}), for the caller to fold into the cell EIF.}
 }
 \value{
 list with \code{applied} (logical), \code{warn} (logical: numeric
@@ -46,7 +54,10 @@ failure vs structural skip), \code{reason} (string or NA),
 \code{var_add} (\eqn{\Delta_{DF} + 2\hat Q}: the additive variance applied to
 the cell), \code{delta_df} (\eqn{\Delta_{DF}}), \code{q_opt} (\eqn{\hat Q}),
 the diagnostics \code{cov_lead} (\eqn{= -\hat Q}) and \code{var_second}
-(J-linear \eqn{\widehat{\mathrm{Var}}(T_2)}), and optionally \code{D}
+(J-linear \eqn{\widehat{\mathrm{Var}}(T_2)}), optionally \code{D}, and --
+when \code{mbar} is supplied -- the per-unit first-order misspecification IF
+\code{psi_omega} (\eqn{= D\,\bar m}; mean-zero, exactly zero under correct
+specification)
 }
 \description{
 On the no-covariate PT-All path the cell estimator is

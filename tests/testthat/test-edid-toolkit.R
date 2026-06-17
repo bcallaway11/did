@@ -72,7 +72,9 @@ test_that("Hausman test has approximately correct size under PT-All and power un
 # ===========================================================================
 test_that("edid_hausman returns the documented structure and matches by-hand computation", {
   df <- make_panel_toolkit(1L, n = 300L)
-  ff <- fit_pair_toolkit(df)
+  # Plug-in fits, so each fit's stored influence function equals what edid_hausman uses internally (it
+  # refits both legs in the efficient plug-in configuration); the by-hand reconstruction below then matches.
+  ff <- fit_pair_toolkit(df, misspec_robust = FALSE, estimation_effect = FALSE)
   h  <- edid_hausman(ff$U, ff$R)
 
   expect_s3_class(h, "edid_hausman")
@@ -123,7 +125,8 @@ test_that("edid_hausman scalar version matches by-hand on a 2-parameter toy", {
   df <- data.frame(id = rep(seq_len(n), each = Tt), time = rep(seq_len(Tt), n))
   df$g <- coh[df$id]
   df$y <- rnorm(n)[df$id] + 0.1 * df$time + rnorm(nrow(df), 0, 0.4) + (df$time >= df$g)
-  ff <- fit_pair_toolkit(df)
+  # plug-in fits: their stored IFs equal what edid_hausman uses internally (it refits in plug-in mode)
+  ff <- fit_pair_toolkit(df, misspec_robust = FALSE, estimation_effect = FALSE)
   h  <- edid_hausman(ff$U, ff$R)
   expect_identical(h$e_set, c(0, 1))
   expect_equal(dim(h$D), c(2L, 2L))
@@ -179,10 +182,11 @@ test_that("edid_hausman cluster-aware path runs and validation catches mismatche
                    pt_assumption = "post", aggregate = "event_study", cband = FALSE)
   expect_error(suppressWarnings(edid_hausman(fU_small, fR)), "sample sizes")
 
-  # Swapped pt assumptions warn
+  # Swapped pt assumptions warn (pass data = df2: ff was built via fit_pair_toolkit(), whose call captures
+  # the symbol `df` = the clustered panel here, so automatic data recovery would mismatch)
   df2 <- make_panel_toolkit(3L, n = 200L)
   ff  <- fit_pair_toolkit(df2)
-  expect_warning(edid_hausman(ff$R, ff$U), "pt_assumption")
+  expect_warning(edid_hausman(ff$R, ff$U, data = df2), "pt_assumption")
 })
 
 # ===========================================================================
@@ -383,7 +387,9 @@ test_that("edid_adaptive's VO <= 0 error is diagnostic (coinciding fits / thin-c
 
 test_that("edid_adaptive runs on fits, overall and per-e, with components consistent", {
   df <- make_panel_toolkit(6L, n = 300L)
-  ff <- fit_pair_toolkit(df)
+  # plug-in fits: their stored IFs equal what edid_adaptive uses internally (it refits in plug-in mode), so
+  # the empirical-covariance component identities below reconstruct exactly from the stored aggregation IFs
+  ff <- fit_pair_toolkit(df, misspec_robust = FALSE, estimation_effect = FALSE)
   # The component identities below are the EMPIRICAL-covariance definitions, so pin the convention
   # explicitly (the NULL default is AUTO and resolves to TRUE here: the restricted fit is a no-covariate
   # non-uniform fit, hence bound-attaining).
@@ -660,20 +666,20 @@ test_that("edid_sargan refits use the fit's stored arguments, not the caller's m
               aggregate = "event_study", cband = FALSE, misspec_robust = FALSE)
   ref <- edid(df, "y", "id", "time", "g", xformla = ~ x1, pt_assumption = "all",
               aggregate = "event_study", cband = FALSE, misspec_robust = FALSE)
-  s_ref <- edid_sargan(ref, data = df, inference = "plugin_fast")
+  s_ref <- edid_sargan(ref, data = df)
 
   # Mutate the caller's variable AFTER fitting: previously the refits
   # re-evaluated `xformla = xf` in this environment and silently used ~ x2.
   xf <- ~ x2
-  s_fit <- edid_sargan(fit, data = df, inference = "plugin_fast")
+  s_fit <- edid_sargan(fit, data = df)
   expect_equal(s_fit$table, s_ref$table, tolerance = 1e-10)
 
   # Even with the variable gone, the stored snapshot carries the formula.
   rm(xf)
-  expect_no_error(edid_sargan(fit, data = df, inference = "plugin_fast"))
+  expect_no_error(edid_sargan(fit, data = df))
 
   # Wrong data is loud, not silent: the refit sample must match the fit.
-  expect_error(edid_sargan(fit, data = df[df$id <= 70L, ], inference = "plugin_fast"),
+  expect_error(edid_sargan(fit, data = df[df$id <= 70L, ]),
                "does not match the fitted sample")
 })
 

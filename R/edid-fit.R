@@ -158,6 +158,7 @@ fit_edid_cells <- function(
   # 1/H (no estimation channel): warn on an explicit opt-in and disable, mirroring the
   # misspec_robust uniform guard below.
   nocov_ee <- FALSE
+  nocov_misspec <- FALSE   # no-covariate FIRST-order misspecification weight-estimation IF (psi_omega); set below
   if (isTRUE(estimation_effect)) {
     if (!use_cov_path) {
       if (weight_method == "uniform") {
@@ -197,15 +198,20 @@ fit_edid_cells <- function(
     # otherwise" -- so it warns about an inapplicable setting only when the user EXPLICITLY set it (opting in
     # where the channel cannot run); on the default it is quietly downgraded. The K > 1 combination always errors.
     if (!use_cov_path) {
-      # The psi_Omega fold itself is covariate-only; the no-covariate sibling is the second-order
-      # weight-estimation variance correction routed through estimation_effect (nocov_ee above) --
-      # edid() auto-enables it for an explicit misspec_robust = TRUE on a no-covariate fit.
-      if (isTRUE(misspec_robust_explicit))
-        warning(paste0("misspec_robust without covariates: the psi_Omega weight channel applies only to covariate fits. ",
-                       if (nocov_ee) "The no-covariate weight-estimation variance correction is engaged instead (via estimation_effect)."
-                       else "Set estimation_effect = TRUE for the no-covariate weight-estimation variance correction."),
-                call. = FALSE)
-      misspec_robust <- FALSE
+      # No-covariate path: misspec_robust engages the FIRST-ORDER misspecification weight-estimation
+      # influence function psi_omega = D %*% mbar (the no-X sibling of the covariate psi_Omega fold; see
+      # compute_nocov_ee_correction_edid). It needs estimated weights, so uniform (fixed 1/H) has no
+      # channel: warn on an explicit opt-in and downgrade. (estimation_effect remains the COMPLEMENTARY
+      # second-order correct-spec correction; the two compose -- psi_omega in the EIF, var_add additive.)
+      if (weight_method == "uniform") {
+        if (isTRUE(misspec_robust_explicit))
+          warning("misspec_robust has no effect for weights = 'uniform' without covariates (fixed weights have no estimation channel).",
+                  call. = FALSE)
+        misspec_robust <- FALSE
+      } else {
+        nocov_misspec  <- TRUE
+        misspec_robust <- TRUE   # effective flag: the first-order weight-estimation IF is folded into the EIF
+      }
     } else if (weight_method == "uniform") {
       if (isTRUE(misspec_robust_explicit))
         warning("misspec_robust has no effect for weights = 'uniform' (fixed weights have no estimation channel).",
@@ -250,6 +256,11 @@ fit_edid_cells <- function(
   keep_eif <- store_eif || need_eif
   eif_list <- if (keep_eif) vector("list", n_cells) else NULL
   ee_s_list <- if (nocov_ee) vector("list", n_cells) else NULL  # per-unit s_i per corrected cell
+  # PURE (pre-psi_omega) no-covariate cell EIFs for the SECOND-order var_add cross-cell increment, which
+  # must be built from the pure cell EIFs (not the psi_omega-augmented ones). Needed only when BOTH
+  # no-covariate channels co-occur; NULL otherwise (the augmented eif_matrix is then already pure). The
+  # over-identification toolkit does NOT read this -- it refits the legs in the plug-in configuration.
+  pure_eif_list <- if (keep_eif && nocov_misspec && nocov_ee) vector("list", n_cells) else NULL
 
   cell_id <- 0L
   n_extreme_ratio_instances <- 0L  # accumulate extreme-ratio warnings; emit once at end
@@ -603,6 +614,7 @@ fit_edid_cells <- function(
       ho_cell          <- NULL   # higher-order per-cell pieces (nuisance blocks + Hessian), set on cov path
       shrink_lambda    <- NA_real_   # nocov_shrink Ledoit-Wolf intensity (no-cov PT-All cells only)
       ee_cell          <- NULL   # no-cov weight-estimation correction record (estimation_effect, no-cov path)
+      nocov_misspec_applied <- FALSE   # whether the first-order misspec psi_omega channel folded into this cell
       n_nocov_ee_skip  <- 0L     # cells where the correction was requested but could not be applied
 
       if (use_cov_path) {
@@ -989,17 +1001,35 @@ fit_edid_cells <- function(
         weights  <- if (weight_method == "uniform") rep(1 / H_local, H_local) else compute_efficient_weights_edid(omega)
         att_gt   <- sum(weights * y_hat)
         eif_gt   <- compute_eif_nocov_edid(g, t, pairs, weights, panel_obj, att_gt, pt_assumption)
+        eif_pure <- eif_gt   # the PURE cell EIF (a = psi %*% w); kept for the SECOND-order var_add cross-cell
+                             # increment, which must NOT see the first-order psi_omega folded in below
         # estimation_effect (no-covariate): closed-form second-order weight-estimation variance
         # correction for the estimated Omega-hat -> w(Omega-hat) map (through the shrinkage when it
         # bound). Skipped where no weights are estimated (PT-Post and H = 1 cells, incl. thin-cohort
         # pinned ones: the single weight is fixed at 1). Folded into the cell SE after inference below.
-        if (nocov_ee && pt_assumption == "all" && nrow(pairs) > 1L) {
-          ee_cell <- compute_nocov_ee_correction_edid(
+        if ((nocov_ee || nocov_misspec) && pt_assumption == "all" && nrow(pairs) > 1L) {
+          # One call serves both no-covariate weight-estimation channels: it returns the per-unit Jacobian
+          # directions D (used for the var_add) and -- when mbar is supplied -- the first-order
+          # misspecification IF psi_omega = D %*% mbar. y_hat is the cell moment vector mbar.
+          ee_tmp <- compute_nocov_ee_correction_edid(
             g, t, pairs, panel_obj, omega_raw = omega_raw, omega_used = omega,
-            weights = weights, shrink_lambda = shrink_lambda)
-          # Structural skips (fallback / pseudoinverse weights: no smooth channel exists, the plug-in SE
-          # is the correct treatment) are recorded per cell but NOT warned; only numeric failures count.
-          if (!isTRUE(ee_cell$applied) && isTRUE(ee_cell$warn)) n_nocov_ee_skip <- n_nocov_ee_skip + 1L
+            weights = weights, shrink_lambda = shrink_lambda,
+            mbar = if (nocov_misspec) y_hat else NULL)
+          # First-order MISSPECIFICATION channel (misspec_robust): fold psi_omega into the cell EIF (a genuine
+          # per-unit IF -> propagates to the clustered covariance, aggregations, sup-t bands, and the
+          # multiplier bootstrap). Exactly zero under correct specification, so this is a no-op there.
+          if (nocov_misspec && isTRUE(ee_tmp$applied) && !is.null(ee_tmp$psi_omega)) {
+            eif_gt <- eif_gt + ee_tmp$psi_omega
+            nocov_misspec_applied <- TRUE
+          }
+          # Second-order CORRECT-SPEC channel (estimation_effect): keep ee_cell (the additive var_add) ONLY
+          # when nocov_ee is engaged, so a misspec_robust-only no-covariate fit does NOT add var_add.
+          if (nocov_ee) {
+            ee_cell <- ee_tmp
+            # Structural skips (fallback / pseudoinverse weights: no smooth channel exists, the plug-in SE
+            # is the correct treatment) are recorded per cell but NOT warned; only numeric failures count.
+            if (!isTRUE(ee_cell$applied) && isTRUE(ee_cell$warn)) n_nocov_ee_skip <- n_nocov_ee_skip + 1L
+          }
         }
       }
 
@@ -1074,11 +1104,15 @@ fit_edid_cells <- function(
         thin_cohort_degraded = thin_deg,   # TRUE when the thin-cohort guard pinned this cohort to the just-identified moment
         nocov_shrink_lambda = shrink_lambda,   # LW intensity (NA: covariate path / uniform / H=1 / omega_cov_shrink != "ledoit_wolf")
         nocov_ee        = ee_cell,  # no-cov weight-estimation correction record (NULL unless engaged on this cell)
+        nocov_misspec   = nocov_misspec_applied,  # TRUE when the first-order misspec psi_omega channel folded into the EIF
         ho              = ho_cell   # higher-order pieces (NULL unless higher_order on the covariate path)
       )
 
       list(cell = the_cell,
            eif = if (keep_eif) eif_gt else NULL,
+           # the PURE EIF (pre-psi_omega) for the no-covariate var_add cross-cell increment; NULL when
+           # nothing was folded (caller then reuses `eif`, which is already pure)
+           eif_pure = if (nocov_misspec_applied) eif_pure else NULL,
            ee_s = ee_s,
            ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
            n_extreme = n_extreme, n_psi_unstable = n_psi_unstable,
@@ -1104,6 +1138,9 @@ fit_edid_cells <- function(
     ci_cell_id[.cid] <- .cid
     ci_is_pre[.cid]  <- as.logical(.r$ci[["is_pre"]])
     if (keep_eif) eif_list[[.cid]] <- if (is.null(.r$eif)) rep(NA_real_, n) else .r$eif
+    if (!is.null(pure_eif_list))
+      pure_eif_list[[.cid]] <- if (!is.null(.r$eif_pure)) .r$eif_pure
+                               else if (is.null(.r$eif)) rep(NA_real_, n) else .r$eif  # unfolded cell: eif is already pure
     if (nocov_ee) ee_s_list[[.cid]] <- if (is.null(.r$ee_s)) rep(NA_real_, n) else .r$ee_s
     n_extreme_ratio_instances <- n_extreme_ratio_instances + .r$n_extreme
     if (!is.null(.r$n_psi_unstable)) n_psi_unstable_total <- n_psi_unstable_total + .r$n_psi_unstable
@@ -1178,6 +1215,13 @@ fit_edid_cells <- function(
       eif_matrix <- matrix(eif_matrix, nrow = n)
     }
   }
+  # PURE (pre-psi_omega) EIF matrix for the no-covariate second-order var_add cross-cell increment. NULL
+  # unless BOTH no-covariate channels co-occur; the caller then falls back to eif_matrix (already pure).
+  pure_eif_matrix <- NULL
+  if (!is.null(pure_eif_list)) {
+    pure_eif_matrix <- do.call(cbind, pure_eif_list)
+    if (is.null(dim(pure_eif_matrix))) pure_eif_matrix <- matrix(pure_eif_matrix, nrow = n)
+  }
 
   cell_index <- data.frame(
     group   = ci_group,
@@ -1236,6 +1280,7 @@ fit_edid_cells <- function(
     bs_df_selected = bs_df_selected,  # IC-selected sieve dfs (bs_df = "ic" + covariates only; else NULL)
     thin_cohorts   = thin_cohorts,    # thin-cohort guard record (NULL when the guard never fired)
     diagnostics_raw = diagnostics_raw, # stability-diagnostic counts (read-out; see $diagnostics on the fit)
-    nocov_ee_s     = nocov_ee_s      # per-unit s_i matrix for the no-cov weight-estimation cross-cell increments
+    nocov_ee_s     = nocov_ee_s,     # per-unit s_i matrix for the no-cov weight-estimation cross-cell increments
+    pure_eif_matrix = pure_eif_matrix # PURE (pre-psi_omega) EIFs for the var_add cross-cell increment (NULL => use eif_matrix)
   )
 }

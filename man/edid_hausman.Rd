@@ -9,7 +9,8 @@ edid_hausman(
   fit_unrestricted,
   fit_restricted,
   parameter = c("event_study", "overall"),
-  e_set = NULL
+  e_set = NULL,
+  data = NULL
 )
 
 \method{print}{edid_hausman}(x, digits = 4, ...)
@@ -38,6 +39,16 @@ average of \eqn{ES(e)} over \eqn{e \ge 0}).}
 fits' finite post-treatment event times). Ignored for
 \code{parameter = "overall"}.}
 
+\item{data}{The panel data used to fit the two legs, or \code{NULL} (default),
+in which case the data expression stored in \code{fit_restricted$call} is
+re-evaluated in the caller's environment. Both legs are refit in the
+\strong{efficient plug-in configuration} (all estimation-effect channels
+off) before the contrast is formed, so the over-identification statistic
+uses the efficient inverse-variance covariance (Andrews, Chen and Tecchio
+2025) rather than any misspecification-robust SE the fits may report; the
+point estimates, hence the contrast \eqn{d}, are unchanged. Supply
+\code{data} explicitly when the original object is no longer reachable.}
+
 \item{x}{an \code{edid_hausman} object}
 
 \item{digits}{number of significant digits to print}
@@ -46,7 +57,13 @@ fits' finite post-treatment event times). Ignored for
 }
 \value{
 An object of class \code{edid_hausman}: a list with elements
-\code{statistic}, \code{df}, \code{p_value} (the joint test),
+\code{statistic}, \code{df}, \code{p_value} (the joint test, AHT effective-df
+F p-value), \code{m_eff} (the AHT effective df used,
+\eqn{G_{\mathrm{eff}} - 1}: clusters minus one, or Kish \eqn{n_{\mathrm{eff}}}
+minus one when unclustered), \code{m_sat} (the Bell-McCaffrey/Satterthwaite
+leverage effective df, a fragility diagnostic; \code{m_sat << m_eff} flags
+weak overlap / severe imbalance), \code{df2} (the F denominator df
+\eqn{m_{\mathrm{eff}} - df + 1}; \code{NA} when it fell back to \eqn{\chi^2}),
 \code{degenerate} (\code{TRUE} when the joint contrast was degenerate and
 the \eqn{H = 0}, \eqn{df = 0}, \eqn{p = 1} guard applied), \code{d}
 (the estimate difference vector, unrestricted minus restricted), \code{D}
@@ -89,6 +106,32 @@ requires the estimated rank to be consistent; the threshold is the standard
 practical device, not a formal guarantee. The covariance \eqn{\widehat{D}}
 is cluster-robust when the fits carry cluster assignments.
 
+\strong{Finite-sample reference (AHT effective-df F).} \eqn{\widehat{D}} is a
+sandwich estimate built from \eqn{G_{\mathrm{eff}}} independent pieces --- the
+number of clusters when clustered, else the Kish effective sample size
+\eqn{n_{\mathrm{eff}}} of the (possibly weighted) units --- so its reliability,
+and hence the reference distribution, is governed by \eqn{G_{\mathrm{eff}}},
+\emph{not} \eqn{n}. The \eqn{\chi^2} reference therefore over-rejects with few
+clusters or dispersed weights. \eqn{\widehat{H}} is instead referred to the
+approximate Hotelling \eqn{T^2} (AHT) F distribution,
+\deqn{\widehat{H}\,\frac{m - df + 1}{m\,df} \;\sim\; F(df,\; m - df + 1),
+  \qquad m = G_{\mathrm{eff}} - 1,}
+the exact Hotelling rescaling of a quadratic form in an estimated covariance
+(Bell & McCaffrey 2002; Pustejovsky & Tipton 2018; Imbens & Kolesar 2016). It
+converges to \eqn{\chi^2(df)} as \eqn{G_{\mathrm{eff}} \to \infty} (a numerical
+no-op for many balanced i.i.d. units; asymptotically negligible), and removes
+the finite-sample over-rejection of the few-cluster / dispersed-weight
+\eqn{\widehat{D}}. When \eqn{G_{\mathrm{eff}} - 1 \le df} the F denominator df
+is \eqn{\le 1} and the test is uninformative; the p-value then falls back to
+\eqn{\chi^2} and \code{df2} is \code{NA} (flagged like the few-cluster guard).
+The Bell-McCaffrey/Satterthwaite \emph{leverage} effective df
+\eqn{\widehat m_{\mathrm{sat}} = df^2 / \sum_g w_g^2} (\eqn{w_g} the per-cluster
+leverage of \eqn{\widehat{D}}) is reported as \code{m_sat}: when
+\eqn{\widehat m_{\mathrm{sat}} \ll G_{\mathrm{eff}}} the covariance is dominated
+by a few high-leverage units/clusters (weak overlap / severe imbalance), where
+even the F reference is fragile --- trim overlap (\code{trim_level}) and read
+the localized \code{\link{edid_sargan}} rather than the diffuse joint statistic.
+
 The returned object also reports the scalar per-coordinate statistics
 \eqn{H_{\theta,n} = n(\widehat\theta_U - \widehat\theta_R)^2/\widehat{D}}
 of eqn (5.5) for each \eqn{ES(e)} and for \eqn{ES_{\mathrm{avg}}}, with a
@@ -130,7 +173,15 @@ Theorem 5.1. \cr
 Hausman, J. A. (1978). Specification Tests in Econometrics.
 \emph{Econometrica}, 46(6), 1251-1271. \cr
 Andrews, D. W. K. (1987). Asymptotic Results for Generalized Wald Tests.
-\emph{Econometric Theory}, 3(3), 348-358.
+\emph{Econometric Theory}, 3(3), 348-358. \cr
+Bell, R. M., & McCaffrey, D. F. (2002). Bias Reduction in Standard Errors
+for Linear Regression with Multi-Stage Samples. \emph{Survey Methodology},
+28(2), 169-181. \cr
+Pustejovsky, J. E., & Tipton, E. (2018). Small-Sample Methods for
+Cluster-Robust Variance Estimation and Hypothesis Testing in Fixed Effects
+Models. \emph{Journal of Business & Economic Statistics}, 36(4), 672-683. \cr
+Imbens, G. W., & Kolesar, M. (2016). Robust Standard Errors in Small Samples:
+Some Practical Advice. \emph{Review of Economics and Statistics}, 98(4), 701-712.
 }
 \seealso{
 \code{\link{edid}}, \code{\link{edid_sargan}},

@@ -139,11 +139,15 @@
 #'   errors: when \code{TRUE}, the reported SE accounts for \emph{every} applicable estimation effect --- the
 #'   weight-estimation channel (described below), the first-step nuisance ACH correction
 #'   (\code{estimation_effect}), and the higher-order ("Wick") nuisance term (\code{higher_order}) --- each
-#'   enabled only where it applies and silently skipped where it does not (the default no-covariate path;
-#'   multiplier path; the weight-estimation channel for \code{weight_scheme = "uniform"}), so default calls
-#'   do not warn and default no-covariate SEs are unchanged. An \emph{explicit} \code{misspec_robust = TRUE}
-#'   on a no-covariate fit opts into the no-covariate weight-estimation variance correction by auto-enabling
-#'   \code{estimation_effect} (see that argument; uniform weights have no channel). An explicitly-set
+#'   enabled only where it applies and silently skipped where it does not (the multiplier path; the
+#'   weight-estimation channel for \code{weight_scheme = "uniform"}, whose fixed weights have no estimation
+#'   channel), so default calls do not warn. \strong{Harmonized default (2026-06):} on a no-covariate fit
+#'   the master switch auto-enables \code{estimation_effect} (the no-covariate weight-estimation variance
+#'   correction) for any non-uniform \code{weight_scheme}, matching the covariate path's default-on
+#'   weight-estimation channel; the previous behavior (no-covariate SEs left at the plug-in by default) was
+#'   inconsistent and anti-conservative. The point estimate is unchanged (the correction is variance-only)
+#'   and the SE moves up slightly; an explicit \code{estimation_effect = FALSE} (with
+#'   \code{misspec_robust = FALSE}) recovers the previous plug-in SE bit-for-bit. An explicitly-set
 #'   \code{estimation_effect} or \code{higher_order} overrides that piece, and \code{misspec_robust = FALSE}
 #'   reverts to the plug-in efficient-IF SE. The weight-estimation channel \eqn{\psi_\Omega} is the first-step estimation effect of the
 #'   efficient weights \eqn{w(X) = \Omega^{-1}\mathbf{1}/(\mathbf{1}'\Omega^{-1}\mathbf{1})} (the sibling of
@@ -159,7 +163,22 @@
 #'   inconsistent (unlike \code{higher_order}, whose positive semi-definite \eqn{\Sigma_{quad}} only inflates).
 #'   It composes additively with \code{estimation_effect} (which corrects the
 #'   nuisance channel) and \code{higher_order}, and -- unlike \code{higher_order} -- it does \emph{not} coerce
-#'   \code{cband_method} (a real influence function is carried by the multiplier bootstrap). Supported for the
+#'   \code{cband_method} (a real influence function is carried by the multiplier bootstrap).
+#'   \strong{No-covariate path (harmonized 2026-06).} With \code{xformla = NULL} and a non-uniform
+#'   \code{weight_scheme}, \code{misspec_robust = TRUE} folds the analogous FIRST-ORDER misspecification IF
+#'   \eqn{\psi_\Omega = D\,\bar m} into the EIF, where \eqn{\bar m} is the cell's moment vector and \eqn{D}
+#'   the per-unit Jacobian of the efficient weight map \eqn{w(\widehat\Omega)} (the no-covariate sibling of
+#'   the kernel \eqn{\psi_\Omega(X)}; see \code{estimation_effect}). It is the influence function of the
+#'   weighted pseudo-estimand \eqn{\theta_w = w'\bar m}, mean-zero and exactly zero under correct
+#'   specification (\eqn{\bar m} in \eqn{\mathrm{span}(\mathbf 1)} and \eqn{D\mathbf 1 = 0} by the
+#'   sum-to-one weight FOC), so it composes with \code{estimation_effect}'s second-order \eqn{var_{add}}
+#'   (the first-order term is the misspecification piece; the second-order term is the correct-spec piece)
+#'   and is a Monte-Carlo-verified no-op on correctly-specified data while restoring coverage of
+#'   \eqn{\theta_w} under misspecification. This first-order channel is ON by default on the no-covariate
+#'   path too (for any non-uniform \code{weight_scheme}), composing with the second-order
+#'   \code{estimation_effect} (\code{var_add}); the over-identification toolkit (\code{\link{edid_hausman}} /
+#'   \code{\link{edid_sargan}} / \code{\link{edid_frontier}} / \code{\link{edid_adaptive}}) is unaffected
+#'   because it refits the legs in the efficient plug-in configuration. Supported for the
 #'   covariate path with \code{weight_scheme} in \code{c("efficient", "averaged", "gmm")} and plug-in nuisances (cross-fitted
 #'   nuisances, \code{K > 1}, are not supported and error). For \code{"gmm"} the weight inverts the unconditional
 #'   sample covariance \eqn{C}, a second moment that (unlike the linear ATT moment) is not protected by Neyman
@@ -300,8 +319,13 @@
 #'   Gaussian shocks: under Gaussianity the group means and group-demeaned covariances are independent, so
 #'   the cross term \eqn{\mathrm{Cov}} of the leading and second-order terms is exactly zero and the
 #'   estimator has no second-order bias; under non-Gaussian shocks the omitted remainder is
-#'   \eqn{O(n^{-3/2})} relative. An explicit \code{misspec_robust = TRUE} on a no-covariate fit
-#'   auto-enables this correction (see \code{misspec_robust}).
+#'   \eqn{O(n^{-3/2})} relative. \strong{Harmonized default (2026-06):} this correction is now ON by
+#'   default for every non-uniform (\code{efficient}/\code{averaged}/\code{gmm}) no-covariate fit -- the
+#'   master switch auto-enables it (the no-covariate analogue of the covariate path's default-on
+#'   weight-estimation channel), so a default no-covariate call already reports the corrected SE. Set
+#'   \code{estimation_effect = FALSE} (with \code{misspec_robust = FALSE}) to recover the previous plug-in
+#'   SE; \code{weight_scheme = "uniform"} has no estimation channel and is unaffected (see
+#'   \code{misspec_robust}).
 #'
 #' @param moment_set \code{NULL} (default), or a data.frame with numeric columns
 #'   \code{g}, \code{gp}, \code{tpre} restricting, for each target cohort \code{g}, the
@@ -839,13 +863,34 @@ edid <- function(
   if (misspec_robust) {
     # estimation_effect: ACH nuisance correction on the covariate path; on a NO-covariate fit it is the
     # closed-form second-order weight-estimation variance correction (the estimated Omega-hat -> weights
-    # channel). The default master switch leaves the no-covariate SEs unchanged (backward compatible); an
-    # EXPLICIT misspec_robust = TRUE on a no-covariate fit opts into that correction (uniform weights are
-    # fixed and have no channel).
-    if (!ee_explicit) estimation_effect <- has_cov ||
-      (mr_explicit && !has_cov && weight_method != "uniform")
+    # channel). HARMONIZED DEFAULT (2026-06): the weight/Omega-estimation effect is now ON by default on
+    # BOTH paths whenever weights are actually estimated -- has_cov (the cov ACH nuisance + psi_omega
+    # channel) OR a non-uniform weight_scheme on the no-covariate path (the second-order sigma_nocov_ee).
+    # Previously the no-covariate correction was OFF by default (estimation_effect only fired for cov or
+    # an EXPLICIT misspec_robust = TRUE), leaving the no-covariate efficient/averaged/gmm SE plug-in and
+    # ANTI-CONSERVATIVE in finite samples (under-coverage, worst under dispersed weights / thin cohorts),
+    # while the covariate path already accounted for it -- an inconsistent default. The ORDER asymmetry
+    # remains and is correct (cov: nonparametric Omega*(X) -> first-order psi_omega in the EIF; no-cov:
+    # parametric Omega -> the first-order effect is zero by the optimal-weight FOC, leaving the genuine
+    # second-order Bessel + optimization-optimism var_add). uniform weights are fixed and have no channel.
+    #
+    # FULLY HARMONIZED FIRST-ORDER DEFAULT (2026-06, Layer 2 / Phase 2b): misspec_robust -- the first-order
+    # weight-estimation influence function -- is ON by default on BOTH paths for any non-uniform
+    # weight_scheme. On the covariate path it folds psi_Omega(X); on the no-covariate path it folds the
+    # first-order misspecification IF psi_omega = D %*% mbar (compute_nocov_ee_correction_edid). Both vanish
+    # under correct specification (Neyman orthogonality / the optimal-weight FOC, D %*% 1 = 0) and restore
+    # coverage of the weighted pseudo-estimand theta_w under misspecification (Monte-Carlo: a verified no-op
+    # on correct-spec data, SE/MC-SD ~1.00 incl. the aggregate; fixes the misspec under-coverage the
+    # second-order var_add alone cannot, 0.90 -> 1.00, including under dispersed weights). The two
+    # no-covariate channels COMPOSE: psi_omega in the EIF (first-order) + var_add additive (second-order,
+    # built from the PURE pre-psi EIF). The over-identification toolkit is UNAFFECTED -- edid_hausman /
+    # edid_sargan / edid_frontier / edid_adaptive refit the legs in the efficient plug-in configuration, so
+    # they use the efficient inverse-variance variance regardless of this default (Andrews, Chen & Tecchio
+    # 2025, Sec 5). Reported no-covariate efficient/averaged/gmm SEs are unchanged on correctly-specified
+    # data and move (correctly, upward) under misspecification; downstream artifacts are flagged for regen.
+    if (!ee_explicit) estimation_effect <- has_cov || (weight_method != "uniform")
     if (!ho_explicit) higher_order      <- has_cov && cband_method == "analytic"
-    if (!mr_explicit) misspec_robust    <- has_cov && weight_method != "uniform"
+    if (!mr_explicit) misspec_robust    <- weight_method != "uniform"
   }
 
   # ------------------------------------------------------------------
@@ -1070,7 +1115,11 @@ edid <- function(
   # mirroring sigma_quad. NULL on every fit without an applied correction (the entire default path),
   # so classic fits are byte-identical.
   # ------------------------------------------------------------------
-  sigma_nocov_ee_full <- nocov_ee_sigma_full_edid(eif_matrix, fit_result$nocov_ee_s,
+  # The var_add (second-order) increment is built from the PURE cell EIFs (a = psi %*% w). When the
+  # first-order misspec channel (misspec_robust, no-covariate) folded psi_omega into eif_matrix, use the
+  # pure matrix fit_edid_cells preserved; otherwise eif_matrix is already pure.
+  ee_eif_matrix <- if (!is.null(fit_result$pure_eif_matrix)) fit_result$pure_eif_matrix else eif_matrix
+  sigma_nocov_ee_full <- nocov_ee_sigma_full_edid(ee_eif_matrix, fit_result$nocov_ee_s,
                                                   panel_obj$unit_cohorts, panel_obj$unit_weights)
 
   # ------------------------------------------------------------------

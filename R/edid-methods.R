@@ -53,16 +53,23 @@
   }
 }
 
-.edid_agg_higher_order_cov <- function(a, fit) {
-  if (!isTRUE(fit$higher_order) || is.null(a)) return(NULL)
+# Aggregate-scale second-order covariance increment A Sigma A' for vcov(): the cell -> aggregate linear
+# map A applied to the COMBINED second-order covariance Sigma_so = Sigma_quad (the higher-order "Wick"
+# term, covariate path) + sigma_nocov_ee (the no-covariate weight-estimation correction, on by default
+# for non-uniform no-covariate fits). This mirrors EXACTLY what .edid_analytic_cband_agg() folds into the
+# reported aggregate SEs (it also maps .edid_secondorder_sigma() through the same A), so
+# sqrt(diag(vcov(which = <aggregation>))) reproduces the reported se.egt. NULL on fits carrying neither
+# term (the entire classic / first-order path stays byte-identical).
+.edid_agg_secondorder_cov <- function(a, fit) {
+  if (is.null(a)) return(NULL)
   g <- .edid_agg_if(a)
   if (is.null(g$egt) && is.null(g$overall)) return(NULL)
-  Sig_quad <- .edid_sigma_quad(fit)
+  Sigma_so <- .edid_secondorder_sigma(fit)
   reaggregate <- .edid_agg_reaggregate(fit, a)
-  if (is.null(Sig_quad) || is.null(reaggregate)) return(NULL)
+  if (is.null(Sigma_so) || is.null(reaggregate)) return(NULL)
   A <- .edid_recover_agg_map(a, fit, reaggregate)
-  if (is.null(A) || ncol(A) != nrow(Sig_quad)) return(NULL)
-  A %*% Sig_quad %*% t(A)
+  if (is.null(A) || ncol(A) != nrow(Sigma_so)) return(NULL)
+  A %*% Sigma_so %*% t(A)
 }
 
 # ---------------------------------------------------------------------------
@@ -304,8 +311,14 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
     nms <- paste0("ATT(", df$group, ",", df$time, ")")
     if (!is.null(object$eif)) {
       v <- .cross_mat(object$eif)
-      Sig_quad <- .edid_sigma_quad(object)
-      if (!is.null(Sig_quad) && all(dim(Sig_quad) == dim(v))) v <- v + Sig_quad
+      # Add the SAME second-order increment the reported cell SEs carry (edid(): the analytic band adds
+      # sigma_quad_full + sigma_nocov_ee_full to the first-order covariance). Using the COMBINED
+      # .edid_secondorder_sigma() -- the higher-order "Wick" Sigma_quad PLUS the no-covariate
+      # weight-estimation increment sigma_nocov_ee (estimation_effect, on by default for non-uniform
+      # no-covariate fits) -- keeps sqrt(diag(vcov())) == att_gt$se. (Previously only Sigma_quad was
+      # added, so vcov() understated the SE of every no-covariate efficient/averaged/gmm fit.)
+      Sig_so <- .edid_secondorder_sigma(object)
+      if (!is.null(Sig_so) && all(dim(Sig_so) == dim(v))) v <- v + Sig_so
       dimnames(v) <- list(nms, nms); return(v)
     }
     v <- diag(df$se^2, nrow = nrow(df)); dimnames(v) <- list(nms, nms); return(v)
@@ -316,7 +329,7 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
     if (is.null(g$overall)) return(matrix(NA_real_, 1L, 1L))
     v <- matrix(.cross_mat(matrix(g$overall, ncol = 1L)), 1L, 1L,
                 dimnames = list("overall", "overall"))
-    HO <- .edid_agg_higher_order_cov(object$overall, object)
+    HO <- .edid_agg_secondorder_cov(object$overall, object)
     if (!is.null(HO) && is.null(g$egt) && all(dim(HO) == c(1L, 1L))) {
       v[1L, 1L] <- v[1L, 1L] + HO[1L, 1L]
     } else if (!is.null(HO) && !is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) == nrow(HO)) {
@@ -333,7 +346,7 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
   pre <- if (which == "event_study") "e=" else "g="
   nms <- paste0(pre, a$egt)
   v   <- .cross_mat(g$egt)
-  HO  <- .edid_agg_higher_order_cov(a, object)
+  HO  <- .edid_agg_secondorder_cov(a, object)
   if (!is.null(HO) && all(dim(HO) == dim(v))) v <- v + HO
   dimnames(v) <- list(nms, nms); v
 }

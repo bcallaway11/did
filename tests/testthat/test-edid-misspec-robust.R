@@ -158,11 +158,14 @@ test_that("misspec_robust warns + falls back to plug-in for uniform / no covaria
   expect_true(fMg$misspec_robust)                                          # gmm is NOT warn-disabled
   expect_false(isTRUE(all.equal(fMg$att_gt$se[!fMg$att_gt$is_pre], f0g$att_gt$se[!f0g$att_gt$is_pre])))  # SE moves
   expect_equal(fMg$att_gt$att, f0g$att_gt$att, tolerance = 1e-12)          # point estimates unchanged
-  # efficient stays active; no covariates warn-disables
+  # efficient stays active; a no-covariate fit now ENGAGES the first-order misspecification psi_omega
+  # channel (the no-X sibling of the covariate psi_Omega fold) instead of warn-disabling
   expect_true(fit_mr(df, weight_scheme = "efficient", misspec_robust = TRUE)$misspec_robust)
   r <- catch_warnings(edid(df, "y", "id", "t", "g", # no xformla
                            weight_scheme = "averaged", aggregate = "none", misspec_robust = TRUE))
-  expect_true(any(grepl("without covariates", r$warnings)))
+  expect_true(r$value$misspec_robust)                                       # no-covariate first-order channel engaged
+  expect_false(any(grepl("without covariates", r$warnings)))               # no longer warn-disabled
+  expect_true(any(vapply(r$value$cells, function(cc) isTRUE(cc$nocov_misspec), logical(1L))))  # psi_omega folded
 })
 
 test_that("misspec_robust does NOT coerce cband_method (a real IF is carried by the multiplier bootstrap)", {

@@ -613,7 +613,7 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
                           parameter = c("overall", "event_study"),
                           e_set = NULL, assume_efficient = NULL,
                           ci = TRUE, B = NULL, level = 0.95,
-                          st_cv = c("exact", "missadapt")) {
+                          st_cv = c("exact", "missadapt"), data = NULL) {
   parameter <- match.arg(parameter)
   st_cv <- match.arg(st_cv)
   stopifnot(is.logical(ci), length(ci) == 1L, !is.na(ci))
@@ -632,6 +632,16 @@ edid_adaptive <- function(fit_unrestricted, fit_restricted,
               !is.na(assume_efficient))
   }
   .edid_toolkit_check_fits(fit_unrestricted, fit_restricted)
+
+  # Refit both legs in the EFFICIENT plug-in configuration: the adaptive estimator's bias/variance
+  # trade-off rests on the efficiency identity V_UR = V_R (Prop 5.1) and the over-identification
+  # discrepancy, which live on the efficient inverse-variance covariance (Andrews, Chen & Tecchio 2025),
+  # not a misspecification-robust SE. Point estimates are unchanged; `data` is recovered from the call when
+  # NULL (a safety check errors if the recovered data does not reproduce the fit).
+  data <- .edid_recover_data(fit_restricted, data, parent.frame())
+  fit_unrestricted <- .edid_plugin_refit(fit_unrestricted, data, parent.frame())
+  fit_restricted   <- .edid_plugin_refit(fit_restricted,   data, parent.frame())
+
   if (assume_efficient_auto) {
     # AUTO (scheme-aware): impose the Proposition 5.1 identity VUR = VR exactly when the restricted fit is
     # bound-attaining -- weight_scheme = "efficient", OR a no-covariate fit with any non-uniform scheme

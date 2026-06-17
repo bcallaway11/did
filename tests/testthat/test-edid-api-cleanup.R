@@ -99,9 +99,13 @@ test_that("edid() treats zero-column formulas as no covariates for higher-order 
   )
   fit <- edid(df, "outcome", "unit", "time", "first_treat",
               xformla = ~ 1 + 0, aggregate = "none", cband = FALSE)
-  expect_false(isTRUE(fit$estimation_effect))
+  # A zero-column formula takes the NO-COVARIATE path: the harmonized default engages BOTH no-covariate
+  # weight-estimation channels (estimation_effect = second-order var_add, misspec_robust = first-order
+  # psi_omega) for a non-uniform (efficient) over-identified fit, while the COVARIATE-only higher_order
+  # channel stays off -- the discriminating signature of the no-covariate path.
+  expect_true(isTRUE(fit$estimation_effect))
+  expect_true(isTRUE(fit$misspec_robust))
   expect_false(isTRUE(fit$higher_order))
-  expect_false(isTRUE(fit$misspec_robust))
 })
 
 test_that("validate_edid_inputs() rejects non-finite numeric scalars clearly", {

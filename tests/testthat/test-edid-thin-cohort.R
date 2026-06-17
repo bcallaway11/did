@@ -196,13 +196,18 @@ test_that("healthy design (all cohorts >= 5): guard inert, byte-identical to the
   # package (commit 5133060), which had no pole-target shrinkage either; the
   # legacy-reproduction contract is the unshrunk pipeline (nocov_shrink = FALSE
   # is documented to reproduce it bit-for-bit).
-  expect_no_warning(f5 <- fit_thin(df, omega_cov_shrink = "none"))  # no guard, no legacy warnings
+  # estimation_effect = FALSE: the pre-guard package also predates the harmonized
+  # default that turns the no-covariate weight-estimation correction ON, so the
+  # bit-for-bit contract is the plug-in (estimation_effect off) pipeline.
+  expect_no_warning(f5 <- fit_thin(df, omega_cov_shrink = "none",
+                                   estimation_effect = FALSE, misspec_robust = FALSE))  # no guard, no legacy warnings
   expect_identical_unless_covr(f5$att_gt$att, legacy_healthy_att)  # pre-guard package, bit-for-bit
   expect_identical_unless_covr(f5$att_gt$se,  legacy_healthy_se)
   expect_null(f5$thin_cohorts)
   expect_false(any(vapply(f5$cells, function(x) isTRUE(x$thin_cohort_degraded), logical(1L))))
-  # min_pair_units = 2 is equally inert here: identical fit
-  f2 <- fit_thin(df, min_pair_units = 2L, omega_cov_shrink = "none")
+  # min_pair_units = 2 is equally inert here: identical fit (same plug-in configuration)
+  f2 <- fit_thin(df, min_pair_units = 2L, omega_cov_shrink = "none",
+                 estimation_effect = FALSE, misspec_robust = FALSE)
   expect_identical(f5$att_gt, f2$att_gt)
   expect_identical(f5$eif,    f2$eif)
   # the guard is equally inert under the (default) shrinkage: same pair sets and
@@ -218,8 +223,10 @@ test_that("healthy design (all cohorts >= 5): guard inert, byte-identical to the
 test_that("min_pair_units = 2 reproduces the pre-guard fit bit-for-bit on the 3-unit design", {
   df <- make_thin_panel(400L, 3L)
   # nocov_shrink = FALSE: legacy fingerprints predate the pole-target shrinkage
-  # (see the healthy-design test above for the contract).
-  w <- capture_warnings(f2 <- fit_thin(df, min_pair_units = 2L, omega_cov_shrink = "none"))
+  # (see the healthy-design test above for the contract). estimation_effect = FALSE:
+  # the pre-guard package also predates the harmonized weight-estimation default.
+  w <- capture_warnings(f2 <- fit_thin(df, min_pair_units = 2L, omega_cov_shrink = "none",
+                                       estimation_effect = FALSE, misspec_robust = FALSE))
   expect_false(any(grepl("Thin-cohort guard", w)))                 # guard never fires at 2 for 3 units
   expect_identical_unless_covr(f2$att_gt$att, legacy_thin3_att)    # pre-guard package, bit-for-bit
   expect_identical_unless_covr(f2$att_gt$se,  legacy_thin3_se)

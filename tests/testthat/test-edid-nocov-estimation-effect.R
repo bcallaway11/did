@@ -102,6 +102,37 @@ test_that("structural identities: psi/Omega, sum d_i = 0, q_opt = -cov_lead, eif
   expect_equal(drop(p$psi %*% p$w), eif, tolerance = 1e-12)
 })
 
+test_that("FD oracle: the first-order misspec IF psi_omega = D %*% mbar matches a finite difference of theta_w", {
+  skip_on_cran()
+  # psi_omega is the influence function of the weighted pseudo-estimand theta_w = w'mbar through the
+  # estimated weights. Check the analytic psi_omega (= D %*% mbar) against a brute-force finite difference
+  # of theta_w(Omega) along each per-unit Omega direction v_i = psi_i psi_i'/n - Omega, and the FOC.
+  df <- mk_ee_panel(150, 41, rho = 0.3)
+  df$g <- ifelse(df$g == 0L, Inf, df$g)
+  pn   <- prepare_edid_panel(df, "y", "id", "time", "g", anticipation = 0L)
+  gg <- 3L; tt <- 4L
+  prs  <- enumerate_valid_pairs_edid(gg, pn$treatment_groups, pn$time_periods, pn$period_1, "all", 0L)
+  skip_if(is.null(prs) || nrow(prs) < 2L, "target cell not over-identified")
+  Om   <- compute_omega_star_nocov_edid(gg, tt, prs, pn, "all")
+  w    <- compute_efficient_weights_edid(Om)
+  mbar <- compute_generated_outcomes_nocov_edid(gg, tt, prs, pn, "all")
+  ee   <- compute_nocov_ee_correction_edid(gg, tt, prs, pn, omega_raw = Om, omega_used = Om,
+                                           weights = w, shrink_lambda = NA_real_, return_D = TRUE, mbar = mbar)
+  skip_if(!isTRUE(ee$applied), "correction not applied on this draw")
+  expect_false(is.null(ee$psi_omega))
+  psi <- compute_psi_moments_nocov_edid(gg, tt, prs, pn)
+  n <- pn$n; H <- nrow(prs)
+  w_of <- function(O) { A <- solve(O); u <- drop(A %*% rep(1, H)); u / sum(u) }
+  h <- 1e-6 * max(abs(Om)); fd <- numeric(n)
+  for (i in seq_len(n)) {
+    Vi <- tcrossprod(psi[i, ]) / n - Om
+    fd[i] <- sum(mbar * (w_of(Om + h * Vi) - w_of(Om - h * Vi)) / (2 * h))   # mbar' dW[Vi] = psi_omega_i
+  }
+  expect_lt(max(abs(ee$psi_omega - fd)) / max(abs(fd)), 1e-5)                 # analytic == FD of theta_w
+  expect_lt(max(abs(drop(ee$D %*% rep(1, H)))), 1e-10)                        # FOC: D %*% 1 = 0
+  expect_lt(abs(sum(ee$psi_omega)), 1e-8 * (1 + max(abs(ee$psi_omega))))      # mean-zero influence function
+})
+
 test_that("lambda = 1 clamp: the Jacobian vanishes and var_add is the pure Bessel piece", {
   p <- ee_cell_pieces(80, 7, 0.5, 3L, 5L, use_shrink = FALSE)
   # force the clamp: omega_used = sigma2 * S (what shrinkage at lambda = 1 inverts)
@@ -116,50 +147,63 @@ test_that("lambda = 1 clamp: the Jacobian vanishes and var_add is the pure Besse
   expect_equal(ee1$var_add, ee1$delta_df, tolerance = 1e-12)
 })
 
-test_that("default no-covariate fits are bit-for-bit unchanged; estimation_effect = TRUE engages the correction", {
+test_that("no-covariate weight-estimation channels: explicit flags isolate var_add (estimation_effect) and psi_omega (misspec_robust)", {
+  # Two COMPOSABLE no-covariate weight-estimation channels (harmonized 2026-06, phase-independent here
+  # because all flags are explicit):
+  #   estimation_effect -> the SECOND-order correct-spec correction var_add (Bessel + optimism), an
+  #                        additive variance increment stored in $sigma_nocov_ee; and
+  #   misspec_robust    -> the FIRST-order misspecification IF psi_omega = D %*% mbar, folded into the EIF
+  #                        (the no-covariate sibling of the covariate psi_Omega channel).
   df <- mk_ee_panel(120, 11)
-  f_def <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE))
-  f_off <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE,
-                                 estimation_effect = FALSE, misspec_robust = FALSE))
-  expect_identical(f_def$att_gt$se,  f_off$att_gt$se)     # default == flags off (bit-for-bit)
-  expect_identical(f_def$att_gt$att, f_off$att_gt$att)
-  expect_null(f_def$sigma_nocov_ee)
-  expect_false(isTRUE(f_def$estimation_effect))
+  f_off  <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE, estimation_effect=FALSE, misspec_robust=FALSE)) # plug-in (a)
+  f_ee   <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE, estimation_effect=TRUE,  misspec_robust=FALSE)) # a + var_add
+  f_mr   <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE, estimation_effect=FALSE, misspec_robust=TRUE))  # a + psi_omega
+  f_both <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE, estimation_effect=TRUE,  misspec_robust=TRUE))  # a + psi_omega + var_add
 
-  f_ee <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE,
-                                estimation_effect = TRUE))
-  expect_true(isTRUE(f_ee$estimation_effect))
-  expect_equal(f_ee$att_gt$att, f_def$att_gt$att, tolerance = 1e-12)   # point estimates unchanged
-  va <- vapply(f_ee$cells, function(cc) {
-    if (is.null(cc$nocov_ee) || !isTRUE(cc$nocov_ee$applied)) NA_real_ else cc$nocov_ee$var_add
-  }, numeric(1L))
-  expect_true(any(is.finite(va)))                          # the correction applied somewhere
-  k <- which(is.finite(va))
-  # fold identity: corrected SE^2 = plug-in SE^2 + var_add, cell by cell
-  expect_equal(f_ee$att_gt$se[k]^2, f_def$att_gt$se[k]^2 + va[k], tolerance = 1e-10)
-  expect_true(all(f_ee$att_gt$se[k] > f_def$att_gt$se[k]))  # delta_df > 0 and exact-path q >= 0
-  expect_false(is.null(f_ee$sigma_nocov_ee))
-  expect_equal(diag(f_ee$sigma_nocov_ee)[k], unname(va[k]), tolerance = 1e-12)
-  # no obsolete downgrade warning
-  w <- character(0)
-  withCallingHandlers(
-    edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE, estimation_effect = TRUE),
-    warning = function(ww) { w <<- c(w, conditionMessage(ww)); invokeRestart("muffleWarning") })
-  expect_false(any(grepl("no effect without covariates", w)))
+  # point estimates identical (every correction is variance-only)
+  for (f in list(f_ee, f_mr, f_both)) expect_identical(f$att_gt$att, f_off$att_gt$att)
+
+  # flags + stored objects
+  expect_true(f_ee$estimation_effect);   expect_false(isTRUE(f_ee$misspec_robust));   expect_false(is.null(f_ee$sigma_nocov_ee))
+  expect_false(isTRUE(f_mr$estimation_effect)); expect_true(f_mr$misspec_robust);      expect_null(f_mr$sigma_nocov_ee)
+  expect_true(f_both$estimation_effect); expect_true(f_both$misspec_robust);           expect_false(is.null(f_both$sigma_nocov_ee))
+  expect_false(isTRUE(f_off$estimation_effect)); expect_false(isTRUE(f_off$misspec_robust)); expect_null(f_off$sigma_nocov_ee)
+
+  # estimation_effect fold identity: var_add is EXACTLY additive in the cell variance (no psi_omega here)
+  va <- vapply(f_both$cells, function(cc) if (is.null(cc$nocov_ee) || !isTRUE(cc$nocov_ee$applied)) NA_real_ else cc$nocov_ee$var_add, numeric(1L))
+  k  <- which(is.finite(va)); expect_gt(length(k), 0L)
+  expect_equal(f_ee$att_gt$se[k]^2, f_off$att_gt$se[k]^2 + va[k], tolerance = 1e-10)
+  expect_true(all(f_ee$att_gt$se[k] > f_off$att_gt$se[k]))
+  expect_equal(unname(diag(f_ee$sigma_nocov_ee)[k]), unname(va[k]), tolerance = 1e-12)
+
+  # misspec_robust folds psi_omega into the EIF: per-cell flag set on the over-identified cells; the
+  # point estimate is unchanged and the SE moves (the channel is a genuine influence function)
+  expect_true(any(vapply(f_mr$cells, function(cc) isTRUE(cc$nocov_misspec), logical(1L))))
+  expect_false(any(vapply(f_off$cells, function(cc) isTRUE(cc$nocov_misspec), logical(1L))))
+  expect_false(isTRUE(all.equal(f_mr$att_gt$se[k], f_off$att_gt$se[k])))
+
+  # the two channels COMPOSE: f_both variance = (EIF-with-psi_omega variance) + var_add
+  expect_equal(f_both$att_gt$se[k]^2, f_mr$att_gt$se[k]^2 + va[k], tolerance = 1e-10)
 })
 
-test_that("explicit misspec_robust = TRUE on a no-covariate fit engages the weight-estimation correction", {
-  df <- mk_ee_panel(100, 13)
-  w <- character(0)
-  f_mr <- withCallingHandlers(
-    edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE, misspec_robust = TRUE),
-    warning = function(ww) { w <<- c(w, conditionMessage(ww)); invokeRestart("muffleWarning") })
-  expect_true(isTRUE(f_mr$estimation_effect))              # auto-enabled by the master switch
-  expect_false(isTRUE(f_mr$misspec_robust))                # the psi_Omega fold itself stays covariate-only
-  expect_true(any(grepl("without covariates", w)))         # the reroute is announced
-  f_ee <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE,
-                                estimation_effect = TRUE))
-  expect_identical(f_mr$att_gt$se, f_ee$att_gt$se)         # same correction either way
+test_that("the HARMONIZED DEFAULT engages BOTH no-covariate weight-estimation channels for a non-uniform fit", {
+  # Harmonized default (2026-06, Phase 2b): for a non-uniform no-covariate fit the default engages BOTH the
+  # second-order correct-spec correction (estimation_effect / var_add) AND the first-order misspecification
+  # channel (misspec_robust / psi_omega) -- the no-covariate analogue of the covariate path's default-on
+  # weight-estimation channel. (The over-id toolkit is unaffected: it refits the legs in plug-in mode.)
+  df <- mk_ee_panel(120, 11)
+  f_def  <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE))
+  f_both <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE, estimation_effect=TRUE, misspec_robust=TRUE))
+  f_off  <- suppressWarnings(edid(df, "y","id","time","g", aggregate="none", cband=FALSE, estimation_effect=FALSE, misspec_robust=FALSE))
+  expect_true(f_def$estimation_effect)
+  expect_true(f_def$misspec_robust)                          # first-order misspec channel ON by default
+  expect_false(is.null(f_def$sigma_nocov_ee))
+  expect_true(any(vapply(f_def$cells, function(cc) isTRUE(cc$nocov_misspec), logical(1L))))  # psi_omega folded
+  expect_identical(f_def$att_gt$se,  f_both$att_gt$se)        # default == explicit both-on, bit-for-bit
+  expect_identical(f_def$att_gt$att, f_off$att_gt$att)        # att unchanged vs the plug-in (variance-only)
+  # explicit estimation_effect = FALSE, misspec_robust = FALSE recovers the bare plug-in
+  expect_false(isTRUE(f_off$estimation_effect)); expect_false(isTRUE(f_off$misspec_robust))
+  expect_null(f_off$sigma_nocov_ee)
 })
 
 test_that("uniform weights warn-disable; PT-Post has no correction", {
@@ -180,12 +224,14 @@ test_that("uniform weights warn-disable; PT-Post has no correction", {
 test_that("the correction propagates to the event-study and overall aggregate SEs", {
   skip_on_cran()
   df <- mk_ee_panel(120, 19, rho = 0.5)
-  f_def <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE, seed = 5L))
+  # baseline = the explicit plug-in (both channels OFF); f_ee = both channels ON (the harmonized default)
+  f_off <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE, seed = 5L,
+                                 estimation_effect = FALSE, misspec_robust = FALSE))
   f_ee  <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE, seed = 5L,
-                                 estimation_effect = TRUE))
+                                 estimation_effect = TRUE, misspec_robust = TRUE))
   skip_if(is.null(f_ee$sigma_nocov_ee), "no applied correction on this draw")
-  es0 <- aggte_edid(f_def, type = "dynamic"); es1 <- aggte_edid(f_ee, type = "dynamic")
-  ov0 <- aggte_edid(f_def, type = "simple");  ov1 <- aggte_edid(f_ee, type = "simple")
+  es0 <- aggte_edid(f_off, type = "dynamic"); es1 <- aggte_edid(f_ee, type = "dynamic")
+  ov0 <- aggte_edid(f_off, type = "simple");  ov1 <- aggte_edid(f_ee, type = "simple")
   expect_equal(es0$att.egt, es1$att.egt, tolerance = 1e-12)          # point estimates unchanged
   expect_gt(max(es1$se.egt - es0$se.egt), 0)                          # some horizon inherits the increment
   expect_true(all(es1$se.egt >= es0$se.egt - 1e-12))                  # exact-path increments are >= 0
@@ -203,14 +249,16 @@ test_that("multiplier-bootstrap path warns that it cannot carry the correction",
   expect_true(any(grepl("multiplier bootstrap", w)))
 })
 
-test_that("asymptotic no-op: the correction is negligible at large n", {
+test_that("asymptotic no-op: both no-covariate weight-estimation channels are negligible at large n", {
   skip_on_cran()
   df <- mk_ee_panel(20000, 29, rho = 0.7)
+  # default (both channels: var_add + psi_omega) vs the bare plug-in; on correct-spec data the WHOLE
+  # correction is O(1/n) / o(1) relative, so the SE ratio -> 1.
   f_def <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE))
-  f_ee  <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE,
-                                 estimation_effect = TRUE))
-  ok <- is.finite(f_def$att_gt$se) & is.finite(f_ee$att_gt$se)
-  expect_lt(max(abs(f_ee$att_gt$se[ok] / f_def$att_gt$se[ok] - 1)), 0.005)  # < 0.5% at n = 20k
+  f_off <- suppressWarnings(edid(df, "y", "id", "time", "g", aggregate = "none", cband = FALSE,
+                                 estimation_effect = FALSE, misspec_robust = FALSE))
+  ok <- is.finite(f_def$att_gt$se) & is.finite(f_off$att_gt$se)
+  expect_lt(max(abs(f_def$att_gt$se[ok] / f_off$att_gt$se[ok] - 1)), 0.01)  # < 1% at n = 20k
 })
 
 test_that("the K x K increment: diagonal == per-cell var_add; cross entries match a direct recompute", {

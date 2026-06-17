@@ -21,23 +21,15 @@
 # Refit edid() with a restricted moment set: same data and options as the
 # original call, but pt_assumption = "all" with the supplied `moment_set`, no
 # aggregation at fit time (aggte_edid is called afterwards), pointwise/no
-# bands, no bootstrap. The influence-function convention of the refits is set
-# by `inference`:
-#   "match_fit"   (default): copy the fitted object's EFFECTIVE misspec_robust /
-#                 estimation_effect / higher_order flags and its bs_df into every
-#                 refit, so xi = psi_base - psi_aug is a difference of influence
-#                 functions in the SAME convention as the fit. (The edid_* session
-#                 options -- e.g. edid_omega_method -- apply to the refits as they
-#                 stand at call time, so keep them as at fit time.)
-#   "plugin_fast": the cheap plug-in configuration (all three channels off). The
-#                 incremental statistic is a quadratic form in Var-hat(xi) built
-#                 from EIF differences and does not require efficiency, so under
-#                 correct specification the chi-square null distribution is the
-#                 same asymptotically -- but the omitted weight-estimation and
-#                 first-step channels DO move Var-hat(xi) in finite samples, so
-#                 p-values can differ from the fit's own inference convention.
-.edid_refit_moment_set <- function(fit, data, moment_set, envir = parent.frame(),
-                                   inference = "match_fit") {
+# bands, no bootstrap. The refits always use the BARE PLUG-IN influence function
+# (all three estimation-effect channels off): the incremental over-identification
+# statistic is a quadratic form in Var-hat(xi) of EIF differences and lives on the
+# EFFICIENT inverse-variance covariance (Andrews, Chen & Tecchio 2025, Sec 5), NOT
+# a misspecification-robust variance -- so the weight-estimation (psi_Omega) and
+# first-step (ACH / Wick) channels, which target the estimand's robustness rather
+# than the over-identification contrast, are excluded. bs_df is carried from the
+# fit for a faithful sieve dimension (a design choice, not an SE channel).
+.edid_refit_moment_set <- function(fit, data, moment_set, envir = parent.frame()) {
   # Estimation arguments come from the fit's stored snapshot ($args), never from
   # re-evaluating the call in the caller's environment (see .edid_refit_args):
   # a caller variable mutated after fitting (e.g. a reassigned xformla) must not
@@ -52,18 +44,10 @@
   args$aggregate         <- "none"
   args$cband             <- FALSE
   args$bstrap            <- FALSE
-  if (identical(inference, "match_fit")) {
-    # The fit stores the EFFECTIVE flags (after edid()'s master-switch / applicability downgrades), so the
-    # refits reproduce the convention that actually produced the fit's influence functions.
-    args$misspec_robust    <- isTRUE(fit$misspec_robust)
-    args$estimation_effect <- isTRUE(fit$estimation_effect)
-    args$higher_order      <- isTRUE(fit$higher_order)
-    if (!is.null(fit$bs_df)) args$bs_df <- fit$bs_df
-  } else {
-    args$misspec_robust    <- FALSE
-    args$estimation_effect <- FALSE
-    args$higher_order      <- FALSE
-  }
+  args$misspec_robust    <- FALSE
+  args$estimation_effect <- FALSE
+  args$higher_order      <- FALSE
+  if (!is.null(fit$bs_df)) args$bs_df <- fit$bs_df
   do.call(edid, args)
 }
 
@@ -109,27 +93,18 @@
 #' @param e_set Numeric vector of post-treatment event times over which the
 #'   event-study comparison is computed, or \code{NULL} (default: all finite
 #'   post-treatment event times of the base fit).
-#' @param inference Influence-function convention for the internal refits.
-#'   \code{"match_fit"} (default) copies the fitted object's \emph{effective}
-#'   \code{misspec_robust}, \code{estimation_effect}, and \code{higher_order}
-#'   flags and its \code{bs_df} into every refit (base and augmented), so the
-#'   test statistic is built from influence functions in the same convention
-#'   as \code{fit_restricted}; the refits also run under the session's
-#'   \code{edid_*} options (\code{edid_omega_method}, ...), so keep those as at
-#'   fit time. \code{"plugin_fast"} uses the cheap plug-in configuration
-#'   (all three channels off): substantially faster when the fit carries the
-#'   \code{misspec_robust} channels (each refit then skips the weight-estimation
-#'   and first-step corrections), and asymptotically valid under correct
-#'   specification -- the statistic's chi-square null distribution is the same
-#'   in the limit -- but its finite-sample \eqn{\widehat{Var}(\xi)} omits the
-#'   weight-estimation and first-step contributions, so p-values can differ
-#'   from \code{"match_fit"}.
-#'
 #' @details
 #' Each candidate requires one refit of \code{edid()} with the internal
 #' \code{moment_set} restriction (so \eqn{L + 1} fits in total), with no bands
-#' and no bootstrap; the influence-function convention of the refits follows
-#' \code{inference} (see above). The
+#' and no bootstrap. The refits use the \strong{efficient plug-in} influence
+#' function (all three estimation-effect channels off): the over-identification
+#' statistic lives on the efficient inverse-variance covariance (Andrews, Chen
+#' and Tecchio 2025, Sec 5), not a misspecification-robust variance, so the
+#' weight-estimation (\eqn{\psi_\Omega}) and first-step (ACH / Wick) channels --
+#' which target the estimand's robustness rather than the over-identification
+#' contrast -- are excluded (\code{bs_df} is carried from the fit). This also
+#' makes the test invariant to how \code{fit_restricted} was fit, and each refit
+#' is cheaper than a \code{misspec_robust} fit. The
 #' statistic is a quadratic form in the variance of the influence-function
 #' difference, which is valid without efficiency of either estimator. Both the
 #' base and augmented estimators are rebuilt from the same per-pair objects,
@@ -145,8 +120,7 @@
 #'   \code{H_statistic}, \code{df}, \code{p_value}, \code{holm_threshold},
 #'   \code{rejected}), \code{base} (the PT-Post base moment set as a
 #'   \code{(g, gp, tpre)} data.frame), \code{admissible} (candidates not
-#'   rejected), \code{alpha}, \code{L}, \code{e_set}, \code{n},
-#'   \code{inference} (the refit convention used). Returns
+#'   rejected), \code{alpha}, \code{L}, \code{e_set}, \code{n}. Returns
 #'   \code{NULL} (with a message) when the model is just-identified (no
 #'   candidate restrictions).
 #'
@@ -175,15 +149,13 @@
 #' }
 #'
 #' @export
-edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
-                        inference = c("match_fit", "plugin_fast")) {
+edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL) {
   if (!inherits(fit_restricted, "edid_fit")) {
     stop("`fit_restricted` must be an `edid_fit` object returned by edid().", call. = FALSE)
   }
   if (!is.numeric(alpha) || length(alpha) != 1L || is.na(alpha) || alpha <= 0 || alpha >= 1) {
     stop("`alpha` must be a numeric scalar in (0, 1).", call. = FALSE)
   }
-  inference <- match.arg(inference)
   if (is.null(data)) {
     data <- tryCatch(as.data.frame(eval(fit_restricted$call$data, envir = parent.frame())),
                      error = function(e) NULL)
@@ -246,7 +218,7 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
   # (base and augmented) are rebuilt in the same cheap configuration so the
   # influence-function differences are clean.
   caller_env <- parent.frame()
-  fit_base <- .edid_refit_moment_set(fit, data, base_ms, envir = caller_env, inference = inference)
+  fit_base <- .edid_refit_moment_set(fit, data, base_ms, envir = caller_env)
   if (!identical(fit_base$n, fit$n) || !identical(fit_base$all_units, fit$all_units)) {
     stop("The data used for the refits does not match the fitted sample (n or unit ids ",
          "differ from `fit_restricted`); pass the original estimation data via `data`.",
@@ -280,7 +252,7 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
       }
     }
     ms_l <- unique(rbind(base_ms, do.call(rbind, add_rows)))
-    fit_aug <- .edid_refit_moment_set(fit, data, ms_l, envir = caller_env, inference = inference)
+    fit_aug <- .edid_refit_moment_set(fit, data, ms_l, envir = caller_env)
     pA <- .edid_param_ifs(fit_aug, "event_study", e_set)
 
     d  <- pA$est - pB$est
@@ -304,8 +276,7 @@ edid_sargan <- function(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL,
     L          = L,
     e_set      = e_set,
     n          = n,
-    clustered  = !is.null(ci),
-    inference  = inference
+    clustered  = !is.null(ci)
   )
   class(out) <- c("edid_sargan", "list")
   out
@@ -322,10 +293,8 @@ print.edid_sargan <- function(x, digits = 4, ...) {
               x$L, if (isTRUE(x$clustered)) "; cluster-robust" else ""))
   cat(sprintf("  Event-study comparison over E = {%s}; Holm-Bonferroni FWER alpha = %s\n",
               paste(x$e_set, collapse = ", "), format(x$alpha)))
-  if (identical(x$inference, "plugin_fast")) {
-    cat("  Refit convention: plug-in influence functions only; excludes weight-estimation\n")
-    cat("  and first-step corrections (inference = 'plugin_fast').\n")
-  }
+  cat("  Refit convention: efficient plug-in influence functions (excludes the weight-estimation\n")
+  cat("  and first-step / higher-order channels; the over-id contrast uses the efficient variance).\n")
   cat("\n")
   tab <- x$table
   num <- vapply(tab, is.numeric, logical(1L))

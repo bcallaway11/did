@@ -5,13 +5,7 @@
 \alias{print.edid_sargan}
 \title{Incremental Sargan moment-selection procedure for edid}
 \usage{
-edid_sargan(
-  fit_restricted,
-  data = NULL,
-  alpha = 0.05,
-  e_set = NULL,
-  inference = c("match_fit", "plugin_fast")
-)
+edid_sargan(fit_restricted, data = NULL, alpha = 0.05, e_set = NULL)
 
 \method{print}{edid_sargan}(x, digits = 4, ...)
 }
@@ -38,22 +32,6 @@ Default \code{0.05}.}
 event-study comparison is computed, or \code{NULL} (default: all finite
 post-treatment event times of the base fit).}
 
-\item{inference}{Influence-function convention for the internal refits.
-\code{"match_fit"} (default) copies the fitted object's \emph{effective}
-\code{misspec_robust}, \code{estimation_effect}, and \code{higher_order}
-flags and its \code{bs_df} into every refit (base and augmented), so the
-test statistic is built from influence functions in the same convention
-as \code{fit_restricted}; the refits also run under the session's
-\code{edid_*} options (\code{edid_omega_method}, ...), so keep those as at
-fit time. \code{"plugin_fast"} uses the cheap plug-in configuration
-(all three channels off): substantially faster when the fit carries the
-\code{misspec_robust} channels (each refit then skips the weight-estimation
-and first-step corrections), and asymptotically valid under correct
-specification -- the statistic's chi-square null distribution is the same
-in the limit -- but its finite-sample \eqn{\widehat{Var}(\xi)} omits the
-weight-estimation and first-step contributions, so p-values can differ
-from \code{"match_fit"}.}
-
 \item{x}{an \code{edid_sargan} object}
 
 \item{digits}{number of significant digits to print}
@@ -66,8 +44,7 @@ An object of class \code{edid_sargan}: a list with elements
 \code{H_statistic}, \code{df}, \code{p_value}, \code{holm_threshold},
 \code{rejected}), \code{base} (the PT-Post base moment set as a
 \code{(g, gp, tpre)} data.frame), \code{admissible} (candidates not
-rejected), \code{alpha}, \code{L}, \code{e_set}, \code{n},
-\code{inference} (the refit convention used). Returns
+rejected), \code{alpha}, \code{L}, \code{e_set}, \code{n}. Returns
 \code{NULL} (with a message) when the model is just-identified (no
 candidate restrictions).
 }
@@ -97,8 +74,15 @@ the base set.
 \details{
 Each candidate requires one refit of \code{edid()} with the internal
 \code{moment_set} restriction (so \eqn{L + 1} fits in total), with no bands
-and no bootstrap; the influence-function convention of the refits follows
-\code{inference} (see above). The
+and no bootstrap. The refits use the \strong{efficient plug-in} influence
+function (all three estimation-effect channels off): the over-identification
+statistic lives on the efficient inverse-variance covariance (Andrews, Chen
+and Tecchio 2025, Sec 5), not a misspecification-robust variance, so the
+weight-estimation (\eqn{\psi_\Omega}) and first-step (ACH / Wick) channels --
+which target the estimand's robustness rather than the over-identification
+contrast -- are excluded (\code{bs_df} is carried from the fit). This also
+makes the test invariant to how \code{fit_restricted} was fit, and each refit
+is cheaper than a \code{misspec_robust} fit. The
 statistic is a quadratic form in the variance of the influence-function
 difference, which is valid without efficiency of either estimator. Both the
 base and augmented estimators are rebuilt from the same per-pair objects,

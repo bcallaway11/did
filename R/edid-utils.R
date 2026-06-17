@@ -398,3 +398,53 @@ solve_ols_edid <- function(X, y, weights = NULL) {
   args$data <- NULL
   lapply(args, function(a) eval(a, envir = envir))
 }
+
+# Recover the estimation data for a refit: the supplied `data`, else the data expression stored in the
+# fit's call, re-evaluated in `envir` (the update() idiom; same recovery edid_sargan() uses).
+.edid_recover_data <- function(fit, data = NULL, envir = parent.frame()) {
+  if (!is.null(data)) return(as.data.frame(data))
+  d <- tryCatch(as.data.frame(eval(fit$call$data, envir = envir)), error = function(e) NULL)
+  if (is.null(d))
+    stop("Could not recover the estimation data from the fit's call; pass `data` explicitly.", call. = FALSE)
+  d
+}
+
+# Refit a fit in the BARE PLUG-IN configuration -- all three estimation-effect channels off
+# (misspec_robust / estimation_effect / higher_order) -- so its influence functions are the EFFICIENT
+# plug-in EIF. This is the influence function the over-identification toolkit (edid_hausman / edid_sargan /
+# edid_frontier) must use: the over-identification (J / Hausman) object lives on the efficient
+# inverse-variance variance, NOT the misspecification-robust variance (Andrews, Chen & Tecchio 2025,
+# Sec 5 / Prop 5.2; the misspecification-robust SE is for INFERENCE ON THE ESTIMAND, their Sec 4 -- a
+# separate object). Point estimates are unchanged (the channels are variance-only), so only the IFs revert
+# to the efficient ones, and the toolkit is invariant to how the leg was originally fit. Estimation options
+# (pt_assumption, moment_set, weight_scheme, smoother, shrinkage, clustering, weights, ...) come from the
+# fit's stored snapshot ($args); `data` is recovered from the call when NULL. A plug-in refit is also
+# cheaper than the original misspec_robust fit (it skips the expensive psi_Omega weight-estimation channel).
+.edid_plugin_refit <- function(fit, data = NULL, envir = parent.frame()) {
+  args <- .edid_refit_args(fit, envir)
+  args$data              <- .edid_recover_data(fit, data, envir)
+  args$misspec_robust    <- FALSE
+  args$estimation_effect <- FALSE
+  args$higher_order      <- FALSE
+  args[["cband_method"]] <- NULL     # analytic default applies (no bootstrap below)
+  args$cband             <- FALSE
+  args$bstrap            <- FALSE
+  args$aggregate         <- "none"   # the toolkit aggregates on demand via .edid_param_ifs
+  refit <- do.call(edid, args)
+  # Safety net against a data mismatch. The dropped channels are variance-only, so the plug-in refit MUST
+  # reproduce the fit's point estimates; if it does not, the supplied/recovered `data` is not the data this
+  # fit was made from (e.g. a data-symbol collision when the fit was built inside a function, where the
+  # call's data expression resolves to a different object in the caller's frame). Error LOUDLY rather than
+  # return a silently-wrong over-identification statistic; passing `data` explicitly resolves it.
+  a0 <- if (!is.null(fit$att_gt)) fit$att_gt$att else NULL
+  a1 <- if (!is.null(refit$att_gt)) refit$att_gt$att else NULL
+  bad <- is.null(a0) || is.null(a1) || length(a0) != length(a1) ||
+    { ok <- is.finite(a0) & is.finite(a1)
+      sum(ok) == 0L || max(abs(a1[ok] - a0[ok])) > 1e-6 * (1 + max(abs(a0[ok]))) }
+  if (isTRUE(bad))
+    stop("edid over-identification toolkit: the supplied/recovered `data` does not reproduce this fit ",
+         "(the plug-in refit's point estimates differ). The data could not be recovered unambiguously ",
+         "from the fit's call -- e.g. the fit was built inside a function or another object shares the ",
+         "data variable's name. Pass `data` explicitly.", call. = FALSE)
+  refit
+}

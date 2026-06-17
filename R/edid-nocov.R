@@ -509,17 +509,26 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #'   \code{shrink_lambda > 0})
 #' @param return_D logical: include the n x H matrix of per-unit directions
 #'   \eqn{d_i} in the result (tests / diagnostics only)
+#' @param mbar numeric vector length H, or \code{NULL}: the cell's moment vector
+#'   (the long-difference contrasts \eqn{\bar m}, \code{== compute_generated_outcomes_nocov_edid()}).
+#'   When supplied, the result also carries \code{psi_omega}, the FIRST-ORDER
+#'   misspecification weight-estimation influence function
+#'   \eqn{\psi_{\Omega,i} = (D\,\bar m)_i} (the no-covariate sibling of the
+#'   covariate \code{psi_Omega}), for the caller to fold into the cell EIF.
 #'
 #' @return list with \code{applied} (logical), \code{warn} (logical: numeric
 #'   failure vs structural skip), \code{reason} (string or NA),
 #'   \code{var_add} (\eqn{\Delta_{DF} + 2\hat Q}: the additive variance applied to
 #'   the cell), \code{delta_df} (\eqn{\Delta_{DF}}), \code{q_opt} (\eqn{\hat Q}),
 #'   the diagnostics \code{cov_lead} (\eqn{= -\hat Q}) and \code{var_second}
-#'   (J-linear \eqn{\widehat{\mathrm{Var}}(T_2)}), and optionally \code{D}
+#'   (J-linear \eqn{\widehat{\mathrm{Var}}(T_2)}), optionally \code{D}, and --
+#'   when \code{mbar} is supplied -- the per-unit first-order misspecification IF
+#'   \code{psi_omega} (\eqn{= D\,\bar m}; mean-zero, exactly zero under correct
+#'   specification)
 #' @keywords internal
 compute_nocov_ee_correction_edid <- function(
   target_g, target_t, pairs, panel_obj, omega_raw, omega_used, weights,
-  shrink_lambda = NA_real_, return_D = FALSE
+  shrink_lambda = NA_real_, return_D = FALSE, mbar = NULL
 ) {
   # warn = FALSE marks a STRUCTURAL skip: the cell's weights are not the smooth inverse-map
   # estimator (pseudoinverse/uniform fallback on an exactly-singular Omega, e.g. duplicated
@@ -634,6 +643,15 @@ compute_nocov_ee_correction_edid <- function(
               # s_vec_i = d_i' psi_i; together with the cell EIF a_i these give the
               # cross-cell optimism in closed form without storing D or psi.
               s_vec = s_i)
+  # First-order MISSPECIFICATION weight-estimation influence function (the no-covariate analogue of the
+  # covariate psi_Omega channel). theta_w = w'mbar is the weighted pseudo-estimand; estimating Omega -> w
+  # contributes psi_omega_i = mbar' J[phi_i] = (D %*% mbar)_i, with D the per-unit Jacobian directions above
+  # and phi_i the per-unit IF of Omega-hat. It is mean-zero (sum_i d_i = 0) and EXACTLY zero under correct
+  # specification (then mbar lies in span(1) and D %*% 1 = 0 by the sum-to-one weight constraint -- the
+  # optimal-weight FOC), so it only bites under misspecification, where it restores coverage of theta_w.
+  # Unlike var_add it is a genuine per-unit IF, so the caller folds it into the cell EIF and it propagates
+  # to the clustered covariance, the aggregations, the sup-t bands, and the multiplier bootstrap.
+  if (!is.null(mbar)) out$psi_omega <- drop(D %*% mbar)
   if (isTRUE(return_D)) out$D <- D
   out
 }

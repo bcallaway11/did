@@ -356,12 +356,12 @@ test_that("covariate-path moment_set emptying ONE cohort: that cohort NA, the ot
 })
 
 # ---------------------------------------------------------------------------
-# edid_sargan inference conventions (match_fit vs plugin_fast).
+# edid_sargan always uses the EFFICIENT plug-in IF (invariant to the fit's SE convention).
 # ---------------------------------------------------------------------------
-test_that("edid_sargan: match_fit copies the fit's IF convention; plugin_fast stays cheap; Holm identical", {
+test_that("edid_sargan over-id statistic is the efficient plug-in contrast, invariant to the fit's misspec_robust/estimation_effect", {
   skip_on_cran()
   # Single treated cohort + never-treated, T = 5: exactly ONE candidate restriction beyond the PT-Post
-  # base, so each inference mode needs only two internal refits (keeps the test fast).
+  # base, so only two internal refits per call (keeps the test fast).
   set.seed(99); n <- 260; Tt <- 5
   gv <- sample(c(3, Inf), n, replace = TRUE, prob = c(.45, .55))
   xx <- rnorm(n)
@@ -370,30 +370,31 @@ test_that("edid_sargan: match_fit copies the fit's IF convention; plugin_fast st
     data.frame(id = 1:n, time = tt, g = ifelse(is.finite(gv), gv, 0),
                x = xx, y = 0.5 * xx + 0.2 * tt + tau + rnorm(n, 0, 0.5))
   }))
-  fit <- suppressWarnings(
+  # A fit with the misspec_robust / ACH channels ON (default cov) vs a bare plug-in fit.
+  fit_mr <- suppressWarnings(
     edid(df, "y", "id", "time", "g", xformla = ~ x, pt_assumption = "all",
-         aggregate = "event_study", cband = FALSE))                  # default: misspec_robust channels ON
-  expect_true(isTRUE(fit$misspec_robust))                            # the channel-active premise
-  sg_match <- suppressWarnings(edid_sargan(fit, data = df))          # default inference = "match_fit"
-  sg_plug  <- suppressWarnings(edid_sargan(fit, data = df, inference = "plugin_fast"))
-  expect_s3_class(sg_match, "edid_sargan")
-  expect_s3_class(sg_plug,  "edid_sargan")
-  expect_identical(sg_match$inference, "match_fit")
-  expect_identical(sg_plug$inference,  "plugin_fast")
-  # Same candidates in the same order; the statistics DIFFER when the misspec_robust/ACH channels are
-  # active (match_fit carries them into Var-hat(xi); plugin_fast omits them).
-  expect_identical(sg_match$table[, c("gp", "tpre")], sg_plug$table[, c("gp", "tpre")])
-  expect_gt(max(abs(sg_match$table$H_statistic - sg_plug$table$H_statistic)), 1e-8)
-  # The Holm step-down machinery is the SAME function of the p-values in both modes
-  for (sg in list(sg_match, sg_plug)) {
-    h <- .edid_holm(sg$table$p_value, sg$alpha)
-    expect_identical(sg$table$rejected, h$rejected)
-    expect_equal(sg$table$holm_threshold, h$threshold, tolerance = 1e-15)
-  }
-  # plugin_fast announces the cheaper convention; match_fit does not
-  expect_output(print(sg_plug),  "plug-in influence functions only")
-  out_match <- capture.output(print(sg_match))
-  expect_false(any(grepl("plug-in influence functions only", out_match)))
+         aggregate = "event_study", cband = FALSE))
+  fit_pl <- suppressWarnings(
+    edid(df, "y", "id", "time", "g", xformla = ~ x, pt_assumption = "all",
+         aggregate = "event_study", cband = FALSE,
+         misspec_robust = FALSE, estimation_effect = FALSE, higher_order = FALSE))
+  expect_true(isTRUE(fit_mr$misspec_robust))                          # the channel-active premise
+  sg_mr <- suppressWarnings(edid_sargan(fit_mr, data = df))
+  sg_pl <- suppressWarnings(edid_sargan(fit_pl, data = df))
+  expect_s3_class(sg_mr, "edid_sargan")
+  # The over-id statistic refits in the efficient plug-in configuration regardless of how the fit was
+  # made (Andrews, Chen & Tecchio 2025, Sec 5: the over-id object lives on the efficient variance), so it
+  # is INVARIANT to the fit's misspec_robust / estimation_effect setting.
+  expect_identical(sg_mr$table[, c("gp", "tpre")], sg_pl$table[, c("gp", "tpre")])
+  expect_equal(sg_mr$table$H_statistic, sg_pl$table$H_statistic, tolerance = 1e-8)
+  expect_equal(sg_mr$table$p_value,     sg_pl$table$p_value,     tolerance = 1e-8)
+  expect_null(sg_mr$inference)                                        # the inference option is gone
+  # Holm step-down is the same function of the p-values
+  h <- .edid_holm(sg_mr$table$p_value, sg_mr$alpha)
+  expect_identical(sg_mr$table$rejected, h$rejected)
+  expect_equal(sg_mr$table$holm_threshold, h$threshold, tolerance = 1e-15)
+  # the print announces the efficient plug-in convention
+  expect_output(print(sg_mr), "efficient plug-in")
 })
 
 # ---------------------------------------------------------------------------

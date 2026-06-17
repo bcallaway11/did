@@ -10,7 +10,8 @@ edid_frontier(
   fit_restricted,
   parameter = c("event_study", "overall"),
   tau = c(0.25, 0.5, 1),
-  e_set = NULL
+  e_set = NULL,
+  data = NULL
 )
 
 \method{print}{edid_frontier}(x, digits = 4, ...)
@@ -40,6 +41,16 @@ clustering.}
 \eqn{\mathcal{E}}, or \code{NULL} (default: the intersection of the two
 fits' finite post-treatment event times). Ignored for
 \code{parameter = "overall"}.}
+
+\item{data}{The panel data used to fit the two legs, or \code{NULL} (default),
+in which case the data expression stored in \code{fit_restricted$call} is
+re-evaluated in the caller's environment. Both legs are refit in the
+\strong{efficient plug-in configuration} (all estimation-effect channels
+off) before the contrast is formed, so the over-identification statistic
+uses the efficient inverse-variance covariance (Andrews, Chen and Tecchio
+2025) rather than any misspecification-robust SE the fits may report; the
+point estimates, hence the contrast \eqn{d}, are unchanged. Supply
+\code{data} explicitly when the original object is no longer reachable.}
 
 \item{x}{an \code{edid_frontier} object}
 

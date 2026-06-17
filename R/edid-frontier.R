@@ -83,13 +83,21 @@
 edid_frontier <- function(fit_unrestricted, fit_restricted,
                           parameter = c("event_study", "overall"),
                           tau = c(0.25, 0.5, 1),
-                          e_set = NULL) {
+                          e_set = NULL, data = NULL) {
   parameter <- match.arg(parameter, several.ok = TRUE)
   if (!is.numeric(tau) || length(tau) == 0L || any(!is.finite(tau)) || any(tau <= 0)) {
     stop("`tau` must be a vector of positive finite tolerances.", call. = FALSE)
   }
   tau <- sort(unique(as.numeric(tau)))
   .edid_toolkit_check_fits(fit_unrestricted, fit_restricted)
+
+  # Refit both legs in the EFFICIENT plug-in configuration: the robustness frontier
+  # theta_R +/- tau * sqrt(H) * se(theta_R) is the Andrews-Chen-Tecchio (2025) range result, stated for the
+  # efficient inverse-variance variance (Prop 5.2: se(theta_R) is the EFFICIENT estimator's SE), not a
+  # misspecification-robust SE. Point estimates are unchanged; `data` is recovered from the call when NULL.
+  data <- .edid_recover_data(fit_restricted, data, parent.frame())
+  fit_unrestricted <- .edid_plugin_refit(fit_unrestricted, data, parent.frame())
+  fit_restricted   <- .edid_plugin_refit(fit_restricted,   data, parent.frame())
 
   n     <- fit_restricted$n
   ci    <- fit_restricted$cluster_indices

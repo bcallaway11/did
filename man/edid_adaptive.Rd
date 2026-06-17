@@ -14,7 +14,8 @@ edid_adaptive(
   ci = TRUE,
   B = NULL,
   level = 0.95,
-  st_cv = c("exact", "missadapt")
+  st_cv = c("exact", "missadapt"),
+  data = NULL
 )
 
 \method{print}{edid_adaptive}(x, digits = 4, ...)
@@ -120,6 +121,16 @@ beyond the grid and yielding a threshold of about 0.45-0.54 for every
 \eqn{|b| \le B} (quadrature minimum coverage 0.74 at \eqn{\rho = -0.995},
 \eqn{\widetilde{B} = 9}, versus the nominal 0.95). The \emph{adaptive}
 (nonlinear) cv table has no such issue and is always used as shipped.}
+
+\item{data}{The panel data used to fit the two legs, or \code{NULL} (default),
+in which case the data expression stored in \code{fit_restricted$call} is
+re-evaluated in the caller's environment. Both legs are refit in the
+\strong{efficient plug-in configuration} (all estimation-effect channels
+off) before the contrast is formed, so the over-identification statistic
+uses the efficient inverse-variance covariance (Andrews, Chen and Tecchio
+2025) rather than any misspecification-robust SE the fits may report; the
+point estimates, hence the contrast \eqn{d}, are unchanged. Supply
+\code{data} explicitly when the original object is no longer reachable.}
 
 \item{x}{an \code{edid_adaptive} object}
 
