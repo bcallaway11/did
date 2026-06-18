@@ -279,7 +279,11 @@ did_standardization <- function(data, args){
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
                     if (args$anticipation > 0) paste0(" (accounting for anticipation = ", args$anticipation, ")") else "",
                     "."))
-    data <- data[get(args$gname) %in% c(glist, Inf)]
+    # Drop ONLY the first-period-treated units, by row identity (see pre_process_did:
+    # dropping by `gname %in% c(glist, Inf)` also deleted the latest control cohort --
+    # removed from glist above -- whenever there was no never-treated group, silently
+    # corrupting ATT(g,t) for the other groups).
+    data <- data[!treated_first_period]
 
     # update tlist and glist
     tlist <- data[, sort(unique(get(args$tname)))]
@@ -288,6 +292,13 @@ did_standardization <- function(data, args){
     # Drop groups treated in the first period or before
     first_period <- tlist[1]
     glist <- glist[glist != Inf & glist > first_period + args$anticipation]
+
+    # Keep the latest cohort in the data as a not-yet-treated control but excluded
+    # from glist when there is still no never-treated group (mirrors the
+    # `glist[glist < latest_g]` trim above for the nfirstperiod == 0 case).
+    if (args$control_group != "nevertreated" && !any(is.infinite(data[[args$gname]]))) {
+      glist <- glist[glist < latest_g]
+    }
   }
 
   # If user specifies repeated cross sections,

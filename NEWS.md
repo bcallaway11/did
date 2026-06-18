@@ -1,3 +1,7 @@
+# did 2.5.1
+
+  * Bug fix (`att_gt()`): with `control_group = "notyettreated"` and no never-treated group, the presence of already-treated units (treated in or before the first period, possibly via `anticipation`) no longer affects the `ATT(g,t)` of the other groups. The last-treated cohort, which serves as the not-yet-treated comparison group in this design, was being deleted from the data along with the always-treated units — biasing the remaining estimates or turning them into `NA` — and is now retained. `control_group = "nevertreated"` was unaffected.
+
 # did 2.5.0
 
 This is a large release that consolidates all development since 2.3.0. Headline
