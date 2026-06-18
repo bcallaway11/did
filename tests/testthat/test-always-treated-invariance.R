@@ -20,14 +20,14 @@
 # --- helpers ----------------------------------------------------------------
 
 # build a balanced panel from a vector of cohorts; `het` controls level spread
-.mk_design <- function(cohorts, T, n = 25, seed = 1, het = 1.2) {
+.mk_design <- function(cohorts, n_periods, n = 25, seed = 1, het = 1.2) {
   set.seed(seed)
   rows <- data.table::rbindlist(lapply(cohorts, function(g)
     data.table::data.table(g = g,
                            b = exp(stats::rnorm(n, log(1e5), het)),
                            uid = NA_integer_)))
   rows[, uid := .I]
-  d <- merge(data.table::CJ(uid = rows$uid, t = 1:T),
+  d <- merge(data.table::CJ(uid = rows$uid, t = 1:n_periods),
              rows[, .(uid, g, b)], by = "uid")
   d[, y := b + 50 * (t - 1) + 200 * (t >= g & g > 0) + stats::rnorm(.N, 0, 5)]
   as.data.frame(d[])
@@ -57,7 +57,7 @@
 # --- P1: literal always-treated cohort, anticipation = 0 --------------------
 
 test_that("Invariant A holds under P1 (always-treated cohort, no never-treated)", {
-  d <- .mk_design(c(1, 2, 3, 4), T = 4, seed = 2024)
+  d <- .mk_design(c(1, 2, 3, 4), n_periods = 4, seed = 2024)
   eat <- unique(d$uid[d$g == 1])
   for (em in c("dr", "reg", "ipw")) {
     .expect_invariant(d, eat, est_method = em, faster_mode = TRUE)
@@ -68,7 +68,7 @@ test_that("Invariant A holds under P1 (always-treated cohort, no never-treated)"
 # --- P2: anticipation promotes the earliest cohort (no nominal always-treated) -
 
 test_that("Invariant A holds under P2 (anticipation>=1 promotes earliest cohort)", {
-  d <- .mk_design(c(2, 3, 5), T = 5, seed = 11)
+  d <- .mk_design(c(2, 3, 5), n_periods = 5, seed = 11)
   eat <- unique(d$uid[d$g == 2])          # earliest cohort, promoted at anticipation = 1
   .expect_invariant(d, eat, anticipation = 1, faster_mode = TRUE)
   .expect_invariant(d, eat, anticipation = 1, faster_mode = FALSE)
@@ -77,7 +77,7 @@ test_that("Invariant A holds under P2 (anticipation>=1 promotes earliest cohort)
 # --- P3: anticipation removes the sole (coerced) never-treated group ---------
 
 test_that("Invariant A holds under P3 (anticipation un-coerces a late cohort)", {
-  d <- .mk_design(c(2, 3, 6), T = 5, seed = 7)   # cohort 6 = T+1, coerced-to-never at anti=0
+  d <- .mk_design(c(2, 3, 6), n_periods = 5, seed = 7)   # cohort 6 = T+1, coerced-to-never at anti=0
   eat <- unique(d$uid[d$g == 2])
   .expect_invariant(d, eat, anticipation = 1, faster_mode = TRUE)
   .expect_invariant(d, eat, anticipation = 1, faster_mode = FALSE)
@@ -86,7 +86,7 @@ test_that("Invariant A holds under P3 (anticipation un-coerces a late cohort)", 
 # --- scaling oracle: effectively-always-treated outcomes are never read ------
 
 test_that("always-treated outcomes are never read (scaling oracle)", {
-  d <- .mk_design(c(1, 2, 3, 4), T = 4, seed = 2024)
+  d <- .mk_design(c(1, 2, 3, 4), n_periods = 4, seed = 2024)
   d_scaled <- d
   d_scaled$y[d_scaled$g == 1] <- d_scaled$y[d_scaled$g == 1] * 1e6
   a1 <- .att_keyed(d)
@@ -99,7 +99,7 @@ test_that("always-treated outcomes are never read (scaling oracle)", {
 # --- fast/slow parity in the vulnerable regime ------------------------------
 
 test_that("fast and slow paths agree in the no-never + always-treated regime", {
-  d <- .mk_design(c(1, 2, 3, 4, 5), T = 5, seed = 99)
+  d <- .mk_design(c(1, 2, 3, 4, 5), n_periods = 5, seed = 99)
   fast <- .att_keyed(d, faster_mode = TRUE)
   slow <- .att_keyed(d, faster_mode = FALSE)
   expect_equal(is.na(fast), is.na(slow))
@@ -110,7 +110,7 @@ test_that("fast and slow paths agree in the no-never + always-treated regime", {
 # --- structural: latest cohort retained as control, not estimated as a group -
 
 test_that("latest cohort is retained as a control, not deleted, when always-treated present", {
-  d <- .mk_design(c(1, 2, 3, 4, 5), T = 5, seed = 5)
+  d <- .mk_design(c(1, 2, 3, 4, 5), n_periods = 5, seed = 5)
   dp <- suppressWarnings(suppressMessages(
     pre_process_did(yname = "y", tname = "t", idname = "uid", gname = "g",
                     data = d, panel = TRUE, allow_unbalanced_panel = FALSE,
@@ -127,7 +127,7 @@ test_that("latest cohort is retained as a control, not deleted, when always-trea
 # --- nevertreated branch was always immune: confirm it stays invariant -------
 
 test_that("control_group='nevertreated' is invariant to always-treated presence", {
-  d <- .mk_design(c(1, 2, 3, 4), T = 4, seed = 2024)
+  d <- .mk_design(c(1, 2, 3, 4), n_periods = 4, seed = 2024)
   eat <- unique(d$uid[d$g == 1])
   full <- suppressWarnings(suppressMessages(att_gt("y", "t", "uid", "g", data = d,
             control_group = "nevertreated", bstrap = FALSE)))
