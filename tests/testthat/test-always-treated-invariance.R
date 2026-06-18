@@ -4,7 +4,8 @@
 # group, the latest cohort is correctly removed from glist so it can serve as a
 # not-yet-treated control. But when some unit is treated in the first period
 # (accounting for anticipation), the "drop first-period-treated units" step
-# filtered the data by `gname %in% c(0/Inf, glist)` -- and because the latest
+# filtered the data by cohort membership in glist (plus the never-treated
+# sentinel -- 0 in the slow path, Inf in the fast path) -- and because the latest
 # cohort is no longer in glist, that filter ALSO deleted the entire latest
 # control cohort, silently corrupting ATT(g,t) for every other group.
 #
@@ -65,7 +66,7 @@ test_that("Invariant A holds under P1 (always-treated cohort, no never-treated)"
   }
 })
 
-# --- P2: anticipation promotes the earliest cohort (no nominal always-treated) -
+# --- P2: anticipation promotes earliest cohort (no always-treated) ----------
 
 test_that("Invariant A holds under P2 (anticipation>=1 promotes earliest cohort)", {
   d <- .mk_design(c(2, 3, 5), n_periods = 5, seed = 11)
@@ -107,7 +108,7 @@ test_that("fast and slow paths agree in the no-never + always-treated regime", {
   expect_equal(unname(fast[ok]), unname(slow[ok]), tolerance = 1e-10)
 })
 
-# --- structural: latest cohort retained as control, not estimated as a group -
+# --- structural: latest cohort kept as control, not an estimated group ------
 
 test_that("latest cohort is retained as a control, not deleted, when always-treated present", {
   d <- .mk_design(c(1, 2, 3, 4, 5), n_periods = 5, seed = 5)
