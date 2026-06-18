@@ -409,6 +409,43 @@ solve_ols_edid <- function(X, y, weights = NULL) {
   d
 }
 
+# Memoization cache for plug-in refits (.edid_plugin_refit). The over-identification toolkit calls the
+# plug-in refit on the SAME legs many times in one operation (edid_hausman event_study + overall,
+# edid_sargan, and once per window-grow step), and the plug-in refit is a PURE FUNCTION of (fit, data) --
+# corrections are forced off, options come from fit$args, data is fixed -- so caching it is bit-identical to
+# recomputing. Keyed by a stable fingerprint of the fit (att-vector moments) + the refit args + nrow(data).
+# Bounded (clear-all on overflow) to cap memory. Disable via options(edid_plugin_cache = FALSE).
+.edid_plugin_cache <- new.env(parent = emptyenv())
+
+.edid_plugin_key <- function(fit, args) {
+  a  <- fit$att_gt$att
+  af <- if (is.null(a) || !length(a)) "na" else
+        sprintf("%d:%.12g:%.12g:%.12g", length(a),
+                sum(a, na.rm = TRUE), sum(a^2, na.rm = TRUE), max(abs(a), na.rm = TRUE))
+  xf <- if (is.null(args$xformla)) "" else paste(deparse(args$xformla), collapse = "")
+  nd <- if (is.data.frame(args$data)) nrow(args$data) else 0L
+  paste(af, args$weight_scheme, args$ratio_method, args$pt_assumption,
+        as.character(if (is.null(args$omega_cov_shrink)) "" else args$omega_cov_shrink), xf,
+        paste(if (is.null(args$weightsname)) "" else args$weightsname, collapse = ","),
+        paste(if (is.null(args$clustervars)) "" else args$clustervars, collapse = ","),
+        args$idname, args$tname, args$gname, args$yname,
+        if (is.null(args$min_pair_units)) "" else args$min_pair_units,
+        if (is.null(args$anticipation)) "" else args$anticipation, nd, sep = "|")
+}
+
+#' Clear the plug-in-refit memoization cache
+#'
+#' The over-identification toolkit memoizes its internal plug-in refits within a session (see
+#' \code{options(edid_plugin_cache)}). This clears that cache; rarely needed (entries are keyed by a fit
+#' fingerprint, so they never collide), but available for long-running sessions or benchmarking.
+#' @return Invisibly \code{NULL}.
+#' @keywords internal
+#' @export
+edid_clear_plugin_cache <- function() {
+  rm(list = ls(.edid_plugin_cache, all.names = TRUE), envir = .edid_plugin_cache)
+  invisible(NULL)
+}
+
 # Refit a fit in the BARE PLUG-IN configuration -- all three estimation-effect channels off
 # (misspec_robust / estimation_effect / higher_order) -- so its influence functions are the EFFICIENT
 # plug-in EIF. This is the influence function the over-identification toolkit (edid_hausman / edid_sargan /
@@ -430,6 +467,13 @@ solve_ols_edid <- function(X, y, weights = NULL) {
   args$cband             <- FALSE
   args$bstrap            <- FALSE
   args$aggregate         <- "none"   # the toolkit aggregates on demand via .edid_param_ifs
+  ## MEMOIZE: the plug-in refit is a pure function of (fit, data); the toolkit calls this on the SAME legs
+  ## repeatedly. Return the cached refit on a hit (bit-identical -- the do.call AND the att-reproduction
+  ## guard already ran on the miss). options(edid_plugin_cache = FALSE) forces the always-refit path.
+  use_cache <- isTRUE(getOption("edid_plugin_cache", TRUE))
+  key <- if (use_cache) tryCatch(.edid_plugin_key(fit, args), error = function(e) NULL) else NULL
+  if (!is.null(key) && exists(key, envir = .edid_plugin_cache, inherits = FALSE))
+    return(get(key, envir = .edid_plugin_cache, inherits = FALSE))
   refit <- do.call(edid, args)
   # Safety net against a data mismatch. The dropped channels are variance-only, so the plug-in refit MUST
   # reproduce the fit's point estimates; if it does not, the supplied/recovered `data` is not the data this
@@ -446,5 +490,10 @@ solve_ols_edid <- function(X, y, weights = NULL) {
          "(the plug-in refit's point estimates differ). The data could not be recovered unambiguously ",
          "from the fit's call -- e.g. the fit was built inside a function or another object shares the ",
          "data variable's name. Pass `data` explicitly.", call. = FALSE)
+  if (!is.null(key)) {
+    if (length(ls(.edid_plugin_cache, all.names = TRUE)) >= 16L)
+      rm(list = ls(.edid_plugin_cache, all.names = TRUE), envir = .edid_plugin_cache)   # bound memory
+    assign(key, refit, envir = .edid_plugin_cache)
+  }
   refit
 }
