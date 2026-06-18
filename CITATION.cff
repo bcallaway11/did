@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "did: Difference in Differences"
-version: 2.5.0
+version: 2.5.1
 year: 2026
 authors:
   - family-names: Callaway

@@ -15,8 +15,10 @@ This release requires 'DRDID' (>= 1.3.0), which is available on CRAN
 
 ## Notable changes
 
-did 2.5.0 is a large release that consolidates all development since 2.3.0
-(see NEWS.md) and bumps the required version of 'DRDID' to (>= 1.3.0).
+did 2.5.1 is a patch release that fixes a correctness bug in `att_gt()` with
+`control_group = "notyettreated"` and no never-treated group, where the
+presence of already-treated units could silently bias or NA the estimated
+ATT(g,t) of the other groups (see NEWS.md).
 
 ## Package size
 
