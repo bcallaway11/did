@@ -266,7 +266,14 @@ pre_process_did <- function(yname,
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
                     if (anticipation > 0) paste0(" (accounting for anticipation = ", anticipation, ")") else "",
                     "."))
-    data <- data[ data[,gname] %in% c(0,glist), ]
+    # Drop ONLY the first-period-treated units, by row identity. The previous
+    # `data[gname %in% c(0, glist)]` dropped by cohort membership in glist, which --
+    # when there is no never-treated group -- also deleted the latest cohort that was
+    # deliberately removed from glist above (the `glist[glist < latest_g]` trim) so it
+    # could serve as a not-yet-treated control. That silently deleted a valid
+    # comparison cohort and corrupted ATT(g,t) for the other groups; the
+    # treated_first_period mask removes exactly the already-treated units, nothing else.
+    data <- data[ !treated_first_period, , drop = FALSE ]
     # update tlist and glist
     tlist <- sort(unique(data[,tname]))
     glist <- sort(unique(data[,gname]))
@@ -275,6 +282,13 @@ pre_process_did <- function(yname,
     # drop groups treated in the first period or before
     first.period <- tlist[1]
     glist <- glist[glist > first.period + anticipation]
+
+    # The latest cohort stays in the data as a not-yet-treated control but, when there
+    # is still no never-treated group, must remain excluded from glist (it gets no ATT
+    # of its own) -- mirroring the exclusion above for the nfirstperiod == 0 case.
+    if (control_group != "nevertreated" && !any(data[,gname] == 0)) {
+      glist <- glist[glist < latest_g]
+    }
 
   }
 
