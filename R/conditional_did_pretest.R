@@ -66,6 +66,8 @@ conditional_did_pretest <- function(yname,
 
   message("We are no longer updating this function.  It should continue to work, but most users find the pre-tests already reported by the `att_gt` function to be sufficient for most empirical applications.")
 
+  if (missing(control_group)) control_group <- "nevertreated"
+
   # this is a DIDparams object
   dp <- pre_process_did(yname=yname,
                         tname=tname,
@@ -364,6 +366,7 @@ indicator <- function(X, u) {
 #'
 #' @export
 test.mboot <- function(inf.func, DIDparams, cores=1) {
+  validate_positive_whole_number(cores, "cores")
 
   # setup needed variables
   data <- DIDparams$data
@@ -374,6 +377,9 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
+  validate_positive_whole_number(biters, "biters")
+  validate_alp(alp)
+  validate_logical_scalar(panel, "DIDparams$panel")
 
   # just get n obsevations (for clustering below...)
   if (panel) {

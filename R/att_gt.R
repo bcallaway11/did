@@ -302,6 +302,20 @@ att_gt <- function(yname,
   # Capture extra arguments for custom est_method
   extra_args <- list(...)
 
+  if (missing(control_group)) control_group <- "nevertreated"
+  validate_choice_scalar(
+    control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'"
+  )
+  validate_choice_scalar(
+    base_period,
+    "base_period",
+    c("universal", "varying"),
+    "base_period must be either 'universal' or 'varying'."
+  )
+
   # Validate compute_inffunc (point-estimates-only switch)
   if (!is.logical(compute_inffunc) || length(compute_inffunc) != 1 || is.na(compute_inffunc)) {
     stop("compute_inffunc must be a single logical (TRUE or FALSE).")

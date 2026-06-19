@@ -121,11 +121,12 @@ validate_anticipation <- function(anticipation) {
   if (!is.numeric(anticipation)) {
     stop("anticipation must be numeric. Please convert it.")
   }
-  if (length(anticipation) != 1L || is.na(anticipation)) {
-    stop("anticipation must be a single non-missing number. Please check your arguments.")
+  if (length(anticipation) != 1L || is.na(anticipation) ||
+      !is.finite(anticipation)) {
+    stop("anticipation must be a single finite non-missing number. Please check your arguments.")
   }
-  if (anticipation < 0) {
-    stop("anticipation must be non-negative. Please check your arguments.")
+  if (anticipation < 0 || anticipation != round(anticipation)) {
+    stop("anticipation must be a non-negative whole number. Please check your arguments.")
   }
   invisible(anticipation)
 }
@@ -144,19 +145,47 @@ validate_numeric_scalar <- function(x, name) {
   invisible(x)
 }
 
-validate_alp <- function(alp) {
+validate_positive_numeric_scalar <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) ||
+      !is.finite(x) || x <= 0) {
+    stop(name, " must be a single positive finite number.")
+  }
+  invisible(x)
+}
+
+validate_alp <- function(alp, name = "alp") {
   if (!is.numeric(alp) || length(alp) != 1 || is.na(alp) || alp <= 0 || alp >= 1) {
-    stop("alp must be a single number strictly between 0 and 1.")
+    stop(name, " must be a single number strictly between 0 and 1.")
   }
   invisible(alp)
 }
 
 validate_positive_whole_number <- function(x, name) {
   if (!is.numeric(x) || length(x) != 1 || is.na(x) ||
-      x < 1 || x != round(x)) {
+      !is.finite(x) || x < 1 || x != round(x)) {
     stop(name, " must be a single positive whole number.")
   }
   invisible(x)
+}
+
+validate_choice_scalar <- function(x, name, choices, message = NULL) {
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !(x %in% choices)) {
+    if (is.null(message)) {
+      message <- paste0(name, " must be one of: ", paste(choices, collapse = ", "), ".")
+    }
+    stop(message)
+  }
+  invisible(x)
+}
+
+validate_optional_choice_scalar <- function(x, name, choices, message = NULL) {
+  if (is.null(x)) return(invisible(x))
+  validate_choice_scalar(x, name, choices, message)
+}
+
+validate_optional_numeric_scalar <- function(x, name) {
+  if (is.null(x)) return(invisible(x))
+  validate_numeric_scalar(x, name)
 }
 
 #' @title get_wide_data

@@ -38,14 +38,19 @@ pre_process_did <- function(yname,
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
   # set control group
-  control_group <- control_group[1]
-  if(!(control_group %in% c("nevertreated","notyettreated"))){
-    stop("control_group must be either 'nevertreated' or 'notyettreated'")
-  }
-  base_period <- base_period[1]
-  if (!(base_period %in% c("universal", "varying"))) {
-    stop("base_period must be either 'universal' or 'varying'.")
-  }
+  if (missing(control_group)) control_group <- "nevertreated"
+  validate_choice_scalar(
+    control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'"
+  )
+  validate_choice_scalar(
+    base_period,
+    "base_period",
+    c("universal", "varying"),
+    "base_period must be either 'universal' or 'varying'."
+  )
   validate_logical_scalar(panel, "panel")
   validate_logical_scalar(allow_unbalanced_panel, "allow_unbalanced_panel")
   validate_logical_scalar(bstrap, "bstrap")

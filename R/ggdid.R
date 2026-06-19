@@ -79,6 +79,7 @@ ggdid.MP <- function(object,
                      theming = TRUE,
                      grtitle = "Group",
                      ...) {
+  validate_positive_whole_number(ncol, "ncol")
 
   mpobj <- object
 

@@ -10,10 +10,11 @@ validate_args <- function(args, data){
   data_names <- names(data)
 
   # ---------------------- Error Checking ----------------------
-  args$control_group <- args$control_group[1]
   # Flag for control group types
   control_group_message <- "control_group must be either 'nevertreated' or 'notyettreated'"
-  dreamerr::check_set_arg(args$control_group, "match", .choices = c("nevertreated", "notyettreated"), .message = control_group_message, .up = 1)
+  validate_choice_scalar(args$control_group, "control_group",
+                         c("nevertreated", "notyettreated"),
+                         control_group_message)
 
   # Flag for tname, gname, yname
   name_message <- "__ARG__ must be a character scalar and a name of a column from the dataset."
@@ -85,9 +86,10 @@ validate_args <- function(args, data){
   }
 
   # Flag for base period: not in c("universal", "varying"), stop
-  args$base_period <- args$base_period[1]
   base_period_message <- "base_period must be either 'universal' or 'varying'."
-  dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
+  validate_choice_scalar(args$base_period, "base_period",
+                         c("universal", "varying"),
+                         base_period_message)
 
   # Flags for cluster variable
   # Note: idname was already stripped from clustervars and the at-most-one check
@@ -706,14 +708,19 @@ pre_process_did2 <- function(yname,
   args <- mget(args_names, sys.frame(sys.nframe()))
 
   # pick a control_group by default
-  args$control_group <- control_group[1]
-  if (!(args$control_group %in% c("nevertreated", "notyettreated"))) {
-    stop("control_group must be either 'nevertreated' or 'notyettreated'")
-  }
-  args$base_period <- base_period[1]
-  if (!(args$base_period %in% c("universal", "varying"))) {
-    stop("base_period must be either 'universal' or 'varying'.")
-  }
+  if (missing(control_group)) args$control_group <- "nevertreated"
+  validate_choice_scalar(
+    args$control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'"
+  )
+  validate_choice_scalar(
+    args$base_period,
+    "base_period",
+    c("universal", "varying"),
+    "base_period must be either 'universal' or 'varying'."
+  )
   validate_logical_scalar(args$faster_mode, "faster_mode")
   check_reserved_did_names(yname = args$yname, tname = args$tname,
                            idname = args$idname, gname = args$gname,

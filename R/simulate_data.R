@@ -27,6 +27,11 @@
 #' 
 #' @export
 reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
+  validate_positive_whole_number(time.periods, "time.periods")
+  validate_positive_whole_number(n, "n")
+  validate_logical_scalar(ipw, "ipw")
+  validate_logical_scalar(reg, "reg")
+
   #-----------------------------------------------------------------------------
   # set parameters
   #-----------------------------------------------------------------------------
@@ -90,6 +95,8 @@ reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
 #'
 #' @export
 build_sim_dataset <- function(sp_list, panel=TRUE) {
+  validate_logical_scalar(panel, "panel")
+
   #-----------------------------------------------------------------------------
   # build dataset
   #-----------------------------------------------------------------------------
@@ -109,6 +116,10 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   gamG <- sp_list$gamG
   ipw <- sp_list$ipw
   reg <- sp_list$reg
+  validate_positive_whole_number(time.periods, "sp_list$time.periods")
+  validate_positive_whole_number(n, "sp_list$n")
+  validate_logical_scalar(ipw, "sp_list$ipw")
+  validate_logical_scalar(reg, "sp_list$reg")
 
   X <- rnorm(n)
 
@@ -259,6 +270,15 @@ sim <- function(sp_list,
                 est_method="dr",
                 clustervars=NULL,
                 panel=TRUE) {
+  validate_logical_scalar(bstrap, "bstrap")
+  validate_logical_scalar(cband, "cband")
+  validate_logical_scalar(panel, "panel")
+  validate_optional_choice_scalar(
+    ret,
+    "ret",
+    c("Wpval", "cband", "simple", "dynamic", "notyettreated"),
+    "ret must be NULL or one of 'Wpval', 'cband', 'simple', 'dynamic', or 'notyettreated'."
+  )
 
   ddf <- build_sim_dataset(sp_list=sp_list,
                            panel=panel)

@@ -23,6 +23,9 @@
 #'
 #' @export
 mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+  validate_logical_scalar(return_V, "return_V")
 
   # setup needed variables according to faster_mode; This returns different type of objects
   # depending on whether we are in faster_mode or not that has to be handled in the code below
@@ -32,6 +35,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
   tname <- DIDparams$tname
   alp <- DIDparams$alp
   panel <- DIDparams$panel
+  validate_positive_whole_number(biters, "biters")
+  validate_alp(alp)
+  validate_logical_scalar(panel, "DIDparams$panel")
   true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
   unbalanced_panel <- DIDparams$allow_unbalanced_panel
   # Reuse the per-unit cluster vector that att_gt() stored in DIDparams when it
@@ -179,6 +185,10 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
 }
 
 run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
+  validate_positive_whole_number(biters, "biters")
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+
   # Split biters into per-core chunks that are always non-negative and sum to
   # biters. The previous rep(ceiling(biters/cores), cores) + correction made
   # chunks[1] negative when biters < cores (e.g. biters=2, cores=4 -> [-1,1,1,1]),

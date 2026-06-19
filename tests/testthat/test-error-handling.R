@@ -45,8 +45,20 @@ test_that("att_gt rejects non-exact control_group and base_period values in both
     )
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", control_group = c("nevertreated", "notyettreated"),
+             faster_mode = fm, bstrap = FALSE),
+      "control_group must be either"
+    )
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
              gname = "G", base_period = "Universal", faster_mode = fm,
              bstrap = FALSE),
+      "base_period must be either"
+    )
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", base_period = c("varying", "universal"),
+             faster_mode = fm, bstrap = FALSE),
       "base_period must be either"
     )
   }
@@ -57,7 +69,7 @@ test_that("att_gt rejects negative or non-numeric anticipation in both modes", {
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
              gname = "G", anticipation = -1, faster_mode = fm, bstrap = FALSE),
-      "anticipation must be non-negative"
+      "anticipation must be a non-negative whole number"
     )
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
@@ -67,12 +79,22 @@ test_that("att_gt rejects negative or non-numeric anticipation in both modes", {
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
              gname = "G", anticipation = c(0, 1), faster_mode = fm, bstrap = FALSE),
-      "anticipation must be a single non-missing number"
+      "anticipation must be a single finite non-missing number"
     )
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
              gname = "G", anticipation = NA_real_, faster_mode = fm, bstrap = FALSE),
-      "anticipation must be a single non-missing number"
+      "anticipation must be a single finite non-missing number"
+    )
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", anticipation = Inf, faster_mode = fm, bstrap = FALSE),
+      "anticipation must be a single finite non-missing number"
+    )
+    expect_error(
+      att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+             gname = "G", anticipation = 1.5, faster_mode = fm, bstrap = FALSE),
+      "anticipation must be a non-negative whole number"
     )
   }
 })
@@ -101,7 +123,7 @@ test_that("att_gt rejects invalid scalar logical controls before base R errors",
 })
 
 test_that("att_gt rejects invalid cores before parallel code sees it", {
-  for (bad_cores in list(0, -1, 1.5, c(1, 2), "2", NA_real_)) {
+  for (bad_cores in list(0, -1, 1.5, c(1, 2), "2", NA_real_, Inf)) {
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
              gname = "G", cores = bad_cores, bstrap = FALSE),
@@ -176,7 +198,7 @@ test_that("att_gt errors on invalid alp", {
 })
 
 test_that("att_gt errors on invalid biters when bootstrapping", {
-  for (bad_biters in list(-5, 0, 2.5, c(100, 200), "100", NA_real_)) {
+  for (bad_biters in list(-5, 0, 2.5, c(100, 200), "100", NA_real_, Inf)) {
     expect_error(
       att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
              gname = "G", bstrap = TRUE, biters = bad_biters),
@@ -189,6 +211,34 @@ test_that("att_gt errors on invalid biters when bootstrapping", {
            gname = "G", bstrap = FALSE, biters = -5)
   )
   expect_s3_class(res, "MP")
+})
+
+test_that("simulation helpers reject invalid scalar controls before raw R errors", {
+  expect_error(did::reset.sim(time.periods = NA_integer_),
+               "time.periods must be a single positive whole number")
+  expect_error(did::reset.sim(n = 0),
+               "n must be a single positive whole number")
+  expect_error(did::reset.sim(ipw = NA),
+               "ipw must be a single logical")
+  expect_error(did::reset.sim(reg = c(TRUE, FALSE)),
+               "reg must be a single logical")
+
+  expect_error(did::build_sim_dataset(sp, panel = NA),
+               "panel must be a single logical")
+  sp_bad <- sp
+  sp_bad$ipw <- NA
+  expect_error(did::build_sim_dataset(sp_bad),
+               "sp_list\\$ipw must be a single logical")
+
+  expect_error(did::sim(sp, ret = NA, bstrap = FALSE, cband = FALSE),
+               "ret must be NULL or one of")
+  expect_error(did::sim(sp, ret = c("Wpval", "cband"),
+                        bstrap = FALSE, cband = FALSE),
+               "ret must be NULL or one of")
+  expect_error(did::sim(sp, bstrap = NA, cband = FALSE),
+               "bstrap must be a single logical")
+  expect_error(did::sim(sp, bstrap = FALSE, cband = NA),
+               "cband must be a single logical")
 })
 
 test_that("aggte rejects invalid scalar controls before base R errors", {
@@ -210,6 +260,57 @@ test_that("aggte rejects invalid scalar controls before base R errors", {
                "min_e must be a single non-missing number")
   expect_error(aggte(mp, type = "dynamic", balance_e = c(0, 1)),
                "balance_e must be a single non-missing number")
+})
+
+test_that("plotting helpers reject invalid scalar controls before ggplot errors", {
+  mp <- suppressWarnings(suppressMessages(
+    att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+           gname = "G", bstrap = FALSE)
+  ))
+  expect_error(ggdid(mp, legend = NA),
+               "legend must be a single logical")
+  expect_error(ggdid(mp, theming = NA),
+               "theming must be a single logical")
+  expect_error(ggdid(mp, xgap = NA_real_),
+               "xgap must be a single positive finite number")
+  expect_error(ggdid(mp, ncol = NA_real_),
+               "ncol must be a single positive whole number")
+
+  agg <- aggte(mp, type = "group", cband = FALSE)
+  expect_error(ggdid(agg, legend = NA),
+               "legend must be a single logical")
+  expect_error(ggdid(agg, ref_line = c(0, 1)),
+               "ref_line must be a single non-missing number")
+})
+
+test_that("mboot rejects invalid scalar controls before bootstrap internals", {
+  mp <- suppressWarnings(suppressMessages(
+    att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
+           gname = "G", bstrap = FALSE)
+  ))
+  inf <- mp$inffunc[, 1, drop = FALSE]
+  dp <- mp$DIDparams
+  dp$biters <- 10
+
+  expect_error(mboot(inf, dp, pl = NA),
+               "pl must be a single logical")
+  expect_error(mboot(inf, dp, cores = NA_real_),
+               "cores must be a single positive whole number")
+  expect_error(mboot(inf, dp, return_V = NA),
+               "return_V must be a single logical")
+
+  dp_bad <- dp
+  dp_bad$biters <- Inf
+  expect_error(mboot(inf, dp_bad),
+               "biters must be a single positive whole number")
+  dp_bad <- dp
+  dp_bad$alp <- NA_real_
+  expect_error(mboot(inf, dp_bad),
+               "alp must be a single number strictly between 0 and 1")
+  dp_bad <- dp
+  dp_bad$panel <- NA
+  expect_error(mboot(inf, dp_bad),
+               "DIDparams\\$panel must be a single logical")
 })
 
 test_that("att_gt errors on fix_weights with panel=FALSE", {
@@ -463,6 +564,14 @@ test_that("aggte errors on invalid type", {
                    gname = "G", bstrap = FALSE)
   expect_error(
     aggte(mp_tmp, type = "invalid"),
+    "must be one of"
+  )
+  expect_error(
+    aggte(mp_tmp, type = c("simple", "group")),
+    "must be one of"
+  )
+  expect_error(
+    aggte(mp_tmp, type = NA_character_),
     "must be one of"
   )
 })

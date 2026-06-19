@@ -36,6 +36,12 @@ compute.aggte <- function(MP,
   n <- MP$n
 
   validate_logical_scalar(na.rm, "na.rm")
+  validate_choice_scalar(
+    type,
+    "type",
+    c("simple", "dynamic", "group", "calendar"),
+    '`type` must be one of c("simple", "dynamic", "group", "calendar")'
+  )
   validate_numeric_scalar(min_e, "min_e")
   validate_numeric_scalar(max_e, "max_e")
   if (!is.null(balance_e)) validate_numeric_scalar(balance_e, "balance_e")
@@ -129,10 +135,6 @@ compute.aggte <- function(MP,
   MP$DIDparams$alp <- alp
   MP$DIDparams$cband <- cband
   dp <- MP$DIDparams
-
-  if (!(type %in% c("simple", "dynamic", "group", "calendar"))) {
-    stop('`type` must be one of c("simple", "dynamic", "group", "calendar")')
-  }
 
   if (na.rm) {
     notna <- !is.na(att)
