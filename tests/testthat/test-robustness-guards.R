@@ -216,3 +216,43 @@ test_that("slow panel path converts estimator NaN cells to NA like fast mode", {
   expect_false(any(is.nan(slow$att)))
   expect_equal(is.na(slow$att), is.na(fast$att))
 })
+
+test_that("never-treated units coded as gname = Inf are NOT dropped (Inf is a valid never-treated code)", {
+  # Regression test: complete_finite_cases() must exclude gname from its
+  # is.finite() filter. Inf is a documented never-treated code (att_gt() reports
+  # "group status 0 or Inf"); on master gname = Inf produces results identical to
+  # gname = 0. A naive "drop all non-finite numeric rows" filter silently deletes
+  # every never-treated unit -- erroring or, worse (control_group="nevertreated"),
+  # returning plausible-looking but WRONG estimates with no error.
+  data(mpdta, package = "did")
+  d_inf <- mpdta
+  d_inf$first.treat[d_inf$first.treat == 0] <- Inf
+
+  for (fm in c(TRUE, FALSE)) {
+    for (cg in c("nevertreated", "notyettreated")) {
+      ref <- suppressWarnings(suppressMessages(att_gt(yname = "lemp", tname = "year",
+        idname = "countyreal", gname = "first.treat", xformla = ~lpop, data = mpdta,
+        control_group = cg, faster_mode = fm, bstrap = FALSE, cband = FALSE)))
+      inf <- suppressWarnings(suppressMessages(att_gt(yname = "lemp", tname = "year",
+        idname = "countyreal", gname = "first.treat", xformla = ~lpop, data = d_inf,
+        control_group = cg, faster_mode = fm, bstrap = FALSE, cband = FALSE)))
+      # never-treated units must survive: same number of influence-function rows
+      expect_equal(nrow(inf$inffunc), nrow(ref$inffunc))
+      expect_equal(inf$att, ref$att, tolerance = 1e-10)
+      expect_equal(inf$inffunc, ref$inffunc, tolerance = 1e-10)
+    }
+  }
+})
+
+test_that("NA / NaN gname rows are still dropped while Inf is preserved", {
+  # The finite-exclude carve-out for gname must not also disable the NA/NaN check:
+  # complete.cases() still removes missing/NaN gname rows.
+  df <- data.frame(g = c(0, Inf, NA, NaN, 5),
+                   y = c(1, 2, 3, 4, Inf),
+                   x = c(1, 2, 3, 4, 5))
+  expect_equal(complete_finite_cases(df, finite_exclude = "g"),
+               c(TRUE, TRUE, FALSE, FALSE, FALSE))
+  # without the carve-out, the Inf-coded never-treated row would also be dropped
+  expect_equal(complete_finite_cases(df),
+               c(TRUE, FALSE, FALSE, FALSE, FALSE))
+})

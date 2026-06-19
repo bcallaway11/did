@@ -155,9 +155,11 @@ pre_process_did <- function(yname,
 
   # check if any covariates were missing
   n_orig <- nrow(data)
-  # drop rows with any missing or non-finite id / time / outcome / group / weight /
-  # cluster or RAW covariate value
-  data <- data[complete_finite_cases(data), ]
+  # drop rows with any missing or non-finite id / time / outcome / weight /
+  # cluster or RAW covariate value. gname is excluded from the finite check
+  # because Inf is a valid never-treated code there (see complete_finite_cases);
+  # missing/NaN gname is still dropped via complete.cases().
+  data <- data[complete_finite_cases(data, finite_exclude = gname), ]
   # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate), preserving the previous model.frame-based row dropping. We use
   # model.frame (NOT model.matrix) with na.action = na.pass: model.frame keeps EVERY

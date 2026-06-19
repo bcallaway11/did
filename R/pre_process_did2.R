@@ -145,7 +145,9 @@ did_standardization <- function(data, args){
 
   # Check if any covariates were missing
   n_orig <- data[, .N]
-  data <- data[complete_finite_cases(data)]
+  # gname is excluded from the finite check because Inf is a valid never-treated
+  # code there (see complete_finite_cases); missing/NaN gname is still dropped.
+  data <- data[complete_finite_cases(data, finite_exclude = args$gname)]
   # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate); safe now that raw-covariate NAs are removed (so poly()/ns()/... will
   # not error on NA input). Use model.frame (NOT model.matrix) with na.action =

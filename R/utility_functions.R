@@ -169,10 +169,15 @@ validate_column_names <- function(x, name, data_names, allow_null = FALSE) {
   invisible(x)
 }
 
-complete_finite_cases <- function(data) {
+complete_finite_cases <- function(data, finite_exclude = character(0)) {
   keep <- stats::complete.cases(data)
   if (!length(keep)) return(keep)
   for (nm in names(data)) {
+    # Columns in finite_exclude still get the NA/NaN check via complete.cases()
+    # above, but skip the is.finite() check below. This preserves Inf in such
+    # columns -- notably gname, where Inf is a documented never-treated code
+    # ("group status 0 or Inf") that must NOT be dropped as if it were bad data.
+    if (nm %in% finite_exclude) next
     x <- data[[nm]]
     if (is.numeric(x)) {
       finite_x <- is.finite(x)
