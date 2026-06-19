@@ -179,10 +179,13 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
 }
 
 run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
-  ngroups = ceiling(biters/cores)
-  chunks = rep(ngroups, cores)
-  # Round down so you end up with the right number of biters
-  chunks[1] = chunks[1] + biters - sum(chunks)
+  # Split biters into per-core chunks that are always non-negative and sum to
+  # biters. The previous rep(ceiling(biters/cores), cores) + correction made
+  # chunks[1] negative when biters < cores (e.g. biters=2, cores=4 -> [-1,1,1,1]),
+  # which crashed BMisc::multiplier_bootstrap(). This split never goes negative
+  # and drops empty chunks.
+  chunks <- diff(round(seq(0, biters, length.out = cores + 1)))
+  chunks <- chunks[chunks > 0]
 
   n <- nrow(inf.func)
   parallel.function <- function(biters) {
@@ -193,15 +196,22 @@ run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
     warning("Parallel processing (pl=TRUE) is not supported on Windows. Using sequential processing instead.")
     pl <- FALSE
   }
-  if(n > 2500 & pl == TRUE & cores > 1) {
-    results = parallel::mclapply(
+  if (n > 2500 && pl && cores > 1) {
+    # Use parallel-safe RNG streams so a fixed set.seed() makes the parallel
+    # bootstrap reproducible run-to-run. Under the default Mersenne-Twister,
+    # mclapply()'s forked children re-seed non-deterministically, so the
+    # bootstrap draws -- and hence the SE and the uniform-band critical value --
+    # would drift between identical-seed runs. Restore the caller's RNGkind on exit.
+    old_kind <- RNGkind("L'Ecuyer-CMRG")
+    on.exit(RNGkind(old_kind[1L], old_kind[2L], old_kind[3L]), add = TRUE)
+    results <- parallel::mclapply(
       chunks,
       FUN = parallel.function,
-      mc.cores = cores
+      mc.cores = min(cores, length(chunks))   # no more workers than non-empty chunks
     )
-    results = do.call(rbind, results)
+    results <- do.call(rbind, results)
   } else {
-    results = BMisc::multiplier_bootstrap(inf.func, biters)
+    results <- BMisc::multiplier_bootstrap(inf.func, biters)
   }
   return(results)
 }

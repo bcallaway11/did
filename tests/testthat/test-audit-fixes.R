@@ -115,3 +115,49 @@ test_that("negative gname is rejected with a clear error in both code paths", {
     )
   }
 })
+
+# ---- D. parallel multiplier bootstrap: reproducibility + chunking guard ---------
+
+test_that("parallel multiplier bootstrap is reproducible under a fixed seed", {
+  skip_on_os("windows")          # parallel path is force-disabled on Windows
+  inf <- matrix(stats::rnorm(2600 * 4), 2600, 4)   # n > 2500 triggers the parallel branch
+  pre_kind <- RNGkind()                            # whatever the runner's RNG kind is
+  set.seed(7); a <- did:::run_multiplier_bootstrap(inf, 300, pl = TRUE, cores = 2)
+  set.seed(7); b <- did:::run_multiplier_bootstrap(inf, 300, pl = TRUE, cores = 2)
+  expect_identical(a, b)                            # same seed -> bit-identical draws
+  expect_identical(RNGkind(), pre_kind)             # caller's RNG kind restored (whatever it was)
+})
+
+test_that("parallel bootstrap chunking never produces negative chunks (biters < cores)", {
+  # the fix: chunks are non-negative and sum to biters for any biters/cores
+  # (the old rep(ceiling(biters/cores), cores) + correction went negative when
+  # biters < cores, e.g. biters=2,cores=4 -> [-1,1,1,1] -> crash).
+  for (biters in c(1, 2, 3, 7, 1000)) {
+    for (cores in c(1, 2, 4, 8)) {
+      chunks <- diff(round(seq(0, biters, length.out = cores + 1)))
+      chunks <- chunks[chunks > 0]
+      expect_true(all(chunks > 0))
+      expect_equal(sum(chunks), biters)
+    }
+  }
+  # and the parallel branch itself no longer errors with biters < cores
+  skip_on_os("windows")
+  inf <- matrix(stats::rnorm(2600 * 3), 2600, 3)
+  expect_no_error(did:::run_multiplier_bootstrap(inf, biters = 1, pl = TRUE, cores = 2))
+})
+
+# ---- E. calendar aggregation warns that min_e/max_e/balance_e are ignored ------
+
+test_that("aggte(type='calendar') warns that min_e/max_e/balance_e are ignored, returns unrestricted", {
+  data(mpdta, package = "did")
+  cs <- suppressWarnings(suppressMessages(att_gt("lemp", "year", "countyreal",
+        "first.treat", data = mpdta, bstrap = FALSE)))
+  ws <- testthat::capture_warnings(suppressMessages(aggte(cs, type = "calendar", max_e = 2, na.rm = TRUE)))
+  expect_true(any(grepl("ignored for type", ws)))
+  a_win <- suppressWarnings(suppressMessages(aggte(cs, type = "calendar", max_e = 2, na.rm = TRUE)))
+  a_unr <- suppressWarnings(suppressMessages(aggte(cs, type = "calendar", na.rm = TRUE)))
+  expect_equal(a_win$overall.att, a_unr$overall.att)   # max_e is a no-op for calendar (correct)
+  # no spurious warning at the defaults
+  ws0 <- testthat::capture_warnings(suppressMessages(aggte(cs, type = "calendar", na.rm = TRUE)))
+  expect_false(any(grepl("ignored for type", ws0)))
+})
