@@ -165,6 +165,71 @@ test_that("att_gt rejects argument-referenced internal variable names in both mo
   }
 })
 
+test_that("att_gt rejects invalid xformla before formula internals in both modes", {
+  for (fm in c(FALSE, TRUE)) {
+    for (bad_xformla in list(NA, 1, "~X", list(~X))) {
+      expect_error(
+        att_gt(yname = "Y", data = data_eh, tname = "period",
+               idname = "id", gname = "G", xformla = bad_xformla,
+               faster_mode = fm, bstrap = FALSE),
+        "xformla must be NULL or a formula",
+        info = paste("faster_mode", fm)
+      )
+    }
+  }
+})
+
+test_that("slow path rejects malformed column-name arguments before ambiguous indexing", {
+  bad_args <- list(
+    yname = c("Y", "X"),
+    tname = NA_character_,
+    idname = c("id", "id"),
+    gname = c("G", "G"),
+    weightsname = c("w1", "w2"),
+    clustervars = NA_character_
+  )
+
+  for (nm in names(bad_args)) {
+    args <- list(yname = "Y", data = data_eh, tname = "period",
+                 idname = "id", gname = "G", bstrap = FALSE,
+                 faster_mode = FALSE)
+    args[[nm]] <- bad_args[[nm]]
+    expect_error(
+      do.call(att_gt, args),
+      paste0(nm, " must|", nm, " contains"),
+      info = nm
+    )
+  }
+})
+
+test_that("att_gt drops rows with missing gname and non-finite numeric inputs in both modes", {
+  cases <- list(
+    gname_missing = within(data_eh, G[1] <- NA_real_),
+    outcome_infinite = within(data_eh, Y[1] <- Inf),
+    weight_infinite = within(data_eh, {
+      w <- rep(1, nrow(data_eh))
+      w[1] <- Inf
+    }),
+    covariate_infinite = within(data_eh, X[1] <- Inf)
+  )
+
+  for (fm in c(FALSE, TRUE)) {
+    for (nm in names(cases)) {
+      args <- list(yname = "Y", data = cases[[nm]], tname = "period",
+                   idname = "id", gname = "G", bstrap = FALSE,
+                   faster_mode = fm, panel = FALSE)
+      if (nm == "weight_infinite") args$weightsname <- "w"
+      if (nm == "covariate_infinite") args$xformla <- ~X
+      expect_warning(
+        res <- do.call(att_gt, args),
+        "missing or non-finite data",
+        info = paste(nm, "faster_mode", fm)
+      )
+      expect_s3_class(res, "MP")
+    }
+  }
+})
+
 test_that("att_gt errors on panel=TRUE without idname in both modes", {
   for (fm in c(FALSE, TRUE)) {
     expect_error(
@@ -225,10 +290,28 @@ test_that("simulation helpers reject invalid scalar controls before raw R errors
 
   expect_error(did::build_sim_dataset(sp, panel = NA),
                "panel must be a single logical")
+  expect_error(did::build_sim_dataset(1),
+               "sp_list must be a list")
   sp_bad <- sp
   sp_bad$ipw <- NA
   expect_error(did::build_sim_dataset(sp_bad),
                "sp_list\\$ipw must be a single logical")
+  sp_bad <- sp
+  sp_bad$bett <- 1
+  expect_error(did::build_sim_dataset(sp_bad),
+               "sp_list\\$bett must be a numeric vector of length")
+  sp_bad <- sp
+  sp_bad$te.e[1] <- Inf
+  expect_error(did::build_sim_dataset(sp_bad),
+               "sp_list\\$te\\.e must be a numeric vector of length")
+  sp_bad <- sp
+  sp_bad$gamG <- sp_bad$gamG[-1]
+  expect_error(did::build_sim_dataset(sp_bad),
+               "sp_list\\$gamG must be a numeric vector of length")
+  sp_bad <- sp
+  sp_bad$te <- NA_real_
+  expect_error(did::build_sim_dataset(sp_bad),
+               "sp_list\\$te must be a single finite non-missing number")
 
   expect_error(did::sim(sp, ret = NA, bstrap = FALSE, cband = FALSE),
                "ret must be NULL or one of")
@@ -241,11 +324,128 @@ test_that("simulation helpers reject invalid scalar controls before raw R errors
                "cband must be a single logical")
 })
 
+test_that("trimmer rejects malformed exported utility arguments", {
+  bad_control_groups <- list(NA_character_, c("notyettreated", "nevertreated"), "bad")
+  for (bad_control_group in bad_control_groups) {
+    expect_error(
+      trimmer(3, "period", "id", "G", ~X, data_eh,
+              control_group = bad_control_group),
+      "control_group must be either"
+    )
+  }
+
+  bad_thresholds <- list(NA_real_, c(0.9, 0.99), Inf, -1, "0.9")
+  for (bad_threshold in bad_thresholds) {
+    expect_error(
+      trimmer(3, "period", "id", "G", ~X, data_eh,
+              threshold = bad_threshold),
+      "threshold must be a single finite number strictly between 0 and 1"
+    )
+  }
+
+  for (bad_xformla in list(NA, "~X", 1, list(~X))) {
+    expect_error(
+      trimmer(3, "period", "id", "G", bad_xformla, data_eh),
+      "xformla must be NULL or a formula"
+    )
+  }
+
+  expect_error(trimmer(c(3, 4), "period", "id", "G", ~X, data_eh),
+               "g must be a single finite non-missing number")
+  expect_error(trimmer(NA_real_, "period", "id", "G", ~X, data_eh),
+               "g must be a single finite non-missing number")
+  expect_error(trimmer(3, c("period", "period"), "id", "G", ~X, data_eh),
+               "tname must be a single non-missing character string")
+  expect_error(trimmer(3, "period", NA_character_, "G", ~X, data_eh),
+               "idname must be a single non-missing character string")
+  expect_error(trimmer(3, "period", "id", "missing", ~X, data_eh),
+               "gname must be a character scalar and a name of a column")
+})
+
+test_that("test.mboot rejects malformed bootstrap inputs before recycling", {
+  inf_func <- array(rnorm(10 * 2 * 5), c(10, 2, 5))
+  dp <- list(data = data.frame(id = 1:10, period = 1L, cl = rep(1:2, each = 5)),
+             idname = "id", clustervars = NULL, biters = 20,
+             tname = "period", alp = 0.05, panel = TRUE)
+
+  expect_error(test.mboot(matrix(rnorm(20), 10, 2), dp),
+               "inf.func must be a numeric three-dimensional array")
+  expect_error(test.mboot(array(numeric(0), c(0, 2, 5)), dp),
+               "inf.func must be a numeric three-dimensional array")
+  expect_error(test.mboot("bad", dp),
+               "inf.func must be a numeric three-dimensional array")
+  expect_error(test.mboot(inf_func, 1),
+               "DIDparams must be a list")
+
+  dp_bad <- dp
+  dp_bad$idname <- "missing"
+  expect_error(test.mboot(inf_func, dp_bad),
+               "DIDparams\\$idname must be a character scalar and a name of a column")
+  dp_bad <- dp
+  dp_bad$clustervars <- 1
+  expect_error(test.mboot(inf_func, dp_bad),
+               "DIDparams\\$clustervars must be NULL or a character vector")
+  dp_bad <- dp
+  dp_bad$data <- dp_bad$data[-1, ]
+  expect_error(test.mboot(inf_func, dp_bad),
+               "inf.func first dimension must match")
+})
+
+test_that("mboot rejects malformed direct helper inputs before raw errors", {
+  inf_func <- matrix(rnorm(10 * 2), 10, 2)
+  dp <- list(data = data.frame(id = 1:10, period = 1L, cl = rep(1:2, each = 5)),
+             idname = "id", clustervars = NULL, biters = 20,
+             tname = "period", alp = 0.05, panel = TRUE,
+             true_repeated_cross_sections = FALSE,
+             allow_unbalanced_panel = FALSE, faster_mode = FALSE)
+
+  expect_error(mboot(numeric(0), dp, return_V = FALSE),
+               "inf.func must be a numeric matrix")
+  expect_error(mboot(matrix(numeric(0), 0, 2), dp, return_V = FALSE),
+               "inf.func must be a numeric matrix")
+  expect_error(mboot("bad", dp, return_V = FALSE),
+               "inf.func must be a numeric matrix")
+
+  dp_bad <- dp
+  dp_bad$clustervars <- 1
+  expect_error(mboot(inf_func, dp_bad, return_V = FALSE),
+               "clustervars must be NULL or a character vector")
+  dp_bad <- dp
+  dp_bad$clustervars <- "missing"
+  expect_error(mboot(inf_func, dp_bad, return_V = FALSE),
+               "clustervars contains column name")
+  dp_bad <- dp
+  dp_bad$clustervars <- "cl"
+  dp_bad$data <- dp_bad$data[-1, ]
+  expect_error(mboot(inf_func, dp_bad, return_V = FALSE),
+               "cluster vector length must match")
+})
+
+test_that("process_attgt rejects malformed group-time result lists", {
+  expect_error(process_attgt(1),
+               "attgt.list must be a non-empty list")
+  expect_error(process_attgt(list()),
+               "attgt.list must be a non-empty list")
+  expect_error(process_attgt(list(1)),
+               "Each attgt.list element must be a list-like")
+  expect_error(process_attgt(list(list(group = c(1, 2), year = 1, att = 0))),
+               "numeric scalar 'group'")
+  expect_error(process_attgt(list(list(group = 1, year = NA_real_, att = 0))),
+               "numeric scalar 'year'")
+
+  out <- process_attgt(list(list(group = 1, year = 2, att = NA_real_)))
+  expect_equal(out$group, 1)
+  expect_equal(out$tt, 2)
+  expect_true(is.na(out$att))
+})
+
 test_that("aggte rejects invalid scalar controls before base R errors", {
   mp <- suppressWarnings(suppressMessages(
     att_gt(yname = "Y", data = data_eh, tname = "period", idname = "id",
            gname = "G", bstrap = FALSE)
   ))
+  expect_error(aggte(1),
+               "MP must be an MP object produced by att_gt")
   expect_error(aggte(mp, type = "simple", na.rm = NA),
                "na.rm must be a single logical")
   expect_error(aggte(mp, type = "simple", bstrap = NA),
@@ -259,7 +459,22 @@ test_that("aggte rejects invalid scalar controls before base R errors", {
   expect_error(aggte(mp, type = "dynamic", min_e = NA_real_),
                "min_e must be a single non-missing number")
   expect_error(aggte(mp, type = "dynamic", balance_e = c(0, 1)),
-               "balance_e must be a single non-missing number")
+               "balance_e must be a single non-negative whole number")
+  expect_error(aggte(mp, type = "dynamic", balance_e = -1),
+               "balance_e must be a single non-negative whole number")
+  expect_error(aggte(mp, type = "dynamic", balance_e = 0.5),
+               "balance_e must be a single non-negative whole number")
+  expect_error(aggte(mp, type = "dynamic", balance_e = Inf),
+               "balance_e must be a single non-negative whole number")
+
+  mp_bad <- mp
+  mp_bad$inffunc <- mp_bad$inffunc[, -1, drop = FALSE]
+  expect_error(aggte(mp_bad, type = "simple"),
+               "inconsistent influence-function columns")
+  mp_bad <- mp
+  mp_bad$inffunc <- mp_bad$inffunc[-1, , drop = FALSE]
+  expect_error(aggte(mp_bad, type = "simple"),
+               "inconsistent influence-function rows")
 })
 
 test_that("plotting helpers reject invalid scalar controls before ggplot errors", {
@@ -361,7 +576,7 @@ test_that("att_gt errors on missing column name (slower mode)", {
   expect_error(
     att_gt(yname = "nonexistent", data = data_eh, tname = "period",
            idname = "id", gname = "G", bstrap = FALSE, faster_mode = FALSE),
-    "not found"
+    "character scalar and a name of a column"
   )
 })
 

@@ -96,6 +96,9 @@ reset.sim <- function(time.periods=4, n=5000, ipw=TRUE, reg=TRUE) {
 #' @export
 build_sim_dataset <- function(sp_list, panel=TRUE) {
   validate_logical_scalar(panel, "panel")
+  if (!is.list(sp_list)) {
+    stop("sp_list must be a list of simulation parameters.")
+  }
 
   #-----------------------------------------------------------------------------
   # build dataset
@@ -120,6 +123,16 @@ build_sim_dataset <- function(sp_list, panel=TRUE) {
   validate_positive_whole_number(n, "sp_list$n")
   validate_logical_scalar(ipw, "sp_list$ipw")
   validate_logical_scalar(reg, "sp_list$reg")
+  validate_finite_numeric_vector(bett, "sp_list$bett", time.periods)
+  validate_finite_numeric_vector(thet, "sp_list$thet", time.periods)
+  validate_finite_numeric_vector(theu, "sp_list$theu", time.periods)
+  validate_finite_numeric_vector(betu, "sp_list$betu", time.periods)
+  validate_finite_numeric_vector(te.bet.ind, "sp_list$te.bet.ind", time.periods)
+  validate_finite_numeric_vector(te.bet.X, "sp_list$te.bet.X", time.periods)
+  validate_finite_numeric_vector(te.t, "sp_list$te.t", time.periods)
+  validate_finite_numeric_vector(te.e, "sp_list$te.e", time.periods)
+  validate_finite_numeric_vector(gamG, "sp_list$gamG", time.periods + 1L)
+  validate_finite_numeric_scalar(te, "sp_list$te")
 
   X <- rnorm(n)
 

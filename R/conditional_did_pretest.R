@@ -367,6 +367,13 @@ indicator <- function(X, u) {
 #' @export
 test.mboot <- function(inf.func, DIDparams, cores=1) {
   validate_positive_whole_number(cores, "cores")
+  if (!is.numeric(inf.func) || length(dim(inf.func)) != 3L ||
+      any(dim(inf.func) <= 0L)) {
+    stop("inf.func must be a numeric three-dimensional array with positive dimensions.")
+  }
+  if (!is.list(DIDparams)) {
+    stop("DIDparams must be a list or DIDparams object.")
+  }
 
   # setup needed variables
   data <- DIDparams$data
@@ -374,6 +381,12 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
   clustervars <- DIDparams$clustervars
   biters <- DIDparams$biters
   tname <- DIDparams$tname
+  if (!is.data.frame(data)) {
+    stop("DIDparams$data must be a data.frame.")
+  }
+  validate_column_name(idname, "DIDparams$idname", names(data))
+  validate_column_name(tname, "DIDparams$tname", names(data))
+  validate_column_names(clustervars, "DIDparams$clustervars", names(data), allow_null = TRUE)
   tlist <- unique(data[,tname])[order(unique(data[,tname]))]
   alp <- DIDparams$alp
   panel <- DIDparams$panel
@@ -388,6 +401,9 @@ test.mboot <- function(inf.func, DIDparams, cores=1) {
     dta <- data
   }
   n <- nrow(dta)
+  if (dim(inf.func)[1] != n) {
+    stop("inf.func first dimension must match the number of bootstrap observations.")
+  }
 
   # if include id as variable to cluster on
   # drop it as we do this automatically

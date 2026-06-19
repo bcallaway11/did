@@ -24,6 +24,10 @@ compute.aggte <- function(MP,
                           alp = NULL,
                           clustervars = NULL,
                           call = NULL) {
+  if (!inherits(MP, "MP")) {
+    stop("MP must be an MP object produced by att_gt().")
+  }
+
   #-----------------------------------------------------------------------------
   # unpack MP object
   #-----------------------------------------------------------------------------
@@ -44,7 +48,7 @@ compute.aggte <- function(MP,
   )
   validate_numeric_scalar(min_e, "min_e")
   validate_numeric_scalar(max_e, "max_e")
-  if (!is.null(balance_e)) validate_numeric_scalar(balance_e, "balance_e")
+  if (!is.null(balance_e)) validate_nonnegative_whole_number(balance_e, "balance_e")
 
   # aggte() needs the influence functions to aggregate and to compute standard errors.
   # They are absent when att_gt() was run with compute_inffunc = FALSE (point estimates only).
@@ -52,6 +56,15 @@ compute.aggte <- function(MP,
     stop("This att_gt() result was produced with compute_inffunc = FALSE (point estimates ",
          "only), so it has no influence functions and cannot be aggregated by aggte(). ",
          "Re-run att_gt() with compute_inffunc = TRUE (the default) to use aggte().")
+  }
+  if (length(group) != length(t) || length(att) != length(group)) {
+    stop("MP object has inconsistent group, time, and att lengths.")
+  }
+  if (NCOL(inffunc1) != length(att)) {
+    stop("MP object has inconsistent influence-function columns and att estimates.")
+  }
+  if (!is.null(n) && NROW(inffunc1) != n) {
+    stop("MP object has inconsistent influence-function rows and n.")
   }
 
 

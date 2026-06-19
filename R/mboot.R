@@ -64,17 +64,21 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
         dta <- data
       }
     }
+    validate_column_names(clustervars, "clustervars", names(dta), allow_null = TRUE)
   }
 
   # Convert sparse matrix to dense for bootstrap computation
   inf.func <- as.matrix(inf.func)
+  if (!is.numeric(inf.func) || nrow(inf.func) < 1L || ncol(inf.func) < 1L) {
+    stop("inf.func must be a numeric matrix with at least one row and one column.")
+  }
 
   # set correct number of units
   n <- nrow(inf.func)
 
   # if include id as variable to cluster on
   # drop it as we do this automatically
-  if (idname %in% clustervars) {
+  if (!is.null(idname) && idname %in% clustervars) {
     clustervars <- clustervars[-which(clustervars==idname)]
   }
 
@@ -119,6 +123,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
     } else {
       n_clusters <- length(unique(dta[,clustervars]))
       cluster <- unique(dta[,c(idname,clustervars)])[,2]
+    }
+    if (length(cluster) != n) {
+      stop("cluster vector length must match the number of influence-function rows.")
     }
     cluster_sum_if <- rowsum(inf.func, cluster, reorder=TRUE)
     bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_sum_if, biters, pl, cores)

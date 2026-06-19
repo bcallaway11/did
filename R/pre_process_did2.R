@@ -71,14 +71,16 @@ validate_args <- function(args, data){
 
     # Check if gname is unique by idname: irreversibility of the treatment
     # Use direct column access instead of get() for speed
-    id_g_unique <- unique(data[, c(args$idname, args$gname), with = FALSE])
+    nonmissing_g <- !is.na(data[[args$idname]]) & !is.na(data[[args$gname]])
+    id_g_unique <- unique(data[nonmissing_g, c(args$idname, args$gname), with = FALSE])
     check_treatment_uniqueness <- anyDuplicated(id_g_unique[[1]]) == 0L
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
     }
 
     # Check if any combination of idname and tname is duplicated
-    n_id_year <- anyDuplicated(data, by = c(args$idname, args$tname))
+    nonmissing_id_time <- !is.na(data[[args$idname]]) & !is.na(data[[args$tname]])
+    n_id_year <- anyDuplicated(data[nonmissing_id_time], by = c(args$idname, args$tname))
     # If any combination is duplicated, stop execution and throw an error
     if (n_id_year > 0) {
       stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
@@ -143,23 +145,22 @@ did_standardization <- function(data, args){
 
   # Check if any covariates were missing
   n_orig <- data[, .N]
-  data <- data[complete.cases(data)]
-  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  data <- data[complete_finite_cases(data)]
+  # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate); safe now that raw-covariate NAs are removed (so poly()/ns()/... will
   # not error on NA input). Use model.frame (NOT model.matrix) with na.action =
   # na.pass: model.frame keeps every row -- including NA/NaN-valued terms -- so the
   # complete.cases() mask stays aligned with `data` (model.matrix would silently drop
-  # NaN rows, shortening the mask and letting the offending rows survive). Inf-valued
-  # terms are kept, matching the prior behavior.
+  # NaN rows, shortening the mask and letting the offending rows survive).
   if (length(xvars) > 0L && data[, .N] > 0L) {
     mf_check <- suppressWarnings(model.frame(args$xformla, data = data, na.action = na.pass))
-    finite_rows <- complete.cases(mf_check)
+    finite_rows <- complete_finite_cases(mf_check)
     if (!all(finite_rows)) data <- data[finite_rows]
   }
   n_new <- data[, .N]
   n_diff <- n_orig - n_new
   if (n_diff != 0) {
-    warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
+    warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
   }
 
   # Set weights
@@ -684,6 +685,7 @@ pre_process_did2 <- function(yname,
                             cores = 1,
                             call = NULL) {
 
+  validate_xformla(xformla)
 
   # coerce data to data.table first, keeping only the columns the pipeline uses
   # (id/time/group/outcome/weights/cluster plus the raw xformla variables) so wide

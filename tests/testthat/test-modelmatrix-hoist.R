@@ -210,6 +210,26 @@ test_that("transform formulae that evaluate to NaN drop those rows instead of cr
   expect_equal(rs$att, rref$att, tolerance = 1e-12)
 })
 
+test_that("matrix-valued transformed formula terms drop non-finite rows row-wise", {
+  set.seed(20260619)
+  data <- did::build_sim_dataset(did::reset.sim(n = 500))
+  data$Xpos <- exp(data$X)
+  data$Xpos[data$id == unique(data$id)[1]] <- 0
+  f <- ~I(cbind(log(Xpos), X^2))
+
+  for (fm in c(FALSE, TRUE)) {
+    expect_warning(
+      res <- att_gt(yname = "Y", xformla = f, data = data,
+                    tname = "period", idname = "id", gname = "G",
+                    bstrap = FALSE, faster_mode = fm),
+      "missing or non-finite data",
+      info = paste("faster_mode", fm)
+    )
+    expect_s3_class(res, "MP")
+    expect_false(anyNA(res$att))
+  }
+})
+
 test_that("a globally-empty factor level is dropped instead of NA-failing every cell", {
   # Regression: factor(levels = c('a','b','c')) where 'c' never occurs in the data
   # (common after users subset their data, since R keeps empty levels) used to emit

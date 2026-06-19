@@ -62,15 +62,25 @@ pre_process_did <- function(yname,
   validate_anticipation(anticipation)
   validate_alp(alp)
   if (bstrap) validate_positive_whole_number(biters, "biters")
-  check_reserved_did_names(yname = yname, tname = tname, idname = idname,
-                           gname = gname, xformla = xformla,
-                           weightsname = weightsname,
-                           clustervars = clustervars)
+  validate_xformla(xformla)
   # make sure dataset is a data.frame
   # this gets around RStudio's default of reading data as tibble
   if (!all( class(data) == "data.frame")) {
     data <- as.data.frame(data)
   }
+
+  data_names <- names(data)
+  validate_column_name(yname, "yname", data_names)
+  validate_column_name(tname, "tname", data_names)
+  validate_column_name(gname, "gname", data_names)
+  validate_column_name(idname, "idname", data_names, allow_null = !panel)
+  validate_column_name(weightsname, "weightsname", data_names, allow_null = TRUE)
+  validate_column_names(clustervars, "clustervars", data_names, allow_null = TRUE)
+
+  check_reserved_did_names(yname = yname, tname = tname, idname = idname,
+                           gname = gname, xformla = xformla,
+                           weightsname = weightsname,
+                           clustervars = clustervars)
 
   # validate that all required column names exist in the data
   required_cols <- c(yname, tname, idname, gname, weightsname, clustervars)
@@ -145,26 +155,26 @@ pre_process_did <- function(yname,
 
   # check if any covariates were missing
   n_orig <- nrow(data)
-  # drop rows with any missing id / time / outcome / group / weight / cluster or any
-  # missing RAW covariate value
-  data <- data[complete.cases(data), ]
-  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # drop rows with any missing or non-finite id / time / outcome / group / weight /
+  # cluster or RAW covariate value
+  data <- data[complete_finite_cases(data), ]
+  # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate), preserving the previous model.frame-based row dropping. We use
   # model.frame (NOT model.matrix) with na.action = na.pass: model.frame keeps EVERY
   # row -- including those where a term evaluates to NA/NaN -- so complete.cases()
   # flags them and the indicator stays aligned with `data`. (model.matrix would
   # instead silently drop the NaN rows, making the mask shorter than `data` and the
-  # offending rows survive.) Inf-valued terms are kept, matching the prior behavior.
+  # offending rows survive.)
   # Safe to evaluate now that raw-covariate NAs have been removed (so poly()/ns()/...
   # will not error on NA input).
   if (length(xvars) > 0L && nrow(data) > 0L) {
     mf_check <- suppressWarnings(model.frame(xformla, data = data, na.action = na.pass))
-    finite_rows <- complete.cases(mf_check)
+    finite_rows <- complete_finite_cases(mf_check)
     if (!all(finite_rows)) data <- data[finite_rows, ]
   }
   n_diff <- n_orig - nrow(data)
   if (n_diff != 0) {
-    warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
+    warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
   }
 
   # weights if null
