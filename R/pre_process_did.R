@@ -91,6 +91,18 @@ pre_process_did <- function(yname,
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("The group variable '", gname, "' must be numeric. Please convert it.")
 
+  # gname must be 0 (never-treated) or a positive treatment-timing value.
+  # Negative codes are not supported: 0 is reserved for never-treated, so a
+  # non-positive time scale is ambiguous. Reject them up front so both code
+  # paths behave identically (the fast path previously accepted negative codes
+  # silently while this slow path later errored with "No valid groups").
+  if (any(data[, gname] < 0, na.rm = TRUE)) {
+    stop("The group variable '", gname, "' must be 0 (never-treated) or a ",
+         "positive treatment-timing value; negative values are not supported. ",
+         "If your time periods are non-positive, shift them so the earliest ",
+         "period is >= 1.")
+  }
+
   #  make sure the outcome is numeric (logical 0/1 outcomes are also allowed)
   if (! (is.numeric(data[, yname]) || is.logical(data[, yname])) ) stop("The outcome variable '", yname, "' must be numeric. Please convert it.")
 

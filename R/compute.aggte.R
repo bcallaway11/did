@@ -442,6 +442,15 @@ compute.aggte <- function(MP,
     # only looks at some event times
     eseq <- eseq[(eseq >= min_e) & (eseq <= max_e)]
 
+    # Guard the empty window (e.g. min_e/max_e exclude every event time):
+    # downstream sapply(eseq, ...) would otherwise return a list and fail later
+    # with a cryptic "Not compatible with requested type" error.
+    if (length(eseq) == 0) {
+      stop("No event times fall within the requested window. ",
+           "Adjust 'min_e'/'max_e' (and 'balance_e') so at least one event ",
+           "time is included.")
+    }
+
     # compute atts that are specific to each event time
     dynamic.att.e <- sapply(eseq, function(e) {
       # keep att(g,t) for the right g&t as well as ones that
@@ -504,7 +513,7 @@ compute.aggte <- function(MP,
     dynamic.inf.func <- get_agg_inf_func(
       att = dynamic.att.e[epos],
       inffunc1 = as.matrix(dynamic.inf.func.e[, epos]),
-      whichones = (1:sum(epos)),
+      whichones = seq_len(sum(epos)),
       weights.agg = (rep(1 / sum(epos), sum(epos))),
       wif = NULL
     )
@@ -544,6 +553,20 @@ compute.aggte <- function(MP,
     # (can't get treatment effects in those periods)
     minG <- min(group)
     calendar.tlist <- tlist[tlist >= minG]
+
+    # Drop calendar periods with no non-missing post-treatment ATT(g,t) cell
+    # (e.g. after na.rm removed all of a period's cells, common with unbalanced
+    # panels that have genuinely-NA cells). Analogous to the `gnotna` guard in
+    # the group branch above; without it wif()/get_agg_inf_func() are called on
+    # an empty selection and error with a cryptic message.
+    has_post <- vapply(calendar.tlist,
+                       function(t1) any((t == t1) & (group <= t)), logical(1))
+    calendar.tlist <- calendar.tlist[has_post]
+    if (length(calendar.tlist) == 0) {
+      stop("No calendar periods have non-missing post-treatment att_gt() ",
+           "estimates. Cannot compute calendar aggregation. Check your ",
+           "att_gt() results.")
+    }
 
     # calendar time specific atts
     calendar.att.t <- sapply(calendar.tlist, function(t1) {
@@ -674,6 +697,14 @@ wif <- function(keepers, pg, weights.ind, G, group) {
   # the numerator and the denominator terms below; build it once and reuse it.
   # This is identical to the previous code, which constructed it twice via two
   # separate sapply() calls. sum(pg[keepers]) is likewise hoisted out of the loop.
+  # No keepers (e.g. an empty post-treatment selection under na.rm or a
+  # min_e/max_e window that excludes all cells): return a 0-column influence
+  # matrix so the caller's get_agg_inf_func() emits its clean "no valid
+  # estimates" error instead of `list() / 0` throwing a cryptic
+  # "non-numeric argument to binary operator" here.
+  if (length(keepers) == 0L) {
+    return(matrix(numeric(0), nrow = length(weights.ind), ncol = 0L))
+  }
   Spg <- sum(pg[keepers])
   centered <- sapply(keepers, function(k) {
     weights.ind * 1 * BMisc::TorF(G == group[k]) - pg[k]
