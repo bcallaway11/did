@@ -45,6 +45,17 @@ validate_args <- function(args, data){
   # Check if gname is numeric
   if(!data[, is.numeric(get(args$gname))]){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
 
+  # gname must be 0 (never-treated) or a positive treatment-timing value;
+  # negative codes are not supported (0 is reserved for never-treated). Reject
+  # them up front so the fast and slow paths behave identically (the fast path
+  # previously accepted negative codes silently while the slow path errored).
+  if (data[, any(get(args$gname) < 0, na.rm = TRUE)]) {
+    stop("The group variable '", args$gname, "' must be 0 (never-treated) or a ",
+         "positive treatment-timing value; negative values are not supported. ",
+         "If your time periods are non-positive, shift them so the earliest ",
+         "period is >= 1.")
+  }
+
   # Check if yname is numeric (logical 0/1 outcomes are also allowed)
   if(!data[, is.numeric(get(args$yname)) || is.logical(get(args$yname))]){stop("The outcome variable '", args$yname, "' must be numeric. Please convert it.")}
 

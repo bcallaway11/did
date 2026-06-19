@@ -653,7 +653,11 @@ compute.att_gt <- function(dp) {
               res$att.inf.func <- as.numeric(rowsum(res$att.inf.func,
                                                     disdat_long[[idname]],
                                                     reorder = FALSE))
-              res$att.inf.func <- (n / n1) * res$att.inf.func
+              # 1/2: the RC influence function is normalized over 2 obs/unit
+              # (pre + post); folding to the unit level via rowsum() must divide
+              # by 2 so the balanced-panel fix_weights = "varying" SE matches the
+              # panel normalization (mirrors the force_rc fold in compute.att_gt2).
+              res$att.inf.func <- 0.5 * (n / n1) * res$att.inf.func
             } else {
               res$att.inf.func <- (n / n1) * res$att.inf.func
             }
