@@ -14,19 +14,34 @@
 #'
 #' @export
 trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notyettreated", threshold=.999) {
+  if (!all(class(data) == "data.frame")) {
+    data <- as.data.frame(data)
+  }
+  validate_finite_numeric_scalar(g, "g")
+  validate_column_name(tname, "tname", names(data))
+  validate_column_name(idname, "idname", names(data))
+  validate_column_name(gname, "gname", names(data))
+  validate_xformla(xformla)
+  validate_choice_scalar(
+    control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'."
+  )
+  validate_probability_scalar(threshold, "threshold")
 
-  time.period <- data[,tname]
+  time.period <- data[[tname]]
   this.data <- data[time.period == (g-1),]
   if (control_group == "notyettreated") {
     # not yet treated
-    this.data <- this.data[(this.data[,gname] >= g) |
-                           (this.data[,gname] == 0), ]
+    this.data <- this.data[(this.data[[gname]] >= g) |
+                           (this.data[[gname]] == 0), ]
   } else {
     # never treated
-    this.data <- this.data[(this.data[,gname] == g) |
-                           (this.data[,gname] == 0), ]
+    this.data <- this.data[(this.data[[gname]] == g) |
+                           (this.data[[gname]] == 0), ]
   }
-  this.data$D <- 1*this.data[,gname]==g
+  this.data$D <- 1 * this.data[[gname]] == g
   this.pscore_reg <- glm(BMisc::toformula("D", BMisc::rhs_vars(xformla)),
                          data=this.data,
                          family=binomial(link="logit"))
@@ -34,8 +49,8 @@ trimmer <- function(g, tname, idname, gname, xformla, data, control_group="notye
   dropper <- (this.pscore >  threshold) & (this.data$D==1)
   if (sum(dropper) > 0) {
     print("hard to match treated observations: ")
-    print(this.data[dropper,idname])
-    return(this.data[dropper,idname])
+    print(this.data[dropper, idname, drop = FALSE])
+    return(this.data[dropper, idname, drop = FALSE])
   }
 }
 
@@ -115,6 +130,166 @@ check_reserved_did_names <- function(yname, tname, idname, gname, xformla,
          paste(bad_names, collapse = ", "), ". Please rename these column(s) ",
          "before calling att_gt().")
   }
+}
+
+validate_xformla <- function(xformla) {
+  if (!is.null(xformla) && !inherits(xformla, "formula")) {
+    stop("xformla must be NULL or a formula.")
+  }
+  invisible(xformla)
+}
+
+validate_character_scalar <- function(x, name, allow_null = FALSE) {
+  if (allow_null && is.null(x)) return(invisible(x))
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
+    stop(name, " must be a single non-missing character string.")
+  }
+  invisible(x)
+}
+
+validate_column_name <- function(x, name, data_names, allow_null = FALSE) {
+  validate_character_scalar(x, name, allow_null = allow_null)
+  if (is.null(x)) return(invisible(x))
+  if (!(x %in% data_names)) {
+    stop(name, " must be a character scalar and a name of a column from the dataset.")
+  }
+  invisible(x)
+}
+
+validate_column_names <- function(x, name, data_names, allow_null = FALSE) {
+  if (allow_null && is.null(x)) return(invisible(x))
+  if (!is.character(x) || length(x) == 0L || anyNA(x) || any(!nzchar(x))) {
+    stop(name, " must be NULL or a character vector naming column(s) from the dataset.")
+  }
+  missing <- setdiff(x, data_names)
+  if (length(missing) > 0L) {
+    stop(name, " contains column name(s) not found in the dataset: ",
+         paste(missing, collapse = ", "), ".")
+  }
+  invisible(x)
+}
+
+complete_finite_cases <- function(data, finite_exclude = character(0)) {
+  keep <- stats::complete.cases(data)
+  if (!length(keep)) return(keep)
+  for (nm in names(data)) {
+    # Columns in finite_exclude still get the NA/NaN check via complete.cases()
+    # above, but skip the is.finite() check below. This preserves Inf in such
+    # columns -- notably gname, where Inf is a documented never-treated code
+    # ("group status 0 or Inf") that must NOT be dropped as if it were bad data.
+    if (nm %in% finite_exclude) next
+    x <- data[[nm]]
+    if (is.numeric(x)) {
+      finite_x <- is.finite(x)
+      if (!is.null(dim(finite_x)) && NROW(finite_x) == length(keep)) {
+        finite_x <- rowSums(!finite_x) == 0L
+      }
+      keep <- keep & as.vector(finite_x)
+    }
+  }
+  keep
+}
+
+validate_anticipation <- function(anticipation) {
+  if (!is.numeric(anticipation)) {
+    stop("anticipation must be numeric. Please convert it.")
+  }
+  if (length(anticipation) != 1L || is.na(anticipation) ||
+      !is.finite(anticipation)) {
+    stop("anticipation must be a single finite non-missing number. Please check your arguments.")
+  }
+  if (anticipation < 0 || anticipation != round(anticipation)) {
+    stop("anticipation must be a non-negative whole number. Please check your arguments.")
+  }
+  invisible(anticipation)
+}
+
+validate_logical_scalar <- function(x, name) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    stop(name, " must be a single logical (TRUE or FALSE).")
+  }
+  invisible(x)
+}
+
+validate_numeric_scalar <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x)) {
+    stop(name, " must be a single non-missing number.")
+  }
+  invisible(x)
+}
+
+validate_finite_numeric_scalar <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) || !is.finite(x)) {
+    stop(name, " must be a single finite non-missing number.")
+  }
+  invisible(x)
+}
+
+validate_finite_numeric_vector <- function(x, name, len) {
+  if (!is.numeric(x) || length(x) != len || anyNA(x) || any(!is.finite(x))) {
+    stop(name, " must be a numeric vector of length ", len,
+         " with only finite non-missing values.")
+  }
+  invisible(x)
+}
+
+validate_positive_numeric_scalar <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) ||
+      !is.finite(x) || x <= 0) {
+    stop(name, " must be a single positive finite number.")
+  }
+  invisible(x)
+}
+
+validate_alp <- function(alp, name = "alp") {
+  if (!is.numeric(alp) || length(alp) != 1 || is.na(alp) || alp <= 0 || alp >= 1) {
+    stop(name, " must be a single number strictly between 0 and 1.")
+  }
+  invisible(alp)
+}
+
+validate_probability_scalar <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x) ||
+      !is.finite(x) || x <= 0 || x >= 1) {
+    stop(name, " must be a single finite number strictly between 0 and 1.")
+  }
+  invisible(x)
+}
+
+validate_positive_whole_number <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1 || is.na(x) ||
+      !is.finite(x) || x < 1 || x != round(x)) {
+    stop(name, " must be a single positive whole number.")
+  }
+  invisible(x)
+}
+
+validate_nonnegative_whole_number <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1 || is.na(x) ||
+      !is.finite(x) || x < 0 || x != round(x)) {
+    stop(name, " must be a single non-negative whole number.")
+  }
+  invisible(x)
+}
+
+validate_choice_scalar <- function(x, name, choices, message = NULL) {
+  if (!is.character(x) || length(x) != 1L || is.na(x) || !(x %in% choices)) {
+    if (is.null(message)) {
+      message <- paste0(name, " must be one of: ", paste(choices, collapse = ", "), ".")
+    }
+    stop(message)
+  }
+  invisible(x)
+}
+
+validate_optional_choice_scalar <- function(x, name, choices, message = NULL) {
+  if (is.null(x)) return(invisible(x))
+  validate_choice_scalar(x, name, choices, message)
+}
+
+validate_optional_numeric_scalar <- function(x, name) {
+  if (is.null(x)) return(invisible(x))
+  validate_numeric_scalar(x, name)
 }
 
 #' @title get_wide_data

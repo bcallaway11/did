@@ -13,6 +13,11 @@
 #' @export
 gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xgap=1,
                   legend=TRUE, ref_line = 0, theming = TRUE) {
+  validate_positive_numeric_scalar(xgap, "xgap")
+  validate_logical_scalar(legend, "legend")
+  validate_logical_scalar(theming, "theming")
+  validate_optional_numeric_scalar(ref_line, "ref_line")
+
   unique_years <- sort(unique(as.numeric(as.character(ssresults$year))))
   xgap_int <- max(1L, as.integer(round(xgap)))
   dabreaks <- unique_years[seq(1, length(unique_years), by = xgap_int)]
@@ -66,6 +71,9 @@ gplot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group", xga
 #' @export
 splot <- function(ssresults, ylim=NULL, xlab=NULL, ylab=NULL, title="Group",
                   legend=TRUE, ref_line = 0, theming = TRUE) {
+  validate_logical_scalar(legend, "legend")
+  validate_logical_scalar(theming, "theming")
+  validate_optional_numeric_scalar(ref_line, "ref_line")
 
   # names of variables are "weird" for this function because this code builds
   # on the same infrastructure as for plotting group-time average treatment

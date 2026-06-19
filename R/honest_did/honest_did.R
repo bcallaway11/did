@@ -46,7 +46,17 @@ honest_did.AGGTEobj <- function(object,
                                 ...) {
 
 
-  type <- type[1]
+  if (missing(type)) type <- "smoothness"
+  validate_choice_scalar(
+    type,
+    "type",
+    c("smoothness", "relative_magnitude"),
+    'type must be either "smoothness" or "relative_magnitude".'
+  )
+  validate_numeric_scalar(e_time, "e_time")
+  validate_alp(alpha, "alpha")
+  validate_logical_scalar(parallel, "parallel")
+  validate_positive_whole_number(gridPoints, "gridPoints")
   
   # make sure that user is passing in an event study
   if (object$type != "dynamic") {
