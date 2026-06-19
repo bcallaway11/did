@@ -105,6 +105,26 @@ edid_frontier <- function(fit_unrestricted, fit_restricted,
   alpha <- fit_restricted$alpha %||% 0.05
   z     <- stats::qnorm(1 - alpha / 2)
 
+  # Full-J (worst-case scope) radius, reported ALONGSIDE the directed Hausman radius (F1). The directed
+  # radius theta_R +/- tau*sqrt(H_theta)*se is the actual movement from relaxing PT-All to PT-Post; the
+  # full-J radius theta_R +/- tau*sqrt(J)*se is the Andrews-Chen-Tecchio worst-case scope over ALL
+  # admissible reweightings (J = the omnibus over-identification statistic for the cells feeding the
+  # reported scalar). A `fragile` flag marks a width driven by over-id rank-deficiency (Q -> n_eff)
+  # rather than genuine over-identifying signal -- the do-what-is-right caveat: do not read a wide
+  # full-J frontier as real sensitivity when the joint contrast is poorly identified.
+  ov_par <- c(if ("overall" %in% parameter) "overall", if ("event_study" %in% parameter) "event_study")
+  ovJ <- tryCatch(suppressWarnings(suppressMessages(
+           edid_overid(fit_restricted, data = data, parameter = ov_par, e_set = e_set))),
+           error = function(e) NULL)
+  .lookupJ <- function(label, e) {
+    if (is.null(ovJ) || is.null(ovJ$table)) return(list(J = NA_real_, df = NA_integer_, Qn = NA_real_))
+    tb  <- ovJ$table
+    row <- if (identical(label, "ES_avg")) tb[tb$parameter == "overall", , drop = FALSE]
+           else tb[tb$parameter == "event_study" & tb$e == e, , drop = FALSE]
+    if (nrow(row) != 1L) return(list(J = NA_real_, df = NA_integer_, Qn = NA_real_))
+    list(J = row$J_statistic, df = row$df, Qn = row$nominal_df)
+  }
+
   # Assemble the scalar coordinates: each ES(e) over e_set, then ES_avg.
   coords <- list()
   if ("event_study" %in% parameter) {
@@ -134,8 +154,15 @@ edid_frontier <- function(fit_unrestricted, fit_restricted,
     se_R <- sqrt(V_R / n)
     d    <- co$theta_U - co$theta_R
     sc   <- .edid_scalar_hausman(d, co$psi_U - co$psi_R, n, ci, v_scale = V_R, n_eff = n_eff)
+    fj   <- .lookupJ(co$label, co$e)
+    # Fragility keyed to the EFFECTIVE over-id rank (df_full), not the nominal Q-p: a design with small
+    # genuine rank but large nominal redundancy is benign (the low-rank thesis), so nominal over-fires.
+    # A rank-deficient scope (uncomputable joint J: NA statistic with a finite, here zero, df) is fragile.
+    fragile <- (is.na(fj$J) && is.finite(fj$df)) ||
+      (is.finite(fj$df) && is.finite(n_eff) && n_eff > 0 && fj$df > 0.25 * n_eff)
     for (tt in tau) {
-      radius <- tt * sqrt(sc$H) * se_R
+      radius   <- tt * sqrt(sc$H) * se_R                                  # directed Hausman radius
+      radiusJ  <- if (is.finite(fj$J)) tt * sqrt(fj$J) * se_R else NA_real_  # full-J worst-case radius
       r <- r + 1L
       rows[[r]] <- data.frame(
         parameter = co$label, e = co$e,
@@ -144,6 +171,11 @@ edid_frontier <- function(fit_unrestricted, fit_restricted,
         tau = tt, radius = radius,
         frontier_low  = co$theta_R - radius,
         frontier_high = co$theta_R + radius,
+        # Full-J (worst-case scope) frontier reported alongside (F1):
+        J_full = fj$J, df_full = fj$df, radius_fullJ = radiusJ,
+        frontier_fullJ_low  = if (is.finite(radiusJ)) co$theta_R - radiusJ else NA_real_,
+        frontier_fullJ_high = if (is.finite(radiusJ)) co$theta_R + radiusJ else NA_real_,
+        fragile = fragile,
         ci_low  = co$theta_R - z * se_R,
         ci_high = co$theta_R + z * se_R,
         stringsAsFactors = FALSE)
@@ -166,9 +198,12 @@ edid_frontier <- function(fit_unrestricted, fit_restricted,
 print.edid_frontier <- function(x, digits = 4, ...) {
   cat("\nRobustness frontier for reported event-study contrasts\n")
   cat("(Chen, Sant'Anna & Xie 2025, Theorem 5.2, eqn 5.6)\n")
-  cat(sprintf("  tau grid: {%s}%s; frontier = theta_R +/- tau * sqrt(H) * se(theta_R)\n",
-              paste(x$tau, collapse = ", "),
+  cat(sprintf("  tau grid: {%s}%s\n", paste(x$tau, collapse = ", "),
               if (isTRUE(x$clustered)) "; cluster-robust" else ""))
+  cat("  directed  : radius      = tau * sqrt(H)      * se(theta_R)  [sensitivity to relaxing PT-All]\n")
+  cat("  worst-case: radius_fullJ = tau * sqrt(J_full) * se(theta_R)  [scope over all admissible reweightings]\n")
+  if (!is.null(x$table$fragile) && any(isTRUE(x$table$fragile)))
+    cat("  NOTE: `fragile = TRUE` rows -- the full-J width is driven by over-id rank-deficiency (Q ~ n_eff),\n        not genuine signal; read the per-cell edid_overid()$cells / edid_sargan instead.\n")
   cat("\n")
   tab <- x$table
   num <- vapply(tab, is.numeric, logical(1L))

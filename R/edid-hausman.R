@@ -260,29 +260,83 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
 # cluster-robust / dispersed-weight D-hat (effective df = #clusters / Kish ESS, NOT n) suffers; on the
 # many-balanced-iid-units path it is a numerical no-op (m_hat ~ n). The dispersed-weight eigen-ridge is
 # retained underneath as a numerical conditioning safeguard.
-.edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1, n_eff = n) {
+.edid_if_diff_quadform <- function(d, xi, n, cluster_indices, v_scale = 1, n_eff = n,
+                                   rel_tol = 0) {
   xi <- as.matrix(xi)
   D  <- n * cluster_cov_edid(xi, cluster_indices, n)     # = E_n[xi xi'] when iid
   if (any(!is.finite(D))) {
     return(list(statistic = NA_real_, df = NA_integer_, p_value = NA_real_, D = D,
                 degenerate = NA, m_eff = NA_real_, df2 = NA_real_))
   }
-  eps_D <- .Machine$double.eps^0.5
-  if (max(abs(D)) <= eps_D * max(v_scale, 1)) {          # degenerate contrast: estimators coincide
+  auto   <- identical(rel_tol, "auto")
+  rt_num <- if (auto) 0 else as.numeric(rel_tol)
+  if (!is.finite(n_eff) || n_eff <= 0) n_eff <- n
+  eps_D  <- .Machine$double.eps^0.5
+  # Absolute degenerate guard (estimators coincide; D ~ 0 relative to the parameter variance scale)
+  # ONLY on the bare convention (rel_tol == 0) -> edid_hausman / edid_sargan are byte-identical. For
+  # rel_tol > 0 / "auto" (edid_overid) this v_scale-relative guard is SKIPPED: it fires spuriously when
+  # D has genuine rank but small magnitude relative to a large efficient-fit v_scale (the Bailey-GB
+  # panel), masking rank-deficiency as a false p = 1. There the eigen-based logic below decides
+  # (lambda_max ~ 0 -> genuine p = 1; relative floor drops all real directions -> NA).
+  if (rt_num == 0 && !auto && max(abs(D)) <= eps_D * max(v_scale, 1)) {
     return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE,
                 m_eff = NA_real_, df2 = NA_real_))
   }
   ev  <- eigen(D, symmetric = TRUE)
   mx  <- max(ev$values, 0)
-  tol <- mx * sqrt(.Machine$double.eps)
+  rk_bare <- if (mx > 0) sum(ev$values > mx * sqrt(.Machine$double.eps)) else 0L
+  if (rk_bare == 0L) {                                   # lambda_max ~ 0: D genuinely null (coincide)
+    return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE,
+                m_eff = NA_real_, df2 = NA_real_))
+  }
+  G_eff <- if (is.null(cluster_indices)) n_eff else length(unique(cluster_indices))
+  # SATURATION guard (over-id path only) -- a DEFENSIVE guard for genuinely FEW-CLUSTER designs. When the
+  # bare numerical rank reaches the cluster-robust rank ceiling G_eff - 1 (a centered sandwich of G_eff
+  # cluster scores has rank <= G_eff - 1), D-hat is full-rank-for-its-cluster-budget => there is NO null
+  # space to anchor a noise floor => the over-identifying dimension meets/exceeds the cluster budget and
+  # the JOINT over-id is not reliably estimable. Return NA (rank_deficient), never a misleading p; read the
+  # per-cell breakdown / edid_sargan. This fires ONLY when the user clusters coarsely AND the over-id
+  # dimension is large relative to the cluster count. It does NOT fire under the DEFAULT unit-level
+  # clustering (G_eff = n units, thousands of pieces, comfortably supports the fixed low-rank over-id) --
+  # e.g. Bailey-Goodman-Bacon, clustered at the county=unit level per the original paper (G_eff ~ 3059 >>
+  # structural rank 83), computes a normal joint J (df 15, p ~ 5.6e-5, REJECTS). Cannot fire on the
+  # validated designs (clustered no-cov r_bare = 6 << G_eff - 1; unclustered cov/mpdta G_eff = n_eff).
+  # Gated on `auto`: rel_tol = 0 (edid_hausman/edid_sargan) is byte-identical; a numeric rel_tol is respected.
+  if (auto && G_eff >= 2L && rk_bare >= G_eff - 1L) {
+    return(list(statistic = NA_real_, df = 0L, p_value = NA_real_, D = D, degenerate = TRUE,
+                rank_deficient = TRUE, m_eff = NA_real_, df2 = NA_real_))
+  }
+  # Rank threshold. rel_tol = 0 -> the byte-identical numerical cut mx*sqrt(eps) (edid_hausman /
+  # edid_sargan). rel_tol = "auto" (edid_overid default) -> the EFFECTIVE-RANK relative floor
+  # r_bare / n_eff, n_eff = Kish effective sample size. This is a DIVISION OF LABOR with the AHT F below:
+  # the FLOOR determines the RANK (which spectral directions are genuine over-id content vs the covariate
+  # decaying noise tail), and the AHT F handles the few-cluster sampling RELIABILITY of the surviving
+  # directions via m = G_eff - 1. The denominator for the floor is n_eff (the spectral noise scale of the
+  # covariate smear), NOT G_eff. [Validated empirically, round-3b MC on GENUINELY clustered data (ICC 0.44):
+  # n_eff recovers the true rank (df ~ 6) with nominal SIZE and strong POWER (.95) on clustered cov AND
+  # no-cov; the G_eff denominator instead COLLAPSES the rank (df ~ 1.3), under-rejects (.008), and loses
+  # ~40% power (.54) -- because r_bare over-counts the numerator, so r_bare/G_eff overshoots the noise edge.
+  # The cluster-robust over-resolution that motivated G_eff (Bailey) is handled NOT by the denominator but
+  # by the SATURATION guard above (r_bare = G_eff - 1 -> NA), which fires before this floor.] NO-OP on the
+  # clean low-rank no-covariate spectrum (r_bare small => tiny floor below the genuine eigenvalues, even at
+  # small n_eff); lands in the spectral gap on the covariate decaying spectrum. A fixed numeric rel_tol
+  # overrides.
+  rel_eff <- if (auto) rk_bare / n_eff else rt_num
+  tol <- mx * max(sqrt(.Machine$double.eps), rel_eff)
   pos <- ev$values > tol
   rk  <- sum(pos)
-  if (rk == 0L) {                                        # degenerate D: no power, report p = 1
+  if (rk == 0L) {
+    # The relative floor dropped EVERY real direction (rel_eff >= 1: extreme rank-deficiency).
+    # Uncomputable -> NA (rank_deficient = TRUE), never a misleading p = 1. (For rel_tol = 0 this is
+    # unreachable -- rk_bare >= 1 guarantees rk >= 1 at the bare cut -- so the bare convention is safe.)
+    if (rel_eff > sqrt(.Machine$double.eps)) {
+      return(list(statistic = NA_real_, df = 0L, p_value = NA_real_, D = D, degenerate = TRUE,
+                  rank_deficient = TRUE, m_eff = NA_real_, df2 = NA_real_))
+    }
     return(list(statistic = 0, df = 0L, p_value = 1, D = D, degenerate = TRUE,
                 m_eff = NA_real_, df2 = NA_real_))
   }
   V   <- ev$vectors[, pos, drop = FALSE]
-  if (!is.finite(n_eff) || n_eff <= 0) n_eff <- n
   # NO eigen-ridge. The finite-sample SIZING is carried entirely by the AHT effective-df F below, which
   # is the principled, asymptotically-negligible correction and is NOMINAL + power-preserving for the
   # dispersed-weight / few-cluster regimes. The previous dispersed-weight eigen-ridge (a fixed eigenvalue
@@ -308,7 +362,7 @@ EDID_OVERID_DISP_C <- 1.0  # noise-floor constant = the bare MP noise-edge coeff
   # m_sat is the Bell-McCaffrey/Satterthwaite LEVERAGE df (rk^2 / sum_g w_g^2, w_g the per-cluster/unit
   # leverage of D-hat); m_sat << G_eff FLAGS a D-hat dominated by a few high-leverage clusters/units
   # (weak overlap / severe imbalance), where even the F reference is fragile and trimming is the remedy.
-  G_eff <- if (is.null(cluster_indices)) n_eff else length(unique(cluster_indices))
+  # (G_eff defined above, where it also sets the relative rank floor's denominator.)
   m_sat <- .edid_overid_satdf(xi, V, ev$values[pos], cluster_indices, n, rk)
   m     <- G_eff - 1
   if (is.finite(m) && m > rk) {
