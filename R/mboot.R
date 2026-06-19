@@ -211,7 +211,7 @@ run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
     )
     results <- do.call(rbind, results)
   } else {
-    results = BMisc::multiplier_bootstrap(inf.func, biters)
+    results <- BMisc::multiplier_bootstrap(inf.func, biters)
   }
   return(results)
 }

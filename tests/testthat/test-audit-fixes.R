@@ -121,10 +121,11 @@ test_that("negative gname is rejected with a clear error in both code paths", {
 test_that("parallel multiplier bootstrap is reproducible under a fixed seed", {
   skip_on_os("windows")          # parallel path is force-disabled on Windows
   inf <- matrix(stats::rnorm(2600 * 4), 2600, 4)   # n > 2500 triggers the parallel branch
+  pre_kind <- RNGkind()                            # whatever the runner's RNG kind is
   set.seed(7); a <- did:::run_multiplier_bootstrap(inf, 300, pl = TRUE, cores = 2)
   set.seed(7); b <- did:::run_multiplier_bootstrap(inf, 300, pl = TRUE, cores = 2)
   expect_identical(a, b)                            # same seed -> bit-identical draws
-  expect_identical(RNGkind()[1], "Mersenne-Twister") # caller's RNGkind restored
+  expect_identical(RNGkind(), pre_kind)             # caller's RNG kind restored (whatever it was)
 })
 
 test_that("parallel bootstrap chunking never produces negative chunks (biters < cores)", {
