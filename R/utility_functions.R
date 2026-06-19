@@ -117,6 +117,48 @@ check_reserved_did_names <- function(yname, tname, idname, gname, xformla,
   }
 }
 
+validate_anticipation <- function(anticipation) {
+  if (!is.numeric(anticipation)) {
+    stop("anticipation must be numeric. Please convert it.")
+  }
+  if (length(anticipation) != 1L || is.na(anticipation)) {
+    stop("anticipation must be a single non-missing number. Please check your arguments.")
+  }
+  if (anticipation < 0) {
+    stop("anticipation must be non-negative. Please check your arguments.")
+  }
+  invisible(anticipation)
+}
+
+validate_logical_scalar <- function(x, name) {
+  if (!is.logical(x) || length(x) != 1L || is.na(x)) {
+    stop(name, " must be a single logical (TRUE or FALSE).")
+  }
+  invisible(x)
+}
+
+validate_numeric_scalar <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1L || is.na(x)) {
+    stop(name, " must be a single non-missing number.")
+  }
+  invisible(x)
+}
+
+validate_alp <- function(alp) {
+  if (!is.numeric(alp) || length(alp) != 1 || is.na(alp) || alp <= 0 || alp >= 1) {
+    stop("alp must be a single number strictly between 0 and 1.")
+  }
+  invisible(alp)
+}
+
+validate_positive_whole_number <- function(x, name) {
+  if (!is.numeric(x) || length(x) != 1 || is.na(x) ||
+      x < 1 || x != round(x)) {
+    stop(name, " must be a single positive whole number.")
+  }
+  invisible(x)
+}
+
 #' @title get_wide_data
 #' @description A utility function to convert long data to wide data, i.e., takes a 2 period dataset and turns it into a cross sectional dataset.
 #'

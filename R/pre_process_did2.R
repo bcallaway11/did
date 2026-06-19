@@ -107,15 +107,16 @@ validate_args <- function(args, data){
     }
   }
 
-  # Check if anticipation is numeric using
-  if (!is.numeric(args$anticipation)) {
-    stop("anticipation must be numeric. Please convert it.")
-  }
-
-  # Check if anticipation is positive
-  if (args$anticipation < 0) {
-    stop("anticipation must be non-negative. Please check your arguments.")
-  }
+  validate_logical_scalar(args$panel, "panel")
+  validate_logical_scalar(args$allow_unbalanced_panel, "allow_unbalanced_panel")
+  validate_logical_scalar(args$bstrap, "bstrap")
+  validate_logical_scalar(args$cband, "cband")
+  validate_logical_scalar(args$print_details, "print_details")
+  validate_logical_scalar(args$pl, "pl")
+  validate_positive_whole_number(args$cores, "cores")
+  validate_anticipation(args$anticipation)
+  validate_alp(args$alp)
+  if (args$bstrap) validate_positive_whole_number(args$biters, "biters")
 
 }
 
@@ -713,6 +714,7 @@ pre_process_did2 <- function(yname,
   if (!(args$base_period %in% c("universal", "varying"))) {
     stop("base_period must be either 'universal' or 'varying'.")
   }
+  validate_logical_scalar(args$faster_mode, "faster_mode")
   check_reserved_did_names(yname = args$yname, tname = args$tname,
                            idname = args$idname, gname = args$gname,
                            xformla = args$xformla,
