@@ -46,13 +46,17 @@ pre_process_did <- function(yname,
   if (!(base_period %in% c("universal", "varying"))) {
     stop("base_period must be either 'universal' or 'varying'.")
   }
-  # Check if anticipation is numeric and non-negative (same contract as the fast path)
-  if (!is.numeric(anticipation)) {
-    stop("anticipation must be numeric. Please convert it.")
-  }
-  if (anticipation < 0) {
-    stop("anticipation must be non-negative. Please check your arguments.")
-  }
+  validate_logical_scalar(panel, "panel")
+  validate_logical_scalar(allow_unbalanced_panel, "allow_unbalanced_panel")
+  validate_logical_scalar(bstrap, "bstrap")
+  validate_logical_scalar(cband, "cband")
+  validate_logical_scalar(faster_mode, "faster_mode")
+  validate_logical_scalar(print_details, "print_details")
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+  validate_anticipation(anticipation)
+  validate_alp(alp)
+  if (bstrap) validate_positive_whole_number(biters, "biters")
   check_reserved_did_names(yname = yname, tname = tname, idname = idname,
                            gname = gname, xformla = xformla,
                            weightsname = weightsname,

@@ -20,6 +20,9 @@ Icon?
 ^R/honest_did$
 ^\.claude$
 ^CLAUDE\.md$
+^\.agents$
+^\.codex$
+^AGENTS\.md$
 ^\.lintr$
 ^revdep_manual$
 ^vignettes/.*_cache$

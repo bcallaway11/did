@@ -35,6 +35,11 @@ compute.aggte <- function(MP,
   inffunc1 <- MP$inffunc
   n <- MP$n
 
+  validate_logical_scalar(na.rm, "na.rm")
+  validate_numeric_scalar(min_e, "min_e")
+  validate_numeric_scalar(max_e, "max_e")
+  if (!is.null(balance_e)) validate_numeric_scalar(balance_e, "balance_e")
+
   # aggte() needs the influence functions to aggregate and to compute standard errors.
   # They are absent when att_gt() was run with compute_inffunc = FALSE (point estimates only).
   if (is.null(inffunc1)) {
@@ -93,6 +98,10 @@ compute.aggte <- function(MP,
   if (is.null(cband)) {
     cband <- dp$cband
   }
+  validate_logical_scalar(bstrap, "bstrap")
+  validate_logical_scalar(cband, "cband")
+  validate_alp(alp)
+  if (bstrap || cband) validate_positive_whole_number(biters, "biters")
   if (isTRUE(dp$faster_mode)) {
     tlist <- dp$time_periods
     glist <- dp$treated_groups
