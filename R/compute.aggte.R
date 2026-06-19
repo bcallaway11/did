@@ -549,6 +549,14 @@ compute.aggte <- function(MP,
   #-----------------------------------------------------------------------------
 
   if (type == "calendar") {
+    # min_e / max_e / balance_e are event-study (dynamic) options and have no
+    # effect on calendar-time aggregation; warn if the user set them so the
+    # (correct) unrestricted result is not mistaken for a windowed one.
+    if (is.finite(max_e) || is.finite(min_e) || !is.null(balance_e)) {
+      warning("`min_e`, `max_e`, and `balance_e` are ignored for type = \"calendar\" ",
+              "(they apply only to type = \"dynamic\"); returning the unrestricted ",
+              "calendar-time effects.")
+    }
     # drop time periods where no one is treated yet
     # (can't get treatment effects in those periods)
     minG <- min(group)

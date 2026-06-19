@@ -8,6 +8,12 @@
 
   * `att_gt()` now rejects a negative `gname` up front with a clear message in both `faster_mode = TRUE` and `FALSE`. Previously negative cohort codes (out of spec — `gname` must be `0` for never-treated or a positive treatment time) were silently accepted on the fast path but errored on the slow path.
 
+  * The parallel multiplier bootstrap (`bstrap = TRUE, pl = TRUE, cores > 1`, on more than 2500 cross-sectional units) is now reproducible under a fixed `set.seed()`. It previously used the default Mersenne-Twister RNG inside `parallel::mclapply()`, whose forked workers re-seed non-deterministically, so bootstrap standard errors and uniform-band critical values drifted between identical-seed runs. It now uses L'Ecuyer-CMRG parallel RNG streams (and restores the caller's RNG kind on exit). Point estimates were always unaffected.
+
+  * Fixed a crash in the parallel bootstrap when `biters < cores` (with `pl = TRUE`, `cores > 1`, and more than 2500 units): the per-core work split could produce a negative chunk size. The split is now always non-negative.
+
+  * `aggte(type = "calendar")` now warns when `min_e`, `max_e`, or `balance_e` is supplied, since these event-study options do not apply to calendar-time aggregation (the unrestricted, correct calendar effects are returned, as before).
+
 # did 2.5.0
 
 This is a large release that consolidates all development since 2.3.0. Headline
