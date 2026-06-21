@@ -1120,7 +1120,8 @@ edid <- function(
   # pure matrix fit_edid_cells preserved; otherwise eif_matrix is already pure.
   ee_eif_matrix <- if (!is.null(fit_result$pure_eif_matrix)) fit_result$pure_eif_matrix else eif_matrix
   sigma_nocov_ee_full <- nocov_ee_sigma_full_edid(ee_eif_matrix, fit_result$nocov_ee_s,
-                                                  panel_obj$unit_cohorts, panel_obj$unit_weights)
+                                                  panel_obj$unit_cohorts, panel_obj$unit_weights,
+                                                  cluster_indices = panel_obj$cluster_indices)
 
   # ------------------------------------------------------------------
   # Aggregation

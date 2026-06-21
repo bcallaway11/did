@@ -64,7 +64,13 @@ test_that("clustervars == gname/yname/idname rejected; reserved column names rej
 #    group shares (wrong POINT estimates downstream); it also now sets
 #    DIDparams$nG/nT/est_method so broom::glance() works on the MP.
 # ---------------------------------------------------------------------------
-test_that("cohort-level clustering changes only SEs; MP aggregation and glance() are sound", {
+test_that("clustering: efficient point is clustering-dependent; PT-Post/uniform are not; MP aggregation and glance() are sound", {
+  # NOTE (2026-06-21 cluster-aligned efficient weights): the EFFICIENT over-identified scheme now forms its
+  # weights from the CLUSTER moment covariance Sig_cl (not the IID Omega*), so clustering changes the POINT,
+  # not only the SEs. The old "clustering changes only SEs" invariant holds ONLY for schemes whose weights are
+  # not estimated from the moment covariance: PT-Post (just-identified, w = [1]) and uniform (fixed 1/H). This
+  # test pins the new behavior and keeps the original glance()/aggregation soundness guard (a cluster column
+  # duplicating gname must not corrupt the cohort/group shares).
   # UNEQUAL cohort sizes (30 / 90 / 60) so a corrupted group share cannot cancel
   set.seed(202606)
   n_g3 <- 30L; n_g5 <- 90L; n_nv <- 60L; Tt <- 6L
@@ -81,14 +87,32 @@ test_that("cohort-level clustering changes only SEs; MP aggregation and glance()
   fc <- edid(df, "y", "id", "time", "g", aggregate = "all", cband = FALSE,
              clustervars = "cohort_cl")
 
-  # (i) clustering must change ONLY the standard errors
-  expect_identical(fc$att_gt$att, f0$att_gt$att)
-  expect_identical(fc$event_study$att.egt, f0$event_study$att.egt)
-  expect_identical(fc$group$att.egt,       f0$group$att.egt)
-  expect_identical(fc$overall$overall.att, f0$overall$overall.att)
-  expect_false(identical(fc$att_gt$se, f0$att_gt$se))   # the cluster path did engage
+  # (i) clustering changes the standard errors (the cluster path engaged)
+  expect_false(identical(fc$att_gt$se, f0$att_gt$se))
 
-  # (ii) glance() works on the edid-backed MP (needs DIDparams$nG/nT/est_method)
+  # (ii) PT-Post (just-identified) and uniform (fixed weights) points are clustering-INVARIANT
+  pp0 <- edid(df, "y", "id", "time", "g", aggregate = "all", cband = FALSE, pt_assumption = "post")
+  ppc <- edid(df, "y", "id", "time", "g", aggregate = "all", cband = FALSE, pt_assumption = "post",
+              clustervars = "cohort_cl")
+  expect_equal(pp0$att_gt$att, ppc$att_gt$att, tolerance = 1e-12)
+  un0 <- edid(df, "y", "id", "time", "g", aggregate = "all", cband = FALSE, weight_scheme = "uniform")
+  unc <- edid(df, "y", "id", "time", "g", aggregate = "all", cband = FALSE, weight_scheme = "uniform",
+              clustervars = "cohort_cl")
+  expect_equal(un0$att_gt$att, unc$att_gt$att, tolerance = 1e-12)
+
+  # (iii) efficient weights ARE clustering-dependent: with within-cluster correlation the cluster-aligned
+  # metric yields a DIFFERENT point than the IID-metric weights (enough clusters that the guard does not fire).
+  set.seed(11)
+  G3 <- 20L; m3 <- 12L; n3 <- G3 * m3; idx <- seq_len(n3); cl3 <- rep(seq_len(G3), each = m3)
+  g3 <- ifelse(idx %% 2L == 0L, 4, Inf); ce3 <- rnorm(G3)[cl3]
+  d3 <- do.call(rbind, lapply(1:6, function(tt) data.frame(
+        id = idx, time = tt, g = g3, cl = cl3,
+        y = rnorm(n3)[idx] + 2 * ce3 + 0.2 * tt + rnorm(n3, 0, 0.5))))
+  a3 <- edid(d3, "y", "id", "time", "g", aggregate = "none", cband = FALSE)
+  b3 <- edid(d3, "y", "id", "time", "g", aggregate = "none", cband = FALSE, clustervars = "cl")
+  expect_false(isTRUE(all.equal(a3$att_gt$att, b3$att_gt$att)))   # cluster-aligned efficient weights move the point
+
+  # (iv) glance() works on the edid-backed MP (needs DIDparams$nG/nT/est_method)
   gl <- generics::glance(as_MP_edid(fc))
   expect_s3_class(gl, "data.frame")
   expect_identical(gl$nobs, n)
@@ -96,10 +120,10 @@ test_that("cohort-level clustering changes only SEs; MP aggregation and glance()
   expect_identical(gl$ntime, Tt)
   expect_identical(gl$est.method, "edid")
 
-  # (iii) aggte through the clustered MP reproduces the unclustered att.egt
+  # (v) aggte through the clustered MP reproduces the CLUSTERED fit's own att.egt (self-consistency)
   a_mp <- aggte(as_MP_edid(fc, bstrap = FALSE, cband = FALSE),
                 type = "dynamic", na.rm = TRUE, bstrap = FALSE)
-  expect_equal(a_mp$att.egt, f0$event_study$att.egt, tolerance = 1e-12)
+  expect_equal(a_mp$att.egt, fc$event_study$att.egt, tolerance = 1e-12)
 })
 
 # ---------------------------------------------------------------------------

@@ -255,7 +255,10 @@ fit_edid_cells <- function(
 
   keep_eif <- store_eif || need_eif
   eif_list <- if (keep_eif) vector("list", n_cells) else NULL
-  ee_s_list <- if (nocov_ee) vector("list", n_cells) else NULL  # per-unit s_i per corrected cell
+  ee_s_list <- if (nocov_ee) vector("list", n_cells) else NULL  # per-unit (or per-cluster) s per corrected cell
+  # Row count of the no-cov weight-estimation projection matrix: per-unit (n) for the IID metric, per-CLUSTER
+  # (G) when clustered (the cluster branch of compute_nocov_ee_correction_edid returns the per-cluster s_g).
+  n_ee_rows <- if (is.null(panel_obj$cluster_indices)) n else length(unique(panel_obj$cluster_indices))
   # PURE (pre-psi_omega) no-covariate cell EIFs for the SECOND-order var_add cross-cell increment, which
   # must be built from the pure cell EIFs (not the psi_omega-augmented ones). Needed only when BOTH
   # no-covariate channels co-occur; NULL otherwise (the augmented eif_matrix is then already pure). The
@@ -268,6 +271,7 @@ fit_edid_cells <- function(
   n_fulltrim_total <- 0L  # cells where overlap trimming removed every treated unit -> NA; emit once
   n_pairs_dropped_total <- 0L  # dead pairs (no kept treated mass) dropped from cells' moment sets; emit once
   n_nocov_ee_skip_total <- 0L  # no-cov estimation_effect cells where the correction could not apply; emit once
+  n_cl_fallback_total <- 0L  # no-cov cluster-metric cells that fell back to IID Omega* (few clusters); emit once
 
   # Hoist the CELL-INVARIANT Nadaraya-Watson kernel: the n x n weight matrix K and the bandwidths depend only on
   # the full covariate matrix, so they are identical for every (g,t) cell. Build ONCE and reuse, instead of
@@ -616,6 +620,7 @@ fit_edid_cells <- function(
       ee_cell          <- NULL   # no-cov weight-estimation correction record (estimation_effect, no-cov path)
       nocov_misspec_applied <- FALSE   # whether the first-order misspec psi_omega channel folded into this cell
       n_nocov_ee_skip  <- 0L     # cells where the correction was requested but could not be applied
+      n_cl_fallback    <- 0L     # no-cov cluster-metric cells that fell back to IID Omega* (few clusters / rank-deficient Sig_cl)
 
       if (use_cov_path) {
         # Conditional means: subset the global cache to exactly this cell's (gp, period) combos, in the SAME order
@@ -816,12 +821,37 @@ fit_edid_cells <- function(
                                                   kp_cache = kp_cache, keep = omega_keep) else NULL
           cond_num <- if (need_omega) tryCatch(check_condition_edid(omega), error = function(e) NA_real_) else NA_real_
           H_local  <- nrow(pairs)   # == nrow(omega) by construction (every builder returns H x H over `pairs`)
+          # CLUSTER-ALIGNED WEIGHT METRIC (covariate constant-weight schemes: averaged / gmm). As on the
+          # no-covariate path, the reported SE is the cluster-robust CR1 sandwich, but averaged/gmm weights
+          # historically invert an IID metric (kernel Omega-bar / unconditional cov(gen_out)); under clustering
+          # those weights are sub-optimal for the clustered variance. The per-pair moment IFs ARE the columns
+          # of gen_out_mat, so the cluster moment covariance is crossprod(rowsum(center(gen_out), cluster))/n^2
+          # -- the direct analogue of the no-cov Sig_cl. Under correct specification the generated outcomes'
+          # conditional means coincide (all = ATT), so this marginal cluster metric is the cluster analogue of
+          # BOTH the gmm sample covariance AND the averaged Omega-bar: averaged and gmm COINCIDE under
+          # clustering, mirroring efficient/averaged/gmm on the no-covariate path. (The pointwise 'efficient'
+          # scheme inverts per-unit local Omega*(X_i) -- no global metric -- so it is conditionally efficient
+          # and left untouched; its cluster SE is honest.) Same few-cluster/rank guard as no-cov.
+          cl_cov_metric <- NULL; cl_cov_mbar <- NULL
+          if (!is.null(panel_obj$cluster_indices) && weight_method %in% c("averaged", "gmm") &&
+              H_local > 1L && !anyNA(gen_out_mat)) {
+            cl_cov_mbar <- if (is.null(panel_obj$unit_weights)) colMeans(gen_out_mat) else
+                             colSums(panel_obj$unit_weights * gen_out_mat) / sum(panel_obj$unit_weights)
+            .dc  <- sweep(gen_out_mat, 2L, cl_cov_mbar, "-")
+            .dcc <- rowsum(.dc, panel_obj$cluster_indices)          # G x H cluster sums of centered moments
+            .Ga  <- sum(rowSums(.dcc^2) > 0)                        # active clusters
+            .sig <- crossprod(.dcc) / panel_obj$n^2                 # cluster moment covariance
+            if (is.finite(.Ga) && .Ga >= 2L && H_local <= .Ga - 1L && all(is.finite(.sig)))
+              cl_cov_metric <- .sig
+          }
           # Research hook (default OFF, NOT committed to the PR): getOption("edid_fixed_weights") =
           # list("g_t" = weight vector) FREEZES the constant weight at a supplied value instead of re-estimating it.
           # Used by the weight-estimation-channel bootstrap (resample + refit nuisances but FREEZE W) to isolate
           # Sigma_Omega vs a refit-all bootstrap. Inert unless the option is set; falls back to estimation if H changed.
           .fw <- getOption("edid_fixed_weights", NULL); .fw <- if (!is.null(.fw)) .fw[[paste0(g, "_", t)]] else NULL
-          weights  <- if (!is.null(.fw) && length(.fw) == H_local) .fw else switch(weight_method,
+          weights  <- if (!is.null(.fw) && length(.fw) == H_local) .fw
+            else if (!is.null(cl_cov_metric)) compute_efficient_weights_edid(cl_cov_metric)  # cluster averaged/gmm (coincide)
+            else switch(weight_method,
             uniform = rep(1 / H_local, H_local),
             # pairwise.complete.obs so a single NA moment does not NA-poison the whole
             # covariance (compute_efficient_weights_edid then guards any residual non-finite).
@@ -841,7 +871,38 @@ fit_edid_cells <- function(
             wacc[[paste0(g, "_", t)]] <- weights                # lets the averaged/gmm jackknife freeze the full-sample W
             options(edid_weights_acc = wacc)
           }
-          if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "averaged") {
+          if (misspec_robust && !is.null(cl_cov_metric)) {
+            # CLUSTER misspecification weight-estimation IF (covariate averaged/gmm under clustering). The
+            # weights invert the cluster moment covariance cl_cov_metric of the generated outcomes via the SAME
+            # normalized-inverse map as the no-covariate efficient weights, so the first-order misspec IF is the
+            # no-cov cluster psi_omega with the moments dc = gen_out - mbar in the role of psi:
+            #   psi_omega_i = -(1/n)(mbar'B dc_i) a_{g(i)} + mbar'B C w,  B = A - (1'A1) w w',  A = C^{-1},
+            # a_{g(i)} = cluster-sum of dc'w for unit i's cluster. Mean-zero; exactly 0 under correct spec
+            # (mbar in span(1)); folds into the cluster-robust SE through the EIF. The standard first-step-
+            # nuisance ACH correction (estimation_effect block below) handles gen_out's dependence on the
+            # estimated m/r; the gmm-specific quadratic-moment nuisance sub-term is subsumed by that ACH under
+            # clustering (documented limitation -- NEWS). FD-oracled on the unweighted clustered-covariate cell.
+            A_c <- tryCatch(solve(cl_cov_metric), error = function(e) NULL)
+            if (!is.null(A_c)) {
+              u1 <- drop(A_c %*% rep(1, H_local)); s1 <- sum(u1)
+              w_chk <- if (is.finite(s1) && abs(s1) > EDID_DENOM_EPS) u1 / s1 else NULL
+              if (!is.null(w_chk) && max(abs(weights - w_chk)) < 1e-8) {     # weights ARE this map's weights
+                Bc   <- A_c - s1 * tcrossprod(weights)
+                dcm  <- sweep(gen_out_mat, 2L, cl_cov_mbar, "-")             # n x H centered moments (= dc)
+                ci_c <- as.integer(factor(panel_obj$cluster_indices))
+                a_i  <- drop(dcm %*% weights)
+                a_g  <- as.numeric(rowsum(a_i, ci_c))
+                a_br <- a_g[ci_c]                                            # each unit's own-cluster EIF
+                Bdc  <- dcm %*% Bc                                          # n x H, rows (B dc_i)'
+                BCw  <- drop(Bc %*% (cl_cov_metric %*% weights))
+                D_c  <- -((a_br / panel_obj$n) * Bdc - matrix(BCw, nrow(dcm), H_local, byrow = TRUE))
+                psi_const <- drop(D_c %*% cl_cov_mbar)                       # first-order misspec IF
+                if (!is.null(panel_obj$unit_weights)) psi_const <- panel_obj$unit_weights * psi_const
+              }
+            }
+          }
+          if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) &&
+              weight_method == "averaged" && is.null(cl_cov_metric)) {
             # Sigma_Omega = psi_data (five-term IF of Omegabar, kernel or sieve smoother) - corr (inv_p prefactor
             # channel). The IF holds only when the weights come from omega's (floored) inverse -- the coupling is
             # d theta / d Omega-bar at exactly those weights. Skip cells where the stored weights came from a
@@ -898,7 +959,8 @@ fit_edid_cells <- function(
               }
             }
           }
-          if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) && weight_method == "gmm") {
+          if ((isTRUE(getOption("edid_store_psiomega")) || misspec_robust) &&
+              weight_method == "gmm" && is.null(cl_cov_metric)) {
             # gmm weight-estimation IF: the gmm weight inverts C = cov(Ytilde), the unconditional sample covariance.
             # The channel is the sample-cov two-step IF psi_plug = -(d.u)(d.w) + u'Cw (d_i = Ytilde_i - mbar,
             # u = (C^-1 - w 1'C^-1)'mbar) PLUS the ACH correction for the quadratic moment u'Cw -- because a covariance
@@ -953,11 +1015,57 @@ fit_edid_cells <- function(
         }
       } else {
         # --- No-covariate path ---
+        cl_metric_on <- FALSE   # TRUE once omega is replaced by the CLUSTER moment covariance Sig_cl
+        sig_cl_raw   <- NULL    # the UNSHRUNK Sig_cl (cluster analogue of omega_raw) for the EE block
+        cl_n_eff     <- NA_real_ # effective # clusters entering Sig_cl (drives the cluster ridge intensity)
         y_hat    <- compute_generated_outcomes_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
         omega    <- compute_omega_star_nocov_edid(g, t, pairs, panel_obj, pt_assumption)
-        omega_raw <- omega   # unshrunk moment covariance (= crossprod(psi)/n^2 exactly); the
+        omega_raw <- omega   # unshrunk IID moment covariance (= crossprod(psi)/n^2 exactly); the
                              # weight-estimation correction needs BOTH the raw psi second moment
                              # and the matrix the weights actually invert (shrunk or not)
+        # CLUSTER-ALIGNED WEIGHT METRIC (no-covariate PT-All). The reported SE (safe_inference_edid
+        # below) is the CLUSTER-robust CR1 sandwich of the weighted IF, but the efficient weights were
+        # historically formed by inverting the IID moment covariance Omega* = crossprod(psi)/n^2. Under
+        # clustering the IID-optimal weights are sub-optimal for the clustered variance, so the
+        # "efficient" SE inflates above PT-Post -- impossible for a true efficiency bound. Align the
+        # metric: invert the CLUSTER moment covariance Sig_cl = crossprod(rowsum(psi, cluster))/n^2.
+        # By the identity crossprod(psi)/n^2 == Omega*, when cluster_indices is NULL OR every cluster
+        # holds exactly one unit, Sig_cl == Omega* bit-for-bit, so every non-clustered / clusters==units
+        # fit is BYTE-IDENTICAL; only multi-unit-cluster, over-identified (H > 1) PT-All cells move.
+        # uniform weights (fixed 1/H) and just-identified (H = 1 / PT-Post) cells invert nothing -> skipped.
+        if (!is.null(panel_obj$cluster_indices) && weight_method != "uniform" &&
+            pt_assumption == "all" && nrow(pairs) > 1L) {
+          psi_w  <- compute_psi_moments_nocov_edid(g, t, pairs, panel_obj)     # n x H per-unit moment IF
+          psi_cl <- rowsum(psi_w, panel_obj$cluster_indices)                   # G x H cluster sums
+          G_cl   <- nrow(psi_cl)
+          sig_cl <- crossprod(psi_cl) / panel_obj$n^2                          # cluster moment covariance
+          act_cl <- rowSums(psi_cl^2) > 0                                      # clusters that enter THIS cell
+          G_act  <- sum(act_cl)
+          # FEW-CLUSTER / RANK GUARD. The cohort-demeaned psi make the cluster sums sum to zero (one lost
+          # df), so rank(Sig_cl) <= G_act - 1. When the over-identifying dimension H reaches that budget
+          # the cluster metric is rank-deficient and its (pseudo)inverse weights are unstable (the over-id
+          # rank-deficiency regime; point estimate swings on few-cluster fixtures). Fall back to the IID
+          # Omega* for the weights and record it. Asymptotically G_act -> Inf so the guard never binds; the
+          # choice vanishes in the limit (regularization-asymptotically-negligible).
+          if (is.finite(G_act) && G_act >= 2L && nrow(pairs) <= G_act - 1L && all(is.finite(sig_cl))) {
+            omega        <- sig_cl
+            sig_cl_raw   <- sig_cl
+            cl_metric_on <- TRUE
+            # Effective # clusters for the ridge intensity (Kish ESS of cluster total weights among the
+            # active clusters; raw count G_act unweighted). Using unit n would under-regularize the
+            # rank-<=G_act matrix by n/G_act (effective-n-ridge-under-weights), so the ridge scale is set
+            # by the CLUSTER budget, not the unit count.
+            uw_cl <- panel_obj$unit_weights
+            if (is.null(uw_cl)) {
+              cl_n_eff <- G_act
+            } else {
+              Wg  <- as.numeric(rowsum(uw_cl, panel_obj$cluster_indices))[act_cl]
+              cl_n_eff <- if (sum(Wg * Wg) > 0) (sum(Wg)^2) / sum(Wg * Wg) else G_act
+            }
+          } else {
+            n_cl_fallback <- n_cl_fallback + 1L   # kept the IID Omega* (few-cluster fallback); warned once post-loop
+          }
+        }
         # omega_cov_shrink: regularize Omega* BEFORE inverting for the weights (no-covariate path).
         #   "none"        -> pure plug-in efficient estimator (unshrunk).
         #   "ledoit_wolf" -> Ledoit-Wolf shrinkage toward the i.i.d.-pole structure (data-driven lambda).
@@ -982,7 +1090,11 @@ fit_edid_cells <- function(
             # function of the FIXED weights only (CONSTANT in Omega-hat), so the ridge term stays
             # d/dOmega = I and the ee "plain map" branch is unchanged (FD-oracled).
             Hh    <- nrow(omega)
-            n_eff <- n_eff_edid(panel_obj$unit_weights,
+            # Under the cluster metric the inverted matrix is Sig_cl (rank <= G_act), so its effective
+            # sample size is the CLUSTER budget cl_n_eff, NOT the unit n_eff -- using unit n would
+            # under-regularize by n/G_act. Both intensities -> 0 asymptotically (negligibility preserved).
+            n_eff <- if (cl_metric_on) cl_n_eff else
+                     n_eff_edid(panel_obj$unit_weights,
                                 active_mask_nocov_edid(g, pairs, panel_obj), panel_obj$n)
             lam_r <- Hh / n_eff
             omega <- omega + (lam_r * mean(diag(omega))) * diag(Hh)
@@ -1012,8 +1124,11 @@ fit_edid_cells <- function(
           # directions D (used for the var_add) and -- when mbar is supplied -- the first-order
           # misspecification IF psi_omega = D %*% mbar. y_hat is the cell moment vector mbar.
           ee_tmp <- compute_nocov_ee_correction_edid(
-            g, t, pairs, panel_obj, omega_raw = omega_raw, omega_used = omega,
+            g, t, pairs, panel_obj,
+            omega_raw  = if (cl_metric_on) sig_cl_raw else omega_raw,  # cluster Sig_cl is the metric the weights invert
+            omega_used = omega,
             weights = weights, shrink_lambda = shrink_lambda,
+            cluster_indices = if (cl_metric_on) panel_obj$cluster_indices else NULL,
             mbar = if (nocov_misspec) y_hat else NULL)
           # First-order MISSPECIFICATION channel (misspec_robust): fold psi_omega into the cell EIF (a genuine
           # per-unit IF -> propagates to the clustered covariance, aggregations, sup-t bands, and the
@@ -1116,7 +1231,8 @@ fit_edid_cells <- function(
            ee_s = ee_s,
            ci = c(g = g, time = t, cell_id = cell_id, is_pre = is_pre),
            n_extreme = n_extreme, n_psi_unstable = n_psi_unstable,
-           n_dropped = n_pairs_dropped, n_nocov_ee_skip = n_nocov_ee_skip)
+           n_dropped = n_pairs_dropped, n_nocov_ee_skip = n_nocov_ee_skip,
+           n_cl_fallback = n_cl_fallback)
   }  # end .fit_one_cell
 
   # Dispatch: parallel over independent cells when cores > 1 (fork; not on Windows), else serial lapply
@@ -1141,12 +1257,24 @@ fit_edid_cells <- function(
     if (!is.null(pure_eif_list))
       pure_eif_list[[.cid]] <- if (!is.null(.r$eif_pure)) .r$eif_pure
                                else if (is.null(.r$eif)) rep(NA_real_, n) else .r$eif  # unfolded cell: eif is already pure
-    if (nocov_ee) ee_s_list[[.cid]] <- if (is.null(.r$ee_s)) rep(NA_real_, n) else .r$ee_s
+    # Under the cluster metric the per-cell projection s is per-CLUSTER (length G), not per-unit; the NA
+    # fallback for cells without an applied correction must match that row count so the cbind below conforms.
+    if (nocov_ee) ee_s_list[[.cid]] <- if (is.null(.r$ee_s)) rep(NA_real_, n_ee_rows) else .r$ee_s
     n_extreme_ratio_instances <- n_extreme_ratio_instances + .r$n_extreme
     if (!is.null(.r$n_psi_unstable)) n_psi_unstable_total <- n_psi_unstable_total + .r$n_psi_unstable
     if (!is.null(.r$n_fulltrim)) n_fulltrim_total <- n_fulltrim_total + .r$n_fulltrim
     if (!is.null(.r$n_dropped)) n_pairs_dropped_total <- n_pairs_dropped_total + .r$n_dropped
     if (!is.null(.r$n_nocov_ee_skip)) n_nocov_ee_skip_total <- n_nocov_ee_skip_total + .r$n_nocov_ee_skip
+    if (!is.null(.r$n_cl_fallback)) n_cl_fallback_total <- n_cl_fallback_total + .r$n_cl_fallback
+  }
+
+  if (n_cl_fallback_total > 0L) {
+    warning(sprintf(
+      paste0("clustered efficient weights (no-covariate PT-All): the cluster moment covariance Sig_cl ",
+             "was rank-deficient for the over-identifying dimension in %d cell(s) (too few clusters: ",
+             "H >= #active clusters); those cells kept the IID Omega* weight metric as a documented ",
+             "fallback. Report the localized reads or add clusters."),
+      n_cl_fallback_total), call. = FALSE)
   }
 
   if (n_nocov_ee_skip_total > 0L) {
@@ -1254,7 +1382,7 @@ fit_edid_cells <- function(
   nocov_ee_s <- NULL
   if (nocov_ee && length(ee_s_list) > 0L) {
     nocov_ee_s <- do.call(cbind, ee_s_list)
-    if (is.null(dim(nocov_ee_s))) nocov_ee_s <- matrix(nocov_ee_s, nrow = n)
+    if (is.null(dim(nocov_ee_s))) nocov_ee_s <- matrix(nocov_ee_s, nrow = n_ee_rows)
   }
 
   # Stability-diagnostic counts surfaced on the fit ($diagnostics) for the Section-5

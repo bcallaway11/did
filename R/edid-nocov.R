@@ -509,6 +509,26 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #'   \code{shrink_lambda > 0})
 #' @param return_D logical: include the n x H matrix of per-unit directions
 #'   \eqn{d_i} in the result (tests / diagnostics only)
+#' @param cluster_indices length-n cluster id vector, or \code{NULL} (i.i.d.). When
+#'   supplied, the weights invert the CLUSTER moment covariance
+#'   \eqn{\widehat\Sigma_{cl} = \mathrm{crossprod}(\mathrm{rowsum}(\psi, cl))/n^2}
+#'   (== \code{omega_raw}/\code{omega_used} here), so the weight-estimation channel
+#'   is driven by the per-CLUSTER moment IF \eqn{\Psi_g = \sum_{i\in g}\psi_i}. The
+#'   function then returns: (1) a per-UNIT first-order \code{psi_omega} (the cluster
+#'   misspecification IF, built from the cluster-broadcast EIF \eqn{a_{g(i)}}); and
+#'   (2) a per-CLUSTER second-order \code{var_add} \eqn{= (G/(G-1))\,2\hat Q},
+#'   \eqn{\hat Q = -(Gn^2)^{-1}\sum_g a_g (d_g'\Psi_g)}, \eqn{d_g = -B v_g w},
+#'   \eqn{v_g = (G/n^2)\Psi_g\Psi_g' - \widehat\Sigma_{cl}}. There is no separate
+#'   \eqn{\Delta_{DF}}: the cohort demeaning leaves the single constraint
+#'   \eqn{\sum_g\Psi_g = 0} at the cluster-sum level, which the leading SE's CR1
+#'   factor \eqn{G/(G-1)} already restores. \code{s_vec} is then per-CLUSTER (length
+#'   G) for the cross-cell increment. All terms reduce to the i.i.d. forms below at
+#'   clusters==units (\eqn{G=n}, \eqn{\Psi_g=\psi_i}); validated by FD oracle (the
+#'   \eqn{d_g} map) and MC calibration on clustered DGPs. For
+#'   \code{omega_cov_shrink = "ledoit_wolf"} the plain map retains the leading
+#'   optimism (B from the shrunk \eqn{\widehat\Sigma_{cl}}); only the LW-intensity
+#'   data-dependence (the \eqn{d\lambda} chain) is omitted (a higher-order term with
+#'   no production consumer).
 #' @param mbar numeric vector length H, or \code{NULL}: the cell's moment vector
 #'   (the long-difference contrasts \eqn{\bar m}, \code{== compute_generated_outcomes_nocov_edid()}).
 #'   When supplied, the result also carries \code{psi_omega}, the FIRST-ORDER
@@ -528,7 +548,7 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
 #' @keywords internal
 compute_nocov_ee_correction_edid <- function(
   target_g, target_t, pairs, panel_obj, omega_raw, omega_used, weights,
-  shrink_lambda = NA_real_, return_D = FALSE, mbar = NULL
+  shrink_lambda = NA_real_, return_D = FALSE, mbar = NULL, cluster_indices = NULL
 ) {
   # warn = FALSE marks a STRUCTURAL skip: the cell's weights are not the smooth inverse-map
   # estimator (pseudoinverse/uniform fallback on an exactly-singular Omega, e.g. duplicated
@@ -560,6 +580,59 @@ compute_nocov_ee_correction_edid <- function(
 
   B <- A - s * tcrossprod(weights)                       # dw = -B dOmega w;  B 1 = 0 exactly
   psi  <- compute_psi_moments_nocov_edid(target_g, target_t, pairs, panel_obj)   # n x H
+
+  # ---- CLUSTER METRIC BRANCH ------------------------------------------------------------------------
+  # When cluster_indices is supplied the weights invert the CLUSTER moment covariance
+  # Sig_cl = crossprod(rowsum(psi, cluster))/n^2 (== omega_raw/omega_used here), so the weight-estimation
+  # channel is driven by the per-CLUSTER moment IF Psi_g = sum_{i in g} psi_i (rows of psi_cl), not psi_i.
+  # Two outputs, both reducing to the IID forms below at clusters==units (G=n, Psi_g=psi_i):
+  #  (1) FIRST-ORDER misspecification IF psi_omega (per-UNIT; folds into the cell EIF). The per-unit IF of
+  #      Sig_cl is t_i = (1/n) psi_i Psi_{g(i)}' (so (1/n) sum_i t_i = Sig_cl exactly), giving
+  #      psi_omega_i = -mbar'B(t_i - Sig_cl)w = -(1/n)(mbar'B psi_i) a_{g(i)} + mbar'B Sig_cl w, with
+  #      a_{g(i)} = Psi_{g(i)}'w the unit's cluster-sum EIF. Mean-zero (sum_i psi_omega_i = 0) and exactly
+  #      0 under correct specification (mbar in span(1) => D 1 = 0). This is the deck/paper channel
+  #      (misspec_robust = TRUE; reached on the ridge/none path where shrink_lambda is NA).
+  #  (2) SECOND-ORDER var_add (per-CLUSTER; additive to the cell SE). Clusters are the iid sampling units:
+  #      per-cluster IF v_g = (G/n^2) Psi_g Psi_g' - Sig_cl, direction d_g = -B v_g w =
+  #      -(G a_g/n^2) B Psi_g + B Sig_cl w; optimism Q = -(G n^2)^{-1} sum_g a_g (d_g' Psi_g). The reported
+  #      leading SE already carries the cluster Bessel G/(G-1) (safe_inference_edid), and the cohort
+  #      demeaning leaves exactly the single constraint sum_g Psi_g = 0 at the cluster-sum level, so that
+  #      CR1 factor restores the lost df: there is NO separate Delta_DF, and the additive correction is
+  #      var_add = (G/(G-1)) * 2 Q. (Validated by MC calibration on a clustered DGP.)
+  if (!is.null(cluster_indices)) {
+    # The PLAIN map (B from omega_used) is exact for omega_cov_shrink in {none, ridge} (ridge is constant in
+    # Omega-hat, d/dOmega = I). For ledoit_wolf the plain map retains the LEADING optimism (B is built from the
+    # actually-inverted shrunk Sig_cl); only the LW intensity's data-dependence (the dlambda chain term) is
+    # omitted -- a higher-order refinement with no deck/paper consumer (documented, NEWS). The first-order
+    # psi_omega is ALWAYS computed below, so the misspec_robust channel is never dropped.
+    ci_idx <- as.integer(factor(cluster_indices))        # compact 1..G codes (row order of rowsum)
+    psi_cl <- rowsum(psi, ci_idx)                        # G x H cluster sums Psi_g
+    Gn     <- nrow(psi_cl)
+    if (Gn < 2L) return(skip("fewer than 2 clusters: cluster weight-estimation channel undefined"))
+    a_cl   <- drop(psi_cl %*% weights)                   # length G: cluster-sum EIFs a_g
+    a_brd  <- a_cl[ci_idx]                               # length n: each unit's own-cluster EIF a_{g(i)}
+    Bpsi   <- psi %*% B                                  # n x H  (B symmetric: rows (B psi_i)')
+    BOw    <- drop(B %*% (omega_raw %*% weights))        # = B Sig_cl w  (omega_raw == Sig_cl here)
+    cr1    <- Gn / (Gn - 1)
+    # (1) first-order per-unit direction -> psi_omega
+    D_fo   <- -((a_brd / n) * Bpsi - matrix(BOw, n, H, byrow = TRUE))            # n x H
+    # (2) second-order per-cluster direction -> var_add
+    Bpsi_cl <- psi_cl %*% B                              # G x H
+    d_cl    <- -((Gn * a_cl / n^2) * Bpsi_cl - matrix(BOw, Gn, H, byrow = TRUE)) # G x H  (d_g)
+    s_g      <- rowSums(d_cl * psi_cl)                   # d_g' Psi_g
+    cov_lead <- sum(a_cl * s_g) / (Gn * n^2)             # diagnostic (J-linear Cov(T1,T2))
+    q_opt    <- cr1 * (-cov_lead)                        # CR1-scaled optimism (matches the reported leading)
+    delta_df <- 0                                        # cluster Bessel absorbed by the leading G/(G-1)
+    var_add  <- delta_df + 2 * q_opt
+    if (!is.finite(var_add)) return(skip("non-finite correction", warn = TRUE))
+    out <- list(applied = TRUE, reason = NA_character_, warn = FALSE, var_add = var_add,
+                delta_df = delta_df, q_opt = q_opt, cov_lead = cov_lead, var_second = NA_real_,
+                s_vec = s_g)                             # per-CLUSTER s_g for the cross-cell increment
+    if (!is.null(mbar)) out$psi_omega <- drop(D_fo %*% mbar)
+    if (isTRUE(return_D)) out$D <- D_fo
+    return(out)
+  }
+
   a    <- drop(psi %*% weights)                          # leading per-unit IF (= the cell EIF)
   Bpsi <- psi %*% B                                      # rows (B psi_i)' (B symmetric)
   BOw  <- drop(B %*% (omega_raw %*% weights))            # exactly 0 when omega_used == omega_raw
@@ -685,11 +758,31 @@ compute_nocov_ee_correction_edid <- function(
 #' @param unit_cohorts length-n vector of unit cohort labels (Inf = never treated)
 #' @return K x K matrix, or NULL when no cell carries an applied correction
 #' @keywords internal
-nocov_ee_sigma_full_edid <- function(eif_matrix, s_matrix, unit_cohorts, unit_weights = NULL) {
+nocov_ee_sigma_full_edid <- function(eif_matrix, s_matrix, unit_cohorts, unit_weights = NULL,
+                                     cluster_indices = NULL) {
   if (is.null(eif_matrix) || is.null(s_matrix)) return(NULL)
   K <- ncol(s_matrix)
   ok <- which(vapply(seq_len(K), function(k) all(is.finite(s_matrix[, k])), logical(1L)))
   if (length(ok) == 0L) return(NULL)
+  out <- matrix(0, K, K)
+  if (!is.null(cluster_indices)) {
+    # CLUSTER metric. s_matrix rows are CLUSTERS (the per-cluster s_g = d_g' Psi_g from
+    # compute_nocov_ee_correction_edid); cluster-sum the cell EIFs to a_g^c. The reported leading
+    # covariance already carries the cluster Bessel G/(G-1), and the cohort demeaning leaves the single
+    # constraint sum_g Psi_g = 0 at the cluster-sum level, so there is NO Delta_DF block: the increment is
+    # purely the CR1-scaled cross-cell optimism Sigma_cc' = -(1/((G-1)n^2)) sum_g (s_g^c a_g^{c'} +
+    # a_g^c s_g^{c'}). Its diagonal reproduces the per-cell var_add = (G/(G-1)) 2 Q exactly.
+    ci   <- as.integer(factor(cluster_indices))
+    G    <- length(unique(ci))
+    if (G < 2L) return(NULL)
+    n    <- length(ci)
+    A_cl <- rowsum(eif_matrix[, ok, drop = FALSE], ci)     # G x |ok|: cluster-sum EIFs a_g^c
+    Sv   <- s_matrix[, ok, drop = FALSE]                    # G x |ok|: per-cluster s_g^c
+    if (nrow(A_cl) != nrow(Sv)) return(NULL)
+    sa   <- crossprod(Sv, A_cl) / ((G - 1) * n^2)
+    out[ok, ok] <- -(sa + t(sa))
+    return(out)
+  }
   n <- nrow(s_matrix)
   # Per-unit Bessel factor f_i (constant within cohort): 1/(m-1) unweighted, s2/(1-s2) weighted
   # (s2_g = sum w^2 / (sum w)^2) -- the same weighted Bessel fraction as the per-cell delta_df.
