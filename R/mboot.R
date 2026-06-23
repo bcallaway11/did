@@ -23,6 +23,9 @@
 #'
 #' @export
 mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+  validate_logical_scalar(return_V, "return_V")
 
   # setup needed variables according to faster_mode; This returns different type of objects
   # depending on whether we are in faster_mode or not that has to be handled in the code below
@@ -32,6 +35,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
   tname <- DIDparams$tname
   alp <- DIDparams$alp
   panel <- DIDparams$panel
+  validate_positive_whole_number(biters, "biters")
+  validate_alp(alp)
+  validate_logical_scalar(panel, "DIDparams$panel")
   true_repeated_cross_sections <- DIDparams$true_repeated_cross_sections
   unbalanced_panel <- DIDparams$allow_unbalanced_panel
   # Reuse the per-unit cluster vector that att_gt() stored in DIDparams when it
@@ -58,17 +64,21 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
         dta <- data
       }
     }
+    validate_column_names(clustervars, "clustervars", names(dta), allow_null = TRUE)
   }
 
   # Convert sparse matrix to dense for bootstrap computation
   inf.func <- as.matrix(inf.func)
+  if (!is.numeric(inf.func) || nrow(inf.func) < 1L || ncol(inf.func) < 1L) {
+    stop("inf.func must be a numeric matrix with at least one row and one column.")
+  }
 
   # set correct number of units
   n <- nrow(inf.func)
 
   # if include id as variable to cluster on
   # drop it as we do this automatically
-  if (idname %in% clustervars) {
+  if (!is.null(idname) && idname %in% clustervars) {
     clustervars <- clustervars[-which(clustervars==idname)]
   }
 
@@ -113,6 +123,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
     } else {
       n_clusters <- length(unique(dta[,clustervars]))
       cluster <- unique(dta[,c(idname,clustervars)])[,2]
+    }
+    if (length(cluster) != n) {
+      stop("cluster vector length must match the number of influence-function rows.")
     }
     cluster_sum_if <- rowsum(inf.func, cluster, reorder=TRUE)
     bres <- sqrt(n_clusters) * run_multiplier_bootstrap(cluster_sum_if, biters, pl, cores)
@@ -179,10 +192,17 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
 }
 
 run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
-  ngroups = ceiling(biters/cores)
-  chunks = rep(ngroups, cores)
-  # Round down so you end up with the right number of biters
-  chunks[1] = chunks[1] + biters - sum(chunks)
+  validate_positive_whole_number(biters, "biters")
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+
+  # Split biters into per-core chunks that are always non-negative and sum to
+  # biters. The previous rep(ceiling(biters/cores), cores) + correction made
+  # chunks[1] negative when biters < cores (e.g. biters=2, cores=4 -> [-1,1,1,1]),
+  # which crashed BMisc::multiplier_bootstrap(). This split never goes negative
+  # and drops empty chunks.
+  chunks <- diff(round(seq(0, biters, length.out = cores + 1)))
+  chunks <- chunks[chunks > 0]
 
   n <- nrow(inf.func)
   parallel.function <- function(biters) {
@@ -193,15 +213,22 @@ run_multiplier_bootstrap <- function(inf.func, biters, pl = FALSE, cores = 1) {
     warning("Parallel processing (pl=TRUE) is not supported on Windows. Using sequential processing instead.")
     pl <- FALSE
   }
-  if(n > 2500 & pl == TRUE & cores > 1) {
-    results = parallel::mclapply(
+  if (n > 2500 && pl && cores > 1) {
+    # Use parallel-safe RNG streams so a fixed set.seed() makes the parallel
+    # bootstrap reproducible run-to-run. Under the default Mersenne-Twister,
+    # mclapply()'s forked children re-seed non-deterministically, so the
+    # bootstrap draws -- and hence the SE and the uniform-band critical value --
+    # would drift between identical-seed runs. Restore the caller's RNGkind on exit.
+    old_kind <- RNGkind("L'Ecuyer-CMRG")
+    on.exit(RNGkind(old_kind[1L], old_kind[2L], old_kind[3L]), add = TRUE)
+    results <- parallel::mclapply(
       chunks,
       FUN = parallel.function,
-      mc.cores = cores
+      mc.cores = min(cores, length(chunks))   # no more workers than non-empty chunks
     )
-    results = do.call(rbind, results)
+    results <- do.call(rbind, results)
   } else {
-    results = BMisc::multiplier_bootstrap(inf.func, biters)
+    results <- BMisc::multiplier_bootstrap(inf.func, biters)
   }
   return(results)
 }

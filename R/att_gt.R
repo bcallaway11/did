@@ -302,10 +302,34 @@ att_gt <- function(yname,
   # Capture extra arguments for custom est_method
   extra_args <- list(...)
 
+  if (missing(control_group)) control_group <- "nevertreated"
+  validate_choice_scalar(
+    control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'"
+  )
+  validate_choice_scalar(
+    base_period,
+    "base_period",
+    c("universal", "varying"),
+    "base_period must be either 'universal' or 'varying'."
+  )
+
   # Validate compute_inffunc (point-estimates-only switch)
   if (!is.logical(compute_inffunc) || length(compute_inffunc) != 1 || is.na(compute_inffunc)) {
     stop("compute_inffunc must be a single logical (TRUE or FALSE).")
   }
+  validate_logical_scalar(panel, "panel")
+  validate_logical_scalar(allow_unbalanced_panel, "allow_unbalanced_panel")
+  validate_logical_scalar(bstrap, "bstrap")
+  validate_logical_scalar(cband, "cband")
+  validate_logical_scalar(faster_mode, "faster_mode")
+  validate_logical_scalar(print_details, "print_details")
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+  validate_anticipation(anticipation)
+  validate_alp(alp)
   # When influence functions are not computed there are no standard errors, no
   # uniform bands, and no parallel-trends pre-test, so the bootstrap is moot.
   if (!compute_inffunc) {
@@ -356,17 +380,9 @@ att_gt <- function(yname,
     stop("Must provide idname when panel = TRUE. Set panel = FALSE for repeated cross sections.")
   }
 
-  # Validate alp (significance level)
-  if (!is.numeric(alp) || length(alp) != 1 || is.na(alp) || alp <= 0 || alp >= 1) {
-    stop("alp must be a single number strictly between 0 and 1.")
-  }
-
   # Validate biters (number of bootstrap iterations) when the bootstrap is used
   if (bstrap) {
-    if (!is.numeric(biters) || length(biters) != 1 || is.na(biters) ||
-        biters < 1 || biters != round(biters)) {
-      stop("biters must be a single positive whole number.")
-    }
+    validate_positive_whole_number(biters, "biters")
   }
 
   # Warn users about anticipation and never-treated units

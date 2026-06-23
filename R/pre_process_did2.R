@@ -10,10 +10,11 @@ validate_args <- function(args, data){
   data_names <- names(data)
 
   # ---------------------- Error Checking ----------------------
-  args$control_group <- args$control_group[1]
   # Flag for control group types
   control_group_message <- "control_group must be either 'nevertreated' or 'notyettreated'"
-  dreamerr::check_set_arg(args$control_group, "match", .choices = c("nevertreated", "notyettreated"), .message = control_group_message, .up = 1)
+  validate_choice_scalar(args$control_group, "control_group",
+                         c("nevertreated", "notyettreated"),
+                         control_group_message)
 
   # Flag for tname, gname, yname
   name_message <- "__ARG__ must be a character scalar and a name of a column from the dataset."
@@ -45,6 +46,17 @@ validate_args <- function(args, data){
   # Check if gname is numeric
   if(!data[, is.numeric(get(args$gname))]){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
 
+  # gname must be 0 (never-treated) or a positive treatment-timing value;
+  # negative codes are not supported (0 is reserved for never-treated). Reject
+  # them up front so the fast and slow paths behave identically (the fast path
+  # previously accepted negative codes silently while the slow path errored).
+  if (data[, any(get(args$gname) < 0, na.rm = TRUE)]) {
+    stop("The group variable '", args$gname, "' must be 0 (never-treated) or a ",
+         "positive treatment-timing value; negative values are not supported. ",
+         "If your time periods are non-positive, shift them so the earliest ",
+         "period is >= 1.")
+  }
+
   # Check if yname is numeric (logical 0/1 outcomes are also allowed)
   if(!data[, is.numeric(get(args$yname)) || is.logical(get(args$yname))]){stop("The outcome variable '", args$yname, "' must be numeric. Please convert it.")}
 
@@ -59,14 +71,16 @@ validate_args <- function(args, data){
 
     # Check if gname is unique by idname: irreversibility of the treatment
     # Use direct column access instead of get() for speed
-    id_g_unique <- unique(data[, c(args$idname, args$gname), with = FALSE])
+    nonmissing_g <- !is.na(data[[args$idname]]) & !is.na(data[[args$gname]])
+    id_g_unique <- unique(data[nonmissing_g, c(args$idname, args$gname), with = FALSE])
     check_treatment_uniqueness <- anyDuplicated(id_g_unique[[1]]) == 0L
     if (!check_treatment_uniqueness) {
       stop("The value of gname (treatment variable) must be the same across all periods for each particular unit. The treatment must be irreversible.")
     }
 
     # Check if any combination of idname and tname is duplicated
-    n_id_year <- anyDuplicated(data, by = c(args$idname, args$tname))
+    nonmissing_id_time <- !is.na(data[[args$idname]]) & !is.na(data[[args$tname]])
+    n_id_year <- anyDuplicated(data[nonmissing_id_time], by = c(args$idname, args$tname))
     # If any combination is duplicated, stop execution and throw an error
     if (n_id_year > 0) {
       stop("The value of idname must be unique (by tname). Some units are observed more than once in a period.")
@@ -74,9 +88,10 @@ validate_args <- function(args, data){
   }
 
   # Flag for base period: not in c("universal", "varying"), stop
-  args$base_period <- args$base_period[1]
   base_period_message <- "base_period must be either 'universal' or 'varying'."
-  dreamerr::check_set_arg(args$base_period, "match", .choices = c("universal", "varying"), .message = base_period_message, .up = 1)
+  validate_choice_scalar(args$base_period, "base_period",
+                         c("universal", "varying"),
+                         base_period_message)
 
   # Flags for cluster variable
   # Note: idname was already stripped from clustervars and the at-most-one check
@@ -96,15 +111,16 @@ validate_args <- function(args, data){
     }
   }
 
-  # Check if anticipation is numeric using
-  if (!is.numeric(args$anticipation)) {
-    stop("anticipation must be numeric. Please convert it.")
-  }
-
-  # Check if anticipation is positive
-  if (args$anticipation < 0) {
-    stop("anticipation must be non-negative. Please check your arguments.")
-  }
+  validate_logical_scalar(args$panel, "panel")
+  validate_logical_scalar(args$allow_unbalanced_panel, "allow_unbalanced_panel")
+  validate_logical_scalar(args$bstrap, "bstrap")
+  validate_logical_scalar(args$cband, "cband")
+  validate_logical_scalar(args$print_details, "print_details")
+  validate_logical_scalar(args$pl, "pl")
+  validate_positive_whole_number(args$cores, "cores")
+  validate_anticipation(args$anticipation)
+  validate_alp(args$alp)
+  if (args$bstrap) validate_positive_whole_number(args$biters, "biters")
 
 }
 
@@ -129,23 +145,24 @@ did_standardization <- function(data, args){
 
   # Check if any covariates were missing
   n_orig <- data[, .N]
-  data <- data[complete.cases(data)]
-  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # gname is excluded from the finite check because Inf is a valid never-treated
+  # code there (see complete_finite_cases); missing/NaN gname is still dropped.
+  data <- data[complete_finite_cases(data, finite_exclude = args$gname)]
+  # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate); safe now that raw-covariate NAs are removed (so poly()/ns()/... will
   # not error on NA input). Use model.frame (NOT model.matrix) with na.action =
   # na.pass: model.frame keeps every row -- including NA/NaN-valued terms -- so the
   # complete.cases() mask stays aligned with `data` (model.matrix would silently drop
-  # NaN rows, shortening the mask and letting the offending rows survive). Inf-valued
-  # terms are kept, matching the prior behavior.
+  # NaN rows, shortening the mask and letting the offending rows survive).
   if (length(xvars) > 0L && data[, .N] > 0L) {
     mf_check <- suppressWarnings(model.frame(args$xformla, data = data, na.action = na.pass))
-    finite_rows <- complete.cases(mf_check)
+    finite_rows <- complete_finite_cases(mf_check)
     if (!all(finite_rows)) data <- data[finite_rows]
   }
   n_new <- data[, .N]
   n_diff <- n_orig - n_new
   if (n_diff != 0) {
-    warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
+    warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
   }
 
   # Set weights
@@ -279,7 +296,11 @@ did_standardization <- function(data, args){
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
                     if (args$anticipation > 0) paste0(" (accounting for anticipation = ", args$anticipation, ")") else "",
                     "."))
-    data <- data[get(args$gname) %in% c(glist, Inf)]
+    # Drop ONLY the first-period-treated units, by row identity (see pre_process_did:
+    # dropping by `gname %in% c(glist, Inf)` also deleted the latest control cohort --
+    # removed from glist above -- whenever there was no never-treated group, silently
+    # corrupting ATT(g,t) for the other groups).
+    data <- data[!treated_first_period]
 
     # update tlist and glist
     tlist <- data[, sort(unique(get(args$tname)))]
@@ -288,6 +309,13 @@ did_standardization <- function(data, args){
     # Drop groups treated in the first period or before
     first_period <- tlist[1]
     glist <- glist[glist != Inf & glist > first_period + args$anticipation]
+
+    # Keep the latest cohort in the data as a not-yet-treated control but excluded
+    # from glist when there is still no never-treated group (mirrors the
+    # `glist[glist < latest_g]` trim above for the nfirstperiod == 0 case).
+    if (args$control_group != "nevertreated" && !any(is.infinite(data[[args$gname]]))) {
+      glist <- glist[glist < latest_g]
+    }
   }
 
   # If user specifies repeated cross sections,
@@ -659,6 +687,7 @@ pre_process_did2 <- function(yname,
                             cores = 1,
                             call = NULL) {
 
+  validate_xformla(xformla)
 
   # coerce data to data.table first, keeping only the columns the pipeline uses
   # (id/time/group/outcome/weights/cluster plus the raw xformla variables) so wide
@@ -683,14 +712,20 @@ pre_process_did2 <- function(yname,
   args <- mget(args_names, sys.frame(sys.nframe()))
 
   # pick a control_group by default
-  args$control_group <- control_group[1]
-  if (!(args$control_group %in% c("nevertreated", "notyettreated"))) {
-    stop("control_group must be either 'nevertreated' or 'notyettreated'")
-  }
-  args$base_period <- base_period[1]
-  if (!(args$base_period %in% c("universal", "varying"))) {
-    stop("base_period must be either 'universal' or 'varying'.")
-  }
+  if (missing(control_group)) args$control_group <- "nevertreated"
+  validate_choice_scalar(
+    args$control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'"
+  )
+  validate_choice_scalar(
+    args$base_period,
+    "base_period",
+    c("universal", "varying"),
+    "base_period must be either 'universal' or 'varying'."
+  )
+  validate_logical_scalar(args$faster_mode, "faster_mode")
   check_reserved_did_names(yname = args$yname, tname = args$tname,
                            idname = args$idname, gname = args$gname,
                            xformla = args$xformla,

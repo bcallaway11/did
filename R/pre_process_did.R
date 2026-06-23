@@ -38,30 +38,49 @@ pre_process_did <- function(yname,
   # Data pre-processing and error checking
   #-----------------------------------------------------------------------------
   # set control group
-  control_group <- control_group[1]
-  if(!(control_group %in% c("nevertreated","notyettreated"))){
-    stop("control_group must be either 'nevertreated' or 'notyettreated'")
-  }
-  base_period <- base_period[1]
-  if (!(base_period %in% c("universal", "varying"))) {
-    stop("base_period must be either 'universal' or 'varying'.")
-  }
-  # Check if anticipation is numeric and non-negative (same contract as the fast path)
-  if (!is.numeric(anticipation)) {
-    stop("anticipation must be numeric. Please convert it.")
-  }
-  if (anticipation < 0) {
-    stop("anticipation must be non-negative. Please check your arguments.")
-  }
-  check_reserved_did_names(yname = yname, tname = tname, idname = idname,
-                           gname = gname, xformla = xformla,
-                           weightsname = weightsname,
-                           clustervars = clustervars)
+  if (missing(control_group)) control_group <- "nevertreated"
+  validate_choice_scalar(
+    control_group,
+    "control_group",
+    c("nevertreated", "notyettreated"),
+    "control_group must be either 'nevertreated' or 'notyettreated'"
+  )
+  validate_choice_scalar(
+    base_period,
+    "base_period",
+    c("universal", "varying"),
+    "base_period must be either 'universal' or 'varying'."
+  )
+  validate_logical_scalar(panel, "panel")
+  validate_logical_scalar(allow_unbalanced_panel, "allow_unbalanced_panel")
+  validate_logical_scalar(bstrap, "bstrap")
+  validate_logical_scalar(cband, "cband")
+  validate_logical_scalar(faster_mode, "faster_mode")
+  validate_logical_scalar(print_details, "print_details")
+  validate_logical_scalar(pl, "pl")
+  validate_positive_whole_number(cores, "cores")
+  validate_anticipation(anticipation)
+  validate_alp(alp)
+  if (bstrap) validate_positive_whole_number(biters, "biters")
+  validate_xformla(xformla)
   # make sure dataset is a data.frame
   # this gets around RStudio's default of reading data as tibble
   if (!all( class(data) == "data.frame")) {
     data <- as.data.frame(data)
   }
+
+  data_names <- names(data)
+  validate_column_name(yname, "yname", data_names)
+  validate_column_name(tname, "tname", data_names)
+  validate_column_name(gname, "gname", data_names)
+  validate_column_name(idname, "idname", data_names, allow_null = !panel)
+  validate_column_name(weightsname, "weightsname", data_names, allow_null = TRUE)
+  validate_column_names(clustervars, "clustervars", data_names, allow_null = TRUE)
+
+  check_reserved_did_names(yname = yname, tname = tname, idname = idname,
+                           gname = gname, xformla = xformla,
+                           weightsname = weightsname,
+                           clustervars = clustervars)
 
   # validate that all required column names exist in the data
   required_cols <- c(yname, tname, idname, gname, weightsname, clustervars)
@@ -90,6 +109,18 @@ pre_process_did <- function(yname,
 
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("The group variable '", gname, "' must be numeric. Please convert it.")
+
+  # gname must be 0 (never-treated) or a positive treatment-timing value.
+  # Negative codes are not supported: 0 is reserved for never-treated, so a
+  # non-positive time scale is ambiguous. Reject them up front so both code
+  # paths behave identically (the fast path previously accepted negative codes
+  # silently while this slow path later errored with "No valid groups").
+  if (any(data[, gname] < 0, na.rm = TRUE)) {
+    stop("The group variable '", gname, "' must be 0 (never-treated) or a ",
+         "positive treatment-timing value; negative values are not supported. ",
+         "If your time periods are non-positive, shift them so the earliest ",
+         "period is >= 1.")
+  }
 
   #  make sure the outcome is numeric (logical 0/1 outcomes are also allowed)
   if (! (is.numeric(data[, yname]) || is.logical(data[, yname])) ) stop("The outcome variable '", yname, "' must be numeric. Please convert it.")
@@ -124,26 +155,28 @@ pre_process_did <- function(yname,
 
   # check if any covariates were missing
   n_orig <- nrow(data)
-  # drop rows with any missing id / time / outcome / group / weight / cluster or any
-  # missing RAW covariate value
-  data <- data[complete.cases(data), ]
-  # also drop rows whose EVALUATED design is non-finite (e.g. log of a non-positive
+  # drop rows with any missing or non-finite id / time / outcome / weight /
+  # cluster or RAW covariate value. gname is excluded from the finite check
+  # because Inf is a valid never-treated code there (see complete_finite_cases);
+  # missing/NaN gname is still dropped via complete.cases().
+  data <- data[complete_finite_cases(data, finite_exclude = gname), ]
+  # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate), preserving the previous model.frame-based row dropping. We use
   # model.frame (NOT model.matrix) with na.action = na.pass: model.frame keeps EVERY
   # row -- including those where a term evaluates to NA/NaN -- so complete.cases()
   # flags them and the indicator stays aligned with `data`. (model.matrix would
   # instead silently drop the NaN rows, making the mask shorter than `data` and the
-  # offending rows survive.) Inf-valued terms are kept, matching the prior behavior.
+  # offending rows survive.)
   # Safe to evaluate now that raw-covariate NAs have been removed (so poly()/ns()/...
   # will not error on NA input).
   if (length(xvars) > 0L && nrow(data) > 0L) {
     mf_check <- suppressWarnings(model.frame(xformla, data = data, na.action = na.pass))
-    finite_rows <- complete.cases(mf_check)
+    finite_rows <- complete_finite_cases(mf_check)
     if (!all(finite_rows)) data <- data[finite_rows, ]
   }
   n_diff <- n_orig - nrow(data)
   if (n_diff != 0) {
-    warning(paste0("dropped ", n_diff, " rows from original data due to missing data"))
+    warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
   }
 
   # weights if null
@@ -266,7 +299,14 @@ pre_process_did <- function(yname,
     warning(paste0("Dropped ", nfirstperiod, " units that were already treated in the first period",
                     if (anticipation > 0) paste0(" (accounting for anticipation = ", anticipation, ")") else "",
                     "."))
-    data <- data[ data[,gname] %in% c(0,glist), ]
+    # Drop ONLY the first-period-treated units, by row identity. The previous
+    # `data[gname %in% c(0, glist)]` dropped by cohort membership in glist, which --
+    # when there is no never-treated group -- also deleted the latest cohort that was
+    # deliberately removed from glist above (the `glist[glist < latest_g]` trim) so it
+    # could serve as a not-yet-treated control. That silently deleted a valid
+    # comparison cohort and corrupted ATT(g,t) for the other groups; the
+    # treated_first_period mask removes exactly the already-treated units, nothing else.
+    data <- data[ !treated_first_period, , drop = FALSE ]
     # update tlist and glist
     tlist <- sort(unique(data[,tname]))
     glist <- sort(unique(data[,gname]))
@@ -275,6 +315,13 @@ pre_process_did <- function(yname,
     # drop groups treated in the first period or before
     first.period <- tlist[1]
     glist <- glist[glist > first.period + anticipation]
+
+    # The latest cohort stays in the data as a not-yet-treated control but, when there
+    # is still no never-treated group, must remain excluded from glist (it gets no ATT
+    # of its own) -- mirroring the exclusion above for the nfirstperiod == 0 case.
+    if (control_group != "nevertreated" && !any(data[,gname] == 0)) {
+      glist <- glist[glist < latest_g]
+    }
 
   }
 

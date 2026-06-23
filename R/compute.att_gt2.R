@@ -605,7 +605,11 @@ run_att_gt_estimation <- function(g, t, dp2){
   if (force_rc && !is.null(did_result) && dp2$panel && !is.null(did_result$inf_func)) {
     inf <- did_result$inf_func
     n_half <- length(inf) %/% 2L
-    inf_folded <- inf[1:n_half] + inf[(n_half + 1):(2L * n_half)]
+    # The RC influence function is normalized over the 2*n_units stacked rows;
+    # folding pre+post per unit must divide by 2 so the unit-level influence
+    # function (and hence the SE) matches the panel normalization. Without the
+    # 1/2 the balanced-panel fix_weights = "varying" SE is exactly 2x too large.
+    inf_folded <- 0.5 * (inf[1:n_half] + inf[(n_half + 1):(2L * n_half)])
     did_result$if_i <- which(is.na(inf_folded) | inf_folded != 0)
     did_result$if_x <- inf_folded[did_result$if_i]
     did_result$inf_func <- NULL
