@@ -336,12 +336,21 @@ compute_psi_moments_nocov_edid <- function(target_g, target_t, pairs, panel_obj)
 #' or an exactly-zero structure matrix).
 #'
 #' @param omega numeric H x H matrix from \code{compute_omega_star_nocov_edid()}
+#' @param cl_metric_on logical; \code{TRUE} when \code{omega} is the CLUSTER moment
+#'   covariance \eqn{\Sigma_{cl}} (its i.i.d. sampling units are the \eqn{G}
+#'   clusters, not the \eqn{n} units), in which case the LW averaging factor uses
+#'   the cluster ESS \code{cl_n_eff} rather than the unit Kish ESS. Default
+#'   \code{FALSE} (unit metric), byte-identical to the legacy call.
+#' @param cl_n_eff numeric; effective number of clusters (Kish ESS of the active
+#'   clusters' total weights) entering \eqn{\Sigma_{cl}}, used only when
+#'   \code{cl_metric_on}. Mirrors the cluster-ESS switch of the no-cov ridge.
 #' @inheritParams compute_pole_structure_nocov_edid
 #' @return list with \code{omega} (the shrunk matrix), \code{lambda} (the
 #'   intensity in \eqn{[0,1]}, or \code{NA} when shrinkage did not apply), and
 #'   \code{sigma2} (the method-of-moments scale)
 #' @keywords internal
-shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj) {
+shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj,
+                                    cl_metric_on = FALSE, cl_n_eff = NA_real_) {
   no_op <- list(omega = omega, lambda = NA_real_, sigma2 = NA_real_)
   H <- nrow(omega)
   if (is.null(H) || H < 2L || any(!is.finite(omega)) || all(omega == 0)) return(no_op)
@@ -376,9 +385,17 @@ shrink_omega_nocov_edid <- function(omega, target_g, target_t, pairs, panel_obj)
   # value.
   q4        <- sum(rowSums(psi * psi)^2)
   b2_legacy <- (q4 / n^2 - n * sum(omega * omega)) / n^2          # = pi_hat_full / n (verbatim legacy)
-  n_eff     <- n_eff_edid(panel_obj$unit_weights,
-                          active_mask_nocov_edid(target_g, pairs, panel_obj), n)
-  b2        <- b2_legacy * (n / n_eff)                            # n/n_eff == 1.0 exactly unweighted
+  # The OUTER averaging factor reflects the number of INDEPENDENT contributions to Omega-hat. For the unit
+  # metric that is the unit Kish ESS; for the CLUSTER metric Sig_cl the i.i.d. sampling units are the G
+  # clusters, so the averaging is over the cluster ESS cl_n_eff (mirrors the cluster-ESS ridge switch at
+  # edid-fit.R cl_metric_on). The internal psi_i psi_i'/n still carries the FIXED 1/pi_g scale of Omega-hat
+  # (unchanged). For the unit metric (cl_metric_on = FALSE) this is byte-identical: n/n_eff == 1.0 unweighted.
+  n_eff     <- if (isTRUE(cl_metric_on) && is.finite(cl_n_eff) && cl_n_eff > 0)
+                 cl_n_eff
+               else
+                 n_eff_edid(panel_obj$unit_weights,
+                            active_mask_nocov_edid(target_g, pairs, panel_obj), n)
+  b2        <- b2_legacy * (n / n_eff)                            # n/n_eff == 1.0 exactly unit-unweighted
   if (!is.finite(b2)) return(no_op)
   lambda <- min(1, max(0, b2) / d2)
 

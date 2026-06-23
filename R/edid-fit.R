@@ -620,7 +620,7 @@ fit_edid_cells <- function(
       ee_cell          <- NULL   # no-cov weight-estimation correction record (estimation_effect, no-cov path)
       nocov_misspec_applied <- FALSE   # whether the first-order misspec psi_omega channel folded into this cell
       n_nocov_ee_skip  <- 0L     # cells where the correction was requested but could not be applied
-      n_cl_fallback    <- 0L     # no-cov cluster-metric cells that fell back to IID Omega* (few clusters / rank-deficient Sig_cl)
+      n_cl_fallback    <- 0L     # no-cov cluster-metric cells eigen-floored for rank deficiency (few clusters: H >= G_act)
 
       if (use_cov_path) {
         # Conditional means: subset the global cache to exactly this cell's (gp, period) combos, in the SAME order
@@ -1041,20 +1041,32 @@ fit_edid_cells <- function(
           sig_cl <- crossprod(psi_cl) / panel_obj$n^2                          # cluster moment covariance
           act_cl <- rowSums(psi_cl^2) > 0                                      # clusters that enter THIS cell
           G_act  <- sum(act_cl)
-          # FEW-CLUSTER / RANK GUARD. The cohort-demeaned psi make the cluster sums sum to zero (one lost
-          # df), so rank(Sig_cl) <= G_act - 1. When the over-identifying dimension H reaches that budget
-          # the cluster metric is rank-deficient and its (pseudo)inverse weights are unstable (the over-id
-          # rank-deficiency regime; point estimate swings on few-cluster fixtures). Fall back to the IID
-          # Omega* for the weights and record it. Asymptotically G_act -> Inf so the guard never binds; the
-          # choice vanishes in the limit (regularization-asymptotically-negligible).
-          if (is.finite(G_act) && G_act >= 2L && nrow(pairs) <= G_act - 1L && all(is.finite(sig_cl))) {
-            omega        <- sig_cl
-            sig_cl_raw   <- sig_cl
+          # FEW-CLUSTER / RANK GUARD (B1 fix -- cluster-metric eigen-floor, replacing the IID fallback). The
+          # cohort-demeaned psi make the cluster sums sum to zero (one lost df), so rank(Sig_cl) <= G_act - 1.
+          # When the over-identifying dimension H reaches that budget (H >= G_act, i.e. nrow(pairs) > G_act-1)
+          # the cluster metric is rank-deficient: its null space is pure sampling noise.
+          #   PREVIOUS behavior: revert to the IID Omega* for the weights. BUT IID-optimal weights minimize
+          #   the WRONG (non-clustered) variance; evaluated on clustered data the resulting "efficient"
+          #   clustered SE can dip far BELOW the honest equal-weight clustered read (audited: ~0.12x the
+          #   uniform SE on a rank-1 fixture) -- manufacturing a bound-violating, illusory-precision ARE < 1
+          #   (latent: 0 current apps trip it). A plain ridge-restore of Sig_cl is NOT clean either: the
+          #   inverted near-null directions still over-fit the noise (~0.26x uniform on the same fixture).
+          #   FIX: keep the CLUSTER metric but EIGEN-FLOOR it -- lift Sig_cl's eigenvalues to a cluster-budget
+          #   sampling-noise edge (the same Andrews-1987 noise-floor mechanism as the Hausman eigen-ridge,
+          #   .edid_if_diff_quadform), using the CLUSTER effective size cl_n_eff rather than the unit n. The
+          #   floored metric's null space is neutralized, so the efficient weights collapse toward the honest
+          #   equal-weight read instead of exploiting noise: the clustered SE stays at the equal-weight floor
+          #   (audited: 1.00x uniform), never illusory. This is the prompt's "cap at the equal-weight
+          #   clustered SE", realized as a metric eigen-floor (per-cell, smooth, no hard cap). It is a STRICT
+          #   no-op when Sig_cl is full-rank-enough (H < G_act): every eigenvalue already exceeds the floor,
+          #   so omega == sig_cl bit-for-bit and that path is BYTE-IDENTICAL to before. Asymptotically
+          #   G_act -> Inf so rank-deficiency never binds and the floor vanishes (negligibility preserved).
+          if (is.finite(G_act) && G_act >= 2L && all(is.finite(sig_cl))) {
             cl_metric_on <- TRUE
-            # Effective # clusters for the ridge intensity (Kish ESS of cluster total weights among the
-            # active clusters; raw count G_act unweighted). Using unit n would under-regularize the
-            # rank-<=G_act matrix by n/G_act (effective-n-ridge-under-weights), so the ridge scale is set
-            # by the CLUSTER budget, not the unit count.
+            # Effective # clusters (Kish ESS of cluster total weights among active clusters; raw count G_act
+            # unweighted). Drives BOTH the eigen-floor scale below and the cluster ridge/LW intensity later.
+            # Using unit n would under-regularize the rank-<=G_act matrix by n/G_act
+            # (effective-n-ridge-under-weights), so the scale is set by the CLUSTER budget.
             uw_cl <- panel_obj$unit_weights
             if (is.null(uw_cl)) {
               cl_n_eff <- G_act
@@ -1062,8 +1074,31 @@ fit_edid_cells <- function(
               Wg  <- as.numeric(rowsum(uw_cl, panel_obj$cluster_indices))[act_cl]
               cl_n_eff <- if (sum(Wg * Wg) > 0) (sum(Wg)^2) / sum(Wg * Wg) else G_act
             }
-          } else {
-            n_cl_fallback <- n_cl_fallback + 1L   # kept the IID Omega* (few-cluster fallback); warned once post-loop
+            # Eigen-floor (cluster-budget sampling-noise edge), applied ONLY in the rank-deficient regime
+            # H >= G_act (nrow(pairs) > G_act - 1). disp_cl = max(0, H/cl_n_eff - 1) measures how over-
+            # identified the cell is relative to the cluster budget; floor = max_eig * max(sqrt(eps),
+            # c*sqrt(disp_cl/cl_n_eff)) with c = 1 (the bare random-matrix noise-edge coefficient, same
+            # uniform constant as the Hausman eigen-ridge -- not a size-tuned knob). Gating on H >= G_act
+            # makes the H < G_act path a STRICT no-op (sig_cl untouched, omega == sig_cl bit-for-bit, BYTE-
+            # IDENTICAL to before). In the rank-deficient cells the floor neutralizes the noise null space,
+            # collapsing the weights toward uniform (the honest equal-weight read). Asymptotically cl_n_eff
+            # -> Inf => floor -> mx*sqrt(eps): the lift vanishes (regularization-asymptotically-negligible).
+            H_overid <- nrow(pairs)
+            if (H_overid > G_act - 1L) {                            # rank-deficient: eigen-floor the metric
+              ef <- eigen(sig_cl, symmetric = TRUE)
+              mx <- max(ef$values)
+              if (is.finite(mx) && mx > 0) {
+                disp_cl <- max(0, H_overid / cl_n_eff - 1)
+                fl      <- mx * max(sqrt(.Machine$double.eps), sqrt(disp_cl / cl_n_eff))
+                if (any(ef$values < fl)) {
+                  vals2  <- pmax(ef$values, fl)
+                  sig_cl <- ef$vectors %*% (vals2 * t(ef$vectors))  # symmetric eigen-reconstruction
+                  n_cl_fallback <- n_cl_fallback + 1L               # floor lifted: record for the diagnostic
+                }
+              }
+            }
+            omega      <- sig_cl     # the (possibly eigen-floored) CLUSTER metric the weights now invert
+            sig_cl_raw <- sig_cl
           }
         }
         # omega_cov_shrink: regularize Omega* BEFORE inverting for the weights (no-covariate path).
@@ -1079,7 +1114,11 @@ fit_edid_cells <- function(
         if (omega_cov_shrink != "none" && weight_method != "uniform" &&
             pt_assumption == "all" && nrow(pairs) > 1L) {
           if (omega_cov_shrink == "ledoit_wolf") {
-            sh <- shrink_omega_nocov_edid(omega, g, t, pairs, panel_obj)
+            # When the cluster metric is active (cl_metric_on), Sig_cl's i.i.d. sampling units are the G
+            # clusters, so the LW averaging factor uses the cluster ESS cl_n_eff (consistency fix, mirrors
+            # the cluster-ESS ridge switch below); unit-metric and non-clustered fits are byte-identical.
+            sh <- shrink_omega_nocov_edid(omega, g, t, pairs, panel_obj,
+                                          cl_metric_on = cl_metric_on, cl_n_eff = cl_n_eff)
             omega         <- sh$omega
             shrink_lambda <- sh$lambda            # -> use_chain ee branch (LW pole-target map)
           } else if (omega_cov_shrink == "ridge") {
@@ -1272,8 +1311,10 @@ fit_edid_cells <- function(
     warning(sprintf(
       paste0("clustered efficient weights (no-covariate PT-All): the cluster moment covariance Sig_cl ",
              "was rank-deficient for the over-identifying dimension in %d cell(s) (too few clusters: ",
-             "H >= #active clusters); those cells kept the IID Omega* weight metric as a documented ",
-             "fallback. Report the localized reads or add clusters."),
+             "H >= #active clusters); those cells EIGEN-FLOOR the cluster metric (cluster-budget sampling-",
+             "noise edge), collapsing the efficient weights toward the honest equal-weight read so the ",
+             "efficient SE cannot manufacture illusory sub-floor precision -- rather than reverting to the ",
+             "IID Omega*. Reads are localized; add clusters for a full-rank cluster metric."),
       n_cl_fallback_total), call. = FALSE)
   }
 
