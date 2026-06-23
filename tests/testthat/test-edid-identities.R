@@ -425,3 +425,87 @@ test_that("overall weight recovery: exact on full rank; warns and skips on colli
   # assert the helper's contract that enables it (NULL + warning, no error).
   expect_true(TRUE)
 })
+
+# ---------------------------------------------------------------------------
+# Regression (F3 + D1, 2026-06-22): single-cohort dynamic ES_avg KEEPS its
+# second-order overall-SE increment.
+#
+# Motivating failure (caochen): for a single-cohort design with a pre-window the
+# per-element event-study influence columns are COLLINEAR, so the least-squares
+# overall-weight recovery (.edid_recover_overall_weights) returns NULL and the
+# old code SILENTLY dropped the second-order increment to the OVERALL ES_avg SE
+# (reported SE too small by ~3.5%). The fix falls back to the KNOWN design
+# aggregation weights (the cell -> overall att-map, .edid_overall_att_map) for the
+# dynamic/simple overall, which does NOT degenerate for single-date; vcov(which =
+# "overall") routes through the SAME fallback so it stays in parity with the
+# headline. group/calendar keep the audible skip (overall IF carries estimated
+# cohort-share weights outside the cell-att span).
+# ---------------------------------------------------------------------------
+test_that("single-cohort dynamic ES_avg keeps the second-order overall increment (F3) and vcov parity holds (D1)", {
+  set.seed(20260622L)
+  n  <- 220L
+  Tn <- 6L                                   # 6 periods; single 1826-style reform at t = 4 -> a pre-window
+  gg <- sample(c(Inf, 4), n, replace = TRUE, prob = c(0.55, 0.45))   # ONE finite cohort (g = 4) + never-treated
+  alph <- rnorm(n, 0, 1)
+  ww   <- runif(n, 0.5, 1.5)                  # non-uniform weights => estimation_effect / nocov_ee ON (Sigma_so != NULL)
+  rows <- lapply(seq_len(Tn), function(tt) {
+    tau <- ifelse(is.finite(gg) & tt >= gg, 1, 0)
+    data.frame(id = seq_len(n), t = tt, g = ifelse(is.finite(gg), gg, 0),
+               y = alph + 0.25 * tt + tau + rnorm(n, 0, 1), w = ww)
+  })
+  df <- do.call(rbind, rows)
+
+  fit <- edid(df, yname = "y", idname = "id", tname = "t", gname = "g",
+              weightsname = "w", weight_scheme = "efficient", pt_assumption = "all",
+              aggregate = "all", cband = FALSE)
+
+  # single cohort: exactly one finite treatment group
+  expect_equal(length(unique(fit$att_gt$group)), 1L)
+
+  es <- fit$event_study
+  expect_false(is.null(es))
+  expect_true(is.finite(es$overall.se))
+
+  # the design carries a second-order increment (non-uniform-weight no-covariate fit)
+  Sigma_so <- .edid_secondorder_sigma(fit)
+  expect_false(is.null(Sigma_so))
+
+  # END-TO-END invariant (the user-facing fix): the dynamic ES_avg overall.se KEEPS its second-order
+  # increment -- it strictly exceeds the bare first-order SE (with the increment dropped they would be
+  # equal). This holds whether the active branch is the exact LS recovery (egt full-rank) or the
+  # known-weights fallback (egt collinear, as in caochen); both must keep the increment.
+  g  <- .edid_agg_if(es)
+  V1 <- if (is.null(fit$cluster_indices)) crossprod(g$overall) / fit$n^2 else {
+    G <- length(unique(fit$cluster_indices)); (G / (G - 1)) * crossprod(rowsum(matrix(g$overall, ncol = 1L), fit$cluster_indices)) / fit$n^2
+  }
+  first_order_se <- sqrt(drop(V1))
+  expect_gt(es$overall.se, first_order_se)                          # increment kept (was dropped before the fix)
+
+  # the dynamic path emits NO "increment skipped" warning
+  wcap <- .collect_warnings_id(aggte_edid(fit, type = "dynamic"))
+  expect_false(any(grepl("not identified for this aggregation type|could not recover", wcap$warnings)))
+
+  # D1 parity: vcov(which = "overall") reproduces the headline ES_avg overall.se to ~machine precision
+  vov <- sqrt(vcov(fit, which = "overall")[1L, 1L])
+  expect_equal(vov, es$overall.se, tolerance = 1e-8)
+
+  # and the standalone aggte_edid(type = "dynamic") overall.se matches the stored one
+  ag <- suppressWarnings(aggte_edid(fit, type = "dynamic"))
+  expect_equal(ag$overall.se, es$overall.se, tolerance = 1e-10)
+
+  # Direct reproducer of the caochen DEGENERACY: when the per-element influence columns are collinear
+  # (LS recovery returns NULL), the known-weights fallback (.edid_overall_att_map) recovers the dynamic
+  # cell -> overall att-map so the increment is NOT dropped. Confirm the helper returns a finite 1 x K
+  # map for this dynamic single-cohort fit and that it composes with Sigma_so into a POSITIVE increment.
+  A_ov <- .edid_overall_att_map(fit, es)
+  expect_false(is.null(A_ov))
+  expect_equal(nrow(A_ov), 1L)
+  expect_equal(ncol(A_ov), nrow(Sigma_so))
+  inc <- drop(A_ov %*% Sigma_so %*% t(A_ov))
+  expect_true(is.finite(inc) && inc > 0)
+  # the cell -> overall map of the dynamic average puts equal post-weight on post (e >= 0) cells and ~0 on
+  # pre cells (the known design weight), confirming the att-derivative interpretation.
+  post <- fit$att_gt$time >= fit$att_gt$group
+  expect_true(all(abs(A_ov[1L, !post]) < 1e-6))                    # ~0 weight on pre cells
+  expect_true(all(A_ov[1L, post] > 0))                            # positive weight on post cells
+})

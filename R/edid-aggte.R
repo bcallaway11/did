@@ -155,16 +155,36 @@ aggte_edid <- function(
         he_inc <- diag(HO)
         if (length(he_inc) == length(a$se.egt))
           a$se.egt <- sqrt(pmax(a$se.egt^2 + he_inc, 0))
-        # The overall summary SE too: the overall IF is an EXACT linear combo of the per-element IFs (overall =
-        # weighted mean of the dynamic effects). Recover the weights w (overall = egt %*% w) by a RANK-SAFE
-        # least-squares solve and add only the higher-order term w'(A Sigma_quad A')w to the existing analytic
-        # overall.se (same byte-identity property). A rank-deficient or inconsistent system (collinear
-        # event-study influence columns) warns and skips the increment -- never silently (the previous plain
-        # solve() swallowed the error and dropped the increment without a trace).
+        # The overall summary SE too. Recover the weights w (overall = egt %*% w) by the EXACT rank-safe
+        # least-squares solve (.edid_recover_overall_weights) and add w'(A Sigma_quad A')w -- byte-identical
+        # to the previous path wherever LS succeeds (every healthy staggered design). PREVIOUSLY, when LS
+        # FAILED (the per-element event-study influence columns are COLLINEAR for a single-cohort design with
+        # a pre-window -> rank-deficient), the increment was DROPPED and the reported ES_avg SE was too small.
+        # NOW, on that failure only, fall back to the KNOWN design aggregation weights: the cell -> OVERALL
+        # att-map (.edid_overall_att_map finite-differences overall.att w.r.t. each cell, the same A-map
+        # machinery the per-element se.egt uses), which does NOT degenerate for single-date. The fallback is
+        # scoped to dynamic/simple inside .edid_overall_att_map; group/calendar (whose overall IF carries
+        # estimated cohort-share weights outside the att span) return NULL and keep the audible skip.
         if (!is.null(g$overall) && !is.null(a$overall.se) && is.matrix(g$egt) && ncol(g$egt) == nrow(HO)) {
-          w <- .edid_recover_overall_weights(g$egt, g$overall)
-          if (!is.null(w) && length(w) == nrow(HO))
+          # LS first; its "increment skipped" warning is suppressed here because the known-weights fallback
+          # below catches the dynamic/simple collinear case -- the increment is NOT actually skipped there.
+          w <- suppressWarnings(.edid_recover_overall_weights(g$egt, g$overall))
+          if (!is.null(w) && length(w) == nrow(HO)) {
             a$overall.se <- sqrt(max(a$overall.se^2 + drop(crossprod(w, HO %*% w)), 0))
+          } else {
+            A_ov <- .edid_overall_att_map(fit, a)        # known-weights fallback (single-cohort collinear egt)
+            if (!is.null(A_ov) && ncol(A_ov) == nrow(Sigma_so)) {
+              a$overall.se <- sqrt(max(a$overall.se^2 + drop(A_ov %*% Sigma_so %*% t(A_ov)), 0))
+            } else {
+              # Neither LS nor the known-weights map applies (group/calendar: the overall IF carries
+              # estimated cohort-share weights outside the att span) -- a genuine, audible skip.
+              warning("higher_order: the overall-aggregate weights are not identified for this ",
+                      "aggregation type; the higher-order increment to the OVERALL SE is skipped ",
+                      "(the per-element SEs and the uniform band keep their increment). Expected for the ",
+                      "'group'/'calendar' aggregation, whose overall influence function carries the ",
+                      "estimated cohort-share weights and is outside the cell-att span.", call. = FALSE)
+            }
+          }
         }
       }
     }

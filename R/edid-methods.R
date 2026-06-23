@@ -53,6 +53,46 @@
   }
 }
 
+# Recover the constant cell -> OVERALL linear map (1 x K) of an aggregation by finite-differencing the
+# OVERALL estimand (overall.att) directly w.r.t. each cell's ATT(g,t), using the KNOWN design aggregation
+# (the same reaggregate machinery the per-element se.egt A-map uses), NOT a least-squares solve on the
+# per-element influence columns. For a single-cohort design with a pre-window those event-study influence
+# columns are collinear, so the LS recovery (.edid_recover_overall_weights) returns NULL and the overall
+# second-order increment was SILENTLY dropped (reported ES_avg SE too small). The att -> overall map d(overall.att)/d(att_k)
+# does NOT degenerate for single-date (it is the known design weight: 1/n_post on post event times for
+# `dynamic`, pg_k/sum(pg) for `simple`), so this recovers the SAME map the LS path found wherever LS
+# succeeded (byte-identical for staggered) and a CORRECT map where LS failed. Scoped to `dynamic`/`simple`:
+# for `group`/`calendar` the overall influence function legitimately carries the estimated cohort-share
+# weights (wif) outside the att-derivative span, so this returns NULL and the caller keeps the audible skip.
+.edid_overall_att_map <- function(fit, a) {
+  type <- a$type %||% NULL
+  if (is.null(type) || !(type %in% c("simple", "dynamic"))) return(NULL)
+  base <- a$overall.att
+  if (is.null(base) || !length(base) || !all(is.finite(base))) return(NULL)
+  balance_e <- a$balance_e %||% NULL
+  min_e     <- a$min_e %||% -Inf
+  max_e     <- a$max_e %||% Inf
+  na.rm     <- .edid_agg_na_rm(a)
+  reaggregate_overall <- function(att_vec) {
+    f2 <- fit
+    f2$att_gt$att <- att_vec
+    aa <- aggte(as_MP_edid(f2, bstrap = FALSE, cband = FALSE), type = type, balance_e = balance_e,
+                min_e = min_e, max_e = max_e, na.rm = na.rm, bstrap = FALSE)
+    aa$overall.att
+  }
+  att0 <- fit$att_gt$att
+  K    <- length(att0)
+  eps  <- 1e-4
+  A    <- matrix(0, 1L, K)
+  for (k in seq_len(K)) {
+    if (!is.finite(att0[k])) next                        # NA cell: contributes nothing to the overall
+    att_p <- att0; att_p[k] <- att0[k] + eps
+    col <- tryCatch((reaggregate_overall(att_p) - base) / eps, error = function(e) NULL)
+    if (!is.null(col) && length(col) == 1L && is.finite(col)) A[1L, k] <- col
+  }
+  A
+}
+
 # Aggregate-scale second-order covariance increment A Sigma A' for vcov(): the cell -> aggregate linear
 # map A applied to the COMBINED second-order covariance Sigma_so = Sigma_quad (the higher-order "Wick"
 # term, covariate path) + sigma_nocov_ee (the no-covariate weight-estimation correction, on by default
@@ -333,9 +373,22 @@ vcov.edid_fit <- function(object, which = c("att_gt", "overall", "event_study", 
     if (!is.null(HO) && is.null(g$egt) && all(dim(HO) == c(1L, 1L))) {
       v[1L, 1L] <- v[1L, 1L] + HO[1L, 1L]
     } else if (!is.null(HO) && !is.null(g$egt) && is.matrix(g$egt) && ncol(g$egt) == nrow(HO)) {
-      w <- tryCatch(drop(solve(crossprod(g$egt), crossprod(g$egt, g$overall))),
-                    error = function(e) NULL)
-      if (!is.null(w) && length(w) == nrow(HO)) v[1L, 1L] <- v[1L, 1L] + drop(crossprod(w, HO %*% w))
+      # Mirror the headline aggte_edid overall.se path EXACTLY so vcov(which = "overall") stays in parity
+      # with it: try the rank-safe least-squares weight recovery first (byte-identical to the previous
+      # plain solve() wherever it succeeds -- every healthy staggered design), and ONLY when it fails
+      # (collinear event-study influence columns: single-cohort design with a pre-window) fall back to the
+      # known-weight cell -> overall att-map (.edid_overall_att_map). Without the fallback the solve() failed
+      # for single-cohort fits and vcov() silently DROPPED the increment, DIVERGING from the headline
+      # overall.se (which now keeps it via the same fallback) and breaking the headline <-> vcov invariant.
+      w <- suppressWarnings(.edid_recover_overall_weights(g$egt, g$overall))
+      if (!is.null(w) && length(w) == nrow(HO)) {
+        v[1L, 1L] <- v[1L, 1L] + drop(crossprod(w, HO %*% w))
+      } else {
+        Sigma_so <- .edid_secondorder_sigma(object)
+        A_ov     <- if (!is.null(Sigma_so)) .edid_overall_att_map(object, object$overall) else NULL
+        if (!is.null(A_ov) && ncol(A_ov) == nrow(Sigma_so))
+          v[1L, 1L] <- v[1L, 1L] + drop(A_ov %*% Sigma_so %*% t(A_ov))
+      }
     }
     return(v)
   }
