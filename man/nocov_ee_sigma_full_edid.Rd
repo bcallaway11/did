@@ -8,7 +8,8 @@ nocov_ee_sigma_full_edid(
   eif_matrix,
   s_matrix,
   unit_cohorts,
-  unit_weights = NULL
+  unit_weights = NULL,
+  cluster_indices = NULL
 )
 }
 \arguments{
@@ -18,6 +19,18 @@ nocov_ee_sigma_full_edid(
 for cells without an applied correction)}
 
 \item{unit_cohorts}{length-n vector of unit cohort labels (Inf = never treated)}
+
+\item{unit_weights}{length-n vector of per-unit observation weights, or
+\code{NULL} (unweighted). Sets the cohort Bessel factor \eqn{f_i}: the
+unweighted \eqn{1/(m_{\gamma(i)}-1)} when \code{NULL}, else the weighted
+fraction \eqn{s^2_g/(1-s^2_g)} with \eqn{s^2_g = \sum w^2/(\sum w)^2}, the
+same weighted Bessel fraction as the per-cell \code{delta_df}.}
+
+\item{cluster_indices}{length-n cluster id vector, or \code{NULL} (i.i.d.).
+When supplied, the increment switches to the CLUSTER metric: cell EIFs are
+cluster-summed to \eqn{a_g^c}, there is no \eqn{\Delta_{DF}} block, and the
+increment is the CR1-scaled cross-cell optimism
+\eqn{\Sigma_{cc'} = -\frac{1}{(G-1)n^2}\sum_g (s_g^c a_g^{c'} + a_g^c s_g^{c'})}.}
 }
 \value{
 K x K matrix, or NULL when no cell carries an applied correction

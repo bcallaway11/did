@@ -14,7 +14,8 @@ compute_nocov_ee_correction_edid(
   weights,
   shrink_lambda = NA_real_,
   return_D = FALSE,
-  mbar = NULL
+  mbar = NULL,
+  cluster_indices = NULL
 )
 }
 \arguments{
@@ -47,6 +48,27 @@ When supplied, the result also carries \code{psi_omega}, the FIRST-ORDER
 misspecification weight-estimation influence function
 \eqn{\psi_{\Omega,i} = (D\,\bar m)_i} (the no-covariate sibling of the
 covariate \code{psi_Omega}), for the caller to fold into the cell EIF.}
+
+\item{cluster_indices}{length-n cluster id vector, or \code{NULL} (i.i.d.). When
+supplied, the weights invert the CLUSTER moment covariance
+\eqn{\widehat\Sigma_{cl} = \mathrm{crossprod}(\mathrm{rowsum}(\psi, cl))/n^2}
+(== \code{omega_raw}/\code{omega_used} here), so the weight-estimation channel
+is driven by the per-CLUSTER moment IF \eqn{\Psi_g = \sum_{i\in g}\psi_i}. The
+function then returns: (1) a per-UNIT first-order \code{psi_omega} (the cluster
+misspecification IF, built from the cluster-broadcast EIF \eqn{a_{g(i)}}); and
+(2) a per-CLUSTER second-order \code{var_add} \eqn{= (G/(G-1))\,2\hat Q},
+\eqn{\hat Q = -(Gn^2)^{-1}\sum_g a_g (d_g'\Psi_g)}, \eqn{d_g = -B v_g w},
+\eqn{v_g = (G/n^2)\Psi_g\Psi_g' - \widehat\Sigma_{cl}}. There is no separate
+\eqn{\Delta_{DF}}: the cohort demeaning leaves the single constraint
+\eqn{\sum_g\Psi_g = 0} at the cluster-sum level, which the leading SE's CR1
+factor \eqn{G/(G-1)} already restores. \code{s_vec} is then per-CLUSTER (length
+G) for the cross-cell increment. All terms reduce to the i.i.d. forms below at
+clusters==units (\eqn{G=n}, \eqn{\Psi_g=\psi_i}); validated by FD oracle (the
+\eqn{d_g} map) and MC calibration on clustered DGPs. For
+\code{omega_cov_shrink = "ledoit_wolf"} the plain map retains the leading
+optimism (B from the shrunk \eqn{\widehat\Sigma_{cl}}); only the LW-intensity
+data-dependence (the \eqn{d\lambda} chain) is omitted (a higher-order term with
+no production consumer).}
 }
 \value{
 list with \code{applied} (logical), \code{warn} (logical: numeric

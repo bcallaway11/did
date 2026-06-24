@@ -4,7 +4,15 @@
 \alias{shrink_omega_nocov_edid}
 \title{Ledoit-Wolf shrinkage of Omega* toward its i.i.d.-pole structure}
 \usage{
-shrink_omega_nocov_edid(omega, target_g, target_t, pairs, panel_obj)
+shrink_omega_nocov_edid(
+  omega,
+  target_g,
+  target_t,
+  pairs,
+  panel_obj,
+  cl_metric_on = FALSE,
+  cl_n_eff = NA_real_
+)
 }
 \arguments{
 \item{omega}{numeric H x H matrix from \code{compute_omega_star_nocov_edid()}}
@@ -17,6 +25,16 @@ shrink_omega_nocov_edid(omega, target_g, target_t, pairs, panel_obj)
 (PT-All enumeration: \code{gp} finite)}
 
 \item{panel_obj}{panel object from \code{prepare_edid_panel()}}
+
+\item{cl_metric_on}{logical; \code{TRUE} when \code{omega} is the CLUSTER moment
+covariance \eqn{\Sigma_{cl}} (its i.i.d. sampling units are the \eqn{G}
+clusters, not the \eqn{n} units), in which case the LW averaging factor uses
+the cluster ESS \code{cl_n_eff} rather than the unit Kish ESS. Default
+\code{FALSE} (unit metric), byte-identical to the legacy call.}
+
+\item{cl_n_eff}{numeric; effective number of clusters (Kish ESS of the active
+clusters' total weights) entering \eqn{\Sigma_{cl}}, used only when
+\code{cl_metric_on}. Mirrors the cluster-ESS switch of the no-cov ridge.}
 }
 \value{
 list with \code{omega} (the shrunk matrix), \code{lambda} (the

@@ -71,6 +71,7 @@ reference:
       the robustness of **edid** estimates
     contents:
       - edid_hausman
+      - edid_overid
       - edid_sargan
       - edid_adaptive
       - edid_frontier
