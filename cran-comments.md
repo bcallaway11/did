@@ -10,13 +10,16 @@
 
 0 ERRORs | 0 WARNINGs | 0 NOTEs
 
-This release requires 'DRDID' (>= 1.3.0), which is available on CRAN
-(published 2026-06-10).
-
 ## Notable changes
 
-did 2.5.0 is a large release that consolidates all development since 2.3.0
-(see NEWS.md) and bumps the required version of 'DRDID' to (>= 1.3.0).
+did 2.5.1 is a bug-fix release following 2.5.0 (see NEWS.md). It corrects
+several `att_gt()`/`aggte()` correctness and standard-error issues (notably a
+2x standard-error inflation under `fix_weights = "varying"` on balanced
+panels, and a `control_group = "notyettreated"` bug that dropped the
+comparison cohort along with always-treated units), fixes a parallel
+bootstrap crash and adds reproducibility under `set.seed()` for the parallel
+multiplier bootstrap, and improves input validation and error messages. No
+dependency requirements have changed.
 
 ## Package size
 
