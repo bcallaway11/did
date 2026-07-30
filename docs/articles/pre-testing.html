@@ -12,8 +12,8 @@
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Pre-Testing in a DiD Setup using the did Package">
 </head>
@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">did</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
                         <h4 data-toc-skip class="author">Brantly
 Callaway and Pedro H.C. Sant'Anna</h4>
             
-            <h4 data-toc-skip class="date">2026-06-13</h4>
+            <h4 data-toc-skip class="date">2026-07-30</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/pre-testing.Rmd" class="external-link"><code>vignettes/pre-testing.Rmd</code></a></small>
       <div class="d-none name"><code>pre-testing.Rmd</code></div>
@@ -105,7 +105,7 @@ better than the more common “event study regression”.</p></li>
 run an <strong>event-study regression</strong>. Here, the idea is to run
 a regression that includes leads and lags of the treatment dummy
 variable such as
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><munderover><mo>∑</mo><mrow><mi>l</mi><mo>=</mo><mo>−</mo><mi>𝒯</mi></mrow><mrow><mi>𝒯</mi><mo>−</mo><mn>1</mn></mrow></munderover><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><msub><mi>μ</mi><mi>l</mi></msub><mo>+</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><munderover><mo>∑</mo><mrow><mi>l</mi><mo>=</mo><mi>−</mi><mi>𝒯</mi></mrow><mrow><mi>𝒯</mi><mo>−</mo><mn>1</mn></mrow></munderover><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mi>l</mi></msubsup><msub><mi>μ</mi><mi>l</mi></msub><mo>+</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">
   Y_{it} = \theta_t + \eta_i + \sum_{l=-\mathcal{T}}^{\mathcal{T}-1} D_{it}^l \mu_l + v_{it}
 </annotation></semantics></math></p>
 <p>where
@@ -131,7 +131,7 @@ and is equal to 0 in other time periods</p></li>
 when
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>5</mn></mrow><annotation encoding="application/x-tex">t=5</annotation></semantics></math>
 and is equal to 0 in other time periods</p></li>
-<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mrow><mo>−</mo><mn>2</mn></mrow></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^{-2} = 1</annotation></semantics></math>
+<li><p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>D</mi><mrow><mi>i</mi><mi>t</mi></mrow><mrow><mi>−</mi><mn>2</mn></mrow></msubsup><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">D_{it}^{-2} = 1</annotation></semantics></math>
 when
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">t=1</annotation></semantics></math>
 and is equal to 0 in other time periods.</p></li>
@@ -140,7 +140,7 @@ and is equal to 0 in other time periods.</p></li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math>
 is interpreted as the effect of treatment for different lengths of
 exposure to the treatment. Typically,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msub><annotation encoding="application/x-tex">\mu_{-1}</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mrow><mi>−</mi><mn>1</mn></mrow></msub><annotation encoding="application/x-tex">\mu_{-1}</annotation></semantics></math>
 is normalized to be equal to 0, and we follow that convention here. It
 is common to interpret estimated
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>μ</mi><mi>l</mi></msub><annotation encoding="application/x-tex">\mu_l</annotation></semantics></math>’s

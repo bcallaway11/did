@@ -1,6 +1,77 @@
 # Changelog
 
+## did 2.5.1
+
+CRAN release: 2026-07-08
+
+- Bug fix
+  ([`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)):
+  with `control_group = "notyettreated"` and no never-treated group, the
+  presence of already-treated units (treated in or before the first
+  period, possibly via `anticipation`) no longer affects the `ATT(g,t)`
+  of the other groups. The last-treated cohort, which serves as the
+  not-yet-treated comparison group in this design, was being deleted
+  from the data along with the always-treated units — biasing the
+  remaining estimates or turning them into `NA` — and is now retained.
+  `control_group = "nevertreated"` was unaffected.
+
+- Bug fix (`fix_weights = "varying"` standard errors): on a *balanced*
+  panel, `fix_weights = "varying"` reported standard errors (analytic
+  and bootstrap, and all
+  [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md)
+  aggregations) that were exactly **2× too large**. Point estimates were
+  correct. The repeated-cross-section influence function is normalized
+  over the `2·n_units` stacked observations; folding the pre- and
+  post-period halves to the unit level was missing the corresponding
+  `1/2`. Fixed in both code paths; verified against a Monte Carlo (the
+  corrected SE now matches the empirical sampling standard deviation,
+  and equals the panel-estimator SE when weights are time-invariant).
+  Repeated cross sections and unbalanced panels were unaffected.
+
+- [`aggte()`](https://bcallaway11.github.io/did/reference/aggte.md) now
+  fails gracefully instead of with cryptic errors when an aggregation
+  has an empty or all-`NA` selection: `type = "calendar"` with
+  `na.rm = TRUE` drops calendar periods whose post-treatment cells are
+  all `NA` (analogous to the existing `type = "group"` guard) rather
+  than erroring; and `type = "simple"`/`"dynamic"` with a
+  `min_e`/`max_e` window that excludes every post-treatment period now
+  return a clear message instead of an internal
+  `"report this as a bug"`/`"non-numeric argument"` error.
+
+- [`att_gt()`](https://bcallaway11.github.io/did/reference/att_gt.md)
+  now rejects a negative `gname` up front with a clear message in both
+  `faster_mode = TRUE` and `FALSE`. Previously negative cohort codes
+  (out of spec — `gname` must be `0` for never-treated or a positive
+  treatment time) were silently accepted on the fast path but errored on
+  the slow path.
+
+- The parallel multiplier bootstrap
+  (`bstrap = TRUE, pl = TRUE, cores > 1`, when the influence function
+  has more than 2500 rows — i.e. more than 2500 units, or more than 2500
+  clusters when clustered standard errors are used) is now reproducible
+  under a fixed [`set.seed()`](https://rdrr.io/r/base/Random.html). It
+  previously used the default Mersenne-Twister RNG inside
+  [`parallel::mclapply()`](https://rdrr.io/r/parallel/mclapply.html),
+  whose forked workers re-seed non-deterministically, so bootstrap
+  standard errors and uniform-band critical values drifted between
+  identical-seed runs. It now uses L’Ecuyer-CMRG parallel RNG streams
+  (and restores the caller’s RNG kind on exit). Point estimates were
+  always unaffected.
+
+- Fixed a crash in the parallel bootstrap when `biters < cores` (with
+  `pl = TRUE`, `cores > 1`, and more than 2500 influence-function rows —
+  units, or clusters under clustered inference): the per-core work split
+  could produce a negative chunk size. The split is now always
+  non-negative.
+
+- `aggte(type = "calendar")` now warns when `min_e`, `max_e`, or
+  `balance_e` is supplied, since these event-study options do not apply
+  to calendar-time aggregation (the unrestricted, correct calendar
+  effects are returned, as before).
+
 ## did 2.5.0
+
+CRAN release: 2026-06-13
 
 This is a large release that consolidates all development since 2.3.0.
 Headline changes: a substantially faster engine (group-time ATTs are

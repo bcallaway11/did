@@ -23,27 +23,34 @@ groups.
 ## Setup with all units being eventually treated and homogeneous treatment effect dynamics
 
 Consider a staggered treatment adoption setup where 40 ‘states’
-($state = \{ 1,2,\ldots,40\}$) are randomly assigned into 4 treatment
+($`state = \{1,2,\dots,40\}`$) are randomly assigned into 4 treatment
 groups depending on the treatment starting year (1986, 1992, 1998, and
-2004). We denote the treatment starting period as $g$ with
-($g \in \{ 1986,1992,1998,2004\}$). The 1000 units (e.g., ‘counties’ or
-‘firms’) $i$ in the sample are randomly assigned to one of the 40
-states. Let $G_{i}$ indicates the group/cohort unit $i$ belongs to,
-i.e., $G \subseteq \{ 1986,1992,1998,2004\}$.
+2004). We denote the treatment starting period as $`g`$ with
+($`g \in \{ 1986, 1992, 1998, 2004\}`$). The 1000 units (e.g.,
+‘counties’ or ‘firms’) $`i`$ in the sample are randomly assigned to one
+of the 40 states. Let $`G_i`$ indicates the group/cohort unit $`i`$
+belongs to, i.e., $`G \subseteq \{ 1986, 1992, 1998, 2004\}`$.
 
-The data generating process (DGP) for the outcome $Y$ we consider is
-$$Y_{i,t} = (2010 - g) + \alpha_{i} + \alpha_{t} + \tau_{i,t} + \epsilon_{i,t}$$
-where $\alpha_{i}$ are unit fixed effects drawn from
-$\sim N\left( \mu_{state},1 \right)$ with state-specific mean
-$\mu_{state} = state/5$, $\alpha_{t}$ are time fixed effects (cohort
+The data generating process (DGP) for the outcome $`Y`$ we consider is
+``` math
+Y_{i,t} = (2010-g) + \alpha_i + \alpha_t + \tau_{i,t} + \epsilon_{i,t}
+```
+where $`\alpha_i`$ are unit fixed effects drawn from
+$`\sim N(\mu_{state}, 1)`$ with state-specific mean
+$`\mu_{state} = state/5`$, $`\alpha_t`$ are time fixed effects (cohort
 specific parallel time-trends) generated as
-$$\alpha_{t} = 0.1*(t - g) + \epsilon_{t}^{timeFE},$$ with
-$\epsilon_{t}^{timeFE} \sim N(0,1)$,
-$\epsilon_{i,t} \sim N\left( 0,\left( \frac{1}{2} \right)^{2} \right)$
-is an idiosyncratic error term, and $\tau_{i,t}$ are the unit-specific
-treatment effects at time $t$ generated as
-$$\tau_{i,t} = \mu \times (t - g + 1) \times 1\{ t \geq g\},$$ where
-$\mu$ is the the instantaneous treatment effect; we set $\mu = 1$.
+``` math
+\alpha_t = 0.1 * (t - g) + \epsilon^{time FE}_t, 
+```
+with $`\epsilon^{time FE}_t \sim N(0, 1)`$,
+$`\epsilon_{i,t} \sim N\left(0, \left(\frac{1}{2}\right)^2\right)`$ is
+an idiosyncratic error term, and $`\tau_{i,t}`$ are the unit-specific
+treatment effects at time $`t`$ generated as
+``` math
+ \tau_{i,t} = \mu \times (t - g + 1)\times 1\{t \ge g \},
+```
+where $`\mu`$ is the the instantaneous treatment effect; we set
+$`\mu=1`$.
 
 From the above DGP, it is evident that the ATT at the time a unit is
 treated is equal to 1 for all groups, it is equal to 2 one period after
@@ -57,6 +64,7 @@ priori* strong restriction that should make things “easier” to estimate
 Let’s start the discussion by first visualizing how the DGP looks like.
 
 ``` r
+
 # Load libraries and set baseline parameters
 library(tidyverse)
 library(lfe)
@@ -155,7 +163,7 @@ plot1
 
 ![](plot_dgp1.png)
 
-The above plot shows the 1,000 individual values of $Y_{i,t}$, as well
+The above plot shows the 1,000 individual values of $`Y_{i,t}`$, as well
 as the average by treatment-group (the thicker colorful lines), and the
 vertical lines show the period when treatment begins for each group.
 Because treatment effects here grows linearly with time elapsed since
@@ -168,24 +176,25 @@ between treatment years.
 Given that we are interested in treatment effect dynamics, we then
 proceed to consider a classical two-way fixed-effects (TWFE) event study
 specification
-$$Y_{i,t} = \alpha_{i} + \alpha_{t} + \gamma_{k}^{- K}\ D_{i,t}^{< - K} + \sum\limits_{k = - K}^{- 2}\gamma_{k}^{lead}D_{i,t}^{k} + \sum\limits_{k = 0}^{L}\gamma_{k}^{lag}D_{i,t}^{k} + \gamma_{k}^{L +}D_{i,t}^{> L} + \varepsilon_{i,t}$$
-where $D_{i,t}^{k} = 1\{ t - G_{i} = k\}$ is an “event-study” dummy
-variable that takes value one if a unit $i$ is $k$ periods away from
-initial treatment at time $t$ and zero otherwise,
-$D_{i,t}^{< - K} = 1\{ t - G_{i} < - K\}$ and
-$D_{i,t}^{> L} = 1\{ t - G_{i} > L\}$ are defined analogously. For
-instance, $D_{i,t}^{0}$ is equal to one if the unit $i$ is first treated
-at time $t$, $D_{i,t}^{1}$ is equal to one if a one period has passed
-since treatment started (treatment lags), etc. Alternatively we have
-that $D_{i,t}^{- 2}$ is equal to one if a unit $i$ will be treated in
-two periods from $t$ (treatment leads). In this exercise we set $K$ and
-$L$ to be equal to 5.
+``` math
+Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L} \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}
+```
+where $`D_{i,t}^{k}=1\{t-G_i=k\}`$ is an “event-study” dummy variable
+that takes value one if a unit $`i`$ is $`k`$ periods away from initial
+treatment at time $`t`$ and zero otherwise,
+$`D_{i,t}^{<-K}=1\{t-G_i<-K\}`$ and $`D_{i,t}^{>L}=1\{t-G_i>L\}`$ are
+defined analogously. For instance, $`D_{i,t}^{0}`$ is equal to one if
+the unit $`i`$ is first treated at time $`t`$, $`D_{i,t}^{1}`$ is equal
+to one if a one period has passed since treatment started (treatment
+lags), etc. Alternatively we have that $`D_{i,t}^{-2}`$ is equal to one
+if a unit $`i`$ will be treated in two periods from $`t`$ (treatment
+leads). In this exercise we set $`K`$ and $`L`$ to be equal to 5.
 
 Up to today, it is customary to interpret estimates of
-$\gamma_{k}^{lags}$ as \`\`good’’ measures of the average treatment
-effect for being exposed to treatment for $k$ periods, and estimates of
-$\gamma_{k}^{leads}$ as measures of pre-trends. Our first exercise here
-is to assess if this is OK-ish.
+$`\gamma_k^{lags}`$ as \`\`good’’ measures of the average treatment
+effect for being exposed to treatment for $`k`$ periods, and estimates
+of $`\gamma_k^{leads}`$ as measures of pre-trends. Our first exercise
+here is to assess if this is OK-ish.
 
 Towards this end, we will a perform Monte Carlo exercise where we
 generate data according to the DGP described above and estimate all the
@@ -195,6 +204,7 @@ times (same holds true if we do 1,000) and plot the Monte Carlo mean and
 indicator dummies, as well as the true treatment effect below.
 
 ``` r
+
 # function to run ES DID
 # variables we will use
 keepvars <- c("`rel_year_-5`",  "`rel_year_-4`",  "`rel_year_-3`",  "`rel_year_-2`",
@@ -279,19 +289,20 @@ highlight treatment effect dynamics!
 
 Now, you may wonder: What happens if I include all possible leads and
 lags in the TWFE event study specification, i.e., to set K and L to the
-maximum allowable in the data, making inclusion of $D_{i,t}^{< - K}$ and
-of $D_{i,t}^{> L}$ unnecessary. In what follows, we do exactly that,
+maximum allowable in the data, making inclusion of $`D_{i,t}^{<-K}`$ and
+of $`D_{i,t}^{>L}`$ unnecessary. In what follows, we do exactly that,
 though we need to omit one extra period apart from -1 to avoid problems
 of multicollinearity identified by Borusyak and Jaravel (2018). We drop
 the most negative time period, which is perhaps the most natural thing
-to do. In order words, we set $K = 23$ and $L = 24$, and drop the
-$D_{i,t}^{< - K}$ and $D_{i,t}^{> L}$ from the TWFE specification.
+to do. In order words, we set $`K=23`$ and $`L=24`$, and drop the
+$`D_{i,t}^{<-K}`$ and $`D_{i,t}^{>L}`$ from the TWFE specification.
 
 The result of this exercise is displayed below. And, as you can see,
 this still leads to *very biased* estimates for the causal effects of
 interest!
 
 ``` r
+
 # function to run ES DID
 run_ES_DiD_sat <- function(...) {
   
@@ -385,6 +396,7 @@ Sant’Anna (2021) procedure. As you can see, you get reliable and precise
 estimates for treatment effect dynamics. This is good news!
 
 ``` r
+
 # function to run ES DID
 run_CS <- function(...) {
   
@@ -458,11 +470,14 @@ as above.
 
 The DGP we consider is very similar to the one we have already
 considered. The only difference is that now we suppress treatment for
-the last cohort. Put it simply, the cohort with $g = 2004$ is now
+the last cohort. Put it simply, the cohort with $`g=2004`$ is now
 “never-treated”, implying that, in this DGP the unit-specific treatment
-effects at time $t$$\tau_{i,t}$ are generated as
-$$\tau_{i,t} = \mu \times (t - g + 1) \times 1\{ t \geq g\} 1\{ g \neq 2004\},$$
-where $\mu$ is the the instantaneous treatment effect; we set $\mu = 1$.
+effects at time $`t`$$`\tau_{i,t}`$ are generated as
+``` math
+ \tau_{i,t} = \mu \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},
+```
+where $`\mu`$ is the the instantaneous treatment effect; we set
+$`\mu=1`$.
 
 Like before, the ATT at the time a unit is treated is 1, it is equal to
 2 one period after treatment started, etc.
@@ -472,6 +487,7 @@ Like before, the ATT at the time a unit is treated is 1, it is equal to
 Let’s start the discussion by first visualizing how the DGP looks like.
 
 ``` r
+
 
 ## Generate data - treated cohorts consist of 250 obs each, with the treatment effect still = true_mu on average
 make_data2 <- function(nobs = 1000, 
@@ -564,14 +580,17 @@ plot2
 ### Estimating dynamic treatment effects via TWFE event-study regressions
 
 Like before, we start by estimating a TWFE event-study regression
-$$Y_{i,t} = \alpha_{i} + \alpha_{t} + \gamma_{k}^{- K}\ D_{i,t}^{< - K} + \sum\limits_{k = - K}^{- 2}\gamma_{k}^{lead}D_{i,t}^{k} + \sum\limits_{k = 0}^{L}\gamma_{k}^{lag}D_{i,t}^{k} + \gamma_{k}^{L +}D_{i,t}^{> L} + \varepsilon_{i,t}$$
-with $K$ and $L$ set to 5. That is, binning the endpoints.
+``` math
+Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}
+```
+with $`K`$ and $`L`$ set to 5. That is, binning the endpoints.
 
 As you can see from the results below, the biases are still substantial.
 Thus, the problems with TWFE specifications persist even if you have a
 “never-treated” group.
 
 ``` r
+
 # function to run ES DID
 # variables we will use
 keepvars <- c("`rel_year_-5`",  "`rel_year_-4`",  "`rel_year_-3`",  "`rel_year_-2`",
@@ -648,9 +667,10 @@ ES_plot_classical_never
 ![](es_plot_classical_never.png)
 
 Next, we consider the case where we one include almost all leads and
-lags ($K = 17$ and $L = 24$) but omit the furthest lead $K = 18$.
+lags ($`K=17`$ and $`L=24`$) but omit the furthest lead $`K=18`$.
 
 ``` r
+
 # function to run ES DID
 run_ES_DiD_sat_never <- function(...) {
   
@@ -750,6 +770,7 @@ First, let’s estimate it using the “never-treated” units as the
 comparison group.
 
 ``` r
+
 # function to run ES DID
 run_CS_never <- function(...) {
   
@@ -815,6 +836,7 @@ As expected, the results look good!
 Now, let’s consider the “not-yet-treated” units as a comparison group.
 
 ``` r
+
 
 # function to run ES DID
 run_CS_ny <- function(...) {
@@ -883,21 +905,23 @@ As expected, the results look good, too
 Now, we want to consider a setup with heterogeneous treatment effect
 dynamics and with a “never-treated” group. This DGP is a modification of
 the one we have considered above, where now the “unit-specific”
-treatment effect at time $t$ is given by
-$$\tau_{i,t} = \mu_{g} \times (t - g + 1) \times 1\{ t \geq g\} 1\{ g \neq 2004\},$$
-where we set $\mu_{1986} = 3$, $\mu_{1992} = 2$ and $\mu_{1998} = 1$.
-This implies that for the group who started treatment in 1986, its
-average treatment effects evolve with elapsed time as $3,6,9,\ldots$.
-For the group that started treatment in 1992 (1998), its average
-treatment effect evolves with elapsed time as $2,4,6,\ldots$
-($1,2,3,\ldots$). Of course, the treatment effect is zero for the
-“never-treated” cohort ($g = 2004$, which later we will relabel to
-$g = \infty$). This is a DGP where “early-treated” units benefit more
-from the treatment than “later-treated” units.
+treatment effect at time $`t`$ is given by
+``` math
+ \tau_{i,t} = \mu_g \times (t - g + 1)\times 1\{t \ge g \}1\{g\not=2004 \},
+```
+where we set $`\mu_{1986} = 3`$, $`\mu_{1992} = 2`$ and
+$`\mu_{1998} = 1`$. This implies that for the group who started
+treatment in 1986, its average treatment effects evolve with elapsed
+time as $`3,6, 9,\dots`$. For the group that started treatment in 1992
+(1998), its average treatment effect evolves with elapsed time as
+$`2,4, 6,\dots`$ ($`1,2, 3,\dots`$). Of course, the treatment effect is
+zero for the “never-treated” cohort ($`g=2004`$, which later we will
+relabel to $`g=\infty`$). This is a DGP where “early-treated” units
+benefit more from the treatment than “later-treated” units.
 
 Given that each group has the same size (on average), the true average
-treatment effect dynamic across treated groups is $(3 + 2 + 1)/3 = 2$ at
-the time a unit is treated, $2 \times (3 + 2 + 1)/3 = 4$ in the first
+treatment effect dynamic across treated groups is $`(3+2+1)/3 = 2`$ at
+the time a unit is treated, $`2 \times (3+2+1)/3 = 4`$ in the first
 period after treatment started, etc.
 
 ### Visualizing the DGP
@@ -906,6 +930,7 @@ Like before, let’s start the discussion by visualizing what this DGP
 looks like.
 
 ``` r
+
 
 ## Generate data - treated cohorts consist of 250 obs each, with the treatment effect still = true_mu on average
 make_data3 <- function(nobs = 1000, 
@@ -999,13 +1024,16 @@ plot3
 ### Estimating dynamic treatment effects via TWFE event-study regressions
 
 Like before, we start by estimating a TWFE event-study regression
-$$Y_{i,t} = \alpha_{i} + \alpha_{t} + \gamma_{k}^{- K}\ D_{i,t}^{< - K} + \sum\limits_{k = - K}^{- 2}\gamma_{k}^{lead}D_{i,t}^{k} + \sum\limits_{k = 0}^{L}\gamma_{k}^{lag}D_{i,t}^{k} + \gamma_{k}^{L +}D_{i,t}^{> L} + \varepsilon_{i,t}$$
-with $K$ and $L$ set to 5. That is, binning the endpoints.
+``` math
+Y_{i,t} = \alpha_i + \alpha_t + \gamma_k^{-K}~ D_{i,t}^{<-K} + \sum_{k=-K}^{-2} \gamma_k^{lead} D_{i,t}^{k} +\sum_{k=0}^{L}  \gamma_k^{lag} D_{i,t}^{k} + \gamma_k^{L+} D_{i,t}^{>L} + \varepsilon_{i,t}
+```
+with $`K`$ and $`L`$ set to 5. That is, binning the endpoints.
 
 As you can see from the results below, the biases are still substantial.
 Given the results we have shown before, this should not be a surprise.
 
 ``` r
+
 # function to run ES DID
 # variables we will use
 keepvars <- c("`rel_year_-5`",  "`rel_year_-4`",  "`rel_year_-3`",  "`rel_year_-2`",
@@ -1083,9 +1111,10 @@ ES_plot_classical_never_het
 ![](es_plot_classical_never_het.png)
 
 Next, we consider the case in which one includes almost all leads and
-lags ($K = 17$ and $L = 24$) but omits the furthest lead, $K = 18$.
+lags ($`K=17`$ and $`L=24`$) but omits the furthest lead, $`K=18`$.
 
 ``` r
+
 # function to run ES DID
 run_ES_DiD_sat_never_het <- function(...) {
   
@@ -1182,6 +1211,7 @@ First, let’s estimate the treatment effect dynamics using the
 “never-treated” units as the comparison group.
 
 ``` r
+
 # function to run ES DID
 run_CS_never_het <- function(...) {
   
@@ -1247,6 +1277,7 @@ As expected, the results look good!
 Now, let’s consider the “not-yet-treated” units as a comparison group.
 
 ``` r
+
 
 # function to run ES DID
 run_CS_ny_het <- function(...) {

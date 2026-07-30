@@ -32,24 +32,26 @@ setups using the **did** package.
 By far the most common approach to pre-testing in applications is to run
 an **event-study regression**. Here, the idea is to run a regression
 that includes leads and lags of the treatment dummy variable such as
-$$Y_{it} = \theta_{t} + \eta_{i} + \sum\limits_{l = - \mathcal{T}}^{\mathcal{T} - 1}D_{it}^{l}\mu_{l} + v_{it}$$
+``` math
+  Y_{it} = \theta_t + \eta_i + \sum_{l=-\mathcal{T}}^{\mathcal{T}-1} D_{it}^l \mu_l + v_{it}
+```
 
-where $D_{it}^{l} = 1$ if individual $i$ has been exposed to the
-treatment for $l$ periods in period $t$, and $D_{it}^{l} = 0$ otherwise.
-To be clear here, it is helpful to give some examples. Suppose
-individual $i$ becomes treated in period 3. Then,
+where $`D_{it}^l = 1`$ if individual $`i`$ has been exposed to the
+treatment for $`l`$ periods in period $`t`$, and $`D_{it}^l = 0`$
+otherwise. To be clear here, it is helpful to give some examples.
+Suppose individual $`i`$ becomes treated in period 3. Then,
 
-- $D_{it}^{0} = 1$ when $t = 3$ and is equal to 0 in other time periods
+- $`D_{it}^0 = 1`$ when $`t=3`$ and is equal to 0 in other time periods
 
-- $D_{it}^{2} = 1$ when $t = 5$ and is equal to 0 in other time periods
+- $`D_{it}^2 = 1`$ when $`t=5`$ and is equal to 0 in other time periods
 
-- $D_{it}^{- 2} = 1$ when $t = 1$ and is equal to 0 in other time
+- $`D_{it}^{-2} = 1`$ when $`t=1`$ and is equal to 0 in other time
   periods.
 
-And $\mu_{l}$ is interpreted as the effect of treatment for different
-lengths of exposure to the treatment. Typically, $\mu_{- 1}$ is
+And $`\mu_l`$ is interpreted as the effect of treatment for different
+lengths of exposure to the treatment. Typically, $`\mu_{-1}`$ is
 normalized to be equal to 0, and we follow that convention here. It is
-common to interpret estimated $\mu_{l}$’s with $l < 0$ as a way to
+common to interpret estimated $`\mu_l`$’s with $`l < 0`$ as a way to
 pre-test the parallel trends assumption.
 
 ### Pitfalls with Event Study Regressions
@@ -60,6 +62,7 @@ First, let’s start with a case where an event study regression is going
 to work well for pre-testing the parallel trends assumption
 
 ``` r
+
 # generate dataset with 4 time periods
 time.periods <- 4
 
@@ -89,6 +92,7 @@ The main thing to notice here:
 Next, a bit more code
 
 ``` r
+
 #-----------------------------------------------------------------------------
 # modify the dataset a bit so that we can run an event study
 #-----------------------------------------------------------------------------
@@ -191,6 +195,7 @@ seem to be standard practice in applications).
 We can compare this to what happens using the `did` package:
 
 ``` r
+
 # estimate group-time average treatment effects
 did_att_gt <- att_gt(yname = "Y",
                      tname = "period",
@@ -232,6 +237,7 @@ ggdid(did_att_gt)
 ![](pre-testing_files/figure-html/unnamed-chunk-5-1.png)
 
 ``` r
+
 # aggregate them into event study plot
 did_es <- aggte(did_att_gt, type = "dynamic")
 
@@ -250,7 +256,7 @@ bands by setting the options `bstrap=TRUE, cband=TRUE` to the call to
 #### Pitfall: Selective Treatment Timing
 
 Sun and Abraham (2021) point out a major limitation of event study
-regressions: when there is **selective treatment timing** the $\mu_{l}$
+regressions: when there is **selective treatment timing** the $`\mu_l`$
 end up being weighted averages of treatment effects *across different
 lengths of exposures*.
 
@@ -272,6 +278,7 @@ To see this in action, let’s keep the same example as before, but add
 selective treatment timing.
 
 ``` r
+
 # generate dataset with 4 time periods
 time.periods <- 4
 
@@ -289,10 +296,12 @@ data <- build_sim_dataset()
 ```
 
 ``` r
+
 # run through same code as in earlier example...omitted
 ```
 
 ``` r
+
 # run event study regression
 # normalize effect to be 0 in pre-treatment period
 es <- plm(Y ~ Dtmin3 + Dtmin2 + Dt0 + Dt1 + Dt2, 
@@ -330,6 +339,7 @@ summary(es)
 ```
 
 ``` r
+
 # run through same code as before...omitted
 
 # new event study plot
@@ -351,6 +361,7 @@ trends holds – this is due to the selective treatment timing.
 We can compare this to what happens using the `did` package:
 
 ``` r
+
 # estimate group-time average treatment effects
 did.att.gt <- att_gt(yname = "Y",
                      tname = "period",
@@ -391,6 +402,7 @@ ggdid(did.att.gt)
 ![](pre-testing_files/figure-html/unnamed-chunk-14-1.png)
 
 ``` r
+
 # aggregate them into event study plot
 did.es <- aggte(did.att.gt, type = "dynamic")
 
@@ -431,6 +443,7 @@ The `did` package contains an additional pre-test for the conditional
 parallel trends assumption in the `conditional_did_pretest` function.
 
 ``` r
+
 # not run (this code can be substantially slower)
 reset.sim()
 set.seed(1814)

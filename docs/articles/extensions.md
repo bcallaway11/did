@@ -41,29 +41,32 @@ holds, but adjust the periods over which it holds. One version of this
 is to make the assumption that
 
 **Parallel Trends with Anticipation** For all groups and time periods
-such that
-$t \geq g - 1$$$E\left\lbrack Y_{t}(0) - Y_{g - 2}(0)|G = g \right\rbrack = E\left\lbrack Y_{t}(0) - Y_{g - 2}(0)|C = 1 \right\rbrack$$
+such that $`t \ge g-1`$
+``` math
+  E[Y_t(0) - Y_{g-2}(0) | G=g] = E[Y_t(0) - Y_{g-2}(0) | C=1] 
+```
 
 In other words, the path of outcomes, in the absence of participating in
-the treatment, between periods $(g - 2)$ and $t$ is the same for
-individuals in group $g$ (which is not observed) as for untreated
+the treatment, between periods $`(g-2)`$ and $`t`$ is the same for
+individuals in group $`g`$ (which is not observed) as for untreated
 individuals (which is observed).
 
-In this case, it is straightforward to show that, for all
-$t \geq g - 1$,
-$$ATT(g,t) = E\left\lbrack Y_{t} - Y_{g - 2}|G = g \right\rbrack - E\left\lbrack Y_{t} - Y_{g - 2}|C = 1 \right\rbrack$$
+In this case, it is straightforward to show that, for all $`t \ge g-1`$,
+``` math
+  ATT(g,t) = E[Y_t - Y_{g-2} | G=g] - E[Y_t - Y_{g-2} | C=1]
+```
 
 This is very similar to the main case covered in the **did** package
 (see discussion in our [Introduction to DiD with Multiple Time
 Periods](https://bcallaway11.github.io/did/articles/multi-period-did.md)
-vignette), except that the “base period” here is $(g - 2)$ (two periods
-before individuals in group $g$ become treated) rather than $(g - 1)$
-(one period before individuals in group $g$ become treated) which is the
-setup used in the **did** package.
+vignette), except that the “base period” here is $`(g-2)`$ (two periods
+before individuals in group $`g`$ become treated) rather than $`(g-1)`$
+(one period before individuals in group $`g`$ become treated) which is
+the setup used in the **did** package.
 
 If you are worried that that units anticipate treatment participation
 two periods before treatment actually starts, you could address this by
-setting the base period to be $(g - 3)$ instead. It is worth pointing
+setting the base period to be $`(g-3)`$ instead. It is worth pointing
 out, however, that there is a tradeoff. Allowing for more periods of
 anticipation will require that the parallel trends assumption hold over
 more periods in order to identify the group-time average treatment
@@ -100,6 +103,7 @@ evaluating the effect of a job training program.
 Here is what the data looks like
 
 ``` r
+
 nrow(dta)
 #> [1] 35940
 head(dta)
@@ -121,6 +125,7 @@ treatment (focus on dynamic effects as in an event study plot) while
 just ignoring the possibility of anticipation.
 
 ``` r
+
 # estimate group-time average treatment effects using att_gt method
 # (and ignoring pre-treatment "dip")
 attgt.ignoredip <- att_gt(yname = "Y",
@@ -210,6 +215,7 @@ simplified version of what’s going on behind the scenes in the **did**
 package.
 
 ``` r
+
 compute.attgt <- function(dta) {
   # pick up all groups
   groups <- unique(dta$G)
@@ -345,6 +351,7 @@ Now, we have a function to compute group-time average treatment effects
 and dynamic effects. Let’s use it on the data that we have
 
 ``` r
+
 anticipation.results <- compute.attgt(dta)
 anticipation.results
 #> $attgt.results
@@ -370,6 +377,7 @@ bootstrap that we use in the *did* package); we’ll just focus on the
 dynamic effects estimator
 
 ``` r
+
 # the number of bootstrap iterations
 biters <- 100
 
@@ -401,6 +409,7 @@ intervals, but we strongly suggest computing simultaneous confidence
 bands in practice.\]
 
 ``` r
+
 p <- ggplot(data=dyn.results, aes(x=e, y=att.e)) +
   geom_line() +
   geom_point() +
