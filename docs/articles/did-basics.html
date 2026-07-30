@@ -7,13 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Getting Started with the did Package • did</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
-<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Getting Started with the did Package">
 </head>
@@ -25,7 +25,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">did</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,7 +59,7 @@
                         <h4 data-toc-skip class="author">Brantly
 Callaway and Pedro H.C. Sant’Anna</h4>
             
-            <h4 data-toc-skip class="date">2026-06-13</h4>
+            <h4 data-toc-skip class="date">2026-07-30</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/bcallaway11/did/blob/HEAD/vignettes/did-basics.Rmd" class="external-link"><code>vignettes/did-basics.Rmd</code></a></small>
       <div class="d-none name"><code>did-basics.Rmd</code></div>
@@ -104,7 +104,7 @@ treated group that are randomly (with equal probability) assigned to
 first participate in the treatment (a <em>group</em>) in each time
 period. And there are 4000 ``never treated’’ units. The data generating
 process for untreated potential outcomes</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><msub><mi>X</mi><mi>i</mi></msub><mi>′</mi><msub><mi>β</mi><mi>t</mi></msub><mo>+</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>i</mi></msub><mo>+</mo><msubsup><mi>X</mi><mi>i</mi><mo>′</mo></msubsup><msub><mi>β</mi><mi>t</mi></msub><mo>+</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex">
   Y_{it}(0) = \theta_t + \eta_i + X_i'\beta_t + v_{it}
 </annotation></semantics></math></p>
 <p>This is an example of a very simple model for untreated potential
@@ -118,7 +118,7 @@ comparisons of outcomes in levels between treated and untreated units
 will not deliver an average treatment effect parameter.</p></li>
 <li>
 <p>Next, notice that
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>−</mo><msub><mi>θ</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><msub><mi>X</mi><mi>i</mi></msub><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>β</mi><mi>t</mi></msub><mo>−</mo><msub><mi>β</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>Δ</mi><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex"> \Delta Y_{it}(0) = (\theta_t - \theta_{t-1}) + X_i'(\beta_t - \beta_{t-1}) + \Delta v_{it} </annotation></semantics></math></p>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Δ</mi><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>−</mo><msub><mi>θ</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msubsup><mi>X</mi><mi>i</mi><mo>′</mo></msubsup><mo stretchy="false" form="prefix">(</mo><msub><mi>β</mi><mi>t</mi></msub><mo>−</mo><msub><mi>β</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mi mathvariant="normal">Δ</mi><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></mrow><annotation encoding="application/x-tex"> \Delta Y_{it}(0) = (\theta_t - \theta_{t-1}) + X_i'(\beta_t - \beta_{t-1}) + \Delta v_{it} </annotation></semantics></math></p>
 <p>so that the path of outcomes depends on covariates. And, in general,
 unconditional parallel trends is not valid in this setup unless either
 (i) the mean of the covariates is the same across groups (e.g., when
@@ -130,7 +130,7 @@ actually depend on covariates).</p>
 <li>
 <p>In order to think about treatment effects, we also use the
 following stylized model for treated potential outcomes
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>t</mi><mo>≥</mo><mi>g</mi><mo stretchy="false" form="postfix">}</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>e</mi><mo>+</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>u</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>−</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>g</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>Y</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mn>𝟏</mn><mo stretchy="false" form="prefix">{</mo><mi>t</mi><mo>≥</mo><mi>g</mi><mo stretchy="false" form="postfix">}</mo><mo stretchy="false" form="prefix">(</mo><mi>e</mi><mo>+</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>u</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>−</mo><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">
   Y_{it}(g) = Y_{it}(0)  + \mathbf{1}\{t \geq g\} (e+1) + ( u_{it} - v_{it})  </annotation></semantics></math></p>
 <p>where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mo>:=</mo><mi>t</mi><mo>−</mo><mi>g</mi></mrow><annotation encoding="application/x-tex">e := t-g</annotation></semantics></math>
@@ -138,7 +138,7 @@ is the event time (i.e., the difference between the current time period
 and the time when a unit becomes treated), and the last term just allows
 for the error terms to be different for treated and untreated potential
 outcomes. It immediately follows that, in this particular example,
-<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>e</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">ATT(g,t) = e+1</annotation></semantics></math>
+<math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mo stretchy="false" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>e</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">ATT(g,t) = e+1</annotation></semantics></math>
 for all post-treatment periods
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>≥</mo><mi>g</mi></mrow><annotation encoding="application/x-tex">t \ge g</annotation></semantics></math>.</p>
 <p>In other words, the average effect of participating in the treatment
@@ -158,19 +158,19 @@ also satisfied.</p>
 for
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>=</mo><mn>1</mn><mo>,</mo><mi>…</mi><mo>,</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">t=1,\ldots,4</annotation></semantics></math><ul>
 <li>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>η</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>G</mi><mi>i</mi></msub><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\eta_i \sim N(G_i, 1)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>η</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>G</mi><mi>i</mi></msub><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\eta_i \sim N(G_i, 1)</annotation></semantics></math>
 where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>G</mi><mi>i</mi></msub><annotation encoding="application/x-tex">G_i</annotation></semantics></math>
 is which group an individual belongs to,</li>
 <li>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>μ</mi><msub><mi>D</mi><mi>i</mi></msub></msub><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">X_i \sim N( \mu_{D_i}, 1)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mi>i</mi></msub><mo>∼</mo><mi>N</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>μ</mi><msub><mi>D</mi><mi>i</mi></msub></msub><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">X_i \sim N( \mu_{D_i}, 1)</annotation></semantics></math>
 where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>μ</mi><msub><mi>D</mi><mi>i</mi></msub></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\mu_{D_i} = 1</annotation></semantics></math>
 for never treated units and 0 otherwise,</li>
 <li>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">v_{it} \sim N(0,1)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>v</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>∼</mo><mi>N</mi><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">v_{it} \sim N(0,1)</annotation></semantics></math>,
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>∼</mo><mi>N</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">u_{it} \sim N(0,1)</annotation></semantics></math>.<br>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub><mo>∼</mo><mi>N</mi><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">u_{it} \sim N(0,1)</annotation></semantics></math>.<br>
 </li>
 <li>Also, all random variables are drawn independently of each
 other.</li>
@@ -503,9 +503,9 @@ cannot be estimated (e.g., because a group has too few observations
 relative to the number of covariates in the model, the covariate matrix
 for some comparison is singular, or there are overlap violations),
 <code>att_gt</code> issues a warning for the affected
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(g,t)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(g,t)</annotation></semantics></math>
 cell and reports <code>NA</code> for that
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">ATT(g,t)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mo stretchy="false" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">ATT(g,t)</annotation></semantics></math>
 rather than erroring. (The exception is when the never-treated
 comparison group itself is too small, in which case <code>att_gt</code>
 stops and suggests setting
@@ -520,7 +520,7 @@ of observations in that group and asymptotic results are unlikely to
 provide good approximations to the sampling distribution of group-time
 average treatment effects when the number of units in a group is small.
 In these cases, one should be very cautious about interpreting the
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">ATT(g,t)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>A</mi><mi>T</mi><mi>T</mi><mo stretchy="false" form="prefix">(</mo><mi>g</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">ATT(g,t)</annotation></semantics></math>
 results for these small groups.</p>
 <p>A reasonable alternative approach in this case is to just focus on
 aggregated treatment effect parameters (i.e., to run

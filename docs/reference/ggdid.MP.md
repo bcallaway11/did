@@ -27,8 +27,7 @@ ggdid(
 
 - object:
 
-  either a `MP` object or `AGGTEobj` object. See `help(ggdid.MP)` and
-  [`help(ggdid.AGGTEobj)`](https://bcallaway11.github.io/did/reference/ggdid.AGGTEobj.md).
+  an `MP` object, as returned by `att_gt`.
 
 - ylim:
 

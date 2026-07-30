@@ -39,54 +39,63 @@ first participate in the treatment (a *group*) in each time period. And
 there are 4000 \`\`never treated’’ units. The data generating process
 for untreated potential outcomes
 
-$$Y_{it}(0) = \theta_{t} + \eta_{i} + X_{i}\prime\beta_{t} + v_{it}$$
+``` math
+  Y_{it}(0) = \theta_t + \eta_i + X_i'\beta_t + v_{it}
+```
 
 This is an example of a very simple model for untreated potential
 outcomes that is compatible with a conditional parallel trends
 assumption. In particular,
 
-- We consider the case where $\eta_{i}$ can be distributed differently
+- We consider the case where $`\eta_i`$ can be distributed differently
   across groups. This means that comparisons of outcomes in levels
   between treated and untreated units will not deliver an average
   treatment effect parameter.
 
 - Next, notice that
-  $$\Delta Y_{it}(0) = \left( \theta_{t} - \theta_{t - 1} \right) + X_{i}\prime\left( \beta_{t} - \beta_{t - 1} \right) + \Delta v_{it}$$
+  ``` math
+   \Delta Y_{it}(0) = (\theta_t - \theta_{t-1}) + X_i'(\beta_t - \beta_{t-1}) + \Delta v_{it} 
+  ```
 
   so that the path of outcomes depends on covariates. And, in general,
   unconditional parallel trends is not valid in this setup unless
   either (i) the mean of the covariates is the same across groups (e.g.,
   when treatment groups are independent of covariates), or (ii)
-  $\beta_{t} = \beta_{t - 1} = \cdots = \beta_{1}$ (this is the case
-  when the path of untreated potential outcomes doesn’t actually depend
-  on covariates).
+  $`\beta_t = \beta_{t-1} = \cdots = \beta_{1}`$ (this is the case when
+  the path of untreated potential outcomes doesn’t actually depend on
+  covariates).
 
 - In order to think about treatment effects, we also use the following
   stylized model for treated potential outcomes
-  $$Y_{it}(g) = Y_{it}(0) + \mathbf{1}\{ t \geq g\}(e + 1) + \left( u_{it} - v_{it} \right)$$
+  ``` math
+    Y_{it}(g) = Y_{it}(0)  + \mathbf{1}\{t \geq g\} (e+1) + ( u_{it} - v_{it})  
+  ```
 
-  where $e:=t - g$ is the event time (i.e., the difference between the
+  where $`e := t-g`$ is the event time (i.e., the difference between the
   current time period and the time when a unit becomes treated), and the
   last term just allows for the error terms to be different for treated
   and untreated potential outcomes. It immediately follows that, in this
-  particular example, $$ATT(g,t) = e + 1$$ for all post-treatment
-  periods $t \geq g$.
+  particular example,
+  ``` math
+  ATT(g,t) = e+1
+  ```
+  for all post-treatment periods $`t \ge g`$.
 
   In other words, the average effect of participating in the treatment
-  for units in group $g$ is equal to their length of exposure plus one.
-  Note that, for simplicity, we are considering the case where treatment
-  effects are homogeneous across groups. Also, in this setup, units do
-  not anticipate their treatment status, so the *no-anticipation
-  assumption* is also satisfied.
+  for units in group $`g`$ is equal to their length of exposure plus
+  one. Note that, for simplicity, we are considering the case where
+  treatment effects are homogeneous across groups. Also, in this setup,
+  units do not anticipate their treatment status, so the
+  *no-anticipation assumption* is also satisfied.
 
 - For the simulations, we also set
 
-  - $\theta_{t} = \beta_{t} = t$ for $t = 1,\ldots,4$
-    - $\eta_{i} \sim N\left( G_{i},1 \right)$ where $G_{i}$ is which
-      group an individual belongs to,
-    - $X_{i} \sim N\left( \mu_{D_{i}},1 \right)$ where $\mu_{D_{i}} = 1$
-      for never treated units and 0 otherwise,
-    - $v_{it} \sim N(0,1)$, and $u_{it} \sim N(0,1)$.  
+  - $`\theta_t = \beta_t = t`$ for $`t=1,\ldots,4`$
+    - $`\eta_i \sim N(G_i, 1)`$ where $`G_i`$ is which group an
+      individual belongs to,
+    - $`X_i \sim N( \mu_{D_i}, 1)`$ where $`\mu_{D_i} = 1`$ for never
+      treated units and 0 otherwise,
+    - $`v_{it} \sim N(0,1)`$, and $`u_{it} \sim N(0,1)`$.  
     - Also, all random variables are drawn independently of each other.
 
 ### Estimating Group-Time Average Treatment Effects
@@ -94,6 +103,7 @@ assumption. In particular,
 **Building the dataset**
 
 ``` r
+
 # set seed so everything is reproducible
 set.seed(1814)
 
@@ -133,6 +143,7 @@ here](https://bcallaway11.github.io/did/reference/att_gt.md). The most
 basic call to `att_gt` is given in the following
 
 ``` r
+
 # estimate group-time average treatment effects using att_gt method
 example_attgt <- att_gt(yname = "Y",
                         tname = "period",
@@ -176,14 +187,14 @@ corresponding bootstrapped-based standard errors are given in the column
 `se`. The corresponding groups and times are given in the columns
 `group` and `time`. Under the no-anticipation and parallel trends
 assumptions, group-time average treatment effects are identified in
-periods when $t \geq g$ (i.e., post-treatment periods for each group).
+periods when $`t \geq g`$ (i.e., post-treatment periods for each group).
 The table also reports pseudo group-time average treatment effects when
-$t < g$ (i.e., pre-treatment periods for group $g$). These can be used
-as a pre-test for the parallel trends assumption (as long as we assume
-that the no-anticipation assumption indeed holds). In addition, the
-results of a Wald pre-test of the parallel trends assumption is reported
-in the summary of the results. [A much more detailed discussion of using
-the **did** package for pre-testing is available
+$`t < g`$ (i.e., pre-treatment periods for group $`g`$). These can be
+used as a pre-test for the parallel trends assumption (as long as we
+assume that the no-anticipation assumption indeed holds). In addition,
+the results of a Wald pre-test of the parallel trends assumption is
+reported in the summary of the results. [A much more detailed discussion
+of using the **did** package for pre-testing is available
 here](https://bcallaway11.github.io/did/articles/pre-testing.md).
 
 Next, we’ll demonstrate how to plot group-time average treatment
@@ -191,6 +202,7 @@ effects. To plot these, use the `ggdid` function which builds off the
 `ggplot2` package.
 
 ``` r
+
 # plot the results
 ggdid(example_attgt)
 ```
@@ -243,6 +255,7 @@ weights proportional to the group size. This is available by calling the
 `aggte` function with `type = simple`.
 
 ``` r
+
 agg.simple <- aggte(example_attgt, type = "simple")
 summary(agg.simple)
 #> 
@@ -278,6 +291,7 @@ can immediately be averaged into average treatment effects at different
 lengths of exposure to the treatment using the following code:
 
 ``` r
+
 agg.es <- aggte(example_attgt, type = "dynamic")
 summary(agg.es)
 #> 
@@ -333,6 +347,7 @@ also straightforward to aggregate group-time average treatment effects
 into group-specific average treatment effects using the following code:
 
 ``` r
+
 agg.gs <- aggte(example_attgt, type = "group")
 summary(agg.gs)
 #> 
@@ -384,6 +399,7 @@ Finally, the `did` package allows aggregations across different time
 periods. To do this
 
 ``` r
+
 agg.ct <- aggte(example_attgt, type = "calendar")
 summary(agg.ct)
 #> 
@@ -425,7 +441,7 @@ package. If a group-time average treatment effect cannot be estimated
 (e.g., because a group has too few observations relative to the number
 of covariates in the model, the covariate matrix for some comparison is
 singular, or there are overlap violations), `att_gt` issues a warning
-for the affected $(g,t)$ cell and reports `NA` for that $ATT(g,t)$
+for the affected $`(g,t)`$ cell and reports `NA` for that $`ATT(g,t)`$
 rather than erroring. (The exception is when the never-treated
 comparison group itself is too small, in which case `att_gt` stops and
 suggests setting `control_group = "notyettreated"`.) The `did` package
@@ -440,7 +456,7 @@ observations in that group and asymptotic results are unlikely to
 provide good approximations to the sampling distribution of group-time
 average treatment effects when the number of units in a group is small.
 In these cases, one should be very cautious about interpreting the
-$ATT(g,t)$ results for these small groups.
+$`ATT(g,t)`$ results for these small groups.
 
 A reasonable alternative approach in this case is to just focus on
 aggregated treatment effect parameters (i.e., to run
@@ -466,6 +482,7 @@ treated group though it changes across time periods. To use the “not yet
 treated” as the control, set the option `control_group="notyettreated"`.
 
 ``` r
+
 example_attgt_altcontrol <- att_gt(yname = "Y",
                                    tname = "period",
                                    idname = "id",
@@ -505,7 +522,7 @@ unbalanced panel before proceeding this direction.
 
 #### Alternative Estimation Methods
 
-The `did` package implements all the $2 \times 2$ DiD estimators that
+The `did` package implements all the $`2 \times 2`$ DiD estimators that
 are in the `DRDID` package. By default, the `did` package uses “doubly
 robust” estimators that are based on first step linear regressions for
 the outcome variable and logit for the generalized propensity score. The
@@ -513,6 +530,7 @@ other options are “ipw” for inverse probability weighting and “reg” for
 regression.
 
 ``` r
+
 example_attgt_reg <- att_gt(yname = "Y",
                             tname = "period",
                             idname = "id",
@@ -539,6 +557,7 @@ dataset that contains county-level teen employment rates from 2003-2007.
 The data can be loaded by
 
 ``` r
+
 data(mpdta)
 ```
 
@@ -546,6 +565,7 @@ data(mpdta)
 looks like
 
 ``` r
+
 head(mpdta)
 #>     year countyreal     lpop     lemp first.treat treat
 #> 866 2003       8001 5.896761 8.461469        2007     1
@@ -627,6 +647,7 @@ population (in a “real” application, one might want to condition on more
 covariates).
 
 ``` r
+
 # estimate group-time average treatment effects without covariates
 mw.attgt <- att_gt(yname = "lemp",
                    gname = "first.treat",
@@ -686,6 +707,7 @@ There are a few things to notice in this case
   be helpful to aggregate the group-time average treatment effects.
 
 ``` r
+
 # aggregate the group-time average treatment effects
 mw.dyn <- aggte(mw.attgt, type = "dynamic")
 summary(mw.dyn)
@@ -730,12 +752,12 @@ One potential issue with these dynamic effect estimators is that the
 composition of the groups changes with different lengths of exposure in
 the event study plots. For example, for the group of states who
 increased their minimum wage in 2007, we can only identify the
-instantaneous average effect of the minimum wage ($e = 0$), whereas for
+instantaneous average effect of the minimum wage ($`e=0`$), whereas for
 states that raised their minimum wage in 2004 (2006), we can identify
-the average effect of the minimum wage on event-times $e = 0,1,2,3$
-($e = 0,1$). When computing the event-study plot for $e = 0$, we would
+the average effect of the minimum wage on event-times $`e=0,1,2,3`$
+($`e=0,1`$). When computing the event-study plot for $`e=0`$, we would
 aggregate the effects for all three groups, but this is not the case
-when $e = 1,2,3$. If the effects of the minimum wage are systematically
+when $`e=1,2,3`$. If the effects of the minimum wage are systematically
 different across groups (here, there is not much evidence of this as the
 effect for all groups seems to be close to 0 on impact and perhaps
 becoming more negative over time), then this can lead to confounding
@@ -747,13 +769,14 @@ of time periods and (ii) only look at dynamic effects in those time
 periods. In the `did` package, one can do this by specifying the
 `balance_e` option. Here, we set `balance_e = 1` – what this does is to
 only consider groups of states that are treated in 2004 and 2006 (so we
-can compute event-study-type parameters for them for $e = 0,1$), drops
+can compute event-study-type parameters for them for $`e=0,1`$), drops
 the group treated in 2007 (as we can not compute the event-study-type
-parameter with $e = 1$ for this group)), and then only looks at
+parameter with $`e=1`$ for this group)), and then only looks at
 instantaneous average effects and the average effect one period after
 states raised the minimum wage.
 
 ``` r
+
 mw.dyn.balance <- aggte(mw.attgt, type = "dynamic", balance_e = 1)
 summary(mw.dyn.balance)
 #> 
@@ -791,6 +814,7 @@ effects while including covariates. The other steps are otherwise the
 same.
 
 ``` r
+
 mw.attgt.X <- att_gt(yname = "lemp",
                      gname = "first.treat",
                      idname = "countyreal",

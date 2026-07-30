@@ -39,27 +39,29 @@ TWFE linear regressions when there are multiple time periods.
 ### DiD with 2 Periods and 2 Groups
 
 The baseline case for DiD is the one with two periods (let’s call these
-periods $t$ and $t - 1$) and two groups (a treated group and an
+periods $`t`$ and $`t-1`$) and two groups (a treated group and an
 untreated group).
 
 **Notation / Setup**
 
-- For $s \in \{ t,t - 1\}$, $Y_{is}(0)$ is unit $i$’s *untreated
-  potential outcomes* – this is the outcome that unit $i$ would
-  experience in period $s$ if they *did not* participate in the
+- For $`s \in \{t,t-1\}`$, $`Y_{is}(0)`$ is unit $`i`$’s *untreated
+  potential outcomes* – this is the outcome that unit $`i`$ would
+  experience in period $`s`$ if they *did not* participate in the
   treatment
 
-- For $s \in \{ t,t - 1\}$, $Y_{is}(1)$ is unit $i$’s *treated potential
-  outcome* – this is the outcome that unit $i$ would experience in
-  period $s$ if they *did* participate in the treatment.
+- For $`s \in \{t,t-1\}`$, $`Y_{is}(1)`$ is unit $`i`$’s *treated
+  potential outcome* – this is the outcome that unit $`i`$ would
+  experience in period $`s`$ if they *did* participate in the treatment.
 
-- Set $D = 1$ for units in the treated group and $D = 0$ for units in
+- Set $`D=1`$ for units in the treated group and $`D=0`$ for units in
   the untreated group
 
 - In the first period, no one participates in the treatment. In the
   second period, units in the treated group become treated. This means
   that observed outcomes are given by
-  $$Y_{it - 1} = Y_{it - 1}(0)\quad\text{and}\quad Y_{it} = D_{i}Y_{it}(1) + \left( 1 - D_{i} \right)Y_{it}(0)$$
+  ``` math
+  Y_{it-1} = Y_{it-1}(0) \quad \textrm{and} \quad Y_{it} = D_i Y_{it}(1) + (1-D_i) Y_{it}(0)
+  ```
   In other words, in the first period, we observe untreated potential
   outcomes for everyone (there is a no-anticipation assumption built in
   here). In the second period, we observe treated potential outcomes for
@@ -68,16 +70,20 @@ untreated group).
 
 - The main parameter of interest in most DiD designs is the Average
   Treatment Effect on the Treated (ATT). It is given by
-  $$ATT = E\left\lbrack Y_{t}(1) - Y_{t}(0)|D = 1 \right\rbrack$$ This
-  is the difference between treated and untreated potential outcomes, on
-  average, for units in the treated group.
+  ``` math
+  ATT = E[Y_t(1) - Y_t(0) | D=1]
+  ```
+  This is the difference between treated and untreated potential
+  outcomes, on average, for units in the treated group.
 
 The main assumption in DiD designs is called the parallel trends
 assumption:
 
 **Parallel Trends Assumption**
 
-$$E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|D = 1 \right\rbrack = E\left\lbrack Y_{t}(0) - Y_{t - 1}|D = 0 \right\rbrack$$
+``` math
+  E[Y_t(0) - Y_{t-1}(0)| D=1] = E[ Y_t(0)-Y_{t-1} | D=0]
+```
 
 In words, this assumption says that the change (or “path”) in outcomes
 over time that units in the treated group *would have experienced if
@@ -94,31 +100,35 @@ in the above equation) is not known, but the researcher does observe the
 path of untreated potential outcomes for units in the untreated group
 (term on the right in the above equation). In fact, it is
 straightforward to show that, under the parallel trends assumption, the
-$ATT$ is identified and given by
-$$ATT = E\left\lbrack Y_{t} - Y_{t - 1}|D = 1 \right\rbrack - E\left\lbrack Y_{t} - Y_{t - 1}|D = 0 \right\rbrack$$
+$`ATT`$ is identified and given by
+``` math
+  ATT = E[ Y_t - Y_{t-1}| D=1] - E[ Y_t - Y_{t-1}| D=0]
+```
 
-That is, the $ATT$ is the difference between the mean change in outcomes
-over time experienced by units in the treated group adjusted by the mean
-change in outcomes over time experienced by units in the untreated
-group; the latter term, under the parallel trends assumption, is what
-the path of outcomes for units in the treated group would have been if
-they had not participated in the treatment.
+That is, the $`ATT`$ is the difference between the mean change in
+outcomes over time experienced by units in the treated group adjusted by
+the mean change in outcomes over time experienced by units in the
+untreated group; the latter term, under the parallel trends assumption,
+is what the path of outcomes for units in the treated group would have
+been if they had not participated in the treatment.
 
 ### Two way fixed effects regressions
 
-Now let’s move to a more general case where there are $\mathcal{T}$
-total time periods. Denote particular time periods by $t$ where
-$t = 1,\ldots,\mathcal{T}$.
+Now let’s move to a more general case where there are $`\mathcal{T}`$
+total time periods. Denote particular time periods by $`t`$ where
+$`t=1,\ldots,\mathcal{T}`$.
 
 By far the most common approach to *trying* to estimate the effect of a
 binary treatment in this setup is the TWFE linear regression. This is a
 regression like
-$$Y_{it} = \theta_{t} + \eta_{i} + \alpha D_{it} + v_{it}$$ where
-$\theta_{t}$ is a time fixed effect, $\eta_{i}$ is a unit fixed effect,
-$D_{it}$ is a treatment dummy variable, $v_{it}$ are time varying
-unobservables that are mean independent of everything else, and $\alpha$
-is presumably the parameter of interest. $\alpha$ is often interpreted
-as the *average effect* of participating in the treatment.
+``` math
+Y_{it} = \theta_t + \eta_i + \alpha D_{it} + v_{it}
+```
+where $`\theta_t`$ is a time fixed effect, $`\eta_i`$ is a unit fixed
+effect, $`D_{it}`$ is a treatment dummy variable, $`v_{it}`$ are time
+varying unobservables that are mean independent of everything else, and
+$`\alpha`$ is presumably the parameter of interest. $`\alpha`$ is often
+interpreted as the *average effect* of participating in the treatment.
 
 Although this is essentially a standard approach in applied work, there
 are a number of recent papers that point out potentially severe
@@ -129,7 +139,7 @@ D’Haultfoeuille (2020), and Sun and Abraham (2021).
 **When will TWFE work?**
 
 1.  Effects really aren’t heterogeneous. If the effect of participating
-    in the treatment really is $\alpha$ for all units, TWFE will work
+    in the treatment really is $`\alpha`$ for all units, TWFE will work
     great. That being said, in many applications, treatment effects are
     very likely to be heterogeneous – they may vary across different
     units or exhibit dynamics or change across different time periods.
@@ -140,8 +150,8 @@ D’Haultfoeuille (2020), and Sun and Abraham (2021).
 2.  There are only two time periods. This is the canonical case (2
     periods, one group becomes treated in the second period, the other
     is never treated). In this case, under parallel trends an
-    no-anticipation, $\alpha$ is going to be numerically equal to the
-    $ATT$. In other words, in this case, even though it looks like you
+    no-anticipation, $`\alpha`$ is going to be numerically equal to the
+    $`ATT`$. In other words, in this case, even though it looks like you
     have restricted the effect of participating in the treatment to be
     the same across all units, TWFE exhibits *robustness* to treatment
     effect heterogeneity. Unfortunately, this robustness to treatment
@@ -171,16 +181,16 @@ units that are not participating in the treatment. The third comparison
 is different though: it adjusts the path of outcomes for newly treated
 units by the path of outcomes for already treated units. But this is not
 the path of untreated potential outcomes, it includes *treatment effect
-dynamics*. Thus, these dynamics appear in $\alpha$, *making it very hard
-to give a clear causal interpretation*.
+dynamics*. Thus, these dynamics appear in $`\alpha`$, *making it very
+hard to give a clear causal interpretation*.
 
 And this issue can have potentially severe consequences. For example, it
 is possible to come up with examples where the effect of participating
 in the treatment is positive for all units in all time periods, but the
 TWFE estimation procedure leads to estimating a negative effect of
 participating in the treatment. Even in the case where \`\`negative
-weights’’ can be ruled out, $\alpha$ recover a weighted average of
-$ATT\prime s$, though these weights are hard to interpret.
+weights’’ can be ruled out, $`\alpha`$ recover a weighted average of
+$`ATT's`$, though these weights are hard to interpret.
 
 ## Treatment Effects in Difference in Differences Designs with Multiple Periods
 
@@ -197,27 +207,27 @@ the identifying assumptions that we are going to make.
 
 **Notation**
 
-- $Y_{it}(0)$ is unit $i$’s untreated potential outcome. This is the
-  outcome that unit $i$ would experience in period $t$ if they do not
-  participate in the treatment.
+- $`Y_{it}(0)`$ is unit $`i`$’s untreated potential outcome. This is the
+  outcome that unit $`i`$ would experience in period $`t`$ if they do
+  not participate in the treatment.
 
-- $Y_{it}(g)$ is unit $i$’s potential outcome in time period $t$ if they
-  become treated in period $g$.
+- $`Y_{it}(g)`$ is unit $`i`$’s potential outcome in time period $`t`$
+  if they become treated in period $`g`$.
 
-- $G_{i}$ is the time period when unit $i$ becomes treated (often
+- $`G_i`$ is the time period when unit $`i`$ becomes treated (often
   *groups* are defined by the time period when a unit becomes treated;
-  hence, the $G$ notation).
+  hence, the $`G`$ notation).
 
-- $C_{i}$ is an indicator variable for whether unit $i$ is in a
+- $`C_i`$ is an indicator variable for whether unit $`i`$ is in a
   **never-treated** group.
 
-- $D_{it}$ is an indicator variable for whether unit $i$ has been
-  treated by time $t$.
+- $`D_{it}`$ is an indicator variable for whether unit $`i`$ has been
+  treated by time $`t`$.
 
-- $Y_{it}$ is unit $i$’s observed outcome in time period $t$. For units
-  in the never-treated group, $Y_{it} = Y_{it}(0)$ in all time periods.
-  For units in other groups, we observe
-  $Y_{it} = \mathbf{1}\{ G_{i} > t\} Y_{it}(0) + \mathbf{1}\{ G_{i} \leq t\} Y_{it}\left( G_{i} \right)$.
+- $`Y_{it}`$ is unit $`i`$’s observed outcome in time period $`t`$. For
+  units in the never-treated group, $`Y_{it} = Y_{it}(0)`$ in all time
+  periods. For units in other groups, we observe
+  $`Y_{it} = \mathbf{1}\{ G_i > t\} Y_{it}(0) + \mathbf{1}\{G_i \leq t \} Y_{it}(G_i)`$.
   The notation here is a bit complicated, but in words, we observe
   untreated potential outcomes for units that have not yet participated
   in the treatment, and we observe treated potential outcomes for units
@@ -228,14 +238,14 @@ the identifying assumptions that we are going to make.
   “Difference-in-Differences with Multiple Time
   Periods”](https://doi.org/10.1016/j.jeconom.2020.12.001).
 
-- $X_{i}$ vector of pre-treatment covariates.
+- $`X_i`$ vector of pre-treatment covariates.
 
 ### Main Assumptions
 
-**Staggered Treatment Adoption Assumption** Recall that $D_{it} = 1$ if
-a unit $i$ has been treated by time $t$ and $D_{it} = 0$ otherwise.
-Then, for $t = 1,...,\mathcal{T} - 1$,
-$\left. D_{it} = 1\Longrightarrow D_{it + 1} = 1 \right.$.
+**Staggered Treatment Adoption Assumption** Recall that $`D_{it} = 1`$
+if a unit $`i`$ has been treated by time $`t`$ and $`D_{it}=0`$
+otherwise. Then, for $`t=1,...,\mathcal{T}-1`$,
+$`D_{it} = 1 \implies D_{it+1} = 1`$.
 
 Staggered treatment adoption implies that once a unit participates in
 the treatment, they remain treated. In other words, units do not
@@ -253,14 +263,16 @@ heterogeneity across time, groups, treatment sequences, etc. That is the
 main reason we focus on this leading case.
 
 **Parallel Trends Assumption based on never-treated units** For all
-$g = 2,...,\mathcal{T}$, $t = 2,...,\mathcal{T}$ with $t \geq g$,
-$$E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|G = g \right\rbrack = E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|C = 1 \right\rbrack$$
+$`g=2,...,\mathcal{T}`$, $`t=2,...,\mathcal{T}`$ with $`t \ge g`$,
+``` math
+  E[ Y_t(0) - Y_{t-1}(0) | G=g] = E[ Y_t(0) - Y_{t-1}(0)| C=1]
+```
 
 This is a natural extension of the parallel trends assumption in the two
 periods and two groups case. It says that, in the absence of treatment,
 average untreated potential outcomes for the group first treated in time
-$g$ and for the “never treated” group would have followed parallel paths
-in all post-treatment periods $t \geq g$.
+$`g`$ and for the “never treated” group would have followed parallel
+paths in all post-treatment periods $`t \ge g`$.
 
 Note that the aforementioned parallel trend assumption rely on using the
 \`\`never treated’’ units as comparison group for all “eventually
@@ -272,12 +284,15 @@ are not satisfied, one can use an alternative parallel trends assumption
 that uses the **not-yet treated** units as valid comparison groups.
 
 **Parallel Trends Assumption based on not-yet treated units** For all
-$g = 2,...,\mathcal{T}$, $s,t = 2,...,\mathcal{T}$ with $t \geq g$ and
-$s \geq t$$$E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|G = g \right\rbrack = E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|D_{s} = 0,G \neq g \right\rbrack$$
+$`g=2,...,\mathcal{T}`$, $`s,t=2,...,\mathcal{T}`$ with $`t \ge g`$ and
+$`s \ge t`$
+``` math
+  E[ Y_t(0) - Y_{t-1}(0) | G=g] = E[ Y_t(0) - Y_{t-1}(0)| D_s=0, G\not=g]
+```
 In plain English, this assumption states that one can use the
-not-yet-treated by time $s$ ($s \geq t$) units as valid comparison
+not-yet-treated by time $`s`$ ($`s \ge t`$) units as valid comparison
 groups when computing the average treatment effect for the group first
-treated in time $g$. In general, this assumption uses more data when
+treated in time $`g`$. In general, this assumption uses more data when
 constructing comparison groups. However, as noted in [Marcus and
 Sant’Anna
 (2021)](https://www.journals.uchicago.edu/doi/full/10.1086/711509), this
@@ -294,20 +309,21 @@ Likewise, a natural way to generalize the parameter of interest (the
 ATT) from the two periods and two groups case to the multiple periods
 case is to define **group-time average treatment effects**:
 
-$$ATT(g,t) = E\left\lbrack Y_{t}(g) - Y_{t}(0)|G = g \right\rbrack$$
+``` math
+  ATT(g,t) = E[Y_t(g) - Y_t(0) | G=g]
+```
 
 This is the average effect of participating in the treatment for units
-in group $g$ at time period $t$. Notice that when there are two time
+in group $`g`$ at time period $`t`$. Notice that when there are two time
 periods and two groups (the canonical case), the average treatment
-effect on the treated is given by $ATT = ATT(g = 2,t = 2)$.
+effect on the treated is given by $`ATT = ATT(g=2,t=2)`$.
 
 To give a couple more examples, suppose that a researcher has access to
-three time periods. Then, $ATT(g = 2,t = 3)$ is the average effect of
+three time periods. Then, $`ATT(g=2,t=3)`$ is the average effect of
 participating in the treatment for the group of units that become
-treated in time period 2, in time period 3. Similarly,
-$ATT(g = 3,t = 3)$ is the average effect of participating in the
-treatment for the group of units that become treated in time period 3,
-in time period 3.
+treated in time period 2, in time period 3. Similarly, $`ATT(g=3,t=3)`$
+is the average effect of participating in the treatment for the group of
+units that become treated in time period 3, in time period 3.
 
 **Identification of Group-Time Average Treatment Effects**
 
@@ -315,10 +331,15 @@ Under either version of the parallel trends assumptions mentioned above,
 it is straightforward to show that group-time average treatment effects
 are identified. For instance, when one impose the parallel trends
 assumption based on “never-treated units”, we have that, for all
-$t \geq g$$$ATT(g,t) = E\left\lbrack Y_{t} - Y_{g - 1}|G = g \right\rbrack - E\left\lbrack Y_{t} - Y_{g - 1}|C = 1 \right\rbrack.$$
+$`t \ge g`$
+``` math
+ATT(g,t) = E[ Y_t - Y_{g-1}| G=g] - E[ Y_t - Y_{g-1}| C=1].
+```
 Alternatively, when one impose the parallel trends assumption based on
-“not-yet-treated units”, we have that, for all
-$t \geq g$$$ATT(g,t) = E\left\lbrack Y_{t} - Y_{g - 1}|G = g \right\rbrack - E\left\lbrack Y_{t} - Y_{g - 1}|D_{t} = 0,G \neq g \right\rbrack.$$
+“not-yet-treated units”, we have that, for all $`t \ge g`$
+``` math
+ATT(g,t) = E[ Y_t - Y_{g-1}| G=g] - E[ Y_t - Y_{g-1}| D_t=0, G\not=g].
+```
 
 These group-time average treatment effects are the building blocks of
 understanding the effect of participating in a treatment in DiD designs
@@ -332,13 +353,18 @@ covariates. In other words, if the parallel trends assumptions are
 modified to be
 
 **Conditional Parallel Trends Assumption based on never-treated units**
-For all $g = 2,...,\mathcal{T}$, $t = 2,...,\mathcal{T}$ with
-$t \geq g$,
-$$E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|X,G = g \right\rbrack = E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|X,C = 1 \right\rbrack$$
+For all $`g=2,...,\mathcal{T}`$, $`t=2,...,\mathcal{T}`$ with
+$`t \ge g`$,
+``` math
+  E[ Y_t(0) - Y_{t-1}(0) |X, G=g] = E[ Y_t(0) - Y_{t-1}(0)| X, C=1]
+```
 
 **Parallel Trends Assumption based on not-yet treated units** For all
-$g = 2,...,\mathcal{T}$, $s,t = 2,...,\mathcal{T}$ with $t \geq g$ and
-$s \geq t$$$E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|X,G = g \right\rbrack = E\left\lbrack Y_{t}(0) - Y_{t - 1}(0)|X,D_{s} = 0,G \neq g \right\rbrack$$
+$`g=2,...,\mathcal{T}`$, $`s,t=2,...,\mathcal{T}`$ with $`t \ge g`$ and
+$`s \ge t`$
+``` math
+  E[ Y_t(0) - Y_{t-1}(0) | X, G=g] = E[ Y_t(0) - Y_{t-1}(0)|X, D_s=0, G\not=g]
+```
 
 These parallel trends assumptions are the conditional analogues of
 previous ones. Importantly, they allow for covariate-specific trends in
@@ -354,16 +380,16 @@ certainly does), then it would be important to condition on these types
 of variables in order to make parallel trends more credible.
 
 In this case, the parameter of interest is still often the
-$ATT(g,t)\prime s$ (or their aggregation). It is still straightforward
-to identify and estimate the $ATT$ in this case. Basically, one needs to
+$`ATT(g,t)'s`$ (or their aggregation). It is still straightforward to
+identify and estimate the $`ATT`$ in this case. Basically, one needs to
 estimate the change in outcomes for units in the untreated group
-conditional on $X$, but average out $X$ over the distribution of
-covariates for individuals in group $g$ to obtain $ATT(g,t)$ (see
+conditional on $`X`$, but average out $`X`$ over the distribution of
+covariates for individuals in group $`g`$ to obtain $`ATT(g,t)`$ (see
 [Callaway and Sant’Anna
 (2021)](https://doi.org/10.1016/j.jeconom.2020.12.001) and references
 therein for many more details). In practice, you can use different
 approaches to recover these parameters. More precisely, you can estimate
-the $ATT(g,t)\prime s$ using outcome-regressions, inverse probability
+the $`ATT(g,t)'s`$ using outcome-regressions, inverse probability
 weighting, or doubly-robust methods. But the **did** package automates
 all of this for the user.
 
@@ -386,22 +412,26 @@ researchers are most often interested in. First, consider the average
 effect of participating in the treatment, separately for each group.
 This is given by
 
-$$\theta_{S}(g) = \frac{1}{\mathcal{T} - g + 1}\sum\limits_{t = 2}^{\mathcal{T}}\mathbf{1}\{ g \leq t\} ATT(g,t).$$
+``` math
+  \theta_S(g) = \frac{1}{\mathcal{T} - g + 1} \sum_{t=2}^{\mathcal{T}} \mathbf{1}\{g \leq t\} ATT(g,t).
+```
 
 This parameter may be of interest in its own right, since it allows one
 to highlight treatment effect heterogeneity with respect to treatment
 adoption period. Furthermore, it is fairly straightforward to further
-aggregate $\theta_{S}(g)$ to get an easy-to-interpret overall effect
+aggregate $`\theta_S(g)`$ to get an easy-to-interpret overall effect
 parameter,
 
-$$\theta_{S}^{O}:=\sum\limits_{g = 2}^{\mathcal{T}}\theta_{S}(g)P(G = g).$$
+``` math
+  \theta^O_S := \sum_{g=2}^{\mathcal{T}} \theta_S(g) P(G=g).
+```
 
-$\theta_{S}^{O}$ is the overall effect of participating in the treatment
+$`\theta^O_S`$ is the overall effect of participating in the treatment
 across all groups that have ever participated in the treatment. In our
-view, this is close to being a multi-period analogue of the $ATT$ in the
-two period case. Thus, if a researcher is constrained to report a single
-treatment effect summary parameter, we recommend reporting
-$\theta_{S}^{O}$.
+view, this is close to being a multi-period analogue of the $`ATT`$ in
+the two period case. Thus, if a researcher is constrained to report a
+single treatment effect summary parameter, we recommend reporting
+$`\theta^O_S`$.
 
 In DiD setups with multiple periods, it is natural to ask “How does
 treatment effects vary with elapsed treatment time?” Here, note that
@@ -412,10 +442,12 @@ in applied work.
 In this case, a natural way to aggregate the group-time average
 treatment effect to highlight treatment effect dynamics is given by
 
-$$\theta_{D}(e):=\sum\limits_{g = 2}^{\mathcal{T}}\mathbf{1}\{ g + e \leq \mathcal{T}\} ATT(g,g + e)P\left( G = g|G + e \leq \mathcal{T} \right).$$
+``` math
+  \theta_D(e) := \sum_{g=2}^{\mathcal{T}} \mathbf{1} \{ g + e \leq \mathcal{T} \} ATT(g,g+e) P(G=g | G+e \leq \mathcal{T}).
+```
 
 This is the average effect of participating in the treatment for the
-group of units that have been exposed to the treatment for exactly $e$
+group of units that have been exposed to the treatment for exactly $`e`$
 time periods.
 
 All of these aggregations are available in the **did** package and

@@ -1,0 +1,94 @@
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>{{{pagetitle}}} • {{#site}}{{title}}{{/site}}</title>
+
+{{#has_favicons}}
+<!-- favicons -->
+<link rel="icon" type="image/png" sizes="96x96" href="{{#site}}{{root}}{{/site}}favicon-96x96.png">
+<link rel="icon" type="image/svg+xml" href="{{#site}}{{root}}{{/site}}favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="{{#site}}{{root}}{{/site}}apple-touch-icon.png">
+<link rel="icon" sizes="any" href="{{#site}}{{root}}{{/site}}favicon.ico" >
+<link rel="manifest" href="{{#site}}{{root}}{{/site}}site.webmanifest">
+{{/has_favicons}}
+
+{{#uses_katex}}
+<!-- katex math -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" integrity="sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" integrity="sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" integrity="sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
+<script src="{{#site}}{{root}}{{/site}}katex-auto.js"></script>
+{{/uses_katex}}
+
+{{#uses_mathjax}}
+<!-- mathjax math -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js" integrity="sha256-MASABpB4tYktI2Oitl4t+78w/lyA+D7b/s9GEP0JOGI=" crossorigin="anonymous"></script>
+<script>
+  window.MathJax = {
+    chtml: {
+      fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
+    }
+  };
+</script>
+{{/uses_mathjax}}
+
+{{#lightswitch}}<script src="{{#site}}{{root}}{{/site}}lightswitch.js"></script>{{/lightswitch}}
+
+{{{headdeps}}}
+{{#includes}}{{{head}}}{{/includes}}
+
+<!-- pkgdown -->
+<script src="{{#site}}{{root}}{{/site}}pkgdown.js"></script>
+
+{{#extra}}
+  {{#css}}<link href="{{#site}}{{root}}{{/site}}extra.css" rel="stylesheet">{{/css}}
+  {{#js}}<script src="{{#site}}{{root}}{{/site}}extra.js"></script>{{/js}}
+{{/extra}}
+
+<meta property="og:title" content="{{{pagetitle}}}" />
+{{#opengraph}}
+{{#description}}
+  <meta name="description" content="{{.}}" />
+  <meta property="og:description" content="{{.}}" />
+{{/description}}
+{{#image}}
+  <meta property="og:image" content="{{{src}}}" />
+  {{#alt}}<meta property="og:image:alt" content="{{{.}}}" />{{/alt}}
+{{/image}}
+{{#twitter}}
+  {{#card}}<meta name="twitter:card" content="{{{.}}}" />{{/card}}
+  {{#creator}}<meta name="twitter:creator" content="{{{.}}}" />{{/creator}}
+  {{#site}}<meta name="twitter:site" content="{{{.}}}" />{{/site}}
+{{/twitter}}
+{{/opengraph}}
+
+{{#yaml}}{{#noindex}}<meta name="robots" content="noindex" />{{/noindex}}{{/yaml}}
+{{#development}}{{#in_dev}}<meta name="robots" content="noindex">{{/in_dev}}{{/development}}
+
+{{#yaml}}{{#google_site_verification}}
+<meta name="google-site-verification" content="{{{.}}}" />
+{{/google_site_verification}}{{/yaml}}
+
+{{#yaml}}{{#ganalytics}}
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={{.}}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', '{{.}}');
+</script>
+{{/ganalytics}}{{/yaml}}
+{{#has_trailingslash}}
+<!-- See https://stackoverflow.com/questions/1865837/whats-the-difference-between-window-location-and-window-location-replace — we use .replace() because we don't want the old url to appear in the browser history. -->
+<script>
+  if (!/(\/|html?)$/.test(window.location.href)){
+    window.location.replace(window.location.href + '/');
+  }
+</script>
+{{/has_trailingslash}}
+{{#has_deps}}
+<!-- dependencies from examples -->
+{{{dependencies}}}
+{{/has_deps}}

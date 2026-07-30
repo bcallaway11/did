@@ -3,7 +3,7 @@
 [![](http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue)](https://cran.r-project.org/package=did)
 [![](http://cranlogs.r-pkg.org/badges/last-month/did?color=blue)](https://cran.r-project.org/package=did)
 [![](https://www.r-pkg.org/badges/version/did?color=blue)](https://cran.r-project.org/package=did)
-[![](https://img.shields.io/badge/devel%20version-2.5.0-blue.svg)](https://github.com/bcallaway11/did)
+[![](https://img.shields.io/badge/devel%20version-2.5.1-blue.svg)](https://github.com/bcallaway11/did)
 [![CRAN
 checks](https://badges.cranchecks.info/summary/did.svg)](https://cran.r-project.org/web/checks/check_results_did.html)
 [![](https://img.shields.io/github/last-commit/bcallaway11/did.svg)](https://github.com/bcallaway11/did/commits/master)
@@ -55,12 +55,14 @@ There has been some recent work on DiD with multiple time periods. The
 You can install **did** from CRAN with:
 
 ``` r
+
 install.packages("did")
 ```
 
 or get the latest version from github with:
 
 ``` r
+
 # install.packages("devtools")
 devtools::install_github("bcallaway11/did")
 ```
@@ -78,6 +80,7 @@ from [Callaway and Sant’Anna
 A subset of the data is available in the package and can be loaded by
 
 ``` r
+
 library(did)
 data(mpdta)
 ```
@@ -103,6 +106,7 @@ To estimate group-time average treatment effects, use the **att_gt**
 function
 
 ``` r
+
 out <- att_gt(
   yname = "lemp",
   gname = "first.treat",
@@ -120,6 +124,7 @@ treatment effects and their standard errors. To see these, we can call
 the **summary** function
 
 ``` r
+
 summary(out)
 #> 
 #> Call:
@@ -163,6 +168,7 @@ It is often also convenient to plot the group-time average treatment
 effects. This can be done using the **ggdid** command:
 
 ``` r
+
 ggdid(out, ylim = c(-.25, .1))
 ```
 
@@ -189,6 +195,7 @@ To make an event study plot in the **did** package, one can use the
 **aggte** function
 
 ``` r
+
 es <- aggte(out, type = "dynamic")
 ```
 
@@ -196,6 +203,7 @@ Just like for group-time average treatment effects, these can be
 summarized and plotted. First, the summary
 
 ``` r
+
 summary(es)
 #> 
 #> Call:
@@ -234,6 +242,7 @@ is equal to 0 is potentially useful as a pre-test).
 To plot the event study, use **ggdid**
 
 ``` r
+
 ggdid(es)
 ```
 
@@ -260,6 +269,7 @@ group case.
 To compute this overall average treatment effect parameter, use
 
 ``` r
+
 group_effects <- aggte(out, type = "group")
 summary(group_effects)
 #> 

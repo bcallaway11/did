@@ -48,7 +48,7 @@ compute.aggte(
 - balance_e:
 
   If set (and if one computes dynamic effects), it balances the sample
-  with respect to event time. For example, if `balance.e=2`, `aggte`
+  with respect to event time. For example, if `balance_e=2`, `aggte`
   will drop groups that are not exposed to treatment for at least three
   periods. (the initial period when `e=0` as well as the next two
   periods when `e=1` and the `e=2`). This ensures that the composition
@@ -68,8 +68,8 @@ compute.aggte(
 
 - na.rm:
 
-  Logical value if we are to remove missing Values from analyses.
-  Defaults is FALSE.
+  Logical value if we are to remove missing values from analyses.
+  Default is FALSE.
 
 - bstrap:
 

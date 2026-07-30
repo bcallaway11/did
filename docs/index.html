@@ -7,13 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Treatment Effects with Multiple Periods and Groups • did</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
-<link rel="icon" type="”image/svg+xml”" href="favicon.svg">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" sizes="any" href="favicon.ico">
 <link rel="manifest" href="site.webmanifest">
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Treatment Effects with Multiple Periods and Groups">
 <meta name="description" content="The standard Difference-in-Differences (DID) setup involves two periods and two groups -- a treated group and untreated group. Many applications of DID methods involve more than two periods and have individuals that are treated at different points in time. This package contains tools for computing average treatment effect parameters in Difference in Differences setups with more than two periods and with variation in treatment timing using the methods developed in Callaway and Sant'Anna (2021) &lt;doi:10.1016/j.jeconom.2020.12.001&gt;. The main parameters are group-time average treatment effects which are the average treatment effect for a particular group at a particular time. These can be aggregated into a fewer number of treatment effect parameters, and the package deals with the cases where there is selective treatment timing, dynamic treatment effects, calendar time effects, or combinations of these. There are also functions for testing the Difference in Differences assumption, and plotting group-time average treatment effects.">
@@ -28,7 +28,7 @@
 
     <a class="navbar-brand me-2" href="index.html">did</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.5.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -58,7 +58,7 @@
 <img src="logo.png" class="logo" alt=""><h1 id="difference-in-differences-">Difference-in-Differences <a class="anchor" aria-label="anchor" href="#difference-in-differences-"></a>
 </h1>
 </div>
-<p><a href="https://cran.r-project.org/package=did" class="external-link"><img src="http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue"></a> <a href="https://cran.r-project.org/package=did" class="external-link"><img src="http://cranlogs.r-pkg.org/badges/last-month/did?color=blue"></a> <a href="https://cran.r-project.org/package=did" class="external-link"><img src="https://www.r-pkg.org/badges/version/did?color=blue"></a> <a href="https://github.com/bcallaway11/did" class="external-link"><img src="https://img.shields.io/badge/devel%20version-2.5.0-blue.svg"></a> <a href="https://cran.r-project.org/web/checks/check_results_did.html" class="external-link"><img src="https://badges.cranchecks.info/summary/did.svg" alt="CRAN checks"></a> <a href="https://github.com/bcallaway11/did/commits/master" class="external-link"><img src="https://img.shields.io/github/last-commit/bcallaway11/did.svg"></a></p>
+<p><a href="https://cran.r-project.org/package=did" class="external-link"><img src="http://cranlogs.r-pkg.org/badges/grand-total/did?color=blue"></a> <a href="https://cran.r-project.org/package=did" class="external-link"><img src="http://cranlogs.r-pkg.org/badges/last-month/did?color=blue"></a> <a href="https://cran.r-project.org/package=did" class="external-link"><img src="https://www.r-pkg.org/badges/version/did?color=blue"></a> <a href="https://github.com/bcallaway11/did" class="external-link"><img src="https://img.shields.io/badge/devel%20version-2.5.1-blue.svg"></a> <a href="https://cran.r-project.org/web/checks/check_results_did.html" class="external-link"><img src="https://badges.cranchecks.info/summary/did.svg" alt="CRAN checks"></a> <a href="https://github.com/bcallaway11/did/commits/master" class="external-link"><img src="https://img.shields.io/github/last-commit/bcallaway11/did.svg"></a></p>
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 <p>The <strong>did</strong> package contains tools for computing average treatment effect parameters in a Difference-in-Differences setup allowing for</p>
 <ul>
@@ -255,7 +255,7 @@
 <div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
-<li><a href="https://www.r-project.org/Licenses/GPL-2" class="external-link">GPL-2</a></li>
+<li><a href="https://www.r-project.org/Licenses/GPL-3" class="external-link">GPL-3</a></li>
 </ul>
 </div>
 

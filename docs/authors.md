@@ -25,12 +25,12 @@ time periods.” *Journal of Econometrics*.
     }
 
 Callaway B, Sant'Anna P (2026). “did: Difference in Differences.” R
-package version 2.5.0, <https://bcallaway11.github.io/did/>.
+package version 2.5.1, <https://bcallaway11.github.io/did/>.
 
     @Misc{,
       title = {did: Difference in Differences},
       author = {Brantly Callaway and Pedro H.C. Sant'Anna},
       year = {2026},
-      note = {R package version 2.5.0},
+      note = {R package version 2.5.1},
       url = {https://bcallaway11.github.io/did/},
     }
