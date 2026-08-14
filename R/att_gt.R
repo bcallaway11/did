@@ -76,13 +76,12 @@
 #'  reported; these are cluster-robust when `clustervars` is supplied.
 #' @param biters The number of bootstrap iterations to use.  The default is 1000,
 #'  and this is only applicable if `bstrap=TRUE`.
-#' @param clustervars A vector of variables names to cluster on.  At most, there
-#'  can be two variables (otherwise will throw an error) and one of these
-#'  must be the same as idname which allows for clustering at the individual
-#'  level.  Including `idname` is what enables individual-level clustering for
-#'  panel data; when `panel=FALSE` each observation is treated as its own
-#'  sampling unit, so clustering at the unit level is automatic and listing
-#'  `idname` has no additional effect.  Clustered standard errors are available
+#' @param clustervars A vector of variable names to cluster on.  Standard
+#'  errors are always clustered at the individual level (`idname` for panel
+#'  data; each observation is its own sampling unit when `panel=FALSE`), so
+#'  `idname` may be included here but is redundant and is ignored.  Beyond
+#'  `idname`, at most one (coarser) clustering variable is supported
+#'  (otherwise an error is thrown).  Clustered standard errors are available
 #'  with the multiplier bootstrap (`bstrap=TRUE`) or analytically
 #'  (`bstrap=FALSE`).
 #' @param cband Boolean for whether or not to compute a uniform confidence

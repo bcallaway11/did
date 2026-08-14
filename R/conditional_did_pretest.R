@@ -19,11 +19,12 @@
 #' @param biters The number of multiplier bootstrap iterations used to
 #'  simulate the limiting distribution of the test statistics.  The
 #'  default is 1000.
-#' @param clustervars A vector of variables names to cluster on (the
-#'  multiplier bootstrap then draws cluster-level multipliers).  At most,
-#'  there can be two variables (otherwise will throw an error) and one of
-#'  these must be the same as idname which allows for clustering at the
-#'  individual level.
+#' @param clustervars A vector of variable names to cluster on (the
+#'  multiplier bootstrap then draws cluster-level multipliers).  Clustering
+#'  at the individual (`idname`) level is automatic, so `idname` may be
+#'  included here but is redundant and is ignored; beyond `idname`, at most
+#'  one (coarser) clustering variable is supported (otherwise an error is
+#'  thrown).
 #' @param print_details Not used by the pre-test.  Progress details are
 #'  suppressed during the pre-test computations regardless of this argument.
 #' @param pl Not used by the pre-test.  The multiplier bootstrap used here

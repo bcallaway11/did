@@ -78,13 +78,12 @@ bands coincide with pointwise confidence intervals, so \code{cband} is set to
 
 \item{alp}{the significance level, default is 0.05}
 
-\item{clustervars}{A vector of variables names to cluster on.  At most, there
-can be two variables (otherwise will throw an error) and one of these
-must be the same as idname which allows for clustering at the individual
-level.  Including \code{idname} is what enables individual-level clustering for
-panel data; when \code{panel=FALSE} each observation is treated as its own
-sampling unit, so clustering at the unit level is automatic and listing
-\code{idname} has no additional effect.  Clustered standard errors are available
+\item{clustervars}{A vector of variable names to cluster on.  Standard
+errors are always clustered at the individual level (\code{idname} for panel
+data; each observation is its own sampling unit when \code{panel=FALSE}), so
+\code{idname} may be included here but is redundant and is ignored.  Beyond
+\code{idname}, at most one (coarser) clustering variable is supported
+(otherwise an error is thrown).  Clustered standard errors are available
 with the multiplier bootstrap (\code{bstrap=TRUE}) or analytically
 (\code{bstrap=FALSE}).}
 

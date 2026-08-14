@@ -112,11 +112,12 @@ bands coincide with pointwise confidence intervals, so \code{cband} is set to
 simulate the limiting distribution of the test statistics.  The
 default is 1000.}
 
-\item{clustervars}{A vector of variables names to cluster on (the
-multiplier bootstrap then draws cluster-level multipliers).  At most,
-there can be two variables (otherwise will throw an error) and one of
-these must be the same as idname which allows for clustering at the
-individual level.}
+\item{clustervars}{A vector of variable names to cluster on (the
+multiplier bootstrap then draws cluster-level multipliers).  Clustering
+at the individual (\code{idname}) level is automatic, so \code{idname} may be
+included here but is redundant and is ignored; beyond \code{idname}, at most
+one (coarser) clustering variable is supported (otherwise an error is
+thrown).}
 
 \item{est_method}{the method to compute group-time average treatment
 effects.  The default for \code{conditional_did_pretest} is "ipw" for
