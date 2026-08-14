@@ -87,10 +87,11 @@ test_that("aggte() empty post-treatment windows give clean errors, not cryptic c
   data(mpdta, package = "did")
   cs <- suppressWarnings(suppressMessages(att_gt("lemp", "year", "countyreal",
         "first.treat", data = mpdta, bstrap = FALSE)))
-  # simple / dynamic with no e >= 0 -> clean "no valid estimates", NOT
+  # simple / dynamic with no e >= 0 -> a clean error, NOT
   # "non-numeric argument..." or "...report this as a bug."
+  # (simple now names the offending min_e/max_e window explicitly)
   expect_error(suppressWarnings(suppressMessages(aggte(cs, type = "simple", max_e = -1))),
-               "No valid att_gt")
+               "No group-time average treatment effects fall within the requested window")
   expect_error(suppressWarnings(suppressMessages(aggte(cs, type = "dynamic", max_e = -1))),
                "No valid att_gt")
   # event-time window that excludes every period -> clean "no event times".

@@ -69,6 +69,21 @@ validate_args <- function(args, data){
     #  check if idname is numeric
     if(!data[, is.numeric(get(args$idname))]){stop("The id variable '", args$idname, "' must be numeric. Please convert it.")}
 
+    # With user-level panel = FALSE the data are genuine repeated cross sections:
+    # every observation is its own sampling unit, so a supplied idname must not
+    # repeat in ANY way (within or across periods). args$panel is still the user's
+    # argument here -- the allow_unbalanced_panel flip happens later, in
+    # did_standardization() -- so unbalanced panels (panel = TRUE) are unaffected.
+    # Checked before the irreversibility and (idname, tname) scans, mirroring the
+    # slow path (pre_process_did) with identical wording, so repeated cross
+    # sections get this message instead of the panel-flavored ones.
+    if (!args$panel) {
+      id_col <- data[[args$idname]]
+      if (anyDuplicated(id_col[!is.na(id_col)]) > 0L) {
+        stop("The value of idname must be unique when panel = FALSE. Repeated cross sections treat each observation as a distinct sampling unit, but some values of '", args$idname, "' appear in more than one row. If the same units are observed in multiple periods, use panel = TRUE (with allow_unbalanced_panel = TRUE if the panel is incomplete). If the data are genuine repeated cross sections, give each observation its own unique value of '", args$idname, "' (or omit idname).")
+      }
+    }
+
     # Check if gname is unique by idname: irreversibility of the treatment
     # Use direct column access instead of get() for speed
     nonmissing_g <- !is.na(data[[args$idname]]) & !is.na(data[[args$gname]])
@@ -180,10 +195,15 @@ did_standardization <- function(data, args){
   if (!is.null(args$weightsname) && args$panel) {
     w_range <- data[, .(w_range = max(.w) - min(.w)), by = c(args$idname)]
     if (any(w_range$w_range > .Machine$double.eps^0.5, na.rm = TRUE)) {
+      # wording is deliberately path-neutral: whether the balanced-panel or the
+      # unbalanced (per-observation) path runs is only known further below, once
+      # the panel has been checked for balance
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
         "behavior uses the weight from the earlier of the two time periods in ",
-        "each 2x2 comparison (the base period for post-treatment cells). ",
+        "each 2x2 comparison (the base period for post-treatment cells); for ",
+        "unbalanced panel data, each observation carries its own ",
+        "period-specific weight. ",
         "Use the 'fix_weights' argument to control this behavior. ",
         "See ?att_gt for details."
       )
@@ -423,6 +443,10 @@ did_standardization <- function(data, args){
   # if there are only two time periods, then uniform confidence
   # bands are the same as pointwise confidence intervals
   if (length(tlist)==2) {
+    # only announce the override when the user actually asked for a band
+    if (args$cband) {
+      message("Only two time periods are available; uniform confidence bands coincide with pointwise confidence intervals. Setting cband = FALSE.")
+    }
     args$cband <- FALSE
   }
 

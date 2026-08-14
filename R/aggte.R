@@ -25,12 +25,18 @@
 #'  at least three periods. (the initial period when `e=0` as well as the
 #'  next two periods when `e=1` and the `e=2`).  This ensures that
 #'  the composition of groups does not change when event time changes.
-#' @param min_e For event studies, this is the smallest event time to compute
-#'  dynamic effects for.  By default, `min_e = -Inf` so that effects at
-#'  all lengths of exposure are computed.
-#' @param max_e For event studies, this is the largest event time to compute
-#'  dynamic effects for.  By default, `max_e = Inf` so that effects at
-#'  all lengths of exposure are computed.
+#' @param min_e The smallest event time (length of exposure, `e = t - g`,
+#'  measured in the same units as `tname`) to include.  By default,
+#'  `min_e = -Inf` so that effects at all lengths of exposure are included.
+#'  It applies to the "dynamic", "simple", and "group" aggregations (it is
+#'  ignored, with a warning, for "calendar").  For "simple" and "group" only
+#'  post-treatment cells (`e >= 0`) enter the aggregation to begin with, so
+#'  negative values of `min_e` have no effect there.
+#' @param max_e The largest event time (length of exposure, `e = t - g`,
+#'  measured in the same units as `tname`) to include.  By default,
+#'  `max_e = Inf` so that effects at all lengths of exposure are included.
+#'  It applies to the "dynamic", "simple", and "group" aggregations (it is
+#'  ignored, with a warning, for "calendar").
 #' @param na.rm Logical value if we are to remove missing values from analyses. Default is FALSE.
 #' @param bstrap Boolean for whether or not to compute standard errors using
 #'  the multiplier bootstrap.  Default is value set in the MP object.  If `bstrap=FALSE`, then analytical

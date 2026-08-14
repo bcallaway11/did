@@ -35,8 +35,12 @@
 #'  }
 #'  Use the \code{fix_weights} argument to override the default behavior.
 #' @param fix_weights Controls how time-varying sampling weights are resolved.
-#'  Only relevant when weights vary across time; with time-invariant weights,
-#'  all options produce identical results. Options:
+#'  Only relevant when weights vary across time; with time-invariant weights on
+#'  a balanced panel, all options produce identical results.  On an unbalanced
+#'  panel, \code{"base_period"} and \code{"first_period"} additionally restrict
+#'  the sample to units observed in the anchor period (a warning is issued), so
+#'  they can differ from the other options even with time-invariant weights.
+#'  Options:
 #'  \describe{
 #'    \item{\code{NULL} (default)}{For balanced panel: uses the weight from
 #'      the earlier of the two time periods in each 2x2 comparison. For
@@ -72,20 +76,30 @@
 #'  reported; these are cluster-robust when `clustervars` is supplied.
 #' @param biters The number of bootstrap iterations to use.  The default is 1000,
 #'  and this is only applicable if `bstrap=TRUE`.
-#' @param clustervars A vector of variables names to cluster on.  At most, there
-#'  can be two variables (otherwise will throw an error) and one of these
-#'  must be the same as idname which allows for clustering at the individual
-#'  level. Clustered standard errors are available with the multiplier bootstrap
-#'  (`bstrap=TRUE`) or analytically (`bstrap=FALSE`).
+#' @param clustervars A vector of variable names to cluster on.  Standard
+#'  errors are always clustered at the individual level (`idname` for panel
+#'  data; each observation is its own sampling unit when `panel=FALSE`), so
+#'  `idname` may be included here but is redundant and is ignored.  Beyond
+#'  `idname`, at most one (coarser) clustering variable is supported
+#'  (otherwise an error is thrown).  Clustered standard errors are available
+#'  with the multiplier bootstrap (`bstrap=TRUE`) or analytically
+#'  (`bstrap=FALSE`).
 #' @param cband Boolean for whether or not to compute a uniform confidence
 #'  band that covers all of the group-time average treatment effects
 #'  with fixed probability `1-alp`.  In order to compute uniform confidence
 #'  bands, `bstrap` must also be set to `TRUE`.  The default is
-#' `TRUE`.
+#' `TRUE`.  When the data contain only two time periods, uniform confidence
+#'  bands coincide with pointwise confidence intervals, so `cband` is set to
+#'  `FALSE` (with a message) and the pointwise critical value is reported.
 #' @param print_details Whether or not to show details/progress of computations.
 #'   Default is `FALSE`.
-#' @param pl Whether or not to use parallel processing
-#' @param cores The number of cores to use for parallel processing
+#' @param pl Whether or not to use parallel processing.  Parallel processing is
+#'  only used by the multiplier bootstrap (`bstrap=TRUE`), and only when the
+#'  influence function has more than 2500 rows and `cores` is greater than 1;
+#'  everything else runs sequentially.  It is not available on Windows (a
+#'  warning is issued and the bootstrap runs sequentially there).
+#' @param cores The number of cores to use for parallel processing.  This only
+#'  has an effect together with `pl=TRUE`; see `pl`.
 #' @param compute_inffunc Whether or not to compute the influence functions. The
 #'  default is `TRUE`. The influence functions are required for standard errors,
 #'  uniform confidence bands, the parallel-trends pre-test, and for aggregating the
@@ -158,7 +172,9 @@
 #'  value is `FALSE` which means that [att_gt()] will drop
 #'  all units where data is not observed in all periods.
 #'  The advantage of this is that the computations are faster
-#'  (sometimes substantially).
+#'  (sometimes substantially).  This argument is ignored when
+#'  `panel=FALSE`: repeated cross sections have no panel structure
+#'  to balance.
 #' @param control_group Which units to use as the control group.
 #'  The default is "nevertreated" which sets the control group
 #'  to be the group of units that never participate in the
@@ -421,6 +437,11 @@ att_gt <- function(yname,
       call = match.call()
     )
 
+    # pre-processing may override cband (only two time periods -> uniform bands
+    # coincide with pointwise intervals); re-sync the local so the confidence-band
+    # block below agrees with what is stored in the DIDparams object
+    cband <- dp$cband
+
     # attach extra args for custom est_method
     dp$extra_args <- extra_args
     # whether to compute influence functions (FALSE = point estimates only)
@@ -457,6 +478,11 @@ att_gt <- function(yname,
       cores = cores,
       call = match.call()
     )
+
+    # pre-processing may override cband (only two time periods -> uniform bands
+    # coincide with pointwise intervals); re-sync the local so the confidence-band
+    # block below agrees with what is stored in the DIDparams object
+    cband <- dp$cband
 
     # attach extra args for custom est_method
     dp$extra_args <- extra_args

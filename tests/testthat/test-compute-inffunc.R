@@ -9,11 +9,16 @@ test_that("compute_inffunc = FALSE gives point estimates identical to a full run
   sp <- did::reset.sim()
   data <- did::build_sim_dataset(sp)
   for (fm in c(TRUE, FALSE)) for (est in c("dr", "reg", "ipw")) for (pn in c(TRUE, FALSE)) {
+    # idname is only supplied for panel data: with panel = FALSE every observation
+    # is its own sampling unit, so an idname that repeats across periods is
+    # rejected (and it has no effect on the estimates -- an internal .rowid is
+    # used instead)
+    idn <- if (pn) "id" else NULL
     full <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = idn,
              gname = "G", est_method = est, panel = pn, bstrap = FALSE, faster_mode = fm)))
     pe <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = ~X, data = data, tname = "period", idname = idn,
              gname = "G", est_method = est, panel = pn, faster_mode = fm,
              compute_inffunc = FALSE)))
     lab <- paste(est, "panel", pn, "fm", fm)

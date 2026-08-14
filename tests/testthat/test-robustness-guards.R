@@ -17,12 +17,14 @@ test_that("duplicate (id, period) rows are rejected identically by both modes", 
   expect_error(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = ddup,
     tname = "period", idname = "id", gname = "G", faster_mode = FALSE)), msg)
   # The guard is intentionally unconditional on panel: with idname supplied it
-  # also rejects duplicated (id, period) rows on repeated cross sections and
-  # unbalanced panels (the slow path used to silently accept them there).
+  # also rejects duplicated (id, period) rows on unbalanced panels (the slow path
+  # used to silently accept them there). With panel = FALSE the repeated-cross-
+  # sections uniqueness check rejects the same input first, with its own message:
+  # there every observation must be a distinct sampling unit.
   for (fm in c(TRUE, FALSE)) {
     expect_error(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = ddup,
       tname = "period", idname = "id", gname = "G", panel = FALSE,
-      faster_mode = fm)), msg)
+      faster_mode = fm)), "must be unique when panel = FALSE")
     expect_error(suppressMessages(att_gt(yname = "Y", xformla = ~X, data = ddup,
       tname = "period", idname = "id", gname = "G", allow_unbalanced_panel = TRUE,
       faster_mode = fm)), msg)
@@ -69,9 +71,11 @@ test_that("fast RC path returns NA instead of crashing when a cell has no treate
   d$Y <- 0.5 * d$X + 0.2 * d$period + (d$G > 0 & d$period >= d$G) +
     rnorm(nrow(d), 0, 0.2)
 
+  # idname is omitted: with panel = FALSE every observation is its own sampling
+  # unit, so an idname that repeats across periods is rejected
   expect_warning(
     res <- suppressMessages(att_gt(yname = "Y", xformla = ~X, data = d,
-      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      tname = "period", gname = "G", panel = FALSE,
       faster_mode = TRUE, est_method = "dr", bstrap = FALSE)),
     "No units in group 2 in time period 3")
   expect_s3_class(res, "MP")
@@ -151,13 +155,15 @@ test_that("transformed non-finite covariates are dropped before RC overlap check
   d$Xpos <- exp(d$X)
   d$Xpos[d$id == unique(d$id)[1]] <- 0  # log(0) = -Inf for one unit
 
+  # idname is omitted: with panel = FALSE every observation is its own sampling
+  # unit, so an idname that repeats across periods is rejected
   w_slow <- capture_warnings(
     slow <- suppressMessages(att_gt(yname = "Y", xformla = ~log(Xpos), data = d,
-      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      tname = "period", gname = "G", panel = FALSE,
       est_method = "dr", faster_mode = FALSE, bstrap = FALSE)))
   w_fast <- capture_warnings(
     fast <- suppressMessages(att_gt(yname = "Y", xformla = ~log(Xpos), data = d,
-      tname = "period", idname = "id", gname = "G", panel = FALSE,
+      tname = "period", gname = "G", panel = FALSE,
       est_method = "dr", faster_mode = TRUE, bstrap = FALSE)))
 
   expect_identical(w_slow, "dropped 4 rows from original data due to missing or non-finite data")

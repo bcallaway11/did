@@ -165,16 +165,18 @@ compute.aggte <- function(MP,
 
     # If aggte is of the group type, ensure we have non-missing post-treatment ATTs for each group
     if (type == "group") {
-      # Get the groups that have some non-missing ATT(g,t) in post-treatmemt periods
+      # Get the groups that have some non-missing ATT(g,t) in post-treatment periods
       gnotna <- sapply(glist, function(g) {
         # look at post-treatment periods for group g, restricted to the SAME
-        # max_e window used by the group-specific estimate below (selective.att.g /
-        # selective.se.inner). Without the (t <= group + max_e) condition a group
-        # whose only non-NA ATT(g,t) lies PAST max_e would pass this filter but then
-        # have an all-NA (hence, under na.rm, empty) selection in the estimate,
-        # erroring in get_agg_inf_func(). (max_e defaults to Inf, so this is a no-op
-        # unless the user sets a finite max_e.)
-        whichg <- which((group == g) & (g <= t) & (t <= (group + max_e)))
+        # min_e/max_e window used by the group-specific estimate below
+        # (selective.att.g / selective.se.inner). Without those conditions a group
+        # whose only non-NA ATT(g,t) lies OUTSIDE the window would pass this filter
+        # but then have an all-NA (hence, under na.rm, empty) selection in the
+        # estimate, erroring in get_agg_inf_func(). (min_e/max_e default to
+        # -Inf/Inf, so this is a no-op unless the user restricts the window.
+        # Here group/t are still in ORIGINAL time units -- recoding happens
+        # below -- matching the original-units window used by the estimate.)
+        whichg <- which((group == g) & (g <= t) & (t <= (group + max_e)) & (t >= (group + min_e)))
         attg <- att[whichg]
         group_select <- !is.na(mean(attg))
         return(group_select)
@@ -184,7 +186,10 @@ compute.aggte <- function(MP,
       not_all_na <- group %in% gnotna
       if (!any(not_all_na)) {
         stop("No groups have non-missing post-treatment att_gt() estimates. ",
-             "Cannot compute group aggregation. Check your att_gt() results.")
+             "Cannot compute group aggregation. Check your att_gt() results.",
+             if (is.finite(min_e) || is.finite(max_e))
+               " Note that the requested 'min_e'/'max_e' window may itself exclude every post-treatment cell."
+             else "")
       }
       # Re-do the na.rm thing to update the groups
       group <- group[not_all_na]
@@ -276,16 +281,39 @@ compute.aggte <- function(MP,
   pg <- pg[match(group, glist)]
 
   # which group time average treatment effects are post-treatment
-  keepers <- which(group <= t & t <= (group + max_e)) ### added second condition to allow for limit on longest period included in att
+  # the min_e/max_e window is evaluated in ORIGINAL time units (originalt -
+  # originalgroup), matching the dynamic aggregation and the documented meaning
+  # of event time e = t - g; the recoded t/group count index steps, which differ
+  # on irregularly spaced panels
+  keepers <- which(group <= t & (originalt - originalgroup) <= max_e & (originalt - originalgroup) >= min_e) ### added last two conditions to allow for limits on the event times included in att
 
   # n x 1 vector of group variable
   G <- orig2t_vec(gvar)
+
+  # balance_e has no effect on the simple and group aggregations (it balances the
+  # sample with respect to event time, which only the dynamic aggregation uses);
+  # warn if the user set it so the (correct) unbalanced result is not mistaken for
+  # a balanced one. Parallels the calendar-time warning further below.
+  if (type %in% c("simple", "group") && !is.null(balance_e)) {
+    warning("`balance_e` is ignored for type = \"", type, "\"; ",
+            "it only applies to type = \"dynamic\".")
+  }
 
   #-----------------------------------------------------------------------------
   # Compute the simple ATT summary
   #-----------------------------------------------------------------------------
 
   if (type == "simple") {
+    # Guard the empty window (e.g. min_e/max_e exclude every post-treatment cell):
+    # wif()/get_agg_inf_func() would otherwise be called on an empty selection and
+    # report a generic "no valid estimates" error that does not point at the
+    # window. Only fires when the user actually restricted the window; an empty
+    # selection at the defaults means there are no post-treatment cells at all.
+    if (length(keepers) == 0 && (is.finite(max_e) || is.finite(min_e))) {
+      stop("No group-time average treatment effects fall within the requested window. ",
+           "Adjust 'min_e'/'max_e' so at least one post-treatment cell is included.")
+    }
+
     # simple att
     # averages all post-treatment ATT(g,t) with weights
     # given by group size
@@ -328,11 +356,30 @@ compute.aggte <- function(MP,
   #-----------------------------------------------------------------------------
 
   if (type == "group") {
+    # Guard groups whose min_e/max_e window holds no post-treatment cell (e.g.
+    # min_e = 1 for a cohort first treated in the last period): the per-group
+    # influence function below would be built from an empty selection and error
+    # inside get_agg_inf_func(). Only reachable with a user-restricted window --
+    # every group has its e = 0 cell otherwise -- and only with na.rm = FALSE,
+    # since the gnotna filter above already drops such groups under na.rm = TRUE.
+    if (is.finite(min_e) || is.finite(max_e)) {
+      empty_g <- vapply(glist, function(g) {
+        !any((group == g) & (g <= t) & ((originalt - originalgroup) <= max_e) & ((originalt - originalgroup) >= min_e))
+      }, logical(1))
+      if (any(empty_g)) {
+        stop("No group-time average treatment effects fall within the requested window ",
+             "for group(s) ", paste(originalglist[empty_g], collapse = ", "), ". ",
+             "Adjust 'min_e'/'max_e', or set `na.rm = TRUE` to drop those groups ",
+             "from the aggregation.")
+      }
+    }
+
     # get group specific ATTs
     # note: there are no estimated weights here
     selective.att.g <- sapply(glist, function(g) {
-      # look at post-treatment periods for group g
-      whichg <- which((group == g) & (g <= t) & (t <= (group + max_e))) ### added last condition to allow for limit on longest period included in att
+      # look at post-treatment periods for group g (window in original time
+      # units, matching keepers above and the dynamic aggregation)
+      whichg <- which((group == g) & (g <= t) & ((originalt - originalgroup) <= max_e) & ((originalt - originalgroup) >= min_e)) ### added last two conditions to allow for limits on the event times included in att
       attg <- att[whichg]
       mean(attg)
     })
@@ -341,7 +388,7 @@ compute.aggte <- function(MP,
 
     # get standard errors for each group specific ATT
     selective.se.inner <- lapply(glist, function(g) {
-      whichg <- which((group == g) & (g <= t) & (t <= (group + max_e))) ### added last condition to allow for limit on longest period included in att
+      whichg <- which((group == g) & (g <= t) & ((originalt - originalgroup) <= max_e) & ((originalt - originalgroup) >= min_e)) ### added last two conditions to allow for limits on the event times included in att
       inf.func.g <- as.numeric(get_agg_inf_func(
         att = att,
         inffunc1 = inffunc1,

@@ -58,12 +58,15 @@ test_that("RC-path (positional global slice) matches faster_mode", {
   data <- did::build_sim_dataset(sp)
   set.seed(13)
   data$X2 <- rnorm(nrow(data))
+  # idname is omitted: with panel = FALSE every observation is its own sampling
+  # unit, so an idname that repeats across periods is rejected (and it has no
+  # effect on the estimates -- an internal .rowid is used instead)
   for (f in list(~X, ~X + X2)) {
     res_slow <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = f, data = data, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = f, data = data, tname = "period",
              gname = "G", est_method = "dr", bstrap = FALSE, panel = FALSE, faster_mode = FALSE)))
     res_fast <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = f, data = data, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = f, data = data, tname = "period",
              gname = "G", est_method = "dr", bstrap = FALSE, panel = FALSE, faster_mode = TRUE)))
     expect_equal(res_slow$att, res_fast$att, tolerance = 1e-10, label = paste("RC", deparse(f), "ATT"))
     expect_equal(res_slow$se,  res_fast$se,  tolerance = 1e-10, label = paste("RC", deparse(f), "se"))
@@ -100,13 +103,16 @@ test_that("RC-path matches faster_mode for factor / data-dependent-basis formula
   d$fac <- factor(sample(c("a", "b", "c"), nrow(d), TRUE))
   set.seed(42)
   d_ub <- d[-sample(nrow(d), floor(nrow(d) * 0.05)), ]
+  # idname is omitted: with panel = FALSE every observation is its own sampling
+  # unit, so an idname that repeats across periods is rejected (and it has no
+  # effect on the estimates -- an internal .rowid is used instead)
   for (f in list(~fac, ~poly(X, 2))) {
     rs <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period",
              gname = "G", est_method = "dr", bstrap = FALSE, panel = FALSE,
              faster_mode = FALSE)))
     rf <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = f, data = d_ub, tname = "period",
              gname = "G", est_method = "dr", bstrap = FALSE, panel = FALSE,
              faster_mode = TRUE)))
     expect_equal(rs$att, rf$att, tolerance = 1e-10, label = paste("RC", deparse(f), "ATT"))
@@ -167,11 +173,14 @@ test_that("a factor covariate equals manually-expanded dummies EXACTLY (dense le
   data <- add_dummies(data)
   dform <- dummy_formula(data)
   for (est in c("dr", "reg", "ipw")) for (panel in c(TRUE, FALSE)) for (fm in c(TRUE, FALSE)) {
+    # idname is only supplied for panel data: with panel = FALSE every observation
+    # is its own sampling unit, so an idname that repeats across periods is rejected
+    idn <- if (panel) "id" else NULL
     rf <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = ~fac, data = data, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = ~fac, data = data, tname = "period", idname = idn,
              gname = "G", est_method = est, panel = panel, bstrap = FALSE, faster_mode = fm)))
     rd <- suppressWarnings(suppressMessages(
-      att_gt(yname = "Y", xformla = dform, data = data, tname = "period", idname = "id",
+      att_gt(yname = "Y", xformla = dform, data = data, tname = "period", idname = idn,
              gname = "G", est_method = est, panel = panel, bstrap = FALSE, faster_mode = fm)))
     lab <- paste(est, "panel", panel, "fm", fm)
     expect_equal(rf$att, rd$att, tolerance = 1e-12, label = paste(lab, "ATT"))
@@ -314,11 +323,13 @@ test_that("RC sparse factor (level absent from some cells) matches manual dummie
   data$fac <- factor(fac)
   data$f_b <- as.numeric(data$fac == "b")
 
+  # idname is omitted: with panel = FALSE every observation is its own sampling
+  # unit, so an idname that repeats across periods is rejected
   collect <- function(f, fm) {
     ws <- character(0)
     res <- withCallingHandlers(
       suppressMessages(att_gt(yname = "Y", xformla = f, data = data, tname = "period",
-                              idname = "id", gname = "G", est_method = "reg",
+                              gname = "G", est_method = "reg",
                               panel = FALSE, bstrap = FALSE, faster_mode = fm)),
       warning = function(w) { ws[[length(ws) + 1]] <<- conditionMessage(w); invokeRestart("muffleWarning") })
     list(att = res$att, se = res$se, warns = sort(unique(ws)))

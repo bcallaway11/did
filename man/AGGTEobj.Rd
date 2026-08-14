@@ -53,13 +53,19 @@ effects.}
 
 \item{inf.function}{The influence function of the chosen aggregated parameters}
 
-\item{min_e}{For event studies, this is the smallest event time to compute
-dynamic effects for.  By default, \code{min_e = -Inf} so that effects at
-all lengths of exposure are computed.}
+\item{min_e}{The smallest event time (length of exposure, \code{e = t - g},
+measured in the same units as \code{tname}) to include.  By default,
+\code{min_e = -Inf} so that effects at all lengths of exposure are included.
+It applies to the "dynamic", "simple", and "group" aggregations (it is
+ignored, with a warning, for "calendar").  For "simple" and "group" only
+post-treatment cells (\code{e >= 0}) enter the aggregation to begin with, so
+negative values of \code{min_e} have no effect there.}
 
-\item{max_e}{For event studies, this is the largest event time to compute
-dynamic effects for.  By default, \code{max_e = Inf} so that effects at
-all lengths of exposure are computed.}
+\item{max_e}{The largest event time (length of exposure, \code{e = t - g},
+measured in the same units as \code{tname}) to include.  By default,
+\code{max_e = Inf} so that effects at all lengths of exposure are included.
+It applies to the "dynamic", "simple", and "group" aggregations (it is
+ignored, with a warning, for "calendar").}
 
 \item{balance_e}{If set (and if one computes dynamic effects), it balances
 the sample with respect to event time.  For example, if \code{balance_e=2},

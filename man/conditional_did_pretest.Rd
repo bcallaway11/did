@@ -73,7 +73,9 @@ as repeated cross sections.}
 value is \code{FALSE} which means that \code{\link[=att_gt]{att_gt()}} will drop
 all units where data is not observed in all periods.
 The advantage of this is that the computations are faster
-(sometimes substantially).}
+(sometimes substantially).  This argument is ignored when
+\code{panel=FALSE}: repeated cross sections have no panel structure
+to balance.}
 
 \item{control_group}{Which units to use as the control group.
 The default is "nevertreated" which sets the control group
@@ -102,17 +104,20 @@ reported.}
 band that covers all of the group-time average treatment effects
 with fixed probability \code{1-alp}.  In order to compute uniform confidence
 bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
-\code{TRUE}.}
+\code{TRUE}.  When the data contain only two time periods, uniform confidence
+bands coincide with pointwise confidence intervals, so \code{cband} is set to
+\code{FALSE} (with a message) and the pointwise critical value is reported.}
 
 \item{biters}{The number of multiplier bootstrap iterations used to
 simulate the limiting distribution of the test statistics.  The
 default is 1000.}
 
-\item{clustervars}{A vector of variables names to cluster on (the
-multiplier bootstrap then draws cluster-level multipliers).  At most,
-there can be two variables (otherwise will throw an error) and one of
-these must be the same as idname which allows for clustering at the
-individual level.}
+\item{clustervars}{A vector of variable names to cluster on (the
+multiplier bootstrap then draws cluster-level multipliers).  Clustering
+at the individual (\code{idname}) level is automatic, so \code{idname} may be
+included here but is redundant and is ignored; beyond \code{idname}, at most
+one (coarser) clustering variable is supported (otherwise an error is
+thrown).}
 
 \item{est_method}{the method to compute group-time average treatment
 effects.  The default for \code{conditional_did_pretest} is "ipw" for
@@ -120,10 +125,12 @@ inverse probability weighting.  Other built-in methods include "dr"
 which uses the doubly robust approach in the \code{DRDID} package and "reg"
 for first step regression estimators.}
 
-\item{print_details}{Whether or not to show details/progress of computations.
-Default is \code{FALSE}.}
+\item{print_details}{Not used by the pre-test.  Progress details are
+suppressed during the pre-test computations regardless of this argument.}
 
-\item{pl}{Whether or not to use parallel processing}
+\item{pl}{Not used by the pre-test.  The multiplier bootstrap used here
+(\code{test.mboot}) is vectorized and runs in a single process; only \code{cores}
+below has an effect.}
 
 \item{cores}{The number of cores to use for parallel processing. This
 parallelizes Step 1 (computing the test statistic); Step 2's multiplier
