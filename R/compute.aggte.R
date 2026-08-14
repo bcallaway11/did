@@ -165,7 +165,7 @@ compute.aggte <- function(MP,
 
     # If aggte is of the group type, ensure we have non-missing post-treatment ATTs for each group
     if (type == "group") {
-      # Get the groups that have some non-missing ATT(g,t) in post-treatmemt periods
+      # Get the groups that have some non-missing ATT(g,t) in post-treatment periods
       gnotna <- sapply(glist, function(g) {
         # look at post-treatment periods for group g, restricted to the SAME
         # min_e/max_e window used by the group-specific estimate below
