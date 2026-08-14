@@ -145,8 +145,11 @@ test_that("RC/unbalanced precompute is bit-identical to the legacy subset path",
   )
   for (nm in names(configs)) {
     cfg <- configs[[nm]]
+    # idname is only supplied for panel data: with panel = FALSE every observation
+    # is its own sampling unit, so an idname that repeats across periods is rejected
     common <- c(list(yname = "Y", xformla = ~X, data = cfg$data, tname = "period",
-                     idname = "id", gname = "G", faster_mode = FALSE, bstrap = FALSE),
+                     idname = if (isFALSE(cfg$args$panel)) NULL else "id",
+                     gname = "G", faster_mode = FALSE, bstrap = FALSE),
                 cfg$args)
     options(did.disable_precompute = TRUE)
     ref <- suppressWarnings(suppressMessages(do.call(att_gt, common)))
@@ -202,8 +205,11 @@ test_that("RC/unbalanced precompute keeps slow-fast parity", {
   d_ub <- d[-sample(nrow(d), floor(nrow(d) * 0.10)), ]
   for (cfg in list(list(data = d, extra = list(panel = FALSE)),
                    list(data = d_ub, extra = list(allow_unbalanced_panel = TRUE)))) {
+    # idname is only supplied for panel data: with panel = FALSE every observation
+    # is its own sampling unit, so an idname that repeats across periods is rejected
     common <- c(list(yname = "Y", xformla = ~X, data = cfg$data, tname = "period",
-                     idname = "id", gname = "G", est_method = "dr", bstrap = FALSE),
+                     idname = if (isFALSE(cfg$extra$panel)) NULL else "id",
+                     gname = "G", est_method = "dr", bstrap = FALSE),
                 cfg$extra)
     res_slow <- suppressWarnings(suppressMessages(do.call(att_gt, c(common, list(faster_mode = FALSE)))))
     res_fast <- suppressWarnings(suppressMessages(do.call(att_gt, c(common, list(faster_mode = TRUE)))))

@@ -12,10 +12,13 @@ mboot(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE)
 \item{DIDparams}{DIDparams object}
 
 \item{pl}{whether or not to use parallel processing in the multiplier
-bootstrap, default=FALSE}
+bootstrap, default=FALSE.  Parallel processing only engages when the
+influence function has more than 2500 rows and \code{cores} is greater than 1;
+it is not available on Windows (a warning is issued and the bootstrap runs
+sequentially there).}
 
 \item{cores}{the number of cores to use with parallel processing,
-default=1}
+default=1.  This only has an effect together with \code{pl=TRUE}; see \code{pl}.}
 
 \item{return_V}{whether to compute and return the bootstrap variance
 matrix \code{V}. Default is \code{TRUE}. Internal callers that only consume

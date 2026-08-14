@@ -7,9 +7,12 @@
 #' @param inf.func an influence function
 #' @param DIDparams DIDparams object
 #' @param pl whether or not to use parallel processing in the multiplier
-#'  bootstrap, default=FALSE
+#'  bootstrap, default=FALSE.  Parallel processing only engages when the
+#'  influence function has more than 2500 rows and `cores` is greater than 1;
+#'  it is not available on Windows (a warning is issued and the bootstrap runs
+#'  sequentially there).
 #' @param cores the number of cores to use with parallel processing,
-#'  default=1
+#'  default=1.  This only has an effect together with `pl=TRUE`; see `pl`.
 #' @param return_V whether to compute and return the bootstrap variance
 #'  matrix `V`. Default is `TRUE`. Internal callers that only consume
 #'  `bres`, `se`, or `crit.val` set this to `FALSE` to skip the computation

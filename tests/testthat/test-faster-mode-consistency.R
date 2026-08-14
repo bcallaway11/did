@@ -93,16 +93,19 @@ for (em in c("dr", "ipw", "reg")) {
     for (bp in c("varying", "universal")) {
       label <- paste(em, "RC", cg, bp)
       test_that(paste("consistency:", label), {
+        # idname is omitted: with panel = FALSE every observation is its own
+        # sampling unit, so an idname that repeats across periods is rejected
+        # (and it has no effect on the estimates -- an internal .rowid is used)
         res_slow <- suppressWarnings(suppressMessages(
           att_gt(yname = "Y", xformla = ~X, data = data_fm, tname = "period",
-                 idname = "id", gname = "G", est_method = em,
+                 gname = "G", est_method = em,
                  control_group = cg, base_period = bp,
                  panel = FALSE,
                  faster_mode = FALSE, bstrap = FALSE)
         ))
         res_fast <- suppressWarnings(suppressMessages(
           att_gt(yname = "Y", xformla = ~X, data = data_fm, tname = "period",
-                 idname = "id", gname = "G", est_method = em,
+                 gname = "G", est_method = em,
                  control_group = cg, base_period = bp,
                  panel = FALSE,
                  faster_mode = TRUE, bstrap = FALSE)

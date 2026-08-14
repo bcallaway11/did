@@ -215,8 +215,10 @@ test_that("att_gt drops rows with missing gname and non-finite numeric inputs in
 
   for (fm in c(FALSE, TRUE)) {
     for (nm in names(cases)) {
+      # idname is omitted: with panel = FALSE every observation is its own
+      # sampling unit, so an idname that repeats across periods is rejected
       args <- list(yname = "Y", data = cases[[nm]], tname = "period",
-                   idname = "id", gname = "G", bstrap = FALSE,
+                   gname = "G", bstrap = FALSE,
                    faster_mode = fm, panel = FALSE)
       if (nm == "weight_infinite") args$weightsname <- "w"
       if (nm == "covariate_infinite") args$xformla <- ~X

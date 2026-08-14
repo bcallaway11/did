@@ -78,7 +78,9 @@ as repeated cross sections.}
 value is \code{FALSE} which means that \code{\link[=att_gt]{att_gt()}} will drop
 all units where data is not observed in all periods.
 The advantage of this is that the computations are faster
-(sometimes substantially).}
+(sometimes substantially).  This argument is ignored when
+\code{panel=FALSE}: repeated cross sections have no panel structure
+to balance.}
 
 \item{control_group}{Which units to use as the control group.
 The default is "nevertreated" which sets the control group
@@ -117,8 +119,12 @@ so each observation carries its own period-specific weight.}
 Use the \code{fix_weights} argument to override the default behavior.}
 
 \item{fix_weights}{Controls how time-varying sampling weights are resolved.
-Only relevant when weights vary across time; with time-invariant weights,
-all options produce identical results. Options:
+Only relevant when weights vary across time; with time-invariant weights on
+a balanced panel, all options produce identical results.  On an unbalanced
+panel, \code{"base_period"} and \code{"first_period"} additionally restrict
+the sample to units observed in the anchor period (a warning is issued), so
+they can differ from the other options even with time-invariant weights.
+Options:
 \describe{
 \item{\code{NULL} (default)}{For balanced panel: uses the weight from
 the earlier of the two time periods in each 2x2 comparison. For
@@ -159,7 +165,9 @@ reported; these are cluster-robust when \code{clustervars} is supplied.}
 band that covers all of the group-time average treatment effects
 with fixed probability \code{1-alp}.  In order to compute uniform confidence
 bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
-\code{TRUE}.}
+\code{TRUE}.  When the data contain only two time periods, uniform confidence
+bands coincide with pointwise confidence intervals, so \code{cband} is set to
+\code{FALSE} (with a message) and the pointwise critical value is reported.}
 
 \item{biters}{The number of bootstrap iterations to use.  The default is 1000,
 and this is only applicable if \code{bstrap=TRUE}.}
@@ -167,8 +175,12 @@ and this is only applicable if \code{bstrap=TRUE}.}
 \item{clustervars}{A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level. Clustered standard errors are available with the multiplier bootstrap
-(\code{bstrap=TRUE}) or analytically (\code{bstrap=FALSE}).}
+level.  Including \code{idname} is what enables individual-level clustering for
+panel data; when \code{panel=FALSE} each observation is treated as its own
+sampling unit, so clustering at the unit level is automatic and listing
+\code{idname} has no additional effect.  Clustered standard errors are available
+with the multiplier bootstrap (\code{bstrap=TRUE}) or analytically
+(\code{bstrap=FALSE}).}
 
 \item{est_method}{the method to compute group-time average treatment effects.  The default is "dr" which uses the doubly robust
 approach in the \code{DRDID} package.  Other built-in methods
@@ -237,9 +249,14 @@ The default is set to \code{TRUE}. Both modes produce identical results up to
 numerical precision; while the difference is minimal for small datasets,
 the speedup is substantial for large ones.}
 
-\item{pl}{Whether or not to use parallel processing}
+\item{pl}{Whether or not to use parallel processing.  Parallel processing is
+only used by the multiplier bootstrap (\code{bstrap=TRUE}), and only when the
+influence function has more than 2500 rows and \code{cores} is greater than 1;
+everything else runs sequentially.  It is not available on Windows (a
+warning is issued and the bootstrap runs sequentially there).}
 
-\item{cores}{The number of cores to use for parallel processing}
+\item{cores}{The number of cores to use for parallel processing.  This only
+has an effect together with \code{pl=TRUE}; see \code{pl}.}
 
 \item{call}{Function call to att_gt}
 }

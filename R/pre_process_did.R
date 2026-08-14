@@ -91,16 +91,21 @@ pre_process_did <- function(yname,
          "Please check the spelling of yname, tname, idname, gname, weightsname, and clustervars.")
   }
 
+  # Strip idname from clustervars before validation: users may naturally pass
+  # clustervars = c(idname, extra_var), and idname clustering is implicit/redundant.
+  # Mirrors the fast path (pre_process_did2), so the DIDparams object -- and hence
+  # mboot() -- carries the same stripped value in both code paths.
+  if (!is.null(clustervars) && !is.null(idname) && (idname %in% clustervars)) {
+    clustervars <- setdiff(clustervars, idname)
+    if (length(clustervars) == 0L) clustervars <- NULL
+  }
+
   # At most one cluster variable beyond idname is supported (clustering at the
   # unit level via idname is implicit). Enforced here -- mirroring the fast path
   # (pre_process_did2) and mboot(), with identical wording -- so every
   # faster_mode x bstrap combination rejects the input up front; the analytical
   # (bstrap = FALSE) path used to silently cluster on the first extra variable only.
-  cv_check <- clustervars
-  if (!is.null(cv_check) && !is.null(idname) && (idname %in% cv_check)) {
-    cv_check <- setdiff(cv_check, idname)
-  }
-  if (length(cv_check) > 1) {
+  if (length(clustervars) > 1) {
     stop("At most one cluster variable (beyond 'idname') is supported. Please reduce to one.")
   }
 
@@ -197,10 +202,15 @@ pre_process_did <- function(yname,
     dtw <- data.table(id = data[[idname]], .w = data[[weightsname]])
     w_rng <- dtw[, .(mx = max(.w), mn = min(.w)), by = "id"]
     if (any((w_rng$mx - w_rng$mn) > .Machine$double.eps^0.5, na.rm = TRUE)) {
+      # wording is deliberately path-neutral: whether the balanced-panel or the
+      # unbalanced (per-observation) path runs is only known further below, once
+      # the panel has been checked for balance
       message(
         "Time-varying weights detected. For balanced panel data, the default ",
         "behavior uses the weight from the earlier of the two time periods in ",
-        "each 2x2 comparison (the base period for post-treatment cells). ",
+        "each 2x2 comparison (the base period for post-treatment cells); for ",
+        "unbalanced panel data, each observation carries its own ",
+        "period-specific weight. ",
         "Use the 'fix_weights' argument to control this behavior. ",
         "See ?att_gt for details."
       )
@@ -345,6 +355,18 @@ pre_process_did <- function(yname,
       io <- idv[o]
       same_id <- io[-1L] == io[-nn]
 
+      # With user-level panel = FALSE the data are genuine repeated cross sections:
+      # every observation is its own sampling unit, so a supplied idname must not
+      # repeat in ANY way (within or across periods). `panel` is still the user's
+      # argument here -- the allow_unbalanced_panel flip happens further below -- so
+      # unbalanced panels (panel = TRUE) are unaffected. Checked before the
+      # irreversibility and (idname, tname) scans, mirroring the fast path
+      # (pre_process_did2) with identical wording, so repeated cross sections get
+      # this message instead of the panel-flavored ones.
+      if (!panel && any(same_id)) {
+        stop("The value of idname must be unique when panel = FALSE. Repeated cross sections treat each observation as a distinct sampling unit, but some values of '", idname, "' appear in more than one row. If the same units are observed in multiple periods, use panel = TRUE (with allow_unbalanced_panel = TRUE if the panel is incomplete). If the data are genuine repeated cross sections, give each observation its own unique value of '", idname, "' (or omit idname).")
+      }
+
       # Check that gname is time-invariant within each unit (treatment irreversibility).
       go <- data[, gname][o]
       if (any(same_id & (go[-1L] != go[-nn]))) {
@@ -398,6 +420,12 @@ pre_process_did <- function(yname,
     # of the data just to compare unit counts and then threw it away.
     allow_unbalanced_panel <-
       nrow(data) != length(unique(data[[idname]])) * as.numeric(length(unique(data[[tname]])))
+    # tell the user which branch was taken, with the same wording as the fast path
+    # (pre_process_did2), so the silent reset is visible in both code paths
+    message(if (allow_unbalanced_panel)
+      "You have an unbalanced panel. Proceeding as such."
+      else
+        "You have a balanced panel. Setting allow_unbalanced_panel = FALSE.")
   }
 
 
@@ -521,6 +549,10 @@ pre_process_did <- function(yname,
   # if there are only two time periods, then uniform confidence
   # bands are the same as pointwise confidence intervals
   if (length(tlist)==2) {
+    # only announce the override when the user actually asked for a band
+    if (cband) {
+      message("Only two time periods are available; uniform confidence bands coincide with pointwise confidence intervals. Setting cband = FALSE.")
+    }
     cband <- FALSE
   }
 

@@ -782,10 +782,13 @@ test_that("RC with time-varying weights: faster_mode matches", {
   data <- did::build_sim_dataset(sp)
   data$tv_weight <- data$period * 1.0 + runif(nrow(data), 0, 0.5)
 
-  res_slow <- att_gt(yname="Y", data=data, tname="period", idname="id",
+  # idname is omitted: with panel = FALSE every observation is its own sampling
+  # unit, so an idname that repeats across periods is rejected (and it has no
+  # effect on the estimates -- an internal .rowid is used instead)
+  res_slow <- att_gt(yname="Y", data=data, tname="period",
                      gname="G", est_method="reg", weightsname="tv_weight",
                      panel=FALSE, faster_mode=FALSE, bstrap=FALSE)
-  res_fast <- att_gt(yname="Y", data=data, tname="period", idname="id",
+  res_fast <- att_gt(yname="Y", data=data, tname="period",
                      gname="G", est_method="reg", weightsname="tv_weight",
                      panel=FALSE, faster_mode=TRUE, bstrap=FALSE)
 
@@ -841,7 +844,7 @@ test_that("fix_weights validation", {
   # no recycling warnings from mismatched influence-function length.
   rc_result <- expect_no_error(
     withCallingHandlers(
-      att_gt(yname="Y", data=data, tname="period", idname="id",
+      att_gt(yname="Y", data=data, tname="period",
              gname="G", fix_weights="varying", est_method=my_rc_est,
              panel=FALSE, bstrap=FALSE),
       warning = function(w) {
@@ -958,13 +961,16 @@ test_that("IF consistency: repeated cross-sections, default weights x est_method
   for (em in c("dr", "ipw", "reg")) {
     label <- paste("RC NULL", em)
 
+    # idname is omitted: with panel = FALSE every observation is its own sampling
+    # unit, so an idname that repeats across periods is rejected (and it has no
+    # effect on the estimates -- an internal .rowid is used instead)
     res_slow <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-                       idname="id", gname="G", est_method=em,
+                       gname="G", est_method=em,
                        weightsname="tv_weight",
                        panel=FALSE, faster_mode=FALSE,
                        bstrap=FALSE, cband=FALSE)
     res_fast <- att_gt(yname="Y", xformla=~X, data=data, tname="period",
-                       idname="id", gname="G", est_method=em,
+                       gname="G", est_method=em,
                        weightsname="tv_weight",
                        panel=FALSE, faster_mode=TRUE,
                        bstrap=FALSE, cband=FALSE)
@@ -1030,11 +1036,12 @@ test_that("IF consistency: no covariates (xformla=~1), all data types", {
                  label=paste("SE", label))
   }
 
-  # RC, no covariates
-  res_slow <- att_gt(yname="Y", data=data, tname="period", idname="id",
+  # RC, no covariates (idname omitted: with panel = FALSE every observation is
+  # its own sampling unit, so an idname that repeats across periods is rejected)
+  res_slow <- att_gt(yname="Y", data=data, tname="period",
                      gname="G", panel=FALSE,
                      faster_mode=FALSE, bstrap=FALSE, cband=FALSE)
-  res_fast <- att_gt(yname="Y", data=data, tname="period", idname="id",
+  res_fast <- att_gt(yname="Y", data=data, tname="period",
                      gname="G", panel=FALSE,
                      faster_mode=TRUE, bstrap=FALSE, cband=FALSE)
 

@@ -24,6 +24,11 @@
 #'  there can be two variables (otherwise will throw an error) and one of
 #'  these must be the same as idname which allows for clustering at the
 #'  individual level.
+#' @param print_details Not used by the pre-test.  Progress details are
+#'  suppressed during the pre-test computations regardless of this argument.
+#' @param pl Not used by the pre-test.  The multiplier bootstrap used here
+#'  (`test.mboot`) is vectorized and runs in a single process; only `cores`
+#'  below has an effect.
 #' @param cores The number of cores to use for parallel processing. This
 #'  parallelizes Step 1 (computing the test statistic); Step 2's multiplier
 #'  bootstrap is vectorized and runs in a single process.
