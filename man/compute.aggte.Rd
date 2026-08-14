@@ -43,13 +43,19 @@ at least three periods. (the initial period when \code{e=0} as well as the
 next two periods when \code{e=1} and the \code{e=2}).  This ensures that
 the composition of groups does not change when event time changes.}
 
-\item{min_e}{For event studies, this is the smallest event time to compute
-dynamic effects for.  By default, \code{min_e = -Inf} so that effects at
-all lengths of exposure are computed.}
+\item{min_e}{The smallest event time (length of exposure, \code{e = t - g},
+measured in the same units as \code{tname}) to include.  By default,
+\code{min_e = -Inf} so that effects at all lengths of exposure are included.
+It applies to the "dynamic", "simple", and "group" aggregations (it is
+ignored, with a warning, for "calendar").  For "simple" and "group" only
+post-treatment cells (\code{e >= 0}) enter the aggregation to begin with, so
+negative values of \code{min_e} have no effect there.}
 
-\item{max_e}{For event studies, this is the largest event time to compute
-dynamic effects for.  By default, \code{max_e = Inf} so that effects at
-all lengths of exposure are computed.}
+\item{max_e}{The largest event time (length of exposure, \code{e = t - g},
+measured in the same units as \code{tname}) to include.  By default,
+\code{max_e = Inf} so that effects at all lengths of exposure are included.
+It applies to the "dynamic", "simple", and "group" aggregations (it is
+ignored, with a warning, for "calendar").}
 
 \item{na.rm}{Logical value if we are to remove missing values from analyses. Default is FALSE.}
 
@@ -66,15 +72,21 @@ and this is only applicable if \code{bstrap=TRUE}.}
 band that covers all of the group-time average treatment effects
 with fixed probability \code{1-alp}.  In order to compute uniform confidence
 bands, \code{bstrap} must also be set to \code{TRUE}.  The default is
-\code{TRUE}.}
+\code{TRUE}.  When the data contain only two time periods, uniform confidence
+bands coincide with pointwise confidence intervals, so \code{cband} is set to
+\code{FALSE} (with a message) and the pointwise critical value is reported.}
 
 \item{alp}{the significance level, default is 0.05}
 
 \item{clustervars}{A vector of variables names to cluster on.  At most, there
 can be two variables (otherwise will throw an error) and one of these
 must be the same as idname which allows for clustering at the individual
-level. Clustered standard errors are available with the multiplier bootstrap
-(\code{bstrap=TRUE}) or analytically (\code{bstrap=FALSE}).}
+level.  Including \code{idname} is what enables individual-level clustering for
+panel data; when \code{panel=FALSE} each observation is treated as its own
+sampling unit, so clustering at the unit level is automatic and listing
+\code{idname} has no additional effect.  Clustered standard errors are available
+with the multiplier bootstrap (\code{bstrap=TRUE}) or analytically
+(\code{bstrap=FALSE}).}
 
 \item{call}{The function call to aggte}
 }
