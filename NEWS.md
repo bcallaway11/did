@@ -16,6 +16,7 @@
   * `conditional_did_pretest()` now resolves omitted covariates to `~1` and
     uses the generated observation id for repeated cross sections when
     `idname` is omitted.
+  * Behavior change (`att_gt()` with `anticipation > 0`): periods `g - anticipation`, ..., `g - 1` are now handled as anticipation periods, as in Callaway and Sant'Anna (2021). Their ATT(g,t) uses the base period `g - anticipation - 1` under `base_period = "varying"` as well as `"universal"` (under the default `"varying"`, cells inside the window used period `t - 1`, so with `anticipation >= 2` they reported the change between two anticipation periods), and they are excluded from the Wald pre-test of parallel trends, which uses only `t < g - anticipation` (with true parallel trends and a declared two-period anticipation effect the pre-test rejected in 20 of 20 simulated samples; it now rejects at the nominal rate). Results with `anticipation = 0` and all post-treatment cells are unchanged. `aggte(type = "dynamic")` reports the anticipation effects at event times `-anticipation`, ..., `-1`; the other aggregations use post-treatment cells only.
 
 # did 2.5.1.902
 

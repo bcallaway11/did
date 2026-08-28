@@ -331,8 +331,9 @@ compute.att_gt <- function(dp) {
         pret <- pret_g
       }
 
-      # check if in post-treatment period
-      if ((glist[g] <= tlist[(t + tfac)])) {
+      # check if in post-treatment period (anticipation periods, t >= g - anticipation,
+      # also use the base period g - anticipation - 1)
+      if ((glist[g] - anticipation <= tlist[(t + tfac)])) {
         # update pre-period if in post-treatment period to
         # be  period (g-delta-1)
         pret <- pret_g
@@ -347,7 +348,7 @@ compute.att_gt <- function(dp) {
       # pretest-only: skip post-treatment cells entirely (see
       # pretreatment_only above; conditional_did_pretest discards these
       # cells unread, so none of the per-cell work below is needed)
-      if (pretreatment_only && glist[g] <= tlist[t + tfac]) next
+      if (pretreatment_only && glist[g] - anticipation <= tlist[t + tfac]) next
 
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,

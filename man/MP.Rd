@@ -46,7 +46,8 @@ align rows by rowname, never by position.}
 
 \item{n}{the number of unique cross-sectional units (unique values of idname)}
 
-\item{W}{the Wald statistic for pre-testing the common trends assumption}
+\item{W}{the Wald statistic for pre-testing the common trends assumption
+(from the pre-treatment cells, t < g - anticipation)}
 
 \item{Wpval}{the p-value of the Wald statistic for pre-testing the
 common trends assumption}

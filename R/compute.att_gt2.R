@@ -432,8 +432,9 @@ run_att_gt_estimation <- function(g, t, dp2){
     pret <- pret_g
   }
 
-  # check if in post-treatment period
-  if ((dp2$treated_groups[g] <= dp2$time_periods[(t+tfac)])) {
+  # check if in post-treatment period (anticipation periods, t >= g - anticipation,
+  # also use the base period g - anticipation - 1)
+  if ((dp2$treated_groups[g] - dp2$anticipation <= dp2$time_periods[(t+tfac)])) {
 
     # update pre-period if in post-treatment period to
     # be  period (g-delta-1)
