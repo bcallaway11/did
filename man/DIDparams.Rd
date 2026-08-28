@@ -80,7 +80,19 @@ is set to the group of units that have not yet participated
 in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
-participated yet.}
+participated yet.  If no never-treated units are available, the
+last treated cohort serves as the comparison group instead: under
+"nevertreated" it is treated as never treated (with a warning),
+under "notyettreated" it is used only as a not-yet-treated
+comparison.  In both cases no ATT(g,t) is computed for that cohort,
+and time periods from its treatment date (net of \code{anticipation})
+onward are dropped.  This is determined on the estimation sample:
+if coercing the data to a balanced panel (see
+\code{allow_unbalanced_panel}) removes every never-treated unit, the same
+fallback is applied to the balanced sample (the units observed in
+every period that remains after the raw-data fallback; all periods
+when the raw data contain a never-treated group) and announced with
+a warning.}
 
 \item{anticipation}{The number of time periods before participating
 in the treatment where units can anticipate participating in the

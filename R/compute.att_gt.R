@@ -663,8 +663,11 @@ compute.att_gt <- function(dp) {
             }
           }
 
-          # If ATT is NaN, replace it with NA, and mark influence function as missing.
+          # If ATT is NaN, replace it with NA, mark the influence function as missing,
+          # and say so (same text as the fast path): a NaN means no effective treated
+          # or control observations (e.g. all their weights are zero).
           if (is.nan(res$ATT)) {
+            warning(paste0("ATT for (g, t) = (", fmt_g(glist[g]), ", ", fmt_g(tlist[t + tfac]), ") is NaN (no effective treated or control observations, e.g. all weights zero); the ATT for this cell is set to NA"))
             res$ATT <- NA
             if (do_inf) res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
           }
@@ -929,8 +932,10 @@ compute.att_gt <- function(dp) {
           # groups G and C (skipped for point estimates only)
           if (do_inf) res$att.inf.func <- (n / n1) * res$att.inf.func
 
-          # If ATT is NaN, replace it with NA, and mark influence function as missing
+          # If ATT is NaN, replace it with NA, mark the influence function as missing,
+          # and say so (same text as the fast path)
           if (is.nan(res$ATT)) {
+            warning(paste0("ATT for (g, t) = (", fmt_g(glist[g]), ", ", fmt_g(tlist[t + tfac]), ") is NaN (no effective treated or control observations, e.g. all weights zero); the ATT for this cell is set to NA"))
             res$ATT <- NA
             if (do_inf) res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
           }

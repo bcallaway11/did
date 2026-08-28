@@ -350,3 +350,17 @@ check_balance <- function(data, id_col, time_col) {
 
   return(is_balanced)
 }
+
+#' Format cohort / period codes for messages
+#'
+#' `paste0()` prints large round codes in scientific notation (500000 -> "5e+05"),
+#' which never matches a value in the user's data. Element-wise `format()` keeps
+#' every code as the user wrote it (no common-decimal padding across a vector).
+#'
+#' @param x numeric vector of cohort or period codes
+#' @return character vector of the same length
+#' @keywords internal
+#' @noRd
+fmt_g <- function(x) {
+  vapply(x, function(v) format(v, scientific = FALSE, trim = TRUE, digits = 15), character(1))
+}

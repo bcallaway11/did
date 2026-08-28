@@ -149,6 +149,19 @@ compute.aggte <- function(MP,
   MP$DIDparams$cband <- cband
   dp <- MP$DIDparams
 
+  # No post-treatment cell at all (every estimated ATT(g,t) has t < g): nothing can
+  # be aggregated, for any type. This is what att_gt() returns when the periods from
+  # the last treated cohort's treatment date (net of anticipation) onward were
+  # dropped because no never-treated group was available, leaving only
+  # pre-treatment / anticipation-window cells; the generic "no valid estimates"
+  # error further down blamed NA estimates for it.
+  if (!any(group <= t)) {
+    stop("No post-treatment ATT(g,t) cells are available to aggregate: every estimated cell has t < g. ",
+         "This happens when the time periods from the last treated cohort's treatment date (net of anticipation) onward ",
+         "were dropped because no never-treated group was available (see the warnings from att_gt()), ",
+         "so only pre-treatment or anticipation-window cells remain.")
+  }
+
   if (na.rm) {
     notna <- !is.na(att)
     if (!any(notna)) {

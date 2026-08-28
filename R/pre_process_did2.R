@@ -179,6 +179,13 @@ did_standardization <- function(data, args){
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
   }
+  # Nothing left to estimate on: stop here, on both paths, with the missing-data
+  # message (the cohort logic below would otherwise fabricate a "last treated
+  # cohort" of -Inf from an empty cohort list).
+  if (nrow(data) == 0) {
+    if (n_orig == 0) stop("The data has no rows.")
+    stop("All observations were dropped due to missing data. Check your outcome, group, time, weights, cluster, and covariate variables for missing or non-finite values.")
+  }
 
   # Set weights
   if (is.null(args$weightsname)) weights <- rep(1, n_new) else weights <- data[[args$weightsname]]
@@ -257,29 +264,67 @@ did_standardization <- function(data, args){
   #   }
   # }
 
-  if (!(Inf %in% glist)) {
-    # Compute latest treated cohort once, and the cutoff time
-    latest_g <- max(glist[is.finite(glist)], na.rm = TRUE)
-    cutoff_t  <- latest_g - args$anticipation
-
+  # Fallback applied when no never-treated group is available -- in the raw data here,
+  # or in the balanced sample (see the re-check after the balanced-panel coercion
+  # below). Periods from the last treated cohort's treatment date (net of
+  # anticipation) on are dropped, and that cohort serves only as the comparison group:
+  # coerced to never-treated under "nevertreated", left in the data but excluded from
+  # glist by the caller under "notyettreated". Returns the filtered data; the caller
+  # recomputes tlist/glist and issues any warning.
+  no_never_treated_fallback <- function(data, latest_g) {
+    cutoff_t <- latest_g - args$anticipation
+    # Drop all periods >= (latest_g - anticipation)
+    data <- data[get(args$tname) < cutoff_t]
+    # Nothing left: every period is at or after the cutoff. Reachable with a single
+    # cohort treated in the first period (net of anticipation), with gname coded on a
+    # different scale than tname (e.g. every unit coded 1 in a gname meant as a 0/1
+    # treatment indicator, against calendar years), or in
+    # degenerate re-check inputs; stop here with the cause instead of letting the
+    # balancing code blame idname/panel.
+    if (nrow(data) == 0) {
+      stop("No valid groups: there is no never-treated group in the estimation sample, and every observed period is at or after the treatment date (net of anticipation) of the last treated cohort (first treated at ", fmt_g(latest_g), "), so no period remains once that cohort is used as the comparison group. Check that 'gname' is coded as the period of first treatment on the same scale as 'tname' (0 for never-treated), and that at least one cohort is observed before it is treated.")
+    }
     if (args$control_group == "nevertreated") {
-      # Warn the user (same wording as the slow path, pre_process_did: the
-      # filtering sentence matters -- periods >= cutoff_t are dropped just below)
-      warning(
-        "No never-treated group is available. ",
-        "The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups)."
-      )
-
-      # Drop all periods ≥ (latest_g - anticipation)
-      data <- data[get(args$tname) < cutoff_t]
-
       # For any row where gname == latest_g, set gname := Inf
       data[, (args$gname) := as.numeric(get(args$gname))] # Convert the column to numeric so Inf can be stored
       data[get(args$gname) == latest_g, (args$gname) := Inf]
-    } else {
-      # 3. If not "nevertreated", we simply drop those periods and leave gnames alone
-      data <- data[get(args$tname) < cutoff_t]
     }
+    data
+  }
+
+  # Sentence announcing the fallback (byte-identical in the slow path, pre_process_did:
+  # tests pin "filtered out" and cross-mode identity). The "notyettreated" case is
+  # deliberately silent on the raw data: the fallback is the routine design there, so
+  # it is announced only when the balanced-panel coercion is what removed the
+  # never-treated group (see the re-check below).
+  no_nt_text <- function(latest_g) {
+    if (args$control_group == "nevertreated") {
+      paste0("The last treated cohort (first treated at ", fmt_g(latest_g), ") is being coerced as 'never-treated' units, and data from periods at or after its treatment date (net of anticipation) is being filtered out (no available comparison groups).")
+    } else {
+      paste0("The last treated cohort (first treated at ", fmt_g(latest_g), ") is used only as a not-yet-treated comparison group (no ATT(g,t) is computed for it), and data from periods at or after its treatment date (net of anticipation) is being filtered out (no available comparison groups).")
+    }
+  }
+
+  # Latest treated cohort the fallback was applied to (NA while a never-treated group
+  # is available); consulted by the re-check after the balanced-panel coercion below.
+  no_nt_latest_g <- NA_real_
+  # Treated cohorts removed entirely by the balanced-panel coercion (see below), and
+  # whether that left no treated cohort at all.
+  gone_cohorts <- numeric(0)
+  emptied_by_balancing <- FALSE
+  # What the balanced-panel coercion removed (noun phrases), for the "No valid groups"
+  # error: at top level R prints the error before the deferred warnings, so the error
+  # itself has to name the loss and the remedy.
+  bal_lost <- character(0)
+
+  if (!(Inf %in% glist)) {
+    # Compute latest treated cohort once
+    latest_g <- max(glist[is.finite(glist)], na.rm = TRUE)
+    no_nt_latest_g <- latest_g
+    if (args$control_group == "nevertreated") {
+      warning("No never-treated group is available. ", no_nt_text(latest_g))
+    }
+    data <- no_never_treated_fallback(data, latest_g)
 
     # Recompute tlist and glist from the filtered/modified data
     tlist <- sort(unique(data[[args$tname]]))
@@ -388,6 +433,9 @@ did_standardization <- function(data, args){
         }
       }
 
+      # never-treated units going into the coercion (for the re-check's message below)
+      n_nt_before <- length(unique(data[[args$idname]][is.infinite(data[[args$gname]])]))
+
       # Make balanced panel. validate_args() guarantees at most one row per (id, t),
       # so the panel is balanced iff nrow == n_ids * n_periods; the grouped count is
       # only needed in the unbalanced case to identify the offending units.
@@ -401,10 +449,62 @@ did_standardization <- function(data, args){
 
       # If all data is dropped, stop execution
       if (nrow(data) == 0) {
-        stop("All observations dropped while converting data to balanced panel. Consider setting `panel = FALSE` and/or revisiting 'idname'.")
+        stop("Converting to a balanced panel removed every unit: no unit is observed in every period once rows with missing data are removed. Set allow_unbalanced_panel = TRUE to keep units that are not observed in every period, or address the missing data.")
       }
 
       n <- sum(data[[args$tname]] == tlist[1])
+
+      # Balancing drops units WHOLE, so it can remove every unit of a TREATED cohort
+      # (one covariate missing in one period for all of them is enough). glist was
+      # fixed before balancing; left stale, this path later stops with an internal
+      # error ("treated group g not found in cohort_vec") and the slow path returns NA
+      # for every cell of that cohort with no explanation. Reconcile glist with the
+      # balanced sample and say which cohorts were lost.
+      gone_cohorts <- setdiff(glist, unique(data[[args$gname]]))
+      if (length(gone_cohorts) > 0) {
+        warning("Converting to a balanced panel removed every unit of the cohort(s) first treated at ", paste(fmt_g(gone_cohorts), collapse = ", "), " (not observed in every period once rows with missing data are removed); no ATT(g,t) is computed for them. To keep these units, set allow_unbalanced_panel = TRUE or address the missing data.")
+        glist <- setdiff(glist, gone_cohorts)
+        bal_lost <- c(bal_lost, paste0("every unit of the cohort(s) first treated at ", paste(fmt_g(gone_cohorts), collapse = ", ")))
+      }
+      emptied_by_balancing <- length(gone_cohorts) > 0 && length(glist) == 0
+
+      # Likewise it can remove every never-treated unit, or the whole latest cohort
+      # that the fallback above had just turned into the comparison group. The
+      # availability check above ran on the pre-balancing data, so nothing noticed:
+      # no control units remained and every ATT(g,t) came back NA -- silently on this
+      # path, and as a misleading "overlap condition violated" on the slow path.
+      # Re-run the same rule on the balanced sample and announce it, saying what was
+      # lost and how to keep it.
+      gvec_bal <- data[[args$gname]]
+      if (!any(is.infinite(gvec_bal)) &&
+          (is.na(no_nt_latest_g) || max(gvec_bal) < no_nt_latest_g)) {
+        # n_nt_before counts the never-treated units left after the missing-data row
+        # drop above (units missing in every period are already gone by then)
+        lost_what <- if (is.na(no_nt_latest_g)) {
+          paste0("all never-treated units (", n_nt_before, " remained after dropping rows with missing data)")
+        } else {
+          paste0("every unit of the comparison cohort (first treated at ", fmt_g(no_nt_latest_g), ")")
+        }
+        lost_desc <- paste0(lost_what, if (is.na(no_nt_latest_g)) " were removed" else " was removed")
+        bal_lost <- c(bal_lost, lost_what)
+        latest_g <- max(gvec_bal)
+        no_nt_latest_g <- latest_g
+        warning(
+          "No never-treated group is available after converting to a balanced panel: ",
+          lost_desc, " because none of them is observed in every period. ",
+          no_nt_text(latest_g),
+          " To keep those units instead, set allow_unbalanced_panel = TRUE (cells with no comparison units in their base or current period will then be NA) or address the missing data."
+        )
+        # (the helper stops with an informative message if no period remains)
+        data <- no_never_treated_fallback(data, latest_g)
+        tlist <- sort(unique(data[[args$tname]]))
+        glist <- sort(unique(data[[args$gname]]))
+        glist <- glist[glist != Inf & glist > tlist[1] + args$anticipation]
+        if (args$control_group != "nevertreated") {
+          glist <- glist[glist < latest_g]
+        }
+        n <- sum(data[[args$tname]] == tlist[1])
+      }
 
       # Note: treatment irreversibility was already checked in validate_args()
     }
@@ -437,7 +537,24 @@ did_standardization <- function(data, args){
 
   # Check if groups is empty (usually a problem with the way people defined groups)
   if(length(glist)==0){
+    if (emptied_by_balancing) {
+      stop("No valid groups: converting to a balanced panel removed every unit of every treated cohort (first treated at ", paste(fmt_g(gone_cohorts), collapse = ", "), "). Set allow_unbalanced_panel = TRUE to keep units that are not observed in every period, or address the missing data.",
+           if (!is.na(no_nt_latest_g)) paste0(" (There is no never-treated group, so the last treated cohort, first treated at ", fmt_g(no_nt_latest_g), ", serves only as the comparison group and is not counted.)") else "")
+    }
+    if (!is.na(no_nt_latest_g)) {
+      # the fallback consumed the last cohort that could have had an ATT(g,t); balancing
+      # may have removed the others (gone_cohorts), in which case say so here too (at
+      # top level R prints the error before the deferred warnings)
+      stop("No valid groups: there is no never-treated group in the estimation sample, so the last treated cohort (first treated at ", fmt_g(no_nt_latest_g), ") serves only as the comparison group, and no other treated cohort remains to compute ATT(g,t) for (cohorts already treated in the first period, net of anticipation, are dropped and do not count",
+           if (length(bal_lost) > 0) paste0("; converting to a balanced panel removed ", paste(bal_lost, collapse = " and "), " -- set allow_unbalanced_panel = TRUE to keep them, or address the missing data") else "",
+           "). At least two treated cohorts observed before treatment, or a never-treated group, are required.")
+    }
     stop("No valid groups. The variable in 'gname' should be expressed as the time a unit is first treated (0 if never-treated).")
+  }
+  # A single remaining period cannot support any 2x2 comparison (reachable only through
+  # the fallback above); stop identically on both paths instead of failing downstream.
+  if (length(tlist) < 2) {
+    stop("Only one time period remains after dropping the periods from the treatment date of the last treated cohort (net of anticipation) onward; at least two are required.")
   }
 
   # if there are only two time periods, then uniform confidence

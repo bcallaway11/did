@@ -418,8 +418,10 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 #' @keywords internal
 run_att_gt_estimation <- function(g, t, dp2){
 
-  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",dp2$treated_groups[g],",",dp2$time_periods[t],")"))}
   tfac <- if (dp2$base_period != "universal") 1L else 0L
+  # label the cell by its own period (t + tfac), as the returned object and the
+  # warnings below do, not by the base-period index t
+  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",dp2$treated_groups[g],",",dp2$time_periods[t + tfac],")"))}
   # set pret
   # varying base period
   pret <- t
@@ -464,6 +466,12 @@ run_att_gt_estimation <- function(g, t, dp2){
   valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
   if(!isTRUE(valid_did_cohort)){
     if(dp2$print_details){cat("\n Skipping (g,t) as no treatment group or control group found")}
+    # The slow path warns when a cell has no treated or no control units; this path
+    # returned NULL silently, so the cell surfaced only as an unexplained NA.
+    warning(paste0(
+      if (isTRUE(any(did_cohort_index == 1L))) "No available control units for group " else "No units in group ",
+      fmt_g(dp2$treated_groups[g]), " in time period ", fmt_g(dp2$time_periods[t + tfac]),
+      "; the ATT for this cell is set to NA"))
     return(NULL)
   }
 
@@ -756,8 +764,11 @@ compute.att_gt2 <- function(dp2) {
       if_i <- gt_result$if_i
       if_x <- gt_result$if_x
 
-      # Handle NaN ATT: treat as estimation failure
+      # Handle NaN ATT: treat as estimation failure, and say so (same text as the slow
+      # path): a NaN means no effective treated or control observations (e.g. all their
+      # weights are zero), and an unexplained NA cell is never acceptable.
       if (is.nan(att)) {
+        warning(paste0("ATT for (g, t) = (", fmt_g(dp2$treated_groups[g]), ", ", fmt_g(dp2$time_periods[t + tfac]), ") is NaN (no effective treated or control observations, e.g. all weights zero); the ATT for this cell is set to NA"))
         att <- NA
         if (do_inf) {
           if_i <- seq_len(n)
