@@ -172,7 +172,8 @@
 #'  value is `FALSE` which means that [att_gt()] will drop
 #'  all units where data is not observed in all periods.
 #'  The advantage of this is that the computations are faster
-#'  (sometimes substantially).  This argument is ignored when
+#'  (sometimes substantially).  A cohort that loses all of its units
+#'  this way is dropped with a warning.  This argument is ignored when
 #'  `panel=FALSE`: repeated cross sections have no panel structure
 #'  to balance.
 #' @param control_group Which units to use as the control group.
@@ -185,7 +186,10 @@
 #'  in the treatment in that time period.  This includes all
 #'  never treated units, but it includes additional units that
 #'  eventually participate in the treatment, but have not
-#'  participated yet.
+#'  participated yet.  If there are no never-treated units (in the
+#'  data, or after the panel is balanced), the last treated cohort
+#'  serves as the comparison group and periods from its treatment
+#'  date (net of `anticipation`) onward are dropped, with a warning.
 #' @param anticipation The number of time periods before participating
 #'  in the treatment where units can anticipate participating in the
 #'  treatment and therefore it can affect their untreated potential outcomes

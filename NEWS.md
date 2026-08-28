@@ -1,3 +1,13 @@
+# did 2.5.1.902
+
+  * Bug fix (`att_gt()`, balanced panel): the never-treated group is now re-checked after the panel is balanced. Balancing drops units whole, so a covariate missing in one period for every never-treated unit removed the whole group after the check had passed; every ATT(g,t) was then `NA` — silently under `faster_mode = TRUE`, and reported as "overlap condition violated" under `faster_mode = FALSE`. The last treated cohort is now used as the comparison group (as when the data contain no never-treated group), with a warning, and the estimates equal those from the balanced sample. Under `control_group = "notyettreated"` the last cohort's pre-treatment cells are no longer computed in this case (it is a comparison group only).
+
+  * Bug fix (`att_gt()`, balanced panel): a treated cohort that loses all of its units in balancing is now dropped with a warning; `faster_mode = TRUE` stopped with an internal error and `faster_mode = FALSE` returned `NA` for all of its cells.
+
+  * `att_gt()` now warns when a (g,t) cell has no treated or control units (`faster_mode = TRUE`) or when its estimate is `NaN` (both modes) instead of setting it to `NA` silently, and `faster_mode = FALSE` stores an integer `gname` as double, as `faster_mode = TRUE` does.
+
+  * Clearer errors when nothing can be estimated: no treated cohort left once the last cohort is used as the comparison group, no period left before its treatment date, a single period left, or a sample emptied by the missing-data drop. `aggte()` now says so when there is no post-treatment cell to aggregate.
+
 # did 2.5.1.901
 
   * **Behavior change** (`att_gt(panel = FALSE)`): a supplied `idname` must now be unique across *all* rows. `panel = FALSE` declares genuine repeated cross sections, in which every observation is a distinct sampling unit, so an `idname` that repeats (within or across periods) contradicts the requested data structure; it is now rejected up front with a message pointing at `panel = TRUE` / `allow_unbalanced_panel = TRUE` for data where the same units are observed in several periods, and at supplying an observation-level unique id — or omitting `idname` — for genuine repeated cross sections (a recurring household or region code can be passed through `clustervars` instead). `panel = TRUE` — including `allow_unbalanced_panel = TRUE` — is unaffected, and both `faster_mode = TRUE` and `FALSE` give the same error.

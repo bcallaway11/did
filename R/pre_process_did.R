@@ -114,6 +114,8 @@ pre_process_did <- function(yname,
 
   #  make sure gname is numeric
   if (! (is.numeric(data[, gname])) ) stop("The group variable '", gname, "' must be numeric. Please convert it.")
+  # store as double, as the fast path does
+  if (is.integer(data[, gname])) data[, gname] <- as.numeric(data[, gname])
 
   # gname must be 0 (never-treated) or a positive treatment-timing value.
   # Negative codes are not supported: 0 is reserved for never-treated, so a
@@ -182,6 +184,9 @@ pre_process_did <- function(yname,
   n_diff <- n_orig - nrow(data)
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
+  }
+  if (nrow(data) == 0) {
+    stop("All observations were dropped due to missing data. Check your outcome, group, time, and covariate variables for missing values.")
   }
 
   # weights if null
@@ -257,6 +262,8 @@ pre_process_did <- function(yname,
   #   }
   # }
 
+  # latest_g stays NA while a never-treated group exists (checked again after balancing)
+  latest_g <- NA_real_
   if (!any(glist == 0)) {
     # Compute latest treated cohort once, and the cutoff time
     latest_g <- max(glist, na.rm = TRUE)
@@ -278,6 +285,9 @@ pre_process_did <- function(yname,
     } else {
       # If "notyettreated", we simply drop those periods and leave gnames alone
       data <- data[ data[[ tname ]] < cutoff_t, , drop = FALSE ]
+    }
+    if (nrow(data) == 0) {
+      stop("No periods before the last treated cohort's treatment date (net of anticipation) remain. Check that 'gname' is measured on the same scale as 'tname'.")
     }
 
     # Recompute tlist and glist from the filtered/modified data
@@ -481,6 +491,30 @@ pre_process_did <- function(yname,
 
       n <- nrow(data[ data[,tname]==tlist[1], ])
 
+      # balancing drops whole units: drop cohorts that lost all of theirs, and check
+      # again for a never-treated group (the check above ran before balancing)
+      gone <- setdiff(glist, unique(data[, gname]))
+      if (length(gone) > 0) {
+        warning("Dropped cohort(s) ", paste(gone, collapse = ", "), " while converting to balanced panel; set allow_unbalanced_panel = TRUE to keep them.")
+        glist <- setdiff(glist, gone)
+      }
+      if (!any(data[, gname] == 0) && (is.na(latest_g) || max(data[, gname]) < latest_g)) {
+        latest_g <- max(data[, gname])
+        cutoff_t <- latest_g - anticipation
+        data <- data[ data[[tname]] < cutoff_t, , drop = FALSE ]
+        if (control_group == "nevertreated") {
+          warning("No never-treated group is available after converting to balanced panel (set allow_unbalanced_panel = TRUE to keep the never-treated units). The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups).")
+          data[data[, gname] == latest_g, gname] <- 0
+        } else {
+          warning("No never-treated group is available after converting to balanced panel (set allow_unbalanced_panel = TRUE to keep the never-treated units). The last treated cohort is used only as a comparison group, and data from periods after that is being filtered out (no available comparison groups).")
+        }
+        tlist <- sort(unique(data[,tname]))
+        glist <- sort(unique(data[,gname]))
+        glist <- glist[glist > 0 & glist > tlist[1] + anticipation]
+        if (control_group != "nevertreated") glist <- glist[glist < latest_g]
+        n <- nrow(data[ data[,tname]==tlist[1], ])
+      }
+
       # slow, repeated check here...
       ## # check that first.treat doesn't change across periods for particular individuals
       ## if (!all(sapply( split(data, data[,idname]), function(df) {
@@ -543,7 +577,13 @@ pre_process_did <- function(yname,
 
   # Check if groups is empty (usually a problem with the way people defined groups)
   if(length(glist)==0){
+    if (!is.na(latest_g)) {
+      stop("No valid groups: with no never-treated group, the last treated cohort (first treated at ", latest_g, ") is used only as a comparison group and no other treated cohort remains.")
+    }
     stop("No valid groups. The variable in 'gname' should be expressed as the time a unit is first treated (0 if never-treated).")
+  }
+  if (length(tlist) < 2) {
+    stop("Only one time period remains after dropping periods from the last treated cohort's treatment date onward.")
   }
 
   # if there are only two time periods, then uniform confidence

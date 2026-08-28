@@ -179,6 +179,9 @@ did_standardization <- function(data, args){
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
   }
+  if (n_new == 0) {
+    stop("All observations were dropped due to missing data. Check your outcome, group, time, and covariate variables for missing values.")
+  }
 
   # Set weights
   if (is.null(args$weightsname)) weights <- rep(1, n_new) else weights <- data[[args$weightsname]]
@@ -257,6 +260,8 @@ did_standardization <- function(data, args){
   #   }
   # }
 
+  # latest_g stays NA while a never-treated group exists (checked again after balancing)
+  latest_g <- NA_real_
   if (!(Inf %in% glist)) {
     # Compute latest treated cohort once, and the cutoff time
     latest_g <- max(glist[is.finite(glist)], na.rm = TRUE)
@@ -279,6 +284,9 @@ did_standardization <- function(data, args){
     } else {
       # 3. If not "nevertreated", we simply drop those periods and leave gnames alone
       data <- data[get(args$tname) < cutoff_t]
+    }
+    if (nrow(data) == 0) {
+      stop("No periods before the last treated cohort's treatment date (net of anticipation) remain. Check that 'gname' is measured on the same scale as 'tname'.")
     }
 
     # Recompute tlist and glist from the filtered/modified data
@@ -406,6 +414,30 @@ did_standardization <- function(data, args){
 
       n <- sum(data[[args$tname]] == tlist[1])
 
+      # balancing drops whole units: drop cohorts that lost all of theirs, and check
+      # again for a never-treated group (the check above ran before balancing)
+      gone <- setdiff(glist, unique(data[[args$gname]]))
+      if (length(gone) > 0) {
+        warning("Dropped cohort(s) ", paste(gone, collapse = ", "), " while converting to balanced panel; set allow_unbalanced_panel = TRUE to keep them.")
+        glist <- setdiff(glist, gone)
+      }
+      if (!any(is.infinite(data[[args$gname]])) && (is.na(latest_g) || max(data[[args$gname]]) < latest_g)) {
+        latest_g <- max(data[[args$gname]])
+        cutoff_t <- latest_g - args$anticipation
+        data <- data[get(args$tname) < cutoff_t]
+        if (args$control_group == "nevertreated") {
+          warning("No never-treated group is available after converting to balanced panel (set allow_unbalanced_panel = TRUE to keep the never-treated units). The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups).")
+          data[get(args$gname) == latest_g, (args$gname) := Inf]
+        } else {
+          warning("No never-treated group is available after converting to balanced panel (set allow_unbalanced_panel = TRUE to keep the never-treated units). The last treated cohort is used only as a comparison group, and data from periods after that is being filtered out (no available comparison groups).")
+        }
+        tlist <- sort(unique(data[[args$tname]]))
+        glist <- sort(unique(data[[args$gname]]))
+        glist <- glist[glist != Inf & glist > tlist[1] + args$anticipation]
+        if (args$control_group != "nevertreated") glist <- glist[glist < latest_g]
+        n <- sum(data[[args$tname]] == tlist[1])
+      }
+
       # Note: treatment irreversibility was already checked in validate_args()
     }
   }
@@ -437,7 +469,13 @@ did_standardization <- function(data, args){
 
   # Check if groups is empty (usually a problem with the way people defined groups)
   if(length(glist)==0){
+    if (!is.na(latest_g)) {
+      stop("No valid groups: with no never-treated group, the last treated cohort (first treated at ", latest_g, ") is used only as a comparison group and no other treated cohort remains.")
+    }
     stop("No valid groups. The variable in 'gname' should be expressed as the time a unit is first treated (0 if never-treated).")
+  }
+  if (length(tlist) < 2) {
+    stop("Only one time period remains after dropping periods from the last treated cohort's treatment date onward.")
   }
 
   # if there are only two time periods, then uniform confidence

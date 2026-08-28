@@ -665,6 +665,7 @@ compute.att_gt <- function(dp) {
 
           # If ATT is NaN, replace it with NA, and mark influence function as missing.
           if (is.nan(res$ATT)) {
+            warning(paste0("ATT for (g,t) = (", glist[g], ",", tlist[t + tfac], ") is NaN; setting it to NA"))
             res$ATT <- NA
             if (do_inf) res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
           }
@@ -931,6 +932,7 @@ compute.att_gt <- function(dp) {
 
           # If ATT is NaN, replace it with NA, and mark influence function as missing
           if (is.nan(res$ATT)) {
+            warning(paste0("ATT for (g,t) = (", glist[g], ",", tlist[t + tfac], ") is NaN; setting it to NA"))
             res$ATT <- NA
             if (do_inf) res$att.inf.func <- rep(NA_real_, length(res$att.inf.func))
           }

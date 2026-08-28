@@ -418,8 +418,8 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 #' @keywords internal
 run_att_gt_estimation <- function(g, t, dp2){
 
-  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",dp2$treated_groups[g],",",dp2$time_periods[t],")"))}
   tfac <- if (dp2$base_period != "universal") 1L else 0L
+  if(dp2$print_details){cat("\n", paste0("Evaluating (g,t) = (",dp2$treated_groups[g],",",dp2$time_periods[t+tfac],")"))}
   # set pret
   # varying base period
   pret <- t
@@ -464,6 +464,7 @@ run_att_gt_estimation <- function(g, t, dp2){
   valid_did_cohort <- any(did_cohort_index == 1) & any(did_cohort_index == 0)
   if(!isTRUE(valid_did_cohort)){
     if(dp2$print_details){cat("\n Skipping (g,t) as no treatment group or control group found")}
+    warning(paste0("No treated or control units available for group ", dp2$treated_groups[g], " in time period ", dp2$time_periods[t+tfac], "; the ATT for this cell is set to NA"))
     return(NULL)
   }
 
@@ -758,6 +759,7 @@ compute.att_gt2 <- function(dp2) {
 
       # Handle NaN ATT: treat as estimation failure
       if (is.nan(att)) {
+        warning(paste0("ATT for (g,t) = (", dp2$treated_groups[g], ",", dp2$time_periods[t+tfac], ") is NaN; setting it to NA"))
         att <- NA
         if (do_inf) {
           if_i <- seq_len(n)
