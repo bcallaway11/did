@@ -59,7 +59,10 @@ is set to the group of units that have not yet participated
 in the treatment in that time period.  This includes all
 never treated units, but it includes additional units that
 eventually participate in the treatment, but have not
-participated yet.}
+participated yet.  If there are no never-treated units (in the
+data, or after the panel is balanced), the last treated cohort
+serves as the comparison group and periods from its treatment
+date (net of \code{anticipation}) onward are dropped, with a warning.}
 
 \item{threshold}{the cutoff for which observations are flagged as
 likely violators of the support condition.}

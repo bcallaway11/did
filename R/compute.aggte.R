@@ -149,6 +149,12 @@ compute.aggte <- function(MP,
   MP$DIDparams$cband <- cband
   dp <- MP$DIDparams
 
+  # nothing to aggregate when every cell is pre-treatment (e.g. the periods from the
+  # last cohort's treatment date onward were dropped for lack of a never-treated group)
+  if (!any(group <= t)) {
+    stop("No post-treatment ATT(g,t) estimates are available to aggregate (all cells have t < g).")
+  }
+
   if (na.rm) {
     notna <- !is.na(att)
     if (!any(notna)) {
