@@ -20,6 +20,7 @@
 #'  align rows by rowname, never by position.
 #' @param n the number of unique cross-sectional units (unique values of idname)
 #' @param W the Wald statistic for pre-testing the common trends assumption
+#'  (from the pre-treatment cells, t < g - anticipation)
 #' @param Wpval the p-value of the Wald statistic for pre-testing the
 #'  common trends assumption
 #' @param aggte an aggregate treatment effects object
