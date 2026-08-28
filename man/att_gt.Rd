@@ -101,7 +101,10 @@ date (net of \code{anticipation}) onward are dropped, with a warning.}
 
 \item{anticipation}{The number of time periods before participating
 in the treatment where units can anticipate participating in the
-treatment and therefore it can affect their untreated potential outcomes}
+treatment and therefore it can affect their untreated potential outcomes.
+Periods \code{g - anticipation}, ..., \code{g - 1} use the base period
+\code{g - anticipation - 1} (under either \code{base_period}) and are not used
+in the pre-test of parallel trends.}
 
 \item{weightsname}{The name of the column containing the sampling weights.
 If not set, all observations have same weight. When weights are
@@ -114,7 +117,7 @@ the default behavior differs by panel type:
 \describe{
 \item{Balanced panel}{Each 2x2 DiD comparison uses the weight from the
 earlier of the two time periods involved. For post-treatment cells,
-this is the base period (g-1). For pre-treatment cells with
+this is the base period (g-anticipation-1). For pre-treatment cells with
 \code{base_period="varying"}, this is the pre-treatment period itself.
 The panel DRDID estimators are used.}
 \item{Repeated cross sections and unbalanced panels}{Both periods'
@@ -133,7 +136,7 @@ Options:
 \describe{
 \item{\code{NULL} (default)}{For balanced panel: uses the weight from
 the earlier of the two time periods in each 2x2 comparison. For
-post-treatment cells, this is the base period (g-1). For
+post-treatment cells, this is the base period (g-anticipation-1). For
 pre-treatment cells, this depends on the \code{base_period} setting.
 For RC/unbalanced panel: uses per-observation weights from both
 periods.}
@@ -222,7 +225,7 @@ determines the estimates.}
 \item{base_period}{Whether to use a "varying" base period or a
 "universal" base period.  Either choice results in the same
 post-treatment estimates of ATT(g,t)'s.  In pre-treatment
-periods, using a varying base period amounts to computing a
+periods (t < g - anticipation), using a varying base period amounts to computing a
 pseudo-ATT in each treatment period by comparing the change
 in outcomes for a particular group relative to its comparison
 group in the pre-treatment periods (i.e., in pre-treatment

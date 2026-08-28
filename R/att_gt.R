@@ -26,7 +26,7 @@
 #'  \describe{
 #'    \item{Balanced panel}{Each 2x2 DiD comparison uses the weight from the
 #'      earlier of the two time periods involved. For post-treatment cells,
-#'      this is the base period (g-1). For pre-treatment cells with
+#'      this is the base period (g-anticipation-1). For pre-treatment cells with
 #'      \code{base_period="varying"}, this is the pre-treatment period itself.
 #'      The panel DRDID estimators are used.}
 #'    \item{Repeated cross sections and unbalanced panels}{Both periods'
@@ -44,7 +44,7 @@
 #'  \describe{
 #'    \item{\code{NULL} (default)}{For balanced panel: uses the weight from
 #'      the earlier of the two time periods in each 2x2 comparison. For
-#'      post-treatment cells, this is the base period (g-1). For
+#'      post-treatment cells, this is the base period (g-anticipation-1). For
 #'      pre-treatment cells, this depends on the \code{base_period} setting.
 #'      For RC/unbalanced panel: uses per-observation weights from both
 #'      periods.}
@@ -192,7 +192,10 @@
 #'  date (net of `anticipation`) onward are dropped, with a warning.
 #' @param anticipation The number of time periods before participating
 #'  in the treatment where units can anticipate participating in the
-#'  treatment and therefore it can affect their untreated potential outcomes
+#'  treatment and therefore it can affect their untreated potential outcomes.
+#'  Periods `g - anticipation`, ..., `g - 1` use the base period
+#'  `g - anticipation - 1` (under either `base_period`) and are not used
+#'  in the pre-test of parallel trends.
 #' @param faster_mode This option enables a faster version of `did`, optimizing
 #' computation time for large datasets by improving data management within the package.
 #' The default is set to `TRUE`. Both modes produce identical results up to
@@ -201,7 +204,7 @@
 #' @param base_period Whether to use a "varying" base period or a
 #'  "universal" base period.  Either choice results in the same
 #'  post-treatment estimates of ATT(g,t)'s.  In pre-treatment
-#'  periods, using a varying base period amounts to computing a
+#'  periods (t < g - anticipation), using a varying base period amounts to computing a
 #'  pseudo-ATT in each treatment period by comparing the change
 #'  in outcomes for a particular group relative to its comparison
 #'  group in the pre-treatment periods (i.e., in pre-treatment
@@ -652,12 +655,13 @@ att_gt <- function(yname,
   }
 
   if (is.null(wald_invalid)) {
-    # select which periods are pre-treatment
-    pre <- which(group > tt)
+    # select which periods are pre-treatment (anticipation periods are not)
+    pre <- which(group - anticipation > tt)
     # number of pre-treatment cells before the variance filter below, so the
     # no-pre-periods warning can distinguish "no pre-treatment cells exist"
     # from "all pre-treatment cells were dropped for NA/zero variance"
-    n_pre_cells <- length(pre)
+    # (the universal base cell is normalized to 0 and does not count)
+    n_pre_cells <- if (base_period == "universal") sum(tt[pre] != group[pre] - anticipation - 1) else length(pre)
 
     # Drop group-periods that have variance equal to zero (singularity problems)
     if (length(zero_na_sd_entry) > 0) {
