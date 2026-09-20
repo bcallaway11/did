@@ -10,7 +10,7 @@ License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Imports:
-    BMisc (>= 1.4.4),
+    BMisc (>= 1.4.8),
     Matrix,
     pbapply,
     ggplot2,
