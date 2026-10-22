@@ -13,11 +13,11 @@ jobs:
     timeout-minutes: 30
     env:
       R_KEEP_PKG_SOURCE: yes
-      MINIMUM_CANDIDATE: 643f1ed3f20463e11979dba5f3f0adde71d2e3ed
+      MINIMUM_CANDIDATE: f2e2bde4f010221b3be6cf1e085bdcb7e2ccfa20
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: 643f1ed3f20463e11979dba5f3f0adde71d2e3ed
+          ref: f2e2bde4f010221b3be6cf1e085bdcb7e2ccfa20
 
       - uses: r-lib/actions/setup-r@v2
         with:
@@ -132,8 +132,9 @@ jobs:
           dput(provenance, file = file.path(evidence, "runtime-provenance.txt"))
           print(provenance)
           pkgload::load_all(".", quiet = TRUE, helpers = FALSE, compile = FALSE)
-          results <- test_file("tests/testthat/test-tiny-rc-outcome-designs.R",
-            reporter = "summary", stop_on_failure = FALSE)
+          results <- test_dir("tests/testthat",
+            filter = "(tiny-rc-outcome-designs|rc-normalized-support)",
+            reporter = "summary", load_helpers = FALSE, stop_on_failure = FALSE)
           saveRDS(results, file.path(evidence, "focused-results.rds"))
           tab <- as.data.frame(results)
           required <- c("passed", "failed", "error", "warning", "skipped")
@@ -148,7 +149,7 @@ jobs:
               normalizePath(find.package(package)) ==
                 normalizePath(file.path(lib, package)))
           }
-          stopifnot(counts[["passed"]] == 135,
+          stopifnot(counts[["passed"]] == 370,
                     all(counts[c("failed", "error", "warning", "skipped")] == 0))
           RSCRIPT
 
