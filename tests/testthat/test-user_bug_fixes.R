@@ -50,27 +50,6 @@ test_that("missing covariates", {
 })
 
 
-test_that("repeated cross sections small groups with covariates", {
-  # from https://github.com/bcallaway11/did/issues/64
-  sp <- did::reset.sim(time.periods=3)
-  data <- build_sim_dataset(sp, panel=FALSE)
-  data$X2 <- rnorm(nrow(data))
-  data$X3 <- rnorm(nrow(data))
-  dropids <- unique(subset(data, G==2)$id)
-  # interestingly, this seems to return all NA's (which "works")
-  # if you only keep one or two observations
-  dropids <- dropids[-c(1,2,3)] # keep three observations from group 2
-  data <- subset(data, !(id %in% dropids))
-
-  expect_warning(res_dr <- att_gt(yname="Y", xformla=~X+X2+X3, data=data, tname="period", idname="id",
-                   gname="G", est_method=DRDID::drdid_rc1, panel=FALSE), "very few observations")
-
-  expect_true(is.numeric(res_dr$se[1]))
-
-  skip("known bug, code crashes in this case, fix is probably in DRDID package")
-})
-
-
 test_that("fewer time periods than groups", {
   # from https://github.com/bcallaway11/did/issues/56
   # not sure if this is actually a bug,

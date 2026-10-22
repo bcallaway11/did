@@ -542,6 +542,14 @@ compute.att_gt <- function(dp) {
 
             # Run overlap/rank checks on RC data (not wide panel data)
             if (!is.function(est_method)) {
+              if (est_method %in% c("dr", "reg") &&
+                  rc_outcome_has_too_few_obs(G_rc, post_rc, w_rc,
+                                            ncol(covariates_rc),
+                                            include_treated = est_method == "dr")) {
+                warning(paste0("Outcome regression design is singular (fewer positive-weight observations than covariates) for group ", glist[g], " in time period ", tlist[t + tfac], "; the ATT for this cell will be set to NA."))
+                stop("singular")
+              }
+
               if (est_method %in% c("dr", "ipw")) {
                 if (overlap_check_fail(covariates_rc, G_rc, intercept_only, if (is.null(weightsname)) NULL else w_rc)) {
                   warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
@@ -867,6 +875,13 @@ compute.att_gt <- function(dp) {
           # as the panel branch) so that a failing preliminary fit degrades to
           # an NA cell with a warning instead of aborting the entire att_gt()
           if (!is.function(est_method)) {
+            if (est_method %in% c("dr", "reg") &&
+                rc_outcome_has_too_few_obs(G, post, w, ncol(covariates),
+                                          include_treated = est_method == "dr")) {
+              warning(paste0("Outcome regression design is singular (fewer positive-weight observations than covariates) for group ", glist[g], " in time period ", tlist[t + tfac], "; the ATT for this cell will be set to NA."))
+              stop("singular")
+            }
+
             # checks for pscore based methods (no caching on the RC branch: the
             # cohort index varies cell by cell here)
             if (est_method %in% c("dr", "ipw")) {
