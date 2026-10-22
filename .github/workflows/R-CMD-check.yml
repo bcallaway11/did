@@ -33,6 +33,9 @@ jobs:
           extra-packages: |
             any::remotes
             any::pkgload
+            any::ellipsis
+            any::RcppEigen
+            any::BH
           needs: check
           cache: false
 
@@ -49,9 +52,12 @@ jobs:
           remotes::install_version("testthat", version = "3.1.8", lib = lib,
             repos = repos, dependencies = FALSE, upgrade = "never",
             build_vignettes = FALSE)
+          stopifnot(as.character(packageVersion("testthat", lib.loc = lib)) == "3.1.8")
           remotes::install_version("fastglm", version = "0.0.4", lib = lib,
             repos = repos, dependencies = FALSE, upgrade = "never",
             build_vignettes = FALSE)
+
+          stopifnot(as.character(packageVersion("fastglm", lib.loc = lib)) == "0.0.4")
 
           # Pin the released DRDID source, independently of the dependency cache.
           archive <- file.path(evidence, "DRDID_1.3.0.tar.gz")
@@ -80,6 +86,7 @@ jobs:
           cat("OFFICIAL_DRDID_SOURCE:", selected, "\n", checksum, "\n")
           remotes::install_local(archive, lib = lib, dependencies = FALSE,
             upgrade = "never", build_vignettes = FALSE)
+          stopifnot(as.character(packageVersion("DRDID", lib.loc = lib)) == "1.3.0")
 
       - name: Run only the protected tiny-RC tests in a fresh process
         shell: bash
