@@ -112,6 +112,25 @@ rcond_check_fail <- function(x, y, intercept_only = FALSE) {
   rcond(crossprod(control_covs)) < .Machine$double.eps
 }
 
+# A repeated-cross-section outcome regression needs at least as many
+# positive-weight observations as design columns in EACH fitted group/period.
+# This necessary rank condition must be checked before entering native fitting:
+# tryCatch cannot recover a native crash on an undersized design. The default
+# DR estimator fits all four regressions; regression-only fits just controls.
+# Mirror DRDID's local mean normalization: a finite positive input can round to
+# zero there. Count the actual normalized support without changing passed weights.
+# Passing this check does not establish full rank (the estimator checks that).
+rc_outcome_has_too_few_obs <- function(D, post, i.weights, n_covariates,
+                                      include_treated = TRUE) {
+  scale <- mean(i.weights)
+  if (!is.finite(scale) || scale <= 0) return(TRUE)
+  normalized <- i.weights / scale
+  positive <- is.finite(normalized) & normalized > 0
+  counts <- tabulate(1L + post[positive] + 2L * D[positive], nbins = 4L)
+  required <- if (include_treated) 1:4 else 1:2
+  any(counts[required] < n_covariates)
+}
+
 #' @title Check User-Supplied Names Against Internal Names
 #' @description Stop if user arguments reference names that `did` creates and
 #' mutates internally.

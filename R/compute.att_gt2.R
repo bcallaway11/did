@@ -296,6 +296,14 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
     if (!custom_est_method) {
       D_vec <- D
 
+      if (dp2$est_method %in% c("dr", "reg") &&
+          rc_outcome_has_too_few_obs(D, post, i.weights, ncol(covariates),
+                                    include_treated = dp2$est_method == "dr")) {
+        warning(paste0("Outcome regression design is singular (fewer positive-weight observations than covariates)", gt_label, "; the ATT for this cell will be set to NA."))
+        return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
+                    if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
+      }
+
       # checks for pscore based methods (no caching on the RC branch: the
       # cohort index varies cell by cell here)
       if (dp2$est_method %in% c("dr", "ipw")) {

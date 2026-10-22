@@ -1,5 +1,14 @@
 # did 2.5.1.902
 
+  * Built-in `dr` and `reg` repeated-cross-section and unbalanced-panel cells,
+    and balanced-panel cells using `fix_weights = "varying"`, now check the number
+    of positive-weight observations after DRDID's local mean normalization in
+    each required outcome regression before native fitting.
+    Undersized designs warn and return an NA cell while keeping estimable
+    cells, including with older supported DRDID versions. The historical
+    tiny-group default-DR regression test is restored with explicit failure and
+    healthy-cell assertions.
+
   * Bug fix (`att_gt()`, balanced panel): the never-treated group is now re-checked after the panel is balanced. Balancing drops units whole, so a covariate missing in one period for every never-treated unit removed the whole group after the check had passed; every ATT(g,t) was then `NA` — silently under `faster_mode = TRUE`, and reported as "overlap condition violated" under `faster_mode = FALSE`. The last treated cohort is now used as the comparison group (as when the data contain no never-treated group), with a warning, and the estimates equal those from the balanced sample. Under `control_group = "notyettreated"` the last cohort's pre-treatment cells are no longer computed in this case (it is a comparison group only).
 
   * Bug fix (`att_gt()`, balanced panel): a treated cohort that loses all of its units in balancing is now dropped with a warning; `faster_mode = TRUE` stopped with an internal error and `faster_mode = FALSE` returned `NA` for all of its cells.
