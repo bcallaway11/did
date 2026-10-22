@@ -20,9 +20,10 @@
 
 # did 2.5.1.902
 
-  * Repeated-cross-section and unbalanced-panel cells, and balanced-panel cells
-    using `fix_weights = "varying"`, now check the number of positive-weight
-    observations in each required outcome regression before native fitting.
+  * Built-in `dr` and `reg` repeated-cross-section and unbalanced-panel cells,
+    and balanced-panel cells using `fix_weights = "varying"`, now check the number
+    of positive-weight observations after DRDID's local mean normalization in
+    each required outcome regression before native fitting.
     Undersized designs warn and return an NA cell while keeping estimable
     cells, including with older supported DRDID versions. The historical
     tiny-group default-DR regression test is restored with explicit failure and
