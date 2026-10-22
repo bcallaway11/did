@@ -1,97 +1,154 @@
 name: R-CMD-check
 
 on:
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  R-CMD-check:
-    runs-on: ${{ matrix.config.os }}
-
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {os: macOS-latest,   r: 'release'}
-          - {os: windows-latest, r: 'release'}
-          - {os: ubuntu-latest,   r: 'devel', http-user-agent: 'release'}
-          - {os: ubuntu-latest,   r: 'release'}
-          - {os: ubuntu-latest,   r: 'oldrel-1'}
-
+  minimum-reference:
+    name: Ubuntu / R 4.4 / testthat 3.1.8 / fastglm 0.0.4
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-
+      MINIMUM_CANDIDATE: 643f1ed3f20463e11979dba5f3f0adde71d2e3ed
     steps:
-    - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          ref: 643f1ed3f20463e11979dba5f3f0adde71d2e3ed
 
-    - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.4'
+          use-public-rspm: true
 
-    - uses: r-lib/actions/setup-r@v2
-      with:
-        r-version: ${{ matrix.config.r }}
-        http-user-agent: ${{ matrix.config.http-user-agent }}
-        use-public-rspm: true
+      - name: Use current full dependencies
+        shell: bash
+        run: rm -f .github/pkg.lock
 
-    - name: Install qpdf (macOS)
-      if: runner.os == 'macOS'
-      run: brew install qpdf
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::remotes
+            any::pkgload
+          needs: check
+          cache: false
 
-    - name: Install qpdf (Ubuntu)
-      if: runner.os == 'Linux'
-      run: sudo apt-get update && sudo apt-get install -y qpdf
+      - name: Install isolated official reference packages
+        shell: Rscript {0}
+        run: |
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "did-minimum-evidence")
+          lib <- file.path(Sys.getenv("RUNNER_TEMP"), "did-minimum-library")
+          dir.create(evidence, recursive = TRUE)
+          dir.create(lib, recursive = TRUE)
+          .libPaths(c(lib, .libPaths()))
+          stopifnot(getRversion() >= "4.4.0", getRversion() < "4.5.0")
+          repos <- c(CRAN = "https://cloud.r-project.org")
+          remotes::install_version("testthat", version = "3.1.8", lib = lib,
+            repos = repos, dependencies = FALSE, upgrade = "never",
+            build_vignettes = FALSE)
+          remotes::install_version("fastglm", version = "0.0.4", lib = lib,
+            repos = repos, dependencies = FALSE, upgrade = "never",
+            build_vignettes = FALSE)
 
-    - name: Remove lockfile
-      run: rm -f .github/pkg.lock
-      shell: bash
+          # Pin the released DRDID source, independently of the dependency cache.
+          archive <- file.path(evidence, "DRDID_1.3.0.tar.gz")
+          urls <- paste0("https://cloud.r-project.org/src/contrib/",
+            c("DRDID_1.3.0.tar.gz", "Archive/DRDID/DRDID_1.3.0.tar.gz"))
+          selected <- NULL
+          for (url in urls) {
+            status <- suppressWarnings(tryCatch(
+              download.file(url, archive, mode = "wb", quiet = FALSE),
+              error = function(e) 1L))
+            if (identical(status, 0L)) {
+              selected <- url
+              break
+            }
+          }
+          stopifnot(!is.null(selected))
+          writeLines(selected, file.path(evidence, "DRDID-source-url.txt"))
+          source_dir <- file.path(evidence, "released-source")
+          dir.create(source_dir)
+          untar(archive, files = "DRDID/DESCRIPTION", exdir = source_dir)
+          description <- read.dcf(file.path(source_dir, "DRDID", "DESCRIPTION"))
+          stopifnot(description[1, "Package"] == "DRDID",
+                    description[1, "Version"] == "1.3.0")
+          checksum <- system2("sha256sum", shQuote(archive), stdout = TRUE)
+          writeLines(checksum, file.path(evidence, "DRDID-source-sha256.txt"))
+          cat("OFFICIAL_DRDID_SOURCE:", selected, "\n", checksum, "\n")
+          remotes::install_local(archive, lib = lib, dependencies = FALSE,
+            upgrade = "never", build_vignettes = FALSE)
 
-    - uses: r-lib/actions/setup-r-dependencies@v2
-      with:
-        extra-packages: any::rcmdcheck
-        needs: check
-        cache-version: 2
+      - name: Run only the protected tiny-RC tests in a fresh process
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -c 0
+          timeout --signal=TERM --kill-after=10s 180s Rscript - <<'RSCRIPT' 2>&1 | tee "$RUNNER_TEMP/did-minimum-evidence/focused-run.txt"
+          evidence <- file.path(Sys.getenv("RUNNER_TEMP"), "did-minimum-evidence")
+          lib <- file.path(Sys.getenv("RUNNER_TEMP"), "did-minimum-library")
+          .libPaths(c(lib, .libPaths()))
+          stopifnot(getRversion() >= "4.4.0", getRversion() < "4.5.0")
+          expected <- Sys.getenv("MINIMUM_CANDIDATE")
+          head <- system2("git", c("rev-parse", "HEAD"), stdout = TRUE)
+          stopifnot(identical(head, expected))
+          stopifnot(system2("git", c("diff", "--exit-code", expected, "--",
+            "R", "tests", "DESCRIPTION")) == 0L)
+          source_files <- system2("git", c("ls-files", "R", "tests", "DESCRIPTION"),
+            stdout = TRUE)
+          source_hashes <- vapply(source_files, function(path) {
+            system2("sha256sum", shQuote(path), stdout = TRUE)
+          }, character(1))
+          writeLines(source_hashes, file.path(evidence, "candidate-source-sha256.txt"))
+          writeLines(head, file.path(evidence, "candidate-head.txt"))
 
-    - uses: r-lib/actions/check-r-package@v2
-      with:
-        upload-snapshots: true
-        build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+          library(testthat, lib.loc = lib)
+          library(fastglm, lib.loc = lib)
+          library(DRDID, lib.loc = lib)
+          versions <- c(testthat = "3.1.8", fastglm = "0.0.4", DRDID = "1.3.0")
+          for (package in names(versions)) {
+            stopifnot(as.character(packageVersion(package)) == versions[[package]],
+              as.character(getNamespaceVersion(package)) == versions[[package]],
+              normalizePath(find.package(package)) ==
+                normalizePath(file.path(lib, package)))
+          }
+          provenance <- list(R = R.version, R_home = R.home(),
+            library_paths = .libPaths(), candidate = head,
+            packages = lapply(names(versions), function(package) {
+              list(package = package, version = as.character(packageVersion(package)),
+                namespace_version = as.character(getNamespaceVersion(package)),
+                path = find.package(package), description = packageDescription(package))
+            }))
+          saveRDS(provenance, file.path(evidence, "runtime-provenance.rds"))
+          dput(provenance, file = file.path(evidence, "runtime-provenance.txt"))
+          print(provenance)
+          pkgload::load_all(".", quiet = TRUE, helpers = FALSE, compile = FALSE)
+          results <- test_file("tests/testthat/test-tiny-rc-outcome-designs.R",
+            reporter = "summary", stop_on_failure = FALSE)
+          saveRDS(results, file.path(evidence, "focused-results.rds"))
+          tab <- as.data.frame(results)
+          required <- c("passed", "failed", "error", "warning", "skipped")
+          stopifnot(all(required %in% names(tab)))
+          counts <- vapply(tab[required], sum, numeric(1))
+          write.csv(tab[required], file.path(evidence, "focused-results.csv"), row.names = FALSE)
+          print(counts)
+          writeLines(capture.output(print(counts)), file.path(evidence, "counts.txt"))
+          writeLines(capture.output(sessionInfo()), file.path(evidence, "session-info.txt"))
+          for (package in names(versions)) {
+            stopifnot(as.character(getNamespaceVersion(package)) == versions[[package]],
+              normalizePath(find.package(package)) ==
+                normalizePath(file.path(lib, package)))
+          }
+          stopifnot(counts[["passed"]] == 135,
+                    all(counts[c("failed", "error", "warning", "skipped")] == 0))
+          RSCRIPT
 
-    - name: Summarize check results
-      if: always()
-      shell: bash
-      run: |
-        CHECK_DIR=$(find . -maxdepth 4 -name "*.Rcheck" -type d 2>/dev/null | head -1)
-        if [ -z "$CHECK_DIR" ]; then
-          echo "No .Rcheck directory found." >> "$GITHUB_STEP_SUMMARY"
-          exit 0
-        fi
-
-        echo "## R CMD check: \`$CHECK_DIR\`" >> "$GITHUB_STEP_SUMMARY"
-        echo "" >> "$GITHUB_STEP_SUMMARY"
-
-        LOG="$CHECK_DIR/00check.log"
-        if [ -f "$LOG" ]; then
-          STATUS=$(grep "^Status:" "$LOG" || true)
-          [ -n "$STATUS" ] && echo "**$STATUS**" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-
-          FLAGGED=$(grep -E "\b(ERROR|WARNING|NOTE)\b" "$LOG" || true)
-          if [ -n "$FLAGGED" ]; then
-            echo "### Issues" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            echo "$FLAGGED" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-          fi
-        fi
-
-        FAIL="$CHECK_DIR/tests/testthat.Rout.fail"
-        if [ -f "$FAIL" ]; then
-          echo "### Test failures" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -n 100 "$FAIL" >> "$GITHUB_STEP_SUMMARY"
-          echo '```' >> "$GITHUB_STEP_SUMMARY"
-        fi
+      - name: Preserve minimum-reference evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiny-rc-minimum-reference
+          path: ${{ runner.temp }}/did-minimum-evidence
+          if-no-files-found: warn
