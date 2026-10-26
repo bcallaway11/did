@@ -39,24 +39,14 @@ This should be a positive number for all observations in treated groups.
 It defines which "group" a unit belongs to.  It should be 0 for units
 in the untreated group.}
 
-\item{xformla}{A formula for the covariates to include in the
-model.  It should be of the form \code{~ X1 + X2}.  Default
-is NULL which is equivalent to \code{xformla=~1}.  This is
-used to create a matrix of covariates which is then passed
-to the 2x2 DID estimator chosen in \code{est_method}.
-
-For time-varying covariates: (1) With balanced panel data,
-in each 2x2 comparison, the covariates
-are taken to be the value of the covariates in the earlier time
-period, and all of the underlying computations involve changes in Y
-as a function of those values of covariates.  (2) With repeated cross
-sections data and unbalanced panel data, the covariates are taken
-from each time period and computations involve Y_post conditional
-on X_post minus Y_pre conditional on X_pre.  A byproduct of this
-is that, with balanced panel data and in the presence of
-time-varying covariates, it is possible to get different numerical
-results according to whether or not \code{allow_unbalanced_panel=TRUE} or
-\code{FALSE}.}
+\item{xformla}{A formula such as \code{~ X1 + X2} specifying covariates for the
+propensity score model and the indicator weighting functions. The default
+\code{NULL} is equivalent to \code{~1}. For panel data, use conditioning variables
+that are fixed within each unit across periods. If raw covariates vary
+over time, create explicit unit-level baseline copies and include those
+copies in \code{xformla}; the test then conditions on those fixed baseline
+variables. For repeated cross sections (\code{panel = FALSE}), each observation's
+observed covariates are used.}
 
 \item{data}{The name of the data.frame that contains the data}
 
@@ -152,6 +142,15 @@ outcome. Consequently, refitting the original regression model to those
 outcomes does not provide a valid regression or doubly robust conditional
 test under correctness of the original outcome model alone. This function
 implements the inverse probability weighted test only.
+
+For panel data, the indicator weighting functions use the covariate vector
+from the first observed period. The conditional null is formulated using
+a fixed vector of conditioning variables throughout the pre-treatment
+comparisons. The legacy test is not justified as a test of separate
+conditional nulls whose conditioning variables change with the baseline
+period of each group-time comparison. Supplying time-varying raw panel
+covariates does not establish that different interpretation; choose and
+supply fixed baseline variables explicitly when that is the intended null.
 }
 \examples{
 \dontrun{

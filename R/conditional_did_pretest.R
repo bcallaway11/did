@@ -6,6 +6,14 @@
 #' @inheritParams att_gt
 #' @param weightsname The name of the column containing the sampling weights.
 #'  If not set, all observations have same weight.
+#' @param xformla A formula such as `~ X1 + X2` specifying covariates for the
+#'  propensity score model and the indicator weighting functions. The default
+#'  `NULL` is equivalent to `~1`. For panel data, use conditioning variables
+#'  that are fixed within each unit across periods. If raw covariates vary
+#'  over time, create explicit unit-level baseline copies and include those
+#'  copies in `xformla`; the test then conditions on those fixed baseline
+#'  variables. For repeated cross sections (`panel = FALSE`), each observation's
+#'  observed covariates are used.
 #' @param allow_unbalanced_panel Passed to panel preprocessing. The default
 #'  `FALSE` balances the panel by dropping units observed in only some periods.
 #'  With `TRUE`, an already balanced panel is accepted, but a genuinely
@@ -48,6 +56,15 @@
 #' outcomes does not provide a valid regression or doubly robust conditional
 #' test under correctness of the original outcome model alone. This function
 #' implements the inverse probability weighted test only.
+#'
+#' For panel data, the indicator weighting functions use the covariate vector
+#' from the first observed period. The conditional null is formulated using
+#' a fixed vector of conditioning variables throughout the pre-treatment
+#' comparisons. The legacy test is not justified as a test of separate
+#' conditional nulls whose conditioning variables change with the baseline
+#' period of each group-time comparison. Supplying time-varying raw panel
+#' covariates does not establish that different interpretation; choose and
+#' supply fixed baseline variables explicitly when that is the intended null.
 #'
 #' @examples
 #' \dontrun{
