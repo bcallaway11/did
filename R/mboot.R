@@ -165,6 +165,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
     nb <- length(b)
     (b[ceiling(.75 * nb)] - b[ceiling(.25 * nb)]) / iqr_norm
   })
+  # A zero/non-finite IQR scale cannot studentize a bootstrap dimension.
+  # Retain arbitrarily small positive scales regardless of outcome units.
+  bSigma[!is.finite(bSigma) | bSigma <= 0] <- NA_real_
 
   # critical value for uniform confidence band: per bootstrap draw, the max over
   # columns of |b / bSigma|. Vectorized as a column-fold of pmax (equivalent to the

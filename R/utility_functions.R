@@ -121,15 +121,15 @@ overlap_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
 #' @return TRUE if the control-unit design is singular or ill-conditioned
 #' @noRd
 rcond_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
+  if (is.null(i.weights)) {
+    # With no user weights, retain the original unweighted rank guard.
+    if (intercept_only) return(!any(y == 0))
+    control_covs <- x[y == 0, , drop = FALSE]
+    return(rcond(crossprod(control_covs)) < .Machine$double.eps)
+  }
   n <- length(y)
   controls <- y == 0
   if (!any(controls)) return(TRUE)
-  if (is.null(i.weights)) {
-    # With no user weights, retain the original unweighted rank guard.
-    if (intercept_only) return(FALSE)
-    control_covs <- x[controls, , drop = FALSE]
-    return(rcond(crossprod(control_covs)) < .Machine$double.eps)
-  }
   # Constant positive weights normalize to one. Avoid normalizing and copying
   # the full design, while retaining the same normalized control Gram matrix.
   # Keep the two-matrix crossprod call even at unit weights: its roundoff can

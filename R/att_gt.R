@@ -599,8 +599,11 @@ att_gt <- function(yname,
   }
   se <- sqrt(Matrix::diag(V) / n)
 
-  # Zero standard error replaced by NA
-  se[se <= sqrt(.Machine$double.eps) * 10] <- NA
+  # Only unavailable or nonpositive standard errors are degenerate. An
+  # absolute tolerance would change inference when outcome units change.
+  # Magnitude alone cannot distinguish a small valid IF from nuisance-fit
+  # roundoff; numerical singularity is checked using rcond(preV) below.
+  se[!is.finite(se) | se <= 0] <- NA_real_
 
   # If a cluster variable beyond idname is requested without the bootstrap but the cluster-robust variance
   # could not be formed (e.g. cluster identifiers unavailable), fall back to i.i.d. and let the user know.
@@ -614,7 +617,6 @@ att_gt <- function(yname,
   # bootstrap variance matrix
   if (bstrap) {
     bout <- mboot(inffunc, DIDparams = dp, pl = pl, cores = cores, return_V = FALSE)
-    bres <- bout$bres
 
     if (length(zero_na_sd_entry) > 0) {
       se[-zero_na_sd_entry] <- bout$se[-zero_na_sd_entry]
@@ -622,8 +624,7 @@ att_gt <- function(yname,
       se <- bout$se
     }
   }
-  # Zero standard error replaced by NA
-  se[se <= sqrt(.Machine$double.eps) * 10] <- NA
+  se[!is.finite(se) | se <= 0] <- NA_real_
 
 
   #-----------------------------------------------------------------------------
@@ -726,35 +727,14 @@ att_gt <- function(yname,
   # HAVE to use the bootstrap
   if (bstrap) {
     if (cband) {
-      # for uniform confidence band
-      # compute new critical value
-      # see paper for details
-      # Vectorized like mboot(): both quantiles of each bootstrap column are
-      # taken in a single type = 1 call (one sort per column instead of two),
-      # with the qnorm normalization hoisted out of the per-column loop.
-      iqr_norm <- qnorm(.75) - qnorm(.25)
-      bSigma <- apply(bres, 2, function(b) {
-        qs <- quantile(b, c(.25, .75), type = 1, na.rm = TRUE)
-        (qs[2L] - qs[1L]) / iqr_norm
-      })
-
-      bSigma[bSigma <= sqrt(.Machine$double.eps) * 10] <- NA
-
-      # sup-t confidence band: per bootstrap draw, the max over columns of
-      # |b / bSigma|, as a pmax column-fold (equivalent to the previous row-wise
-      # apply(max, na.rm = TRUE): NA entries are ignored via -Inf, and an all-NA
-      # row yields -Inf, exactly as before).
-      if (ncol(bres) == 0L) {
-        # every bootstrap dimension was degenerate (mboot dropped all columns):
-        # the previous row-wise apply(max, na.rm = TRUE) returned -Inf per row
-        bT <- rep(-Inf, nrow(bres))
-      } else {
-        scaled <- abs(bres / rep(bSigma, each = nrow(bres)))
-        scaled[is.na(scaled)] <- -Inf
-        bT <- scaled[, 1L]
-        for (j in seq_len(ncol(scaled))[-1L]) bT <- pmax(bT, scaled[, j])
+      # mboot already computed the studentized sup-t critical value from
+      # these draws. Reuse it rather than sorting and scaling a second time.
+      cval <- bout$crit.val
+      if (!is.finite(cval)) {
+        warning("Simultaneous critical value is not finite, likely because the standard errors could not be computed. Falling back to pointwise confidence intervals.")
+        cval <- qnorm(1 - alp / 2)
+        dp$cband <- FALSE
       }
-      cval <- quantile(bT, 1 - alp, type = 1, na.rm = TRUE)
       if (cval >= 7) {
         warning("Simultaneous critical value is arguably `too large' to be reliable. This usually happens when the number of observations per group is small and/or there is not much variation in outcomes.")
       }

@@ -347,9 +347,6 @@ compute.aggte <- function(MP,
 
     # get standard errors from overall influence function
     simple.se <- getSE(simple.if, dp)
-    if (!is.na(simple.se)) {
-      if (simple.se <= sqrt(.Machine$double.eps) * 10) simple.se <- NA
-    }
 
 
     return(AGGTEobj(
@@ -413,7 +410,6 @@ compute.aggte <- function(MP,
 
     # recover standard errors separately by group
     selective.se.g <- unlist(BMisc::get_list_element(selective.se.inner, "se"))
-    selective.se.g[selective.se.g <= sqrt(.Machine$double.eps) * 10] <- NA
 
     # recover influence function separately by group
     selective.inf.func.g <- simplify2array(BMisc::get_list_element(selective.se.inner, "inf.func"))
@@ -470,9 +466,6 @@ compute.aggte <- function(MP,
     selective.inf.func <- as.numeric(selective.inf.func)
     # get overall standard error
     selective.se <- getSE(selective.inf.func, dp)
-    if (!is.na(selective.se)) {
-      if ((selective.se <= sqrt(.Machine$double.eps) * 10)) selective.se <- NA
-    }
 
     return(AGGTEobj(
       overall.att = selective.att,
@@ -580,7 +573,6 @@ compute.aggte <- function(MP,
     })
 
     dynamic.se.e <- unlist(BMisc::get_list_element(dynamic.se.inner, "se"))
-    dynamic.se.e[dynamic.se.e <= sqrt(.Machine$double.eps) * 10] <- NA
 
     dynamic.inf.func.e <- simplify2array(BMisc::get_list_element(dynamic.se.inner, "inf.func"))
 
@@ -622,9 +614,6 @@ compute.aggte <- function(MP,
 
     dynamic.inf.func <- as.numeric(dynamic.inf.func)
     dynamic.se <- getSE(dynamic.inf.func, dp)
-    if (!is.na(dynamic.se)) {
-      if (dynamic.se <= sqrt(.Machine$double.eps) * 10) dynamic.se <- NA
-    }
 
     return(AGGTEobj(
       overall.att = dynamic.att,
@@ -711,7 +700,6 @@ compute.aggte <- function(MP,
 
     # recover standard errors separately by time
     calendar.se.t <- unlist(BMisc::get_list_element(calendar.se.inner, "se"))
-    calendar.se.t[calendar.se.t <= sqrt(.Machine$double.eps) * 10] <- NA
     # recover influence function separately by time
     calendar.inf.func.t <- simplify2array(BMisc::get_list_element(calendar.se.inner, "inf.func"))
 
@@ -756,9 +744,6 @@ compute.aggte <- function(MP,
     calendar.inf.func <- as.numeric(calendar.inf.func)
     # get overall standard error
     calendar.se <- getSE(calendar.inf.func, dp)
-    if (!is.na(calendar.se)) {
-      if (calendar.se <= sqrt(.Machine$double.eps) * 10) calendar.se <- NA
-    }
     return(AGGTEobj(
       overall.att = calendar.att,
       overall.se = calendar.se,
@@ -898,7 +883,7 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
 
   if (bstrap) {
     bout <- mboot(thisinffunc, DIDparams, return_V = FALSE)
-    return(bout$se)
+    se <- bout$se
   } else {
     # Analytical cluster-robust SE (no bootstrap): cluster sums of the aggregated influence function,
     # matching the cluster-sum aggregation of the multiplier bootstrap (CS 2021, Remark 10). Falls back to
@@ -908,8 +893,12 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
     extra_cl <- if (!is.null(DIDparams)) DIDparams$clustervars[!(DIDparams$clustervars %in% c(DIDparams$idname, ""))] else character(0)
     if (length(extra_cl) > 0 && !is.null(cv) && length(cv) == length(thisinffunc)) {
       S <- rowsum(thisinffunc, cv)
-      return(sqrt(sum(S^2)) / n)
+      se <- sqrt(sum(S^2)) / n
+    } else {
+      se <- sqrt(mean((thisinffunc)^2) / n)
     }
-    return(sqrt(mean((thisinffunc)^2) / n))
   }
+  # No absolute cutoff: the same positive variance must remain available in
+  # every outcome unit. Zero and non-finite scales cannot support inference.
+  if (!is.finite(se) || se <= 0) NA_real_ else se
 }
