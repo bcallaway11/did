@@ -1,3 +1,22 @@
+# did (development version)
+
+  * Requires `DRDID (>= 1.4.0)` so repeated-cross-section estimation and
+    inference use the corrected upstream implementation.
+  * Correct weighted-estimation feasibility checks: observations with zero
+    normalized sampling weight no longer cause false overlap failures, and
+    regression conditioning is checked using the sampling-weighted control
+    design used by DRDID.
+  * `aggte(type = "dynamic", balance_e = ...)` now requires each retained
+    cohort to have non-missing estimates at every observed event time through
+    the requested horizon, including on irregular time grids. It errors if
+    no cohort has complete support.
+  * Bootstrap inference no longer discards nonzero dimensions solely because
+    outcomes are expressed in small units.
+  * Fast preprocessing accepts used data columns named `args` or `tlist`.
+  * `conditional_did_pretest()` now resolves omitted covariates to `~1` and
+    uses the generated observation id for repeated cross sections when
+    `idname` is omitted.
+
 # did 2.5.1.902
 
   * Bug fix (`att_gt()`, balanced panel): the never-treated group is now re-checked after the panel is balanced. Balancing drops units whole, so a covariate missing in one period for every never-treated unit removed the whole group after the check had passed; every ATT(g,t) was then `NA` — silently under `faster_mode = TRUE`, and reported as "overlap condition violated" under `faster_mode = FALSE`. The last treated cohort is now used as the comparison group (as when the data contain no never-treated group), with a warning, and the estimates equal those from the balanced sample. Under `control_group = "notyettreated"` the last cohort's pre-treatment cells are no longer computed in this case (it is a comparison group only).

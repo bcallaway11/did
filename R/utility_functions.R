@@ -82,9 +82,18 @@ overlap_logit_fit <- function(x, y) {
 #' @param x covariate matrix
 #' @param y treatment indicator
 #' @param intercept_only whether `x` is a single column of ones
+#' @param i.weights sampling weights passed to the 2x2 estimator; observations
+#'  whose normalized weight is zero cannot restrict the estimator's support
 #' @return TRUE if the overlap condition is violated
 #' @noRd
-overlap_check_fail <- function(x, y, intercept_only = FALSE) {
+overlap_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
+  if (!is.null(i.weights)) {
+    supported <- (i.weights / mean(i.weights)) > 0
+    supported[is.na(supported)] <- FALSE
+    x <- x[supported, , drop = FALSE]
+    y <- y[supported]
+  }
+  if (length(y) == 0L) return(TRUE)
   if (intercept_only) {
     pbar <- mean(y)
     if (abs(pbar - 0.999) > 1e-6) return(pbar >= 0.999)
@@ -94,22 +103,34 @@ overlap_check_fail <- function(x, y, intercept_only = FALSE) {
 }
 
 #' @title rcond_check_fail
-#' @description Evaluate the per-(g,t) regression-feasibility guard, i.e.
-#'  whether `rcond(crossprod(x[controls, ]))` is below machine epsilon. For an
-#'  intercept-only design the control-unit Gram matrix is the scalar count of
-#'  control units (n0): `rcond` is exactly 1 when n0 > 0 and exactly 0 when
-#'  n0 == 0, so the test reduces to "no control units" with no Gram matrix.
+#' @description Evaluate the per-(g,t) regression-feasibility guard using the
+#'  normalized sampling-weighted control Gram matrix, as in DRDID's outcome
+#'  regression. Zero-weight observations cannot supply rank or spoil conditioning.
+#'  For an intercept-only design the weighted Gram matrix is a scalar:
+#'  `rcond` is exactly 1 when controls have positive weight and exactly 0
+#'  otherwise, so the test reduces to "no supported control units".
 #' @param x covariate matrix
 #' @param y treatment indicator (controls are `y == 0`)
 #' @param intercept_only whether `x` is a single column of ones
+#' @param i.weights sampling weights passed to the 2x2 estimator
 #' @return TRUE if the control-unit design is singular or ill-conditioned
 #' @noRd
-rcond_check_fail <- function(x, y, intercept_only = FALSE) {
+rcond_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
+  n <- length(y)
+  if (is.null(i.weights)) i.weights <- rep(1, n)
+  i.weights <- i.weights / mean(i.weights)
+  supported <- i.weights > 0
+  supported[is.na(supported)] <- FALSE
+  x <- x[supported, , drop = FALSE]
+  y <- y[supported]
+  i.weights <- i.weights[supported]
+  if (length(y) == 0L) return(TRUE)
   if (intercept_only) {
     return(!any(y == 0))
   }
   control_covs <- x[y == 0, , drop = FALSE]
-  rcond(crossprod(control_covs)) < .Machine$double.eps
+  rcond(crossprod(control_covs * i.weights[y == 0], control_covs) / n) <
+    .Machine$double.eps
 }
 
 #' @title Check User-Supplied Names Against Internal Names

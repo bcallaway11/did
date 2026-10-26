@@ -140,9 +140,11 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
 
   if (isTRUE(class(bres) == "numeric")) bres <- as.matrix(bres)
 
-  # Non-degenerate dimensions
-  # ndg.dim <- (base::colSums(bres) != 0)
-  ndg.dim <- (!is.na(colSums(bres))) & (base::colSums(bres^2) > sqrt(.Machine$double.eps)*10)
+  # Drop only non-finite or identically zero bootstrap dimensions. An absolute
+  # cutoff on their sum of squares incorrectly drops valid dimensions when the
+  # outcome is expressed in smaller units (and squaring can underflow).
+  ndg.dim <- colSums(!is.finite(bres)) == 0L &
+    colSums(bres != 0, na.rm = TRUE) > 0L
   # If NA, set it to false
   #ndg.dim[is.na(ndg.dim)] <- FALSE
   bres <- as.matrix(bres[ , ndg.dim])

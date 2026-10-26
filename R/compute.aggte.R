@@ -155,6 +155,12 @@ compute.aggte <- function(MP,
     stop("No post-treatment ATT(g,t) estimates are available to aggregate (all cells have t < g).")
   }
 
+  # Keep the observed cell support before na.rm removes estimates. An event
+  # time with all-NA estimates is still required for balancing; an event time
+  # absent from the original grid is not.
+  full_group <- group
+  full_t <- t
+
   if (na.rm) {
     notna <- !is.na(att)
     if (!any(notna)) {
@@ -264,7 +270,6 @@ compute.aggte <- function(MP,
   group <- orig2t_vec(originalgroup)
   glist <- orig2t_vec(originalglist)
   tlist <- unique(t)
-  maxT <- max(t)
 
   # Set the weights
   if (".w" %in% names(dta)) {
@@ -508,12 +513,32 @@ compute.aggte <- function(MP,
 
     # if we balance the sample with resepect to event time
     if (!is.null(balance_e)) {
-      include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance_e)
+      # Calendar reach alone does not guarantee that a cohort contributes at
+      # every event time: irregularly spaced periods can leave holes, and
+      # na.rm can remove individual ATT(g,t) cells. Require common observed
+      # post-treatment support through balance_e before applying min_e/max_e.
+      # Use the event times actually represented by the eligible cohorts so
+      # globally unobserved times do not rule out every cohort on sparse grids.
+      event_time <- originalt - originalgroup
+      full_event_time <- full_t - full_group
+      balance_max_t <- max(full_t)
+      eligible_g <- unique(full_group[balance_max_t - full_group >= balance_e])
+      required_e <- unique(full_event_time[full_group %in% eligible_g &
+                                            full_event_time >= 0 & full_event_time <= balance_e])
+      complete_g <- eligible_g[vapply(eligible_g, function(g) {
+        length(required_e) > 0L && all(required_e %in% event_time[originalgroup == g])
+      }, logical(1))]
+      if (length(complete_g) == 0L) {
+        stop("No groups have non-missing ATT(g,t) estimates at every observed ",
+             "post-treatment event time through 'balance_e'. Reduce 'balance_e' ",
+             "or inspect the missing group-time estimates.")
+      }
+      include.balanced.gt <- originalgroup %in% complete_g
 
       eseq <- unique(originalt[include.balanced.gt] - originalgroup[include.balanced.gt])
       eseq <- eseq[order(eseq)]
 
-      eseq <- eseq[(eseq <= balance_e) & (eseq >= balance_e - t2orig(maxT) + t2orig(1))]
+      eseq <- eseq[(eseq <= balance_e) & (eseq >= balance_e - balance_max_t + t2orig(1))]
     }
 
     # only looks at some event times

@@ -101,6 +101,11 @@ conditional_did_pretest <- function(yname,
   tlist <- dp$tlist
   glist <- dp$glist
   n <- dp$n
+  # Pre-processing resolves NULL to an intercept-only formula and, for
+  # repeated cross sections, creates an observation id when none is supplied.
+  # Use those resolved values in the weighting-function loop as well.
+  xformla <- dp$xformla
+  idname <- dp$idname
 
   # check if possible to do test
   # note: tlist[2] contains the 2nd time period

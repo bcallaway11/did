@@ -542,13 +542,13 @@ compute.att_gt <- function(dp) {
             # Run overlap/rank checks on RC data (not wide panel data)
             if (!is.function(est_method)) {
               if (est_method %in% c("dr", "ipw")) {
-                if (overlap_check_fail(covariates_rc, G_rc, intercept_only)) {
+                if (overlap_check_fail(covariates_rc, G_rc, intercept_only, w_rc)) {
                   warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
                 }
               }
               if (est_method %in% c("dr", "reg")) {
-                if (rcond_check_fail(covariates_rc, G_rc, intercept_only)) {
+                if (rcond_check_fail(covariates_rc, G_rc, intercept_only, w_rc)) {
                   warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                   stop("singular")
                 }
@@ -594,9 +594,9 @@ compute.att_gt <- function(dp) {
                 # check for outcome-regression methods, run only if overlap
                 # passed (matching the stop("overlap") short-circuit below)
                 overlap_fail <- (est_method %in% c("dr", "ipw")) &&
-                  overlap_check_fail(covariates, G, intercept_only)
+                  overlap_check_fail(covariates, G, intercept_only, w)
                 rcond_fail <- !overlap_fail && (est_method %in% c("dr", "reg")) &&
-                  rcond_check_fail(covariates, G, intercept_only)
+                  rcond_check_fail(covariates, G, intercept_only, w)
                 guard <- list(overlap_fail = overlap_fail, rcond_fail = rcond_fail)
                 if (use_check_cache) check_cache[[check_key]] <- guard
               }
@@ -869,7 +869,7 @@ compute.att_gt <- function(dp) {
             # checks for pscore based methods (no caching on the RC branch: the
             # cohort index varies cell by cell here)
             if (est_method %in% c("dr", "ipw")) {
-              if (overlap_check_fail(covariates, G, intercept_only)) {
+              if (overlap_check_fail(covariates, G, intercept_only, w)) {
                 warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                 stop("overlap")
               }
@@ -877,7 +877,7 @@ compute.att_gt <- function(dp) {
 
             # check if can run regression using control units
             if (est_method %in% c("dr", "reg")) {
-              if (rcond_check_fail(covariates, G, intercept_only)) {
+              if (rcond_check_fail(covariates, G, intercept_only, w)) {
                 warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                 stop("singular")
               }
