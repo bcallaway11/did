@@ -4,30 +4,40 @@
     inference use the corrected upstream implementation.
   * Correct weighted-estimation feasibility checks: observations with zero
     normalized sampling weight no longer cause false overlap failures, and
-    regression conditioning is checked using the sampling-weighted control
-    design used by DRDID.
-  * `aggte(type = "dynamic", balance_e = ...)` now requires each retained
-    cohort to have non-missing estimates at every observed event time through
-    the requested horizon, including on irregular time grids. It errors if
-    no cohort has complete support.
-  * Bootstrap inference no longer discards nonzero dimensions solely because
-    outcomes are expressed in small units.
-  * Fast preprocessing accepts used data columns named `args` or `tlist`.
-  * `conditional_did_pretest()` now resolves omitted covariates to `~1` and
-    uses the generated observation id for repeated cross sections when
-    `idname` is omitted.
-  * Behavior change (`att_gt()` with `anticipation > 0`): periods `g - anticipation`, ..., `g - 1` are now handled as anticipation periods, as in Callaway and Sant'Anna (2021). Their ATT(g,t) uses the base period `g - anticipation - 1` under `base_period = "varying"` as well as `"universal"` (under the default `"varying"`, cells inside the window used period `t - 1`, so with `anticipation >= 2` they reported the change between two anticipation periods), and they are excluded from the Wald pre-test of parallel trends, which uses only `t < g - anticipation` (with true parallel trends and a declared two-period anticipation effect the pre-test rejected in 20 of 20 simulated samples; it now rejects at the nominal rate). Results with `anticipation = 0` and all post-treatment cells are unchanged. `aggte(type = "dynamic")` reports the anticipation effects at event times `-anticipation`, ..., `-1`; the other aggregations use post-treatment cells only.
+    regression conditioning uses the sampling-weighted control design used by
+    DRDID. Unweighted checks retain their fast path without weight scans or
+    unnecessary covariate copies.
+  * `aggte(type = "dynamic", balance_e = ...)` now retains only cohorts with
+    non-missing estimates at every observed post-treatment event time through
+    the requested horizon, including on irregular grids. Balancing precedes
+    display limits, and an error explains when no complete cohort remains.
+  * Standard errors, Wald tests, and simultaneous bands no longer discard
+    finite positive variances based on absolute outcome units. Exact-zero and
+    non-finite scales remain unavailable. `att_gt()` reuses the multiplier
+    bootstrap's critical value instead of repeating its quantiles and scaling.
+  * Fast preprocessing accepts used data columns named `args`, `tlist`, or
+    `cutoff_t` without confusing them with local variables.
+  * `conditional_did_pretest()` resolves omitted covariates and observation IDs
+    and uses the actual panel structure after preprocessing. Balanced panels
+    with `allow_unbalanced_panel = TRUE` and repeated cross sections with that
+    ignored flag no longer fail as if they were unbalanced panels.
+  * The legacy conditional pre-test now supports only its justified `"ipw"`
+    method. Regression, doubly robust, and custom methods error clearly: the
+    original outcome model need not remain correct after indicator weighting,
+    so those alternatives did not inherit ordinary outcome-model robustness.
+    `att_gt()` continues to support those estimation methods.
+  * Restore the anticipation correction from PR #276, which had merged into an
+    intermediate branch without reaching master. Anticipation-window cells use
+    the clean base period under either base-period setting and are excluded
+    from the Wald pre-test. `anticipation = 0` and post-treatment estimates are
+    unchanged.
+  * Include the small-group protection and restored tests from PR #278. Built-in
+    `dr` and `reg` repeated-cross-section cells, unbalanced panels, and balanced
+    panels with `fix_weights = "varying"` check normalized positive-weight
+    support in every required outcome regression before native fitting.
+    Undersized designs warn and return an NA cell while healthy cells continue.
 
 # did 2.5.1.902
-
-  * Built-in `dr` and `reg` repeated-cross-section and unbalanced-panel cells,
-    and balanced-panel cells using `fix_weights = "varying"`, now check the number
-    of positive-weight observations after DRDID's local mean normalization in
-    each required outcome regression before native fitting.
-    Undersized designs warn and return an NA cell while keeping estimable
-    cells, including with older supported DRDID versions. The historical
-    tiny-group default-DR regression test is restored with explicit failure and
-    healthy-cell assertions.
 
   * Bug fix (`att_gt()`, balanced panel): the never-treated group is now re-checked after the panel is balanced. Balancing drops units whole, so a covariate missing in one period for every never-treated unit removed the whole group after the check had passed; every ATT(g,t) was then `NA` — silently under `faster_mode = TRUE`, and reported as "overlap condition violated" under `faster_mode = FALSE`. The last treated cohort is now used as the comparison group (as when the data contain no never-treated group), with a warning, and the estimates equal those from the balanced sample. Under `control_group = "notyettreated"` the last cohort's pre-treatment cells are no longer computed in this case (it is a comparison group only).
 
