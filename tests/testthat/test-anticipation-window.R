@@ -98,3 +98,19 @@ test_that("anticipation = 0 keeps the plain definitions (pseudo-ATTs with base t
     expect_identical(as.numeric(v$Wpval), round(1 - pchisq(as.numeric(v$W), df = sum(v$t < v$group)), 5))
   }
 })
+
+test_that("universal-base diagnostics use the actual base on irregular grids", {
+  d <- expand.grid(id = seq_len(40), time = c(1, 3, 4))
+  d$g <- ifelse(d$id <= 20, 0, 3)
+  d$y <- d$time + sin(d$id * d$time)
+  for (fm in c(TRUE, FALSE)) {
+    warnings <- capture_warnings(suppressMessages(
+      out <- att_gt("y", "time", "id", "g", data = d,
+                    base_period = "universal", faster_mode = fm,
+                    est_method = "reg", bstrap = FALSE, cband = FALSE)
+    ))
+    expect_null(out$W)
+    expect_true(any(grepl("No pre-treatment periods available", warnings)))
+    expect_false(any(grepl("missing or zero variance", warnings)))
+  }
+})

@@ -147,3 +147,30 @@ test_that("zero-IQR bootstrap draws are not reported as zero standard errors", {
   expect_true(is.na(out$se))
   expect_true(is.na(out$crit.val))
 })
+
+test_that("a single bootstrap draw retains columns and cannot estimate their scales", {
+  dp <- list(idname = "id", clustervars = NULL, biters = 1L,
+             tname = "period", alp = 0.05, panel = TRUE,
+             allow_unbalanced_panel = FALSE, faster_mode = FALSE)
+  x <- cbind(seq_len(20), 2 * seq_len(20), 3 * seq_len(20), 0, Inf, NA_real_)
+  set.seed(834)
+  out <- mboot(x, dp)
+  expect_identical(dim(out$bres), c(1L, 3L))
+  expect_length(out$se, ncol(x))
+  expect_true(all(is.na(out$se)))
+  expect_true(is.na(out$crit.val))
+
+  d <- .inference_units_data()
+  for (fm in c(TRUE, FALSE)) {
+    set.seed(835)
+    out <- suppressWarnings(att_gt(
+      "Y", "period", "id", "G", data = d, xformla = ~X,
+      faster_mode = fm, bstrap = TRUE, cband = TRUE, biters = 1L
+    ))
+    expect_true(all(is.na(out$se)))
+    expect_false(out$DIDparams$cband)
+    expect_equal(out$c, stats::qnorm(0.975))
+    # The analytical covariance still supports the separate Wald pre-test.
+    expect_true(is.finite(as.numeric(out$W)))
+  }
+})

@@ -662,7 +662,14 @@ att_gt <- function(yname,
     # no-pre-periods warning can distinguish "no pre-treatment cells exist"
     # from "all pre-treatment cells were dropped for NA/zero variance"
     # (the universal base cell is normalized to 0 and does not count)
-    n_pre_cells <- if (base_period == "universal") sum(tt[pre] != group[pre] - anticipation - 1) else length(pre)
+    if (base_period == "universal" && length(pre) > 0L) {
+      time_grid <- if (faster_mode) dp$time_periods else dp$tlist
+      base_times <- time_grid[findInterval(group[pre] - anticipation, time_grid,
+                                           left.open = TRUE)]
+      n_pre_cells <- sum(tt[pre] != base_times)
+    } else {
+      n_pre_cells <- length(pre)
+    }
 
     # Drop group-periods that have variance equal to zero (singularity problems)
     if (length(zero_na_sd_entry) > 0) {

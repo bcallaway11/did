@@ -147,7 +147,7 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
     colSums(bres != 0, na.rm = TRUE) > 0L
   # If NA, set it to false
   #ndg.dim[is.na(ndg.dim)] <- FALSE
-  bres <- as.matrix(bres[ , ndg.dim])
+  bres <- as.matrix(bres[ , ndg.dim, drop = FALSE])
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases).
   # Computed only on request: no internal caller consumes it, and it is the only
