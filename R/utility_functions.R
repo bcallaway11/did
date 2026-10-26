@@ -163,9 +163,16 @@ rc_outcome_has_too_few_obs <- function(D, post, i.weights, n_covariates,
                                       include_treated = TRUE) {
   scale <- mean(i.weights)
   if (!is.finite(scale) || scale <= 0) return(TRUE)
-  normalized <- i.weights / scale
-  positive <- is.finite(normalized) & normalized > 0
-  counts <- tabulate(1L + post[positive] + 2L * D[positive], nbins = 4L)
+  # Ordinary positive weights retain every row after this local normalization.
+  # Avoid allocating the normalized vector, support mask, and two row subsets.
+  # Underflow and zero weights still take the exact normalized-support route.
+  if (isTRUE(min(i.weights) / scale > 0)) {
+    counts <- tabulate(1L + post + 2L * D, nbins = 4L)
+  } else {
+    normalized <- i.weights / scale
+    positive <- is.finite(normalized) & normalized > 0
+    counts <- tabulate(1L + post[positive] + 2L * D[positive], nbins = 4L)
+  }
   required <- if (include_treated) 1:4 else 1:2
   any(counts[required] < n_covariates)
 }

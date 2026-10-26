@@ -515,18 +515,30 @@ compute.aggte <- function(MP,
       event_time <- originalt - originalgroup
       full_event_time <- full_t - full_group
       balance_max_t <- max(full_t)
-      eligible_g <- unique(full_group[balance_max_t - full_group >= balance_e])
-      required_e <- unique(full_event_time[full_group %in% eligible_g &
+      eligible_full <- balance_max_t - full_group >= balance_e
+      eligible_g <- unique(full_group[eligible_full])
+      required_e <- unique(full_event_time[eligible_full &
                                             full_event_time >= 0 & full_event_time <= balance_e])
-      complete_g <- eligible_g[vapply(eligible_g, function(g) {
-        length(required_e) > 0L && all(required_e %in% event_time[originalgroup == g])
-      }, logical(1))]
-      if (length(complete_g) == 0L) {
+      n_required_e <- length(required_e)
+      complete <- logical(length(eligible_g))
+      if (n_required_e > 0L) {
+        # Count distinct (group, event-time) pairs in one pass rather than
+        # rescanning every cell for each group. Integer indices encode pairs
+        # without depending on the magnitude or spacing of the original times.
+        group_index <- match(originalgroup, eligible_g, nomatch = 0L)
+        event_index <- match(event_time, required_e, nomatch = 0L)
+        present <- group_index > 0L & event_index > 0L
+        present_g <- group_index[present]
+        pair_key <- present_g + length(eligible_g) * (as.double(event_index[present]) - 1)
+        counts <- tabulate(present_g[!duplicated(pair_key)], nbins = length(eligible_g))
+        complete <- counts == n_required_e
+      }
+      if (!any(complete)) {
         stop("No groups have non-missing ATT(g,t) estimates at every observed ",
              "post-treatment event time through 'balance_e'. Reduce 'balance_e' ",
              "or inspect the missing group-time estimates.")
       }
-      include.balanced.gt <- originalgroup %in% complete_g
+      include.balanced.gt <- c(FALSE, complete)[group_index + 1L]
 
       eseq <- unique(originalt[include.balanced.gt] - originalgroup[include.balanced.gt])
       eseq <- eseq[order(eseq)]
