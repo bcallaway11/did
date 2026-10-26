@@ -88,10 +88,15 @@ overlap_logit_fit <- function(x, y) {
 #' @noRd
 overlap_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
   if (!is.null(i.weights)) {
-    supported <- (i.weights / mean(i.weights)) > 0
-    supported[is.na(supported)] <- FALSE
-    x <- x[supported, , drop = FALSE]
-    y <- y[supported]
+    weight_mean <- mean(i.weights)
+    # Positive normalized support is the usual case. Test its lower bound
+    # without allocating a normalized vector or copying the whole design.
+    if (!isTRUE(min(i.weights) / weight_mean > 0)) {
+      supported <- (i.weights / weight_mean) > 0
+      if (anyNA(supported)) supported[is.na(supported)] <- FALSE
+      x <- x[supported, , drop = FALSE]
+      y <- y[supported]
+    }
   }
   if (length(y) == 0L) return(TRUE)
   if (intercept_only) {
@@ -117,19 +122,32 @@ overlap_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
 #' @noRd
 rcond_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
   n <- length(y)
-  if (is.null(i.weights)) i.weights <- rep(1, n)
-  i.weights <- i.weights / mean(i.weights)
-  supported <- i.weights > 0
-  supported[is.na(supported)] <- FALSE
-  x <- x[supported, , drop = FALSE]
-  y <- y[supported]
-  i.weights <- i.weights[supported]
-  if (length(y) == 0L) return(TRUE)
-  if (intercept_only) {
-    return(!any(y == 0))
+  controls <- y == 0
+  if (!any(controls)) return(TRUE)
+  if (is.null(i.weights)) {
+    # With no user weights, retain the original unweighted rank guard.
+    if (intercept_only) return(FALSE)
+    control_covs <- x[controls, , drop = FALSE]
+    return(rcond(crossprod(control_covs)) < .Machine$double.eps)
   }
-  control_covs <- x[y == 0, , drop = FALSE]
-  rcond(crossprod(control_covs * i.weights[y == 0], control_covs) / n) <
+  # Constant positive weights normalize to one. Avoid normalizing and copying
+  # the full design, while retaining the same normalized control Gram matrix.
+  # Keep the two-matrix crossprod call even at unit weights: its roundoff can
+  # differ from the symmetric crossprod shortcut near the rank cutoff.
+  weight_min <- min(i.weights)
+  constant_weights <- isTRUE(weight_min > 0 && weight_min == max(i.weights))
+  if (constant_weights) {
+    if (intercept_only) return(FALSE)
+    control_covs <- x[controls, , drop = FALSE]
+    return(rcond(crossprod(control_covs * 1, control_covs) / n) < .Machine$double.eps)
+  }
+  i.weights <- i.weights / mean(i.weights)
+  controls <- controls & i.weights > 0
+  if (anyNA(controls)) controls[is.na(controls)] <- FALSE
+  if (!any(controls)) return(TRUE)
+  if (intercept_only) return(FALSE)
+  control_covs <- x[controls, , drop = FALSE]
+  rcond(crossprod(control_covs * i.weights[controls], control_covs) / n) <
     .Machine$double.eps
 }
 
