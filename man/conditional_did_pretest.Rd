@@ -68,15 +68,11 @@ using a panel dataset, the variable \code{idname} must
 be set.  When \code{panel=FALSE}, the data is treated
 as repeated cross sections.}
 
-\item{allow_unbalanced_panel}{Whether or not function should
-"balance" the panel with respect to time and id.  The default
-value is \code{FALSE} which means that \code{\link[=att_gt]{att_gt()}} will drop
-all units where data is not observed in all periods.
-The advantage of this is that the computations are faster
-(sometimes substantially).  A cohort that loses all of its units
-this way is dropped with a warning.  This argument is ignored when
-\code{panel=FALSE}: repeated cross sections have no panel structure
-to balance.}
+\item{allow_unbalanced_panel}{Passed to panel preprocessing. The default
+\code{FALSE} balances the panel by dropping units observed in only some periods.
+With \code{TRUE}, an already balanced panel is accepted, but a genuinely
+unbalanced panel is not supported by this conditional pre-test. Ignored
+when \code{panel = FALSE}.}
 
 \item{control_group}{Which units to use as the control group.
 The default is "nevertreated" which sets the control group
@@ -123,11 +119,12 @@ included here but is redundant and is ignored; beyond \code{idname}, at most
 one (coarser) clustering variable is supported (otherwise an error is
 thrown).}
 
-\item{est_method}{the method to compute group-time average treatment
-effects.  The default for \code{conditional_did_pretest} is "ipw" for
-inverse probability weighting.  Other built-in methods include "dr"
-which uses the doubly robust approach in the \code{DRDID} package and "reg"
-for first step regression estimators.}
+\item{est_method}{The estimation method for the conditional moments.
+Only "ipw" (the default), for inverse probability weighting, is supported.
+This test requires a correctly specified propensity score model.
+Regression ("reg"), doubly robust ("dr"), and custom estimation methods
+are not supported by this legacy test. For pre-treatment tests using
+those estimation methods, see the tests reported by \code{\link[=att_gt]{att_gt()}}.}
 
 \item{print_details}{Not used by the pre-test.  Progress details are
 suppressed during the pre-test computations regardless of this argument.}
@@ -146,6 +143,15 @@ an \code{\link{MP.TEST}} object
 \description{
 An integrated moments test for the conditional parallel trends
 assumption holding in all pre-treatment time periods for all groups
+}
+\details{
+The conditional moments use outcomes multiplied by covariate indicator
+functions. A correctly specified outcome regression for the original
+outcome need not remain correctly specified for every indicator-weighted
+outcome. Consequently, refitting the original regression model to those
+outcomes does not provide a valid regression or doubly robust conditional
+test under correctness of the original outcome model alone. This function
+implements the inverse probability weighted test only.
 }
 \examples{
 \dontrun{
