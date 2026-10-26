@@ -1,0 +1,38 @@
+$source_head
+[1] "1a16c46cac7d184b486da556db7c855995d78422"
+
+$source_diff
+[1] " R/att_gt.R                                    |  9 ++++++++-"                  
+[2] " R/compute.aggte.R                             | 26 +++++++++++++++++++-------" 
+[3] " R/mboot.R                                     |  2 +-"                         
+[4] " R/utility_functions.R                         | 13 ++++++++++---"              
+[5] " tests/testthat/test-anticipation-window.R     | 16 ++++++++++++++++"           
+[6] " tests/testthat/test-inference-outcome-units.R | 27 +++++++++++++++++++++++++++"
+[7] " 6 files changed, 81 insertions(+), 12 deletions(-)"                            
+
+$source_hashes
+                         R/aggte.R                       R/AGGTEobj.R 
+"2d062b18289126f8dba5a67392839b73" "47e4652e98e07951213dbde1768eb87d" 
+                        R/att_gt.R                  R/compute.aggte.R 
+"bb904b188e78220fd22cf27624d0bef2" "0d956959d1261461640c1dd1b1fde133" 
+                R/compute.att_gt.R                R/compute.att_gt2.R 
+"46411357aea90ce0eee2e2e985a67ac0" "ce78ad65c44926b4bcb68509f151fa3e" 
+       R/conditional_did_pretest.R                           R/data.R 
+"29768bf9a07d8dec9b76183c5dae4a28" "0301b6b87092194b31d66260eb39c97b" 
+                     R/DIDparams.R                     R/DIDparams2.R 
+"1d3ce273c192fc7a0b77042699c16b97" "d7596012220776ff81e9772ae68a21a2" 
+                         R/ggdid.R                          R/gplot.R 
+"55f186443457b0bb9f022bd3191c5a95" "429d320b12cdc603f689ae2a715b51dd" 
+         R/honest_did/honest_did.R                        R/imports.R 
+"efc136cc0805a180cd101d5e799a071b" "c4385e20eca846d0e0b3c35c97ce4243" 
+                         R/mboot.R                             R/MP.R 
+"55656e2f6cdd3d1b40b6f140c304ea14" "85adea7bd7eea34d70597349526359a8" 
+                       R/MP.TEST.R                R/pre_process_did.R 
+"aafbe2d731fd354e4da57bfc05bed9bd" "581a7a33acccb559566f028e816b0404" 
+              R/pre_process_did2.R                  R/process_attgt.R 
+"90f155f7497bc59c631b51ac4ede3a9a" "735b44be0c59c0c6b0fae2c0de33db48" 
+                 R/simulate_data.R                           R/tidy.R 
+"cde999a7898c9eb130346fa21ee14f08" "4b5b2395b86cf6bb7ffe6128aed05bc8" 
+             R/utility_functions.R                            R/zzz.R 
+"359a2ac452f8836a0b618eea0f966b35" "78ea69d652140b604b79f12fe0b42614" 
+
