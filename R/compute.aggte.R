@@ -811,15 +811,41 @@ wif <- function(keepers, pg, weights.ind, G, group) {
   if (length(keepers) == 0L) {
     return(matrix(numeric(0), nrow = length(weights.ind), ncol = 0L))
   }
-  Spg <- sum(pg[keepers])
+  selected.pg <- pg[keepers]
+  Spg <- sum(selected.pg)
   centered <- sapply(keepers, function(k) {
     weights.ind * 1 * BMisc::TorF(G == group[k]) - pg[k]
   })
 
-  # effect of estimating weights in the numerator
-  if1 <- centered / Spg
-  # effect of estimating weights in the denominator
-  if2 <- base::rowSums(centered) %*% t(pg[keepers] / (Spg^2))
+  # Preserve the ordinary arithmetic, but avoid squaring an otherwise valid
+  # sampling-weight scale into zero or infinity. These weights are ratios, so
+  # their influence functions must be invariant to a common weight scale.
+  Spg2 <- Spg^2
+  denominator.weights <- selected.pg / Spg2
+  valid.mass <- all(is.finite(selected.pg)) && all(selected.pg >= 0) &&
+    any(selected.pg > 0)
+  if (valid.mass && (!is.finite(Spg2) || Spg2 < .Machine$double.xmin ||
+      any(!is.finite(denominator.weights)) ||
+      any(denominator.weights < .Machine$double.xmin & selected.pg > 0))) {
+    if (is.finite(Spg)) {
+      if1 <- centered / Spg
+      shares <- selected.pg / Spg
+    } else {
+      # The selected masses may repeat a cohort across periods, so their sum
+      # can overflow even though every individual mass is finite.
+      mass.scale <- max(selected.pg)
+      scaled.pg <- selected.pg / mass.scale
+      scaled.sum <- sum(scaled.pg)
+      if1 <- (centered / mass.scale) / scaled.sum
+      shares <- scaled.pg / scaled.sum
+    }
+    if2 <- base::rowSums(if1) %*% t(shares)
+  } else {
+    # effect of estimating weights in the numerator
+    if1 <- centered / Spg
+    # effect of estimating weights in the denominator
+    if2 <- base::rowSums(centered) %*% t(denominator.weights)
+  }
 
   # return the influence function for the weights
   if1 - if2

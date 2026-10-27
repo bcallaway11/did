@@ -1,5 +1,8 @@
 # did (development version)
 
+  * Avoid overflow and underflow in the estimated aggregation-weight contribution
+    to influence functions. This corrects aggregate standard errors at extreme
+    common sampling-weight scales without changing ordinary-scale arithmetic.
   * Requires `DRDID (>= 1.4.0)` so repeated-cross-section estimation and
     inference use the corrected upstream implementation.
   * Correct weighted-estimation feasibility checks: observations with zero
