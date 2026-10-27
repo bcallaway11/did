@@ -140,12 +140,14 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
 
   if (isTRUE(class(bres) == "numeric")) bres <- as.matrix(bres)
 
-  # Non-degenerate dimensions
-  # ndg.dim <- (base::colSums(bres) != 0)
-  ndg.dim <- (!is.na(colSums(bres))) & (base::colSums(bres^2) > sqrt(.Machine$double.eps)*10)
+  # Drop only non-finite or identically zero bootstrap dimensions. An absolute
+  # cutoff on their sum of squares incorrectly drops valid dimensions when the
+  # outcome is expressed in smaller units (and squaring can underflow).
+  ndg.dim <- colSums(!is.finite(bres)) == 0L &
+    colSums(bres != 0, na.rm = TRUE) > 0L
   # If NA, set it to false
   #ndg.dim[is.na(ndg.dim)] <- FALSE
-  bres <- as.matrix(bres[ , ndg.dim])
+  bres <- as.matrix(bres[ , ndg.dim, drop = FALSE])
 
   # bootstrap variance matrix (this matrix can be defective because of degenerate cases).
   # Computed only on request: no internal caller consumes it, and it is the only
@@ -163,6 +165,9 @@ mboot <- function(inf.func, DIDparams, pl = FALSE, cores = 1, return_V = TRUE) {
     nb <- length(b)
     (b[ceiling(.75 * nb)] - b[ceiling(.25 * nb)]) / iqr_norm
   })
+  # A zero/non-finite IQR scale cannot studentize a bootstrap dimension.
+  # Retain arbitrarily small positive scales regardless of outcome units.
+  bSigma[!is.finite(bSigma) | bSigma <= 0] <- NA_real_
 
   # critical value for uniform confidence band: per bootstrap draw, the max over
   # columns of |b / bSigma|. Vectorized as a column-fold of pmax (equivalent to the

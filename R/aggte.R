@@ -23,8 +23,12 @@
 #'  the sample with respect to event time.  For example, if `balance_e=2`,
 #'  `aggte` will drop groups that are not exposed to treatment for
 #'  at least three periods. (the initial period when `e=0` as well as the
-#'  next two periods when `e=1` and the `e=2`).  This ensures that
-#'  the composition of groups does not change when event time changes.
+#'  next two periods when `e=1` and the `e=2`). Each retained group must
+#'  have a non-missing ATT estimate at every observed post-treatment event
+#'  time through `balance_e`, so the composition of groups does not change
+#'  across those event times. On irregular time grids, only event times
+#'  observed among the eligible groups are required. Balancing is done before
+#'  applying `min_e` and `max_e`; an error is returned if no group remains.
 #' @param min_e The smallest event time (length of exposure, `e = t - g`,
 #'  measured in the same units as `tname`) to include.  By default,
 #'  `min_e = -Inf` so that effects at all lengths of exposure are included.

@@ -39,24 +39,14 @@ This should be a positive number for all observations in treated groups.
 It defines which "group" a unit belongs to.  It should be 0 for units
 in the untreated group.}
 
-\item{xformla}{A formula for the covariates to include in the
-model.  It should be of the form \code{~ X1 + X2}.  Default
-is NULL which is equivalent to \code{xformla=~1}.  This is
-used to create a matrix of covariates which is then passed
-to the 2x2 DID estimator chosen in \code{est_method}.
-
-For time-varying covariates: (1) With balanced panel data,
-in each 2x2 comparison, the covariates
-are taken to be the value of the covariates in the earlier time
-period, and all of the underlying computations involve changes in Y
-as a function of those values of covariates.  (2) With repeated cross
-sections data and unbalanced panel data, the covariates are taken
-from each time period and computations involve Y_post conditional
-on X_post minus Y_pre conditional on X_pre.  A byproduct of this
-is that, with balanced panel data and in the presence of
-time-varying covariates, it is possible to get different numerical
-results according to whether or not \code{allow_unbalanced_panel=TRUE} or
-\code{FALSE}.}
+\item{xformla}{A formula such as \code{~ X1 + X2} specifying covariates for the
+propensity score model and the indicator weighting functions. The default
+\code{NULL} is equivalent to \code{~1}. For panel data, use conditioning variables
+that are fixed within each unit across periods. If raw covariates vary
+over time, create explicit unit-level baseline copies and include those
+copies in \code{xformla}; the test then conditions on those fixed baseline
+variables. For repeated cross sections (\code{panel = FALSE}), each observation's
+observed covariates are used.}
 
 \item{data}{The name of the data.frame that contains the data}
 
@@ -68,15 +58,11 @@ using a panel dataset, the variable \code{idname} must
 be set.  When \code{panel=FALSE}, the data is treated
 as repeated cross sections.}
 
-\item{allow_unbalanced_panel}{Whether or not function should
-"balance" the panel with respect to time and id.  The default
-value is \code{FALSE} which means that \code{\link[=att_gt]{att_gt()}} will drop
-all units where data is not observed in all periods.
-The advantage of this is that the computations are faster
-(sometimes substantially).  A cohort that loses all of its units
-this way is dropped with a warning.  This argument is ignored when
-\code{panel=FALSE}: repeated cross sections have no panel structure
-to balance.}
+\item{allow_unbalanced_panel}{Passed to panel preprocessing. The default
+\code{FALSE} balances the panel by dropping units observed in only some periods.
+With \code{TRUE}, an already balanced panel is accepted, but a genuinely
+unbalanced panel is not supported by this conditional pre-test. Ignored
+when \code{panel = FALSE}.}
 
 \item{control_group}{Which units to use as the control group.
 The default is "nevertreated" which sets the control group
@@ -123,11 +109,12 @@ included here but is redundant and is ignored; beyond \code{idname}, at most
 one (coarser) clustering variable is supported (otherwise an error is
 thrown).}
 
-\item{est_method}{the method to compute group-time average treatment
-effects.  The default for \code{conditional_did_pretest} is "ipw" for
-inverse probability weighting.  Other built-in methods include "dr"
-which uses the doubly robust approach in the \code{DRDID} package and "reg"
-for first step regression estimators.}
+\item{est_method}{The estimation method for the conditional moments.
+Only "ipw" (the default), for inverse probability weighting, is supported.
+This test requires a correctly specified propensity score model.
+Regression ("reg"), doubly robust ("dr"), and custom estimation methods
+are not supported by this legacy test. For pre-treatment tests using
+those estimation methods, see the tests reported by \code{\link[=att_gt]{att_gt()}}.}
 
 \item{print_details}{Not used by the pre-test.  Progress details are
 suppressed during the pre-test computations regardless of this argument.}
@@ -146,6 +133,24 @@ an \code{\link{MP.TEST}} object
 \description{
 An integrated moments test for the conditional parallel trends
 assumption holding in all pre-treatment time periods for all groups
+}
+\details{
+The conditional moments use outcomes multiplied by covariate indicator
+functions. A correctly specified outcome regression for the original
+outcome need not remain correctly specified for every indicator-weighted
+outcome. Consequently, refitting the original regression model to those
+outcomes does not provide a valid regression or doubly robust conditional
+test under correctness of the original outcome model alone. This function
+implements the inverse probability weighted test only.
+
+For panel data, the indicator weighting functions use the covariate vector
+from the first observed period. The conditional null is formulated using
+a fixed vector of conditioning variables throughout the pre-treatment
+comparisons. The legacy test is not justified as a test of separate
+conditional nulls whose conditioning variables change with the baseline
+period of each group-time comparison. Supplying time-varying raw panel
+covariates does not establish that different interpretation; choose and
+supply fixed baseline variables explicitly when that is the intended null.
 }
 \examples{
 \dontrun{

@@ -153,9 +153,9 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
         # for outcome-regression methods, run only if overlap passed (matching
         # the early return on overlap failure below)
         overlap_fail <- (dp2$est_method %in% c("dr", "ipw")) &&
-          overlap_check_fail(covariates, D_vec, intercept_only)
+          overlap_check_fail(covariates, D_vec, intercept_only, if (is.null(dp2$weightsname)) NULL else i.weights)
         rcond_fail <- !overlap_fail && (dp2$est_method %in% c("dr", "reg")) &&
-          rcond_check_fail(covariates, D_vec, intercept_only)
+          rcond_check_fail(covariates, D_vec, intercept_only, if (is.null(dp2$weightsname)) NULL else i.weights)
         guard <- list(overlap_fail = overlap_fail, rcond_fail = rcond_fail)
         if (!is.null(check_cache_key)) dp2$.check_cache[[check_cache_key]] <- guard
       }
@@ -307,7 +307,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
       # checks for pscore based methods (no caching on the RC branch: the
       # cohort index varies cell by cell here)
       if (dp2$est_method %in% c("dr", "ipw")) {
-        if (overlap_check_fail(covariates, D_vec, intercept_only)) {
+        if (overlap_check_fail(covariates, D_vec, intercept_only, if (is.null(dp2$weightsname)) NULL else i.weights)) {
           warning(paste0("overlap condition violated", gt_label))
           return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
                       if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
@@ -316,7 +316,7 @@ run_DRDID <- function(cohort_data, covariates, dp2, g_val = NULL, t_val = NULL,
 
       # check if can run regression using control units
       if (dp2$est_method %in% c("dr", "reg")) {
-        if (rcond_check_fail(covariates, D_vec, intercept_only)) {
+        if (rcond_check_fail(covariates, D_vec, intercept_only, if (is.null(dp2$weightsname)) NULL else i.weights)) {
           warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned", gt_label, "; consider centering/rescaling covariates or removing collinear terms"))
           return(list(att = NA, if_i = if (do_inf) seq_len(n_inf) else NULL,
                       if_x = if (do_inf) rep(NA_real_, n_inf) else NULL))
@@ -440,8 +440,9 @@ run_att_gt_estimation <- function(g, t, dp2){
     pret <- pret_g
   }
 
-  # check if in post-treatment period
-  if ((dp2$treated_groups[g] <= dp2$time_periods[(t+tfac)])) {
+  # check if in post-treatment period (anticipation periods, t >= g - anticipation,
+  # also use the base period g - anticipation - 1)
+  if ((dp2$treated_groups[g] - dp2$anticipation <= dp2$time_periods[(t+tfac)])) {
 
     # update pre-period if in post-treatment period to
     # be  period (g-delta-1)

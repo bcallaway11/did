@@ -40,17 +40,19 @@ validate_args <- function(args, data){
   checkvar_message <- "__ARG__ must be NULL or a character scalar that is a name of a column from the dataset."
   dreamerr::check_set_arg(args$weightsname, args$clustervars, "NULL | match", .choices = data_names, .message = checkvar_message, .up = 1)
 
+  # Access argument-named columns outside data.table expressions. Otherwise a
+  # user column named "args" shadows this function's argument list.
   # check if time periods are numeric
-  if(!data[, is.numeric(get(args$tname))]){stop("The time variable '", args$tname, "' must be numeric. Please convert it.")}
+  if(!is.numeric(data[[args$tname]])){stop("The time variable '", args$tname, "' must be numeric. Please convert it.")}
 
   # Check if gname is numeric
-  if(!data[, is.numeric(get(args$gname))]){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
+  if(!is.numeric(data[[args$gname]])){stop("The group variable '", args$gname, "' must be numeric. Please convert it.")}
 
   # gname must be 0 (never-treated) or a positive treatment-timing value;
   # negative codes are not supported (0 is reserved for never-treated). Reject
   # them up front so the fast and slow paths behave identically (the fast path
   # previously accepted negative codes silently while the slow path errored).
-  if (data[, any(get(args$gname) < 0, na.rm = TRUE)]) {
+  if (any(data[[args$gname]] < 0, na.rm = TRUE)) {
     stop("The group variable '", args$gname, "' must be 0 (never-treated) or a ",
          "positive treatment-timing value; negative values are not supported. ",
          "If your time periods are non-positive, shift them so the earliest ",
@@ -58,7 +60,7 @@ validate_args <- function(args, data){
   }
 
   # Check if yname is numeric (logical 0/1 outcomes are also allowed)
-  if(!data[, is.numeric(get(args$yname)) || is.logical(get(args$yname))]){stop("The outcome variable '", args$yname, "' must be numeric. Please convert it.")}
+  if(!(is.numeric(data[[args$yname]]) || is.logical(data[[args$yname]]))){stop("The outcome variable '", args$yname, "' must be numeric. Please convert it.")}
 
   # Flag for idname
   if(!is.null(args$idname)){
@@ -67,7 +69,7 @@ validate_args <- function(args, data){
     dreamerr::check_set_arg(args$idname, "match", .choices = data_names, .message = name_message, .up = 1)
 
     #  check if idname is numeric
-    if(!data[, is.numeric(get(args$idname))]){stop("The id variable '", args$idname, "' must be numeric. Please convert it.")}
+    if(!is.numeric(data[[args$idname]])){stop("The id variable '", args$idname, "' must be numeric. Please convert it.")}
 
     # With user-level panel = FALSE the data are genuine repeated cross sections:
     # every observation is its own sampling unit, so a supplied idname must not
@@ -117,7 +119,7 @@ validate_args <- function(args, data){
     # no within-unit time variation to check and idname is not yet available here -- skip the check then.
     if (length(args$clustervars) > 0 && !is.null(args$idname)) {
       # Efficiently check for time-varying cluster variables
-      clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = get(args$idname), .SDcols = args$clustervars]
+      clust_tv <- data[, lapply(.SD, function(col) length(unique(col)) == 1), by = c(args$idname), .SDcols = args$clustervars]
       # If any cluster variable varies over time within any unit, stop execution
       # (same wording as the slow path and mboot())
       if (!all(unlist(clust_tv[, -1, with = FALSE]))) {
@@ -159,22 +161,23 @@ did_standardization <- function(data, args){
   data <- data[, ..cols_to_keep]
 
   # Check if any covariates were missing
-  n_orig <- data[, .N]
+  n_orig <- nrow(data)
   # gname is excluded from the finite check because Inf is a valid never-treated
   # code there (see complete_finite_cases); missing/NaN gname is still dropped.
-  data <- data[complete_finite_cases(data, finite_exclude = args$gname)]
+  finite_rows <- complete_finite_cases(data, finite_exclude = args$gname)
+  data <- data[finite_rows]
   # also drop rows whose EVALUATED design is missing/non-finite (e.g. log of a non-positive
   # covariate); safe now that raw-covariate NAs are removed (so poly()/ns()/... will
   # not error on NA input). Use model.frame (NOT model.matrix) with na.action =
   # na.pass: model.frame keeps every row -- including NA/NaN-valued terms -- so the
   # complete.cases() mask stays aligned with `data` (model.matrix would silently drop
   # NaN rows, shortening the mask and letting the offending rows survive).
-  if (length(xvars) > 0L && data[, .N] > 0L) {
+  if (length(xvars) > 0L && nrow(data) > 0L) {
     mf_check <- suppressWarnings(model.frame(args$xformla, data = data, na.action = na.pass))
     finite_rows <- complete_finite_cases(mf_check)
     if (!all(finite_rows)) data <- data[finite_rows]
   }
-  n_new <- data[, .N]
+  n_new <- nrow(data)
   n_diff <- n_orig - n_new
   if (n_diff != 0) {
     warning(paste0("dropped ", n_diff, " rows from original data due to missing or non-finite data"))
@@ -214,15 +217,15 @@ did_standardization <- function(data, args){
   }
 
   # get a list of dates from min to max
-  tlist <- data[, sort(unique(get(args$tname)))]
+  tlist <- sort(unique(data[[args$tname]]))
 
   # Ensure gname column is numeric (double) so it can hold Inf
   if (is.integer(data[[args$gname]])) {
-    data[, (args$gname) := as.numeric(get(args$gname))]
+    set(data, j = args$gname, value = as.numeric(data[[args$gname]]))
   }
 
   # Coerce control group identified with zero as Inf
-  data[get(args$gname) == 0, (args$gname) := Inf]
+  set(data, i = which(data[[args$gname]] == 0), j = args$gname, value = Inf)
 
   # Working out the dates
   # Identify groups with treatment time bigger than the maximum treatment time + anticipation.
@@ -276,14 +279,16 @@ did_standardization <- function(data, args){
       )
 
       # Drop all periods ≥ (latest_g - anticipation)
-      data <- data[get(args$tname) < cutoff_t]
+      keep_periods <- data[[args$tname]] < cutoff_t
+      data <- data[keep_periods]
 
       # For any row where gname == latest_g, set gname := Inf
-      data[, (args$gname) := as.numeric(get(args$gname))] # Convert the column to numeric so Inf can be stored
-      data[get(args$gname) == latest_g, (args$gname) := Inf]
+      set(data, j = args$gname, value = as.numeric(data[[args$gname]])) # Convert the column to numeric so Inf can be stored
+      set(data, i = which(data[[args$gname]] == latest_g), j = args$gname, value = Inf)
     } else {
       # 3. If not "nevertreated", we simply drop those periods and leave gnames alone
-      data <- data[get(args$tname) < cutoff_t]
+      keep_periods <- data[[args$tname]] < cutoff_t
+      data <- data[keep_periods]
     }
     if (nrow(data) == 0) {
       stop("No periods before the last treated cohort's treatment date (net of anticipation) remain. Check that 'gname' is measured on the same scale as 'tname'.")
@@ -331,8 +336,8 @@ did_standardization <- function(data, args){
     data <- data[!treated_first_period]
 
     # update tlist and glist
-    tlist <- data[, sort(unique(get(args$tname)))]
-    glist <- data[, sort(unique(get(args$gname)))]
+    tlist <- sort(unique(data[[args$tname]]))
+    glist <- sort(unique(data[[args$gname]]))
 
     # Drop groups treated in the first period or before
     first_period <- tlist[1]
@@ -404,7 +409,8 @@ did_standardization <- function(data, args){
         unit_count <- data[, .(count = .N), by = c(args$idname)]
         mis_unit_ids <- unit_count[[1L]][unit_count[[2L]] < raw_time_size]
         warning(length(mis_unit_ids), " units are missing in some periods. Converting to balanced panel by dropping them.")
-        data <- data[!(data[[args$idname]] %in% mis_unit_ids)]
+        keep_units <- !(data[[args$idname]] %in% mis_unit_ids)
+        data <- data[keep_units]
       }
 
       # If all data is dropped, stop execution
@@ -424,10 +430,11 @@ did_standardization <- function(data, args){
       if (!any(is.infinite(data[[args$gname]])) && (is.na(latest_g) || max(data[[args$gname]]) < latest_g)) {
         latest_g <- max(data[[args$gname]])
         cutoff_t <- latest_g - args$anticipation
-        data <- data[get(args$tname) < cutoff_t]
+        keep_periods <- data[[args$tname]] < cutoff_t
+        data <- data[keep_periods]
         if (args$control_group == "nevertreated") {
           warning("No never-treated group is available after converting to balanced panel (set allow_unbalanced_panel = TRUE to keep the never-treated units). The last treated cohort is being coerced as 'never-treated' units, and data from periods after that is being filtered out (no available comparison groups).")
-          data[get(args$gname) == latest_g, (args$gname) := Inf]
+          set(data, i = which(data[[args$gname]] == latest_g), j = args$gname, value = Inf)
         } else {
           warning("No never-treated group is available after converting to balanced panel (set allow_unbalanced_panel = TRUE to keep the never-treated units). The last treated cohort is used only as a comparison group, and data from periods after that is being filtered out (no available comparison groups).")
         }
@@ -460,7 +467,7 @@ did_standardization <- function(data, args){
       args$idname <- ".rowid"
     } else {
       # Set rowid to idname for repeated cross section/unbalanced
-      data[, .rowid := get(args$idname)]
+      set(data, j = ".rowid", value = data[[args$idname]])
     }
 
     # Count unique number of cross section observations
@@ -493,13 +500,16 @@ did_standardization <- function(data, args){
 
   # Check against very small groups
   # Calculate group sizes, dividing the count of each group by the length of tlist
-  gsize <- data[, .N / length(tlist), by = get(args$gname)]
+  gsize <- data[, .N, by = c(args$gname)]
+  setnames(gsize, c("group", "V1"))
+  set(gsize, j = "V1", value = gsize[[2L]] / length(tlist))
 
   # How many in each group before giving a warning
   reqsize <- length(BMisc::rhs_vars(args$xformla)) + 5
 
   # Filter groups smaller than reqsize
-  gsize <- gsize[V1 < reqsize]
+  small_group_rows <- gsize[[2L]] < reqsize
+  gsize <- gsize[small_group_rows]
 
   # Warn if some groups are small
   if (nrow(gsize) > 0) {
@@ -596,11 +606,13 @@ get_did_tensors <- function(data, args){
   #if(!args$allow_unbalanced_panel){
   if(args$panel){
     # We can do this filtering because the data is already sorted appropriately
-    invariant_data <- data[1:args$id_count]
+    first_period_rows <- seq_len(args$id_count)
+    invariant_data <- data[first_period_rows]
   } else {
     if (!args$allow_unbalanced_panel) {
       # get the first observation for each unit
-      invariant_data <- data[data[, .I[1], by = get(args$idname)]$V1]
+      first_unit_rows <- data[, .I[1], by = c(args$idname)][[2L]]
+      invariant_data <- data[first_unit_rows]
       # # order by idname
       # setorderv(invariant_data, c(args$idname), c(1))
     } else {
@@ -616,7 +628,7 @@ get_did_tensors <- function(data, args){
   cohorts <- c(args$treated_groups, Inf)
   if (args$panel) {
     # Get cohort counts
-    cohort_counts <- invariant_data[, .(cohort_size = .N) , by = get(args$gname)]
+    cohort_counts <- invariant_data[, .(cohort_size = .N) , by = c(args$gname)]
     names(cohort_counts)[1] <- "cohort" # changing the name
 
     # Get period counts: all invariant_data rows share the first time period
@@ -629,7 +641,7 @@ get_did_tensors <- function(data, args){
                                     N = cohort_counts$cohort_size)
   } else {
     # Get crosstable counts (long form): count occurrences by tname and gname
-    crosstable_counts <- invariant_data[, .N, by = .(get(args$tname), get(args$gname))]
+    crosstable_counts <- invariant_data[, .N, by = c(args$tname, args$gname)]
     names(crosstable_counts)[1] <- "period" # changing the name
     names(crosstable_counts)[2] <- "cohort" # changing the name
 

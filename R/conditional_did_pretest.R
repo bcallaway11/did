@@ -6,11 +6,25 @@
 #' @inheritParams att_gt
 #' @param weightsname The name of the column containing the sampling weights.
 #'  If not set, all observations have same weight.
-#' @param est_method the method to compute group-time average treatment
-#'  effects.  The default for `conditional_did_pretest` is "ipw" for
-#'  inverse probability weighting.  Other built-in methods include "dr"
-#'  which uses the doubly robust approach in the `DRDID` package and "reg"
-#'  for first step regression estimators.
+#' @param xformla A formula such as `~ X1 + X2` specifying covariates for the
+#'  propensity score model and the indicator weighting functions. The default
+#'  `NULL` is equivalent to `~1`. For panel data, use conditioning variables
+#'  that are fixed within each unit across periods. If raw covariates vary
+#'  over time, create explicit unit-level baseline copies and include those
+#'  copies in `xformla`; the test then conditions on those fixed baseline
+#'  variables. For repeated cross sections (`panel = FALSE`), each observation's
+#'  observed covariates are used.
+#' @param allow_unbalanced_panel Passed to panel preprocessing. The default
+#'  `FALSE` balances the panel by dropping units observed in only some periods.
+#'  With `TRUE`, an already balanced panel is accepted, but a genuinely
+#'  unbalanced panel is not supported by this conditional pre-test. Ignored
+#'  when `panel = FALSE`.
+#' @param est_method The estimation method for the conditional moments.
+#'  Only "ipw" (the default), for inverse probability weighting, is supported.
+#'  This test requires a correctly specified propensity score model.
+#'  Regression ("reg"), doubly robust ("dr"), and custom estimation methods
+#'  are not supported by this legacy test. For pre-treatment tests using
+#'  those estimation methods, see the tests reported by [att_gt()].
 #' @param bstrap Not used by the pre-test.  Critical values and p-values
 #'  for the Cramer von Mises and Kolmogorov-Smirnov test statistics are
 #'  always computed with the multiplier bootstrap (using `biters`
@@ -33,6 +47,24 @@
 #' @param cores The number of cores to use for parallel processing. This
 #'  parallelizes Step 1 (computing the test statistic); Step 2's multiplier
 #'  bootstrap is vectorized and runs in a single process.
+#'
+#' @details
+#' The conditional moments use outcomes multiplied by covariate indicator
+#' functions. A correctly specified outcome regression for the original
+#' outcome need not remain correctly specified for every indicator-weighted
+#' outcome. Consequently, refitting the original regression model to those
+#' outcomes does not provide a valid regression or doubly robust conditional
+#' test under correctness of the original outcome model alone. This function
+#' implements the inverse probability weighted test only.
+#'
+#' For panel data, the indicator weighting functions use the covariate vector
+#' from the first observed period. The conditional null is formulated using
+#' a fixed vector of conditioning variables throughout the pre-treatment
+#' comparisons. The legacy test is not justified as a test of separate
+#' conditional nulls whose conditioning variables change with the baseline
+#' period of each group-time comparison. Supplying time-varying raw panel
+#' covariates does not establish that different interpretation; choose and
+#' supply fixed baseline variables explicitly when that is the intended null.
 #'
 #' @examples
 #' \dontrun{
@@ -70,6 +102,11 @@ conditional_did_pretest <- function(yname,
                                     pl=FALSE,
                                     cores=1) {
 
+  validate_choice_scalar(
+    est_method, "est_method", "ipw",
+    "conditional_did_pretest() only supports est_method = \"ipw\". The legacy conditional-moment test is not implemented for regression (\"reg\"), doubly robust (\"dr\"), or custom estimation methods. For pre-treatment tests using those methods, see att_gt()."
+  )
+
   message("We are no longer updating this function.  It should continue to work, but most users find the pre-tests already reported by the `att_gt` function to be sufficient for most empirical applications.")
 
   if (missing(control_group)) control_group <- "nevertreated"
@@ -101,6 +138,14 @@ conditional_did_pretest <- function(yname,
   tlist <- dp$tlist
   glist <- dp$glist
   n <- dp$n
+  # Use the pre-processor's resolved data structure, formula, and observation id.
+  # A balanced panel resets allow_unbalanced_panel to FALSE; genuine repeated
+  # cross sections ignore that flag. The legacy DIDparams records unbalanced
+  # panels as panel = FALSE and true_repeated_cross_sections = FALSE.
+  xformla <- dp$xformla
+  idname <- dp$idname
+  panel <- dp$panel
+  allow_unbalanced_panel <- !panel && !dp$true_repeated_cross_sections
 
   # check if possible to do test
   # note: tlist[2] contains the 2nd time period

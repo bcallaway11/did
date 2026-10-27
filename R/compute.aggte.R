@@ -155,6 +155,12 @@ compute.aggte <- function(MP,
     stop("No post-treatment ATT(g,t) estimates are available to aggregate (all cells have t < g).")
   }
 
+  # Keep the observed cell support before na.rm removes estimates. An event
+  # time with all-NA estimates is still required for balancing; an event time
+  # absent from the original grid is not.
+  full_group <- group
+  full_t <- t
+
   if (na.rm) {
     notna <- !is.na(att)
     if (!any(notna)) {
@@ -264,7 +270,6 @@ compute.aggte <- function(MP,
   group <- orig2t_vec(originalgroup)
   glist <- orig2t_vec(originalglist)
   tlist <- unique(t)
-  maxT <- max(t)
 
   # Set the weights
   if (".w" %in% names(dta)) {
@@ -342,9 +347,6 @@ compute.aggte <- function(MP,
 
     # get standard errors from overall influence function
     simple.se <- getSE(simple.if, dp)
-    if (!is.na(simple.se)) {
-      if (simple.se <= sqrt(.Machine$double.eps) * 10) simple.se <- NA
-    }
 
 
     return(AGGTEobj(
@@ -408,7 +410,6 @@ compute.aggte <- function(MP,
 
     # recover standard errors separately by group
     selective.se.g <- unlist(BMisc::get_list_element(selective.se.inner, "se"))
-    selective.se.g[selective.se.g <= sqrt(.Machine$double.eps) * 10] <- NA
 
     # recover influence function separately by group
     selective.inf.func.g <- simplify2array(BMisc::get_list_element(selective.se.inner, "inf.func"))
@@ -465,9 +466,6 @@ compute.aggte <- function(MP,
     selective.inf.func <- as.numeric(selective.inf.func)
     # get overall standard error
     selective.se <- getSE(selective.inf.func, dp)
-    if (!is.na(selective.se)) {
-      if ((selective.se <= sqrt(.Machine$double.eps) * 10)) selective.se <- NA
-    }
 
     return(AGGTEobj(
       overall.att = selective.att,
@@ -508,12 +506,44 @@ compute.aggte <- function(MP,
 
     # if we balance the sample with resepect to event time
     if (!is.null(balance_e)) {
-      include.balanced.gt <- (t2orig(maxT) - originalgroup >= balance_e)
+      # Calendar reach alone does not guarantee that a cohort contributes at
+      # every event time: irregularly spaced periods can leave holes, and
+      # na.rm can remove individual ATT(g,t) cells. Require common observed
+      # post-treatment support through balance_e before applying min_e/max_e.
+      # Use the event times actually represented by the eligible cohorts so
+      # globally unobserved times do not rule out every cohort on sparse grids.
+      event_time <- originalt - originalgroup
+      full_event_time <- full_t - full_group
+      balance_max_t <- max(full_t)
+      eligible_full <- balance_max_t - full_group >= balance_e
+      eligible_g <- unique(full_group[eligible_full])
+      required_e <- unique(full_event_time[eligible_full &
+                                            full_event_time >= 0 & full_event_time <= balance_e])
+      n_required_e <- length(required_e)
+      complete <- logical(length(eligible_g))
+      if (n_required_e > 0L) {
+        # Count distinct (group, event-time) pairs in one pass rather than
+        # rescanning every cell for each group. Integer indices encode pairs
+        # without depending on the magnitude or spacing of the original times.
+        group_index <- match(originalgroup, eligible_g, nomatch = 0L)
+        event_index <- match(event_time, required_e, nomatch = 0L)
+        present <- group_index > 0L & event_index > 0L
+        present_g <- group_index[present]
+        pair_key <- present_g + length(eligible_g) * (as.double(event_index[present]) - 1)
+        counts <- tabulate(present_g[!duplicated(pair_key)], nbins = length(eligible_g))
+        complete <- counts == n_required_e
+      }
+      if (!any(complete)) {
+        stop("No groups have non-missing ATT(g,t) estimates at every observed ",
+             "post-treatment event time through 'balance_e'. Reduce 'balance_e' ",
+             "or inspect the missing group-time estimates.")
+      }
+      include.balanced.gt <- c(FALSE, complete)[group_index + 1L]
 
       eseq <- unique(originalt[include.balanced.gt] - originalgroup[include.balanced.gt])
       eseq <- eseq[order(eseq)]
 
-      eseq <- eseq[(eseq <= balance_e) & (eseq >= balance_e - t2orig(maxT) + t2orig(1))]
+      eseq <- eseq[(eseq <= balance_e) & (eseq >= balance_e - balance_max_t + t2orig(1))]
     }
 
     # only looks at some event times
@@ -555,7 +585,6 @@ compute.aggte <- function(MP,
     })
 
     dynamic.se.e <- unlist(BMisc::get_list_element(dynamic.se.inner, "se"))
-    dynamic.se.e[dynamic.se.e <= sqrt(.Machine$double.eps) * 10] <- NA
 
     dynamic.inf.func.e <- simplify2array(BMisc::get_list_element(dynamic.se.inner, "inf.func"))
 
@@ -597,9 +626,6 @@ compute.aggte <- function(MP,
 
     dynamic.inf.func <- as.numeric(dynamic.inf.func)
     dynamic.se <- getSE(dynamic.inf.func, dp)
-    if (!is.na(dynamic.se)) {
-      if (dynamic.se <= sqrt(.Machine$double.eps) * 10) dynamic.se <- NA
-    }
 
     return(AGGTEobj(
       overall.att = dynamic.att,
@@ -686,7 +712,6 @@ compute.aggte <- function(MP,
 
     # recover standard errors separately by time
     calendar.se.t <- unlist(BMisc::get_list_element(calendar.se.inner, "se"))
-    calendar.se.t[calendar.se.t <= sqrt(.Machine$double.eps) * 10] <- NA
     # recover influence function separately by time
     calendar.inf.func.t <- simplify2array(BMisc::get_list_element(calendar.se.inner, "inf.func"))
 
@@ -731,9 +756,6 @@ compute.aggte <- function(MP,
     calendar.inf.func <- as.numeric(calendar.inf.func)
     # get overall standard error
     calendar.se <- getSE(calendar.inf.func, dp)
-    if (!is.na(calendar.se)) {
-      if (calendar.se <= sqrt(.Machine$double.eps) * 10) calendar.se <- NA
-    }
     return(AGGTEobj(
       overall.att = calendar.att,
       overall.se = calendar.se,
@@ -873,7 +895,7 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
 
   if (bstrap) {
     bout <- mboot(thisinffunc, DIDparams, return_V = FALSE)
-    return(bout$se)
+    se <- bout$se
   } else {
     # Analytical cluster-robust SE (no bootstrap): cluster sums of the aggregated influence function,
     # matching the cluster-sum aggregation of the multiplier bootstrap (CS 2021, Remark 10). Falls back to
@@ -883,8 +905,12 @@ getSE <- function(thisinffunc, DIDparams = NULL) {
     extra_cl <- if (!is.null(DIDparams)) DIDparams$clustervars[!(DIDparams$clustervars %in% c(DIDparams$idname, ""))] else character(0)
     if (length(extra_cl) > 0 && !is.null(cv) && length(cv) == length(thisinffunc)) {
       S <- rowsum(thisinffunc, cv)
-      return(sqrt(sum(S^2)) / n)
+      se <- sqrt(sum(S^2)) / n
+    } else {
+      se <- sqrt(mean((thisinffunc)^2) / n)
     }
-    return(sqrt(mean((thisinffunc)^2) / n))
   }
+  # No absolute cutoff: the same positive variance must remain available in
+  # every outcome unit. Zero and non-finite scales cannot support inference.
+  if (!is.finite(se) || se <= 0) NA_real_ else se
 }

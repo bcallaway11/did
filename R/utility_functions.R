@@ -82,9 +82,23 @@ overlap_logit_fit <- function(x, y) {
 #' @param x covariate matrix
 #' @param y treatment indicator
 #' @param intercept_only whether `x` is a single column of ones
+#' @param i.weights sampling weights passed to the 2x2 estimator; observations
+#'  whose normalized weight is zero cannot restrict the estimator's support
 #' @return TRUE if the overlap condition is violated
 #' @noRd
-overlap_check_fail <- function(x, y, intercept_only = FALSE) {
+overlap_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
+  if (!is.null(i.weights)) {
+    weight_mean <- mean(i.weights)
+    # Positive normalized support is the usual case. Test its lower bound
+    # without allocating a normalized vector or copying the whole design.
+    if (!isTRUE(min(i.weights) / weight_mean > 0)) {
+      supported <- (i.weights / weight_mean) > 0
+      if (anyNA(supported)) supported[is.na(supported)] <- FALSE
+      x <- x[supported, , drop = FALSE]
+      y <- y[supported]
+    }
+  }
+  if (length(y) == 0L) return(TRUE)
   if (intercept_only) {
     pbar <- mean(y)
     if (abs(pbar - 0.999) > 1e-6) return(pbar >= 0.999)
@@ -94,22 +108,73 @@ overlap_check_fail <- function(x, y, intercept_only = FALSE) {
 }
 
 #' @title rcond_check_fail
-#' @description Evaluate the per-(g,t) regression-feasibility guard, i.e.
-#'  whether `rcond(crossprod(x[controls, ]))` is below machine epsilon. For an
-#'  intercept-only design the control-unit Gram matrix is the scalar count of
-#'  control units (n0): `rcond` is exactly 1 when n0 > 0 and exactly 0 when
-#'  n0 == 0, so the test reduces to "no control units" with no Gram matrix.
+#' @description Evaluate the per-(g,t) regression-feasibility guard using the
+#'  normalized sampling-weighted control Gram matrix, as in DRDID's outcome
+#'  regression. Zero-weight observations cannot supply rank or spoil conditioning.
+#'  For an intercept-only design the weighted Gram matrix is a scalar:
+#'  `rcond` is exactly 1 when controls have positive weight and exactly 0
+#'  otherwise, so the test reduces to "no supported control units".
 #' @param x covariate matrix
 #' @param y treatment indicator (controls are `y == 0`)
 #' @param intercept_only whether `x` is a single column of ones
+#' @param i.weights sampling weights passed to the 2x2 estimator
 #' @return TRUE if the control-unit design is singular or ill-conditioned
 #' @noRd
-rcond_check_fail <- function(x, y, intercept_only = FALSE) {
-  if (intercept_only) {
-    return(!any(y == 0))
+rcond_check_fail <- function(x, y, intercept_only = FALSE, i.weights = NULL) {
+  if (is.null(i.weights)) {
+    # With no user weights, retain the original unweighted rank guard.
+    if (intercept_only) return(!any(y == 0))
+    control_covs <- x[y == 0, , drop = FALSE]
+    return(rcond(crossprod(control_covs)) < .Machine$double.eps)
   }
-  control_covs <- x[y == 0, , drop = FALSE]
-  rcond(crossprod(control_covs)) < .Machine$double.eps
+  n <- length(y)
+  controls <- y == 0
+  if (!any(controls)) return(TRUE)
+  # Constant positive weights normalize to one. Avoid normalizing and copying
+  # the full design, while retaining the same normalized control Gram matrix.
+  # Keep the two-matrix crossprod call even at unit weights: its roundoff can
+  # differ from the symmetric crossprod shortcut near the rank cutoff.
+  weight_min <- min(i.weights)
+  constant_weights <- isTRUE(weight_min > 0 && weight_min == max(i.weights))
+  if (constant_weights) {
+    if (intercept_only) return(FALSE)
+    control_covs <- x[controls, , drop = FALSE]
+    return(rcond(crossprod(control_covs * 1, control_covs) / n) < .Machine$double.eps)
+  }
+  i.weights <- i.weights / mean(i.weights)
+  controls <- controls & i.weights > 0
+  if (anyNA(controls)) controls[is.na(controls)] <- FALSE
+  if (!any(controls)) return(TRUE)
+  if (intercept_only) return(FALSE)
+  control_covs <- x[controls, , drop = FALSE]
+  rcond(crossprod(control_covs * i.weights[controls], control_covs) / n) <
+    .Machine$double.eps
+}
+
+# A repeated-cross-section outcome regression needs at least as many
+# positive-weight observations as design columns in EACH fitted group/period.
+# This necessary rank condition must be checked before entering native fitting:
+# tryCatch cannot recover a native crash on an undersized design. The default
+# DR estimator fits all four regressions; regression-only fits just controls.
+# Mirror DRDID's local mean normalization: a finite positive input can round to
+# zero there. Count the actual normalized support without changing passed weights.
+# Passing this check does not establish full rank (the estimator checks that).
+rc_outcome_has_too_few_obs <- function(D, post, i.weights, n_covariates,
+                                      include_treated = TRUE) {
+  scale <- mean(i.weights)
+  if (!is.finite(scale) || scale <= 0) return(TRUE)
+  # Ordinary positive weights retain every row after this local normalization.
+  # Avoid allocating the normalized vector, support mask, and two row subsets.
+  # Underflow and zero weights still take the exact normalized-support route.
+  if (isTRUE(min(i.weights) / scale > 0)) {
+    counts <- tabulate(1L + post + 2L * D, nbins = 4L)
+  } else {
+    normalized <- i.weights / scale
+    positive <- is.finite(normalized) & normalized > 0
+    counts <- tabulate(1L + post[positive] + 2L * D[positive], nbins = 4L)
+  }
+  required <- if (include_treated) 1:4 else 1:2
+  any(counts[required] < n_covariates)
 }
 
 # A repeated-cross-section outcome regression needs at least as many

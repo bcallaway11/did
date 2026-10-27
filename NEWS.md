@@ -1,3 +1,42 @@
+# did (development version)
+
+  * Requires `DRDID (>= 1.4.0)` so repeated-cross-section estimation and
+    inference use the corrected upstream implementation.
+  * Correct weighted-estimation feasibility checks: observations with zero
+    normalized sampling weight no longer cause false overlap failures, and
+    regression conditioning uses the sampling-weighted control design used by
+    DRDID. Unweighted checks retain their fast path without weight scans or
+    unnecessary covariate copies.
+  * `aggte(type = "dynamic", balance_e = ...)` now retains only cohorts with
+    non-missing estimates at every observed post-treatment event time through
+    the requested horizon, including on irregular grids. Balancing precedes
+    display limits, and an error explains when no complete cohort remains.
+  * Standard errors, Wald tests, and simultaneous bands no longer discard
+    finite positive variances based on absolute outcome units. Exact-zero and
+    non-finite scales remain unavailable. `att_gt()` reuses the multiplier
+    bootstrap's critical value instead of repeating its quantiles and scaling.
+  * Fast preprocessing accepts used data columns named `args`, `tlist`, or
+    `cutoff_t` without confusing them with local variables.
+  * `conditional_did_pretest()` resolves omitted covariates and observation IDs
+    and uses the actual panel structure after preprocessing. Balanced panels
+    with `allow_unbalanced_panel = TRUE` and repeated cross sections with that
+    ignored flag no longer fail as if they were unbalanced panels.
+  * The legacy conditional pre-test now supports only its justified `"ipw"`
+    method. Regression, doubly robust, and custom methods error clearly: the
+    original outcome model need not remain correct after indicator weighting,
+    so those alternatives did not inherit ordinary outcome-model robustness.
+    `att_gt()` continues to support those estimation methods.
+  * Restore the anticipation correction from PR #276, which had merged into an
+    intermediate branch without reaching master. Anticipation-window cells use
+    the clean base period under either base-period setting and are excluded
+    from the Wald pre-test. `anticipation = 0` and post-treatment estimates are
+    unchanged.
+  * Include the small-group protection and restored tests from PR #278. Built-in
+    `dr` and `reg` repeated-cross-section cells, unbalanced panels, and balanced
+    panels with `fix_weights = "varying"` check normalized positive-weight
+    support in every required outcome regression before native fitting.
+    Undersized designs warn and return an NA cell while healthy cells continue.
+
 # did 2.5.1.902
 
   * Built-in `dr` and `reg` repeated-cross-section and unbalanced-panel cells,

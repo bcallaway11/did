@@ -331,8 +331,9 @@ compute.att_gt <- function(dp) {
         pret <- pret_g
       }
 
-      # check if in post-treatment period
-      if ((glist[g] <= tlist[(t + tfac)])) {
+      # check if in post-treatment period (anticipation periods, t >= g - anticipation,
+      # also use the base period g - anticipation - 1)
+      if ((glist[g] - anticipation <= tlist[(t + tfac)])) {
         # update pre-period if in post-treatment period to
         # be  period (g-delta-1)
         pret <- pret_g
@@ -347,7 +348,7 @@ compute.att_gt <- function(dp) {
       # pretest-only: skip post-treatment cells entirely (see
       # pretreatment_only above; conditional_did_pretest discards these
       # cells unread, so none of the per-cell work below is needed)
-      if (pretreatment_only && glist[g] <= tlist[t + tfac]) next
+      if (pretreatment_only && glist[g] - anticipation <= tlist[t + tfac]) next
 
       # use "not yet treated as control"
       # that is, never treated + units that are eventually treated,
@@ -550,13 +551,13 @@ compute.att_gt <- function(dp) {
               }
 
               if (est_method %in% c("dr", "ipw")) {
-                if (overlap_check_fail(covariates_rc, G_rc, intercept_only)) {
+                if (overlap_check_fail(covariates_rc, G_rc, intercept_only, if (is.null(weightsname)) NULL else w_rc)) {
                   warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                   stop("overlap")
                 }
               }
               if (est_method %in% c("dr", "reg")) {
-                if (rcond_check_fail(covariates_rc, G_rc, intercept_only)) {
+                if (rcond_check_fail(covariates_rc, G_rc, intercept_only, if (is.null(weightsname)) NULL else w_rc)) {
                   warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                   stop("singular")
                 }
@@ -602,9 +603,9 @@ compute.att_gt <- function(dp) {
                 # check for outcome-regression methods, run only if overlap
                 # passed (matching the stop("overlap") short-circuit below)
                 overlap_fail <- (est_method %in% c("dr", "ipw")) &&
-                  overlap_check_fail(covariates, G, intercept_only)
+                  overlap_check_fail(covariates, G, intercept_only, if (is.null(weightsname)) NULL else w)
                 rcond_fail <- !overlap_fail && (est_method %in% c("dr", "reg")) &&
-                  rcond_check_fail(covariates, G, intercept_only)
+                  rcond_check_fail(covariates, G, intercept_only, if (is.null(weightsname)) NULL else w)
                 guard <- list(overlap_fail = overlap_fail, rcond_fail = rcond_fail)
                 if (use_check_cache) check_cache[[check_key]] <- guard
               }
@@ -884,7 +885,7 @@ compute.att_gt <- function(dp) {
             # checks for pscore based methods (no caching on the RC branch: the
             # cohort index varies cell by cell here)
             if (est_method %in% c("dr", "ipw")) {
-              if (overlap_check_fail(covariates, G, intercept_only)) {
+              if (overlap_check_fail(covariates, G, intercept_only, if (is.null(weightsname)) NULL else w)) {
                 warning(paste0("overlap condition violated for group ", glist[g], " in time period ", tlist[t + tfac]))
                 stop("overlap")
               }
@@ -892,7 +893,7 @@ compute.att_gt <- function(dp) {
 
             # check if can run regression using control units
             if (est_method %in% c("dr", "reg")) {
-              if (rcond_check_fail(covariates, G, intercept_only)) {
+              if (rcond_check_fail(covariates, G, intercept_only, if (is.null(weightsname)) NULL else w)) {
                 warning(paste0("Covariate matrix for control units is singular or numerically ill-conditioned for group ", glist[g], " in time period ", tlist[t + tfac], "; consider centering/rescaling covariates or removing collinear terms"))
                 stop("singular")
               }
