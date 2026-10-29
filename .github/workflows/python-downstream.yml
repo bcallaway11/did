@@ -1,0 +1,17 @@
+name: Python downstream compatibility
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  csdid:
+    if: github.repository == 'bcallaway11/did'
+    # Check the exact R revision against current Python packages; no publishing.
+    uses: d2cml-ai/csdid/.github/workflows/r-upstream-parity.yml@main
+    with:
+      did-ref: ${{ github.sha }}
