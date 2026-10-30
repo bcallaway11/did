@@ -149,7 +149,7 @@ panel estimator). This is the most flexible option for weights but
 sacrifices the efficiency of the panel estimator. For RC/unbalanced
 panel, this is identical to the default. Not supported with custom
 \code{est_method} functions.}
-\item{\code{"base_period"}}{Fixes weights at the base period (g-1) for
+\item{\code{"base_period"}}{Fixes weights at the base period (g-anticipation-1) for
 all (g,t) cells within a group, for both pre-treatment and
 post-treatment comparisons. Ensures all cells within a group use the
 same weights. For unbalanced panels, units not observed in the base
