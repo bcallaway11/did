@@ -71,8 +71,12 @@ ignored, with a warning, for "calendar").}
 the sample with respect to event time.  For example, if \code{balance_e=2},
 \code{aggte} will drop groups that are not exposed to treatment for
 at least three periods. (the initial period when \code{e=0} as well as the
-next two periods when \code{e=1} and the \code{e=2}).  This ensures that
-the composition of groups does not change when event time changes.}
+next two periods when \code{e=1} and the \code{e=2}). Each retained group must
+have a non-missing ATT estimate at every observed post-treatment event
+time through \code{balance_e}, so the composition of groups does not change
+across those event times. On irregular time grids, only event times
+observed among the eligible groups are required. Balancing is done before
+applying \code{min_e} and \code{max_e}; an error is returned if no group remains.}
 
 \item{call}{The function call to aggte}
 

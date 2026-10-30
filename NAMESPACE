@@ -41,40 +41,50 @@ export(trimmer)
 import(data.table)
 import(fastglm)
 import(ggplot2)
-importFrom(BMisc,TorF)
-importFrom(BMisc,get_list_element)
-importFrom(BMisc,makeBalancedPanel)
-importFrom(BMisc,multiplier_bootstrap)
-importFrom(BMisc,rhs_vars)
-importFrom(BMisc,toformula)
-importFrom(DRDID,drdid_panel)
-importFrom(DRDID,drdid_rc)
-importFrom(DRDID,reg_did_panel)
-importFrom(DRDID,reg_did_rc)
-importFrom(DRDID,std_ipw_did_panel)
-importFrom(DRDID,std_ipw_did_rc)
+importFrom(BMisc,
+  TorF,
+  get_list_element,
+  makeBalancedPanel,
+  multiplier_bootstrap,
+  rhs_vars,
+  toformula
+)
+importFrom(DRDID,
+  drdid_panel,
+  drdid_rc,
+  reg_did_panel,
+  reg_did_rc,
+  std_ipw_did_panel,
+  std_ipw_did_rc
+)
 importFrom(dreamerr,check_set_arg)
-importFrom(generics,glance)
-importFrom(generics,tidy)
-importFrom(methods,as)
-importFrom(methods,is)
-importFrom(stats,aggregate)
-importFrom(stats,binomial)
-importFrom(stats,complete.cases)
-importFrom(stats,cov)
-importFrom(stats,ecdf)
-importFrom(stats,glm)
-importFrom(stats,model.frame)
-importFrom(stats,model.matrix)
-importFrom(stats,na.pass)
-importFrom(stats,nobs)
-importFrom(stats,pchisq)
-importFrom(stats,pnorm)
-importFrom(stats,predict)
-importFrom(stats,qnorm)
-importFrom(stats,quantile)
-importFrom(stats,rnorm)
-importFrom(stats,setNames)
-importFrom(stats,var)
+importFrom(generics,
+  glance,
+  tidy
+)
+importFrom(methods,
+  as,
+  is
+)
+importFrom(stats,
+  aggregate,
+  binomial,
+  complete.cases,
+  cov,
+  ecdf,
+  glm,
+  model.frame,
+  model.matrix,
+  na.pass,
+  nobs,
+  pchisq,
+  pnorm,
+  predict,
+  qnorm,
+  quantile,
+  rnorm,
+  setNames,
+  var
+)
 importFrom(tidyr,gather)
 importFrom(utils,globalVariables)
